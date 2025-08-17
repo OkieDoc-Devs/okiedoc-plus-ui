@@ -11,7 +11,7 @@ function App() {
           <h1 class="plus">+</h1>
         </div>
         <div className="button-group">
-          <button className="btn">Register</button>
+          <button className="btn" onClick={() => navigate("/registration")}>Register</button>
           <button className="btn" onClick={() => navigate("/login")}>
             Login
           </button>

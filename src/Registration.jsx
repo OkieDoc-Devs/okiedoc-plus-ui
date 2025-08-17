@@ -1,8 +1,61 @@
 import "./App.css";
 import { useNavigate } from "react-router";
+import { useState } from "react";
 
 export default function Registration() {
   const navigate = useNavigate();
+  // Temporary Registration System (Needs actual backend integration and proper forms like first name etc.)
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+  const [success, setSuccess] = useState("");
+
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [id]: value,
+    }));
+
+    console.log(`Registration - ${id}: ${value}`);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    console.log("Registration form submitted:", formData);
+
+    const registeredUsers = JSON.parse(
+      localStorage.getItem("registeredUsers") || "[]"
+    );
+    const newUser = {
+      email: formData.email,
+      password: formData.password,
+      registeredAt: new Date().toISOString(),
+    };
+
+    const userExists = registeredUsers.find(
+      (user) => user.email === formData.email
+    );
+    if (userExists) {
+      console.log("Registration failed - user already exists");
+      setSuccess("User with this email already exists. Please login instead.");
+      return;
+    }
+
+    registeredUsers.push(newUser);
+    localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
+
+    console.log("Registration successful - redirecting to login");
+    setSuccess("Registration successful! Please login with your credentials.");
+
+    setFormData({ email: "", password: "" });
+
+    setTimeout(() => {
+      navigate("/login");
+    }, 2000);
+  };
 
   return (
     <>
@@ -16,7 +69,10 @@ export default function Registration() {
         </div>
         <div className="login-container">
           <h2 className="login-title">Register</h2>
-          <form className="login-form">
+          <form className="login-form" onSubmit={handleSubmit}>
+            {success && (
+              <p style={{ color: "green", marginBottom: "10px" }}>{success}</p>
+            )}
             <label className="login-label" htmlFor="email">
               Email address
             </label>
@@ -25,6 +81,8 @@ export default function Registration() {
               id="email"
               type="email"
               placeholder="Enter your email address"
+              value={formData.email}
+              onChange={handleInputChange}
               required
             />
             <label className="login-label">Password</label>
@@ -34,6 +92,8 @@ export default function Registration() {
                 id="password"
                 type="password"
                 placeholder="Enter your password"
+                value={formData.password}
+                onChange={handleInputChange}
                 required
               />
             </div>

@@ -4,7 +4,6 @@ import { useState } from "react";
 
 export default function Registration() {
   const navigate = useNavigate();
-  // Temporary Registration System (Needs actual backend integration and proper forms like first name etc.)
   const [formData, setFormData] = useState({
     email: "",
     password: "",

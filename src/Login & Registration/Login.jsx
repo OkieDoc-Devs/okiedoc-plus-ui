@@ -1,4 +1,4 @@
-import "./App.css";
+import "../App.css";
 import { useNavigate } from "react-router";
 import { useState } from "react";
 
@@ -68,8 +68,7 @@ export default function Login() {
         <button className="back-btn" onClick={() => navigate("/")}>
           <span className="material-symbols-outlined">arrow_back_2</span>
         </button>
-        <h1>Okie-Doc</h1>
-        <h1 className="plus">+</h1>
+        <img src="/okie-doc-logo.png" alt="Okie-Doc+" className="logo-image" />
       </div>
       <div className="login-container">
         <h2 className="login-title">Sign in</h2>

@@ -11,6 +11,11 @@ export default function Login() {
   });
   const [error, setError] = useState("");
 
+    const adminCredentials = {
+    email: "admin@okiedoc.com",
+    password: "password123",
+  };
+  
   const dummyCredentials = {
     email: "nurse@okiedoc.com",
     password: "password123",
@@ -30,6 +35,17 @@ export default function Login() {
     e.preventDefault();
 
     console.log("Login form submitted:", formData);
+
+    if (
+      formData.email === adminCredentials.email &&
+      formData.password === adminCredentials.password
+    ) {
+      console.log("Admin login successful - redirecting to admin dashboard");
+      sessionStorage.setItem('isAdminLoggedIn', 'true');
+      setError("");
+      navigate("/admin/specialistdashboard");
+      return; 
+    }
 
     if (
       formData.email === dummyCredentials.email &&

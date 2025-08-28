@@ -1,49 +1,11 @@
 import "../App.css";
 import "./NurseStyles.css";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState("tickets");
   const navigate = useNavigate();
 
-  // Dummy data for pending tickets
-  const [pendingTickets] = useState([
-    {
-      id: "T001",
-      patientName: "John Smith",
-      issue: "Chest Pain",
-      priority: "High",
-      timeSubmitted: "2025-08-24 09:30 AM",
-      status: "Pending Review",
-    },
-    {
-      id: "T002",
-      patientName: "Jane Doe",
-      issue: "Migraine Headaches",
-      priority: "Medium",
-      timeSubmitted: "2025-08-24 10:20 AM",
-      status: "Pending Review",
-    },
-    {
-      id: "T003",
-      patientName: "Mike Davis",
-      issue: "Back Pain",
-      priority: "Low",
-      timeSubmitted: "2025-08-24 11:00 AM",
-      status: "In Progress",
-    },
-    {
-      id: "T004",
-      patientName: "Emily Wilson",
-      issue: "Skin Rash",
-      priority: "Medium",
-      timeSubmitted: "2025-08-24 11:45 AM",
-      status: "Pending Review",
-    },
-  ]);
-
-  // Dummy notifications
   const [notifications] = useState([
     {
       id: 1,
@@ -82,37 +44,75 @@ export default function Dashboard() {
     },
   ]);
 
-  const handleTicketAction = (ticketId, action) => {
-    console.log(`${action} ticket ${ticketId}`);
-    // Implement actual ticket function here
-  };
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case "High":
-        return "#ff4444";
-      case "Medium":
-        return "#ffa500";
-      case "Low":
-        return "#4CAF50";
-      default:
-        return "#666";
-    }
-  };
 
   const handleTabClick = (tab) => {
     if (tab === "notifications") {
       navigate("/notifications");
-    } else if (tab === "schedule") {
-      navigate("/create-schedule");
-    } else {
-      setActiveTab(tab);
     }
   };
 
   const handleLogout = () => {
-    // Add any logout logic here (clear tokens, etc.)
     navigate("/");
+  };
+
+  // Tickets from localStorage
+  const [tickets, setTickets] = useState(() => {
+    try {
+      const raw = localStorage.getItem("nurse.tickets");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const onStorage = () => {
+      try {
+        const raw = localStorage.getItem("nurse.tickets");
+        setTickets(raw ? JSON.parse(raw) : []);
+      } catch {}
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const nurseId = useMemo(() => {
+    let id = localStorage.getItem("nurse.id");
+    if (!id) {
+      id = `N${Math.random().toString(36).slice(2, 8)}`;
+      localStorage.setItem("nurse.id", id);
+    }
+    return id;
+  }, []);
+
+  const confirmedTickets = useMemo(
+    () => tickets.filter((t) => t.status === "Confirmed" && t.claimedBy === nurseId),
+    [tickets, nurseId]
+  );
+
+  const toCalendarDateRange = (dateStr, timeStr, durationMinutes = 30) => {
+    try {
+      const startLocal = new Date(`${dateStr} ${timeStr}`);
+      const endLocal = new Date(startLocal.getTime() + durationMinutes * 60000);
+      const fmt = (d) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+      return { start: fmt(startLocal), end: fmt(endLocal) };
+    } catch {
+      const fmt = (d) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+      const now = new Date();
+      const end = new Date(now.getTime() + durationMinutes * 60000);
+      return { start: fmt(now), end: fmt(end) };
+    }
+  };
+
+  const buildGoogleCalendarUrl = (ticket) => {
+    const { start, end } = toCalendarDateRange(ticket.preferredDate, ticket.preferredTime, 30);
+    const title = encodeURIComponent(`Consultation: ${ticket.patientName}`);
+    const details = encodeURIComponent(
+      `Patient: ${ticket.patientName}\nEmail: ${ticket.email}\nMobile: ${ticket.mobile}\nChief Complaint: ${ticket.chiefComplaint}\nChannel: ${ticket.consultationChannel}\nSpecialist: ${ticket.preferredSpecialist}`
+    );
+    const location = encodeURIComponent("Okie-Doc+ Platform");
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${start}%2F${end}`;
   };
 
   return (
@@ -127,9 +127,15 @@ export default function Dashboard() {
         </div>
         <h3 className="dashboard-title">Nurse Dashboard</h3>
         <div className="user-account">
-          <img src="/account.svg" alt="Account" className="account-icon" />
-          <span className="account-name">Nurse</span>
+          <img src={localStorage.getItem("nurse.profileImageDataUrl") || "/account.svg"} alt="Account" className="account-icon" />
+          <span className="account-name">{localStorage.getItem("nurse.firstName") || "Nurse"}</span>
           <div className="account-dropdown">
+            <button
+              className="dropdown-item"
+              onClick={() => navigate("/myaccount")}
+            >
+              My Account
+            </button>
             <button
               className="dropdown-item logout-item"
               onClick={handleLogout}
@@ -140,16 +146,16 @@ export default function Dashboard() {
         </div>
         <div className="dashboard-nav">
           <button
-            className={`nav-tab ${activeTab === "tickets" ? "active" : ""}`}
-            onClick={() => handleTabClick("tickets")}
+            className={`nav-tab active`}
+            onClick={() => navigate("/dashboard")}
           >
-            Pending Tickets
+            Dashboard
           </button>
           <button
             className={`nav-tab`}
-            onClick={() => handleTabClick("schedule")}
+            onClick={() => navigate("/manage-appointments")}
           >
-            Create Schedule
+            Manage Appointments
           </button>
           <button
             className={`nav-tab`}
@@ -160,59 +166,45 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {activeTab === "tickets" && (
-        <div className="tickets-section">
-          <div className="tickets-carousel">
-            {pendingTickets.map((ticket) => (
-              <div key={ticket.id} className="ticket-card">
-                <div className="ticket-header">
-                  <span className="ticket-id">{ticket.id}</span>
-                  <span
-                    className="ticket-priority"
-                    style={{
-                      color: getPriorityColor(ticket.priority),
-                    }}
-                  >
-                    {ticket.priority} Priority
-                  </span>
-                </div>
-                <div className="ticket-details">
-                  <h4>{ticket.patientName}</h4>
-                  <p>
-                    <strong>Issue:</strong> {ticket.issue}
-                  </p>
-                  <p>
-                    <strong>Submitted:</strong> {ticket.timeSubmitted}
-                  </p>
-                  <p>
-                    <strong>Status:</strong> {ticket.status}
-                  </p>
-                </div>
-                <div className="ticket-actions">
-                  <button
-                    className="action-btn review"
-                    onClick={() => handleTicketAction(ticket.id, "review")}
-                  >
-                    Review
-                  </button>
-                  <button
-                    className="action-btn assign"
-                    onClick={() => handleTicketAction(ticket.id, "assign")}
-                  >
-                    Assign
-                  </button>
-                  <button
-                    className="action-btn close"
-                    onClick={() => handleTicketAction(ticket.id, "close")}
-                  >
-                    Close
-                  </button>
-                </div>
+
+      {/* Confirmed Tickets for scheduling */}
+      <div className="appointments-section">
+        <div className="processing-tickets">
+          <h2>Confirmed Tickets ({confirmedTickets.length})</h2>
+          {confirmedTickets.map((ticket) => (
+            <div key={ticket.id} className="ticket-card processing">
+              <div className="ticket-header">
+                <h3>{ticket.patientName}</h3>
+                <span className="status-badge" style={{ backgroundColor: "#4caf50" }}>Confirmed</span>
               </div>
-            ))}
-          </div>
+              <div className="ticket-actions">
+                <a
+                  href={buildGoogleCalendarUrl(ticket)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="action-btn edit"
+                >
+                  Create Schedule (Google Calendar)
+                </a>
+                <button
+                  className="action-btn remove"
+                  style={{ marginLeft: 8, background: '#f44336', color: '#fff' }}
+                  onClick={() => {
+                    // Remove ticket from state and localStorage
+                    setTickets(prev => {
+                      const updated = prev.filter(t => t.id !== ticket.id);
+                      localStorage.setItem("nurse.tickets", JSON.stringify(updated));
+                      return updated;
+                    });
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }

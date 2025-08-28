@@ -6,7 +6,6 @@ import { useNavigate } from "react-router";
 export default function Notifications() {
   const navigate = useNavigate();
 
-  // Dummy notifications
   const [notifications] = useState([
     {
       id: 1,
@@ -46,17 +45,11 @@ export default function Notifications() {
   ]);
 
   const handleTabClick = (tab) => {
-    if (tab === "tickets") {
-      navigate("/dashboard");
-    } else if (tab === "schedule") {
-      navigate("/create-schedule");
-    } else if (tab === "notifications") {
-      // Already on notifications page, do nothing
+    if (tab === "notifications") {
     }
   };
 
   const handleLogout = () => {
-    // Add actual logout logic here
     navigate("/");
   };
 
@@ -70,6 +63,12 @@ export default function Notifications() {
           <span className="account-name">Nurse</span>
           <div className="account-dropdown">
             <button
+              className="dropdown-item"
+              onClick={() => navigate("/myaccount")}
+            >
+              My Account
+            </button>
+            <button
               className="dropdown-item logout-item"
               onClick={handleLogout}
             >
@@ -79,14 +78,17 @@ export default function Notifications() {
         </div>
 
         <div className="dashboard-nav">
-          <button className="nav-tab" onClick={() => handleTabClick("tickets")}>
-            Pending Tickets
+          <button
+            className="nav-tab"
+            onClick={() => navigate("/dashboard")}
+          >
+            Dashboard
           </button>
           <button
             className="nav-tab"
-            onClick={() => handleTabClick("schedule")}
+            onClick={() => navigate("/manage-appointments")}
           >
-            Create Schedule
+            Manage Appointments
           </button>
           <button
             className="nav-tab active"

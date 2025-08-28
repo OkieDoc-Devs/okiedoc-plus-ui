@@ -17,13 +17,13 @@ export default function Registration() {
       [id]: value,
     }));
 
-    console.log(`Registration - ${id}: ${value}`);
+    // console.log(`Registration - ${id}: ${value}`);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    console.log("Registration form submitted:", formData);
+    // console.log("Registration form submitted:", formData);
 
     const registeredUsers = JSON.parse(
       localStorage.getItem("registeredUsers") || "[]"
@@ -46,7 +46,7 @@ export default function Registration() {
     registeredUsers.push(newUser);
     localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
 
-    console.log("Registration successful - redirecting to login");
+    // console.log("Registration successful - redirecting to login");
     setSuccess("Registration successful! Please login with your credentials.");
 
     setFormData({ email: "", password: "" });

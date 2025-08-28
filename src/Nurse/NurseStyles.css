@@ -1,3 +1,15 @@
+html, body {
+  font-family: 'Inter', Arial, sans-serif;
+  background: #f7f8fa;
+  color: #222;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  opacity: 1 !important;
+}
+.dashboard, .dashboard-header, .dashboard-title, .dashboard-nav, .appointments-section, .tickets-container, .ticket-card, .modal-overlay, .modal-content, .modal-header, .modal-actions, .invoice-modal, .invoice-form, .invoice-items, .invoice-item, .invoice-fees, .fee-item, .add-item-btn, .remove-item-btn, .submit-btn, .cancel-btn {
+  opacity: 1 !important;
+}
 .calendar {
   background: #ffffff;
   border-radius: 12px;
@@ -338,5 +350,949 @@
     text-align: center;
     padding: 8px;
     font-size: 0.9rem;
+  }
+}
+
+/* MyAccount Component Styles */
+.myaccount-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.myaccount-header {
+  text-align: center;
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.back-btn {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background-color: #f0f0f0;
+  color: #333;
+  border: 1px solid #ddd;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background-color: #e0e0e0;
+  border-color: #bbb;
+}
+
+.myaccount-header h2 {
+  color: #0b5388;
+  margin-bottom: 10px;
+}
+
+.myaccount-header p {
+  color: #666;
+  font-size: 1rem;
+}
+
+.myaccount-tabs {
+  display: flex;
+  border-bottom: 2px solid #eee;
+  margin-bottom: 30px;
+}
+
+.tab-btn {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #666;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+  color: #0b5388;
+}
+
+.tab-btn.active {
+  color: #0b5388;
+  border-bottom-color: #0b5388;
+}
+
+.myaccount-content {
+  min-height: 400px;
+}
+
+/* Profile Section */
+.profile-section {
+  padding: 20px 0;
+}
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.profile-header h3 {
+  color: #0b5388;
+  margin: 0;
+}
+
+.edit-btn {
+  background-color: #0b5388;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.edit-btn:hover {
+  background-color: #083d63;
+}
+
+.profile-content {
+  display: grid;
+  gap: 15px;
+}
+
+.profile-row {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.profile-row label {
+  font-weight: 600;
+  color: #333;
+}
+
+.profile-row span {
+  color: #666;
+}
+
+.profile-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  width: 100%;
+  max-width: 300px;
+}
+
+.profile-input:focus {
+  outline: none;
+  border-color: #0b5388;
+  box-shadow: 0 0 0 2px rgba(11, 83, 136, 0.1);
+}
+
+.profile-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.save-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.save-btn:hover {
+  background-color: #45a049;
+}
+
+/* Light blue variant for image update button */
+.image-save-btn {
+  background-color: #4aa7ed;
+}
+.image-save-btn:hover {
+  background-color: #0aadef;
+}
+
+.cancel-btn {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.cancel-btn:hover {
+  background-color: #da190b;
+}
+
+/* Security Section */
+.security-section {
+  padding: 20px 0;
+}
+
+.security-section h3 {
+  color: #0b5388;
+  margin-bottom: 25px;
+}
+
+.security-content {
+  display: grid;
+  gap: 20px;
+}
+
+.security-item {
+  padding: 20px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  background-color: #fafafa;
+}
+
+.security-item h4 {
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.security-item p {
+  color: #666;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+}
+
+.security-btn {
+  background-color: #0b5388;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.security-btn:hover {
+  background-color: #083d63;
+}
+
+/* Preferences Section */
+.preferences-section {
+  padding: 20px 0;
+}
+
+.preferences-section h3 {
+  color: #0b5388;
+  margin-bottom: 25px;
+}
+
+.preferences-content {
+  display: grid;
+  gap: 25px;
+}
+
+.preference-item {
+  padding: 20px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  background-color: #fafafa;
+}
+
+.preference-item h4 {
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.preference-option {
+  margin-bottom: 10px;
+}
+
+.preference-option label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #333;
+}
+
+.preference-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #0b5388;
+}
+
+.preference-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background-color: white;
+  min-width: 200px;
+}
+
+.preference-select:focus {
+  outline: none;
+  border-color: #0b5388;
+  box-shadow: 0 0 0 2px rgba(11, 83, 136, 0.1);
+}
+
+/* Password Form Styles */
+.password-form {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+  border: 1px solid #eee;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #333;
+}
+
+.password-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+
+.password-input:focus {
+  outline: none;
+  border-color: #0b5388;
+  box-shadow: 0 0 0 2px rgba(11, 83, 136, 0.1);
+}
+
+.password-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.error-message {
+  color: #d32f2f;
+  background-color: #ffebee;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+  border: 1px solid #ffcdd2;
+  font-size: 0.9rem;
+}
+
+.success-message {
+  color: #2e7d32;
+  background-color: #e8f5e8;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+  border: 1px solid #c8e6c9;
+  font-size: 0.9rem;
+}
+
+/* Manage Appointments Styles */
+.appointments-section {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  color: #000000;
+}
+
+/* Create Appointment CTA */
+.create-appointment-btn {
+  background: linear-gradient(135deg, #0aadef, #0b5388);
+  color: #ffffff;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 6px 16px rgba(11, 83, 136, 0.25);
+}
+
+.create-appointment-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(11, 83, 136, 0.35);
+}
+
+.create-appointment-btn:active {
+  transform: translateY(0);
+  opacity: 0.95;
+}
+
+.appointments-controls {
+  margin-bottom: 30px;
+}
+
+.search-filter-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.search-box {
+  flex: 1;
+  min-width: 300px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #0b5388;
+  box-shadow: 0 0 0 2px rgba(11, 83, 136, 0.1);
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background-color: white;
+  color: #666;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  border-color: #0b5388;
+  color: #0b5388;
+}
+
+.filter-btn.active {
+  background-color: #0b5388;
+  color: white;
+  border-color: #0b5388;
+}
+
+.appointments-list {
+  display: grid;
+  gap: 20px;
+}
+
+/* Make ticket section headings and containers readable */
+.tickets-container,
+.tickets-list,
+.processing-tickets {
+  color: #000000;
+}
+.tickets-list h2,
+.processing-tickets h2 {
+  color: #0b5388;
+}
+
+/* Pending vs Processing ticket colors */
+.tickets-list .ticket-card {
+  border-left: 4px solid #ff9800;
+  background: linear-gradient(0deg, rgba(255, 152, 0, 0.06), rgba(255, 255, 255, 1));
+  color: #000000;
+}
+
+.processing-tickets .ticket-card {
+  border-left: 4px solid #2196f3;
+  background: linear-gradient(0deg, rgba(33, 150, 243, 0.06), rgba(255, 255, 255, 1));
+  color: #000000;
+}
+
+/* Ensure text inside ticket cards is readable */
+.ticket-card .ticket-header h3 { color: #0b5388; }
+.ticket-card .ticket-details p { color: #0b5388; }
+.ticket-card .ticket-time { color: #0b5388; }
+.ticket-card .ticket-details strong { color: #0b5388; }
+
+.appointment-card {
+  background-color: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s;
+}
+
+.appointment-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.appointment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.appointment-id {
+  font-weight: 600;
+  color: #0b5388;
+  font-size: 1.1rem;
+}
+
+.appointment-status {
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background-color: #f8f9fa;
+}
+
+.appointment-details {
+  margin-bottom: 20px;
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.detail-value {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.appointment-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.action-btn.edit {
+  background-color: #2196F3;
+  color: white;
+}
+
+.action-btn.edit:hover {
+  background-color: #1976D2;
+}
+
+.action-btn.view {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.action-btn.view:hover {
+  background-color: #45a049;
+}
+
+.status-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background-color: white;
+  cursor: pointer;
+}
+
+.status-select:focus {
+  outline: none;
+  border-color: #0b5388;
+  box-shadow: 0 0 0 2px rgba(11, 83, 136, 0.1);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Generic modal content */
+.modal-content,
+.create-appointment-modal,
+.ticket-modal,
+.invoice-modal {
+  background-color: white;
+  border-radius: 8px;
+  width: 92%;
+  max-width: 820px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #0b5388;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+  background-color: #f0f0f0;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-body .form-group {
+  margin-bottom: 20px;
+}
+
+.modal-body .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+}
+
+.modal-body .form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+  color: #000000;
+  background-color: #ffffff;
+}
+
+.modal-body .form-input:focus {
+  outline: none;
+  border-color: #0b5388;
+  box-shadow: 0 0 0 2px rgba(11, 83, 136, 0.1);
+}
+
+.modal-body textarea.form-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 20px;
+  border-top: 1px solid #eee;
+}
+
+/* Create Appointment form layout */
+.create-appointment-form .form-section {
+  padding: 16px 20px 0 20px;
+}
+
+.create-appointment-form .form-section h3 {
+  margin: 0 0 12px 0;
+  color: #0b5388;
+  font-size: 1.1rem;
+}
+
+.create-appointment-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.create-appointment-form .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.create-appointment-form input,
+.create-appointment-form select,
+.create-appointment-form textarea {
+  border: 1.5px solid #bfe5f9;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  color: #000000;
+  background-color: #ffffff;
+  opacity: 1 !important;
+}
+
+/* Increase visibility of date/time picker icons on the right side */
+.create-appointment-form input[type="date"]::-webkit-calendar-picker-indicator,
+.create-appointment-form input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 1 !important;
+  filter: brightness(0) saturate(100%) invert(21%) sepia(78%) saturate(1000%) hue-rotate(181deg) brightness(92%) contrast(95%);
+  cursor: pointer;
+}
+
+/* Firefox (uses a different indicator pseudo-element) */
+.create-appointment-form input[type="date"]::-moz-calendar-picker-indicator,
+.create-appointment-form input[type="time"]::-moz-calendar-picker-indicator {
+  opacity: 1 !important;
+}
+
+.create-appointment-form input:focus,
+.create-appointment-form select:focus,
+.create-appointment-form textarea:focus {
+  outline: none;
+  border-color: #4aa7ed;
+  box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.18);
+}
+
+.create-appointment-form .modal-actions {
+  position: sticky;
+  bottom: 0;
+  background: #ffffff;
+}
+
+.submit-btn {
+  background-color: #0aadef;
+  color: #000000;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.submit-btn:hover {
+  background-color: #4aa7ed;
+}
+
+.cancel-btn {
+  background-color: #f44336;
+  color: #ffffff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancel-btn:hover {
+  background-color: #da190b;
+}
+
+/* Ticket modal content sections */
+.ticket-modal .modal-content,
+.ticket-modal {
+  padding-bottom: 8px;
+}
+
+.ticket-modal .info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+}
+
+.ticket-modal .info-item label {
+  font-weight: 600;
+  color: #0b5388;
+  margin-right: 6px;
+}
+
+.status-badge {
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+
+/* Invoice modal grid */
+.invoice-form .invoice-items {
+  padding: 0 20px 10px 20px;
+}
+
+.invoice-form .invoice-item {
+  display: grid;
+  grid-template-columns: 1.2fr 1.6fr 0.6fr 0.6fr 40px;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+/* Ensure invoice inputs are readable */
+.invoice-form input,
+.invoice-form textarea,
+.invoice-form select {
+  color: #000000;
+  background-color: #ffffff;
+  opacity: 1 !important;
+  border: 1px solid #bfe5f9;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.invoice-form input::placeholder,
+.invoice-form textarea::placeholder {
+  color: #666666;
+  opacity: 1;
+}
+
+.invoice-form h3 {
+  color: #0b5388;
+}
+
+.invoice-form .remove-item-btn {
+  background: #ffebee;
+  color: #d32f2f;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.invoice-form .add-item-btn {
+  background: #f2f7fa;
+  color: #0b5388;
+  border: 1px solid #bfe5f9;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.invoice-fees {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 10px 20px;
+}
+
+.invoice-total {
+  padding: 0 20px 10px 20px;
+  color: #0b5388;
+}
+
+/* Improve overall colors for appointment page */
+.appointments-section .search-input,
+.appointments-section .status-select,
+.appointments-section .filter-btn,
+.appointments-section .action-btn,
+.appointments-section .appointment-card {
+  font-family: "Inter", Arial, sans-serif;
+}
+
+.appointments-section .filter-btn.active,
+.appointments-section .action-btn.edit,
+.appointments-section .action-btn.view {
+  box-shadow: 0 4px 12px rgba(11, 83, 136, 0.2);
+}
+
+@media (max-width: 768px) {
+  .create-appointment-form .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-content,
+  .create-appointment-modal,
+  .ticket-modal,
+  .invoice-modal {
+    max-width: 92vw;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .search-filter-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-box {
+    min-width: auto;
+  }
+  
+  .filter-buttons {
+    justify-content: center;
+  }
+  
+  .detail-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  
+  .appointment-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .action-btn, .status-select {
+    width: 100%;
+    text-align: center;
   }
 }

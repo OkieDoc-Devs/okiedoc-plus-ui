@@ -4,7 +4,6 @@ import { useState } from "react";
 
 export default function Login() {
   const navigate = useNavigate();
-  // Temporary Registration System (Needs actual backend integration and proper forms like first name etc.)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -23,21 +22,16 @@ export default function Login() {
       [id]: value,
     }));
 
-    console.log(`Login - ${id}: ${value}`);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    console.log("Login form submitted:", formData);
 
     if (
       formData.email === dummyCredentials.email &&
       formData.password === dummyCredentials.password
     ) {
-      console.log(
-        "Login successful with dummy credentials - redirecting to dashboard"
-      );
       setError("");
       navigate("/dashboard");
       return;
@@ -51,13 +45,9 @@ export default function Login() {
     );
 
     if (user) {
-      console.log(
-        "Login successful with registered credentials - redirecting to dashboard"
-      );
       setError("");
       navigate("/dashboard");
     } else {
-      console.log("Login failed - invalid credentials");
       setError("Invalid email or password. Please try again.");
     }
   };

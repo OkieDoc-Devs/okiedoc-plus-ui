@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "./PatientAuth.css";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router";
 
 export default function PatientAuth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -10,8 +11,22 @@ export default function PatientAuth() {
     name: "",
     confirmPassword: "",
   });
-
-  const dummyUser = { email: "patient@example.com", password: "123456" };
+  const [message, setMessage] = useState({ text: '', type: '' });
+  
+  const navigate = useNavigate();
+  
+  // Get users from localStorage or use default dummy users
+  const [dummyUsers, setDummyUsers] = useState(() => {
+    const storedUsers = localStorage.getItem('registeredUsers');
+    if (storedUsers) {
+      return JSON.parse(storedUsers);
+    }
+    // Default users if none stored
+    return [
+      { email: 'patient@example.com', password: '123456', name: 'John Doe' },
+      { email: 'test@example.com', password: 'password', name: 'Test User' }
+    ];
+  });
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -19,25 +34,68 @@ export default function PatientAuth() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (form.email === dummyUser.email && form.password === dummyUser.password) {
-      alert("Login successful!");
-      setForm({ email: "", password: "" });
+    
+    // Simulate backend authentication
+    const foundUser = dummyUsers.find(
+      user => user.email === form.email && user.password === form.password
+    );
+
+    if (foundUser) {
+      // Store user data in localStorage
+      localStorage.setItem('user', JSON.stringify(foundUser));
+      localStorage.setItem('isAuthenticated', 'true');
+      
+      setMessage({ text: 'Login successful!', type: 'success' });
+      setForm({ email: "", password: "", name: "", confirmPassword: "" });
+      
+      // Navigate to dashboard after a short delay
+      setTimeout(() => {
+        navigate('/patient-dashboard');
+      }, 1000);
     } else {
-      alert("Invalid credentials");
+      setMessage({ text: 'Invalid credentials', type: 'error' });
     }
   };
 
   const handleRegister = (e) => {
     e.preventDefault();
     if (form.password !== form.confirmPassword) {
-      alert("Passwords do not match!");
+      setMessage({ text: "Passwords do not match!", type: 'error' });
       return;
     }
-    alert(
-      `Registration successful (mock)!\nName: ${form.name}\nEmail: ${form.email}`
-    );
+    
+    // Check if user already exists
+    const existingUser = dummyUsers.find(user => user.email === form.email);
+    
+    if (existingUser) {
+      setMessage({ text: 'User already exists with this email', type: 'error' });
+      return;
+    }
+
+    // Create new user (in real app, this would go to backend)
+    const newUser = {
+      name: form.name,
+      email: form.email,
+      password: form.password
+    };
+
+    // Add to dummy users and save to localStorage
+    const updatedUsers = [...dummyUsers, newUser];
+    setDummyUsers(updatedUsers);
+    localStorage.setItem('registeredUsers', JSON.stringify(updatedUsers));
+
+    // Store user data in localStorage (but don't log them in automatically)
+    // localStorage.setItem('user', JSON.stringify(newUser));
+    // localStorage.setItem('isAuthenticated', 'true');
+    
+    setMessage({ text: 'Registration successful! Please login with your credentials.', type: 'success' });
     setForm({ email: "", password: "", name: "", confirmPassword: "" });
-    setIsLogin(true);
+    
+    // Switch to login form after successful registration
+    setTimeout(() => {
+      setIsLogin(true);
+      setMessage({ text: '', type: '' });
+    }, 2000);
   };
 
   const showLogin = () => {
@@ -64,6 +122,12 @@ export default function PatientAuth() {
         Okie-Doc<span className="plus">+</span>
       </div>
       <h2>Patient</h2>
+      
+      {message.text && (
+        <div className={`message ${message.type}`}>
+          {message.text}
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {isLogin ? (

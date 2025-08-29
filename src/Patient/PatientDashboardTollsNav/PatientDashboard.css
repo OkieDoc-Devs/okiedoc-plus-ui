@@ -1,0 +1,396 @@
+.patient-dashboard {
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  background-color: #BFE5F9;
+  overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Navigation Tabs */
+.nav-tabs {
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  padding: 0;
+  display: flex;
+  gap: 32px;
+}
+
+.nav-tab {
+  padding: 12px 0;
+  color: #6c757d;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  font-weight: 500;
+}
+
+.nav-tab.active {
+  color: #0d6efd;
+  border-bottom-color: #0d6efd;
+}
+
+
+
+/* Kanban Board */
+.kanban-board {
+  display: flex;
+  gap: 24px;
+  padding: 24px 0;
+  height: calc(100vh - 100px);
+  overflow-x: auto;
+}
+
+.column {
+  min-width: 300px;
+  background: #BFE5F9;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.column-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #0B5388;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.column-count {
+  background: #e9ecef;
+  color: #0B5388;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Ticket Styling */
+.ticket {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-left: 4px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ticket:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transform: translateY(-1px);
+}
+
+.ticket-title {
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+  line-height: 1.4;
+}
+
+.ticket-tag {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+
+
+
+
+/* Status Colors */
+.pending { border-left-color: #ffc107; }
+.processing { border-left-color: #17a2b8; }
+.payment { border-left-color: #28a745; }
+.confirmed { border-left-color: #fd7e14; }
+.active { border-left-color: #6f42c1; }
+
+
+
+/* Ticket Actions */
+.ticket-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.action-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.chat-btn {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.chat-btn:hover {
+  background-color: #0b5ed7;
+}
+
+.upload-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.upload-btn:hover {
+  background-color: #218838;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Chat Modal */
+.chat-modal {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.chat-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6c757d;
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.message {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.message.patient {
+  align-items: flex-end;
+}
+
+.message.nurse {
+  align-items: flex-start;
+}
+
+.message-content {
+  padding: 12px 16px;
+  border-radius: 18px;
+  max-width: 80%;
+  word-wrap: break-word;
+}
+
+.message.patient .message-content {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.message.nurse .message-content {
+  background-color: #f8f9fa;
+  color: #333;
+  border: 1px solid #e9ecef;
+}
+
+.message-time {
+  font-size: 11px;
+  color: #6c757d;
+  margin-top: 4px;
+}
+
+.chat-input {
+  display: flex;
+  gap: 12px;
+  padding: 20px;
+  border-top: 1px solid #e9ecef;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.chat-input button {
+  padding: 12px 20px;
+  background-color: #0d6efd;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.chat-input button:hover {
+  background-color: #0b5ed7;
+}
+
+/* Upload Modal */
+.upload-modal {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.upload-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.upload-content {
+  padding: 20px;
+  flex: 1;
+}
+
+.upload-content p {
+  margin-bottom: 16px;
+  color: #6c757d;
+}
+
+.upload-content input[type="file"] {
+  width: 100%;
+  padding: 12px;
+  border: 2px dashed #ced4da;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.selected-file {
+  background-color: #f8f9fa;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  color: #28a745;
+  font-weight: 500;
+}
+
+.upload-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.upload-actions button {
+  padding: 12px 24px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.upload-actions button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.upload-actions button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .kanban-board {
+    gap: 16px;
+    padding: 16px;
+  }
+  
+  .column {
+    min-width: 280px;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .kanban-board {
+    flex-direction: column;
+    height: auto;
+    overflow-x: visible;
+  }
+  
+  .column {
+    min-width: auto;
+  }
+  
+  .chat-modal,
+  .upload-modal {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .ticket-actions {
+    flex-direction: column;
+  }
+}

@@ -59,8 +59,8 @@ export default function Notifications() {
         <img src="/okie-doc-logo.png" alt="Okie-Doc+" className="logo-image" />
         <h2 className="dashboard-title">Notifications</h2>
         <div className="user-account">
-          <img src="/account.svg" alt="Account" className="account-icon" />
-          <span className="account-name">Nurse</span>
+          <img src={localStorage.getItem("nurse.profileImageDataUrl") || "/account.svg"} alt="Account" className="account-icon" />
+          <span className="account-name">{localStorage.getItem("nurse.firstName") || "Nurse"}</span>
           <div className="account-dropdown">
             <button
               className="dropdown-item"

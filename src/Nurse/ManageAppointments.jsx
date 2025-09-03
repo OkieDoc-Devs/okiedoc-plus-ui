@@ -1,3 +1,40 @@
+  // Helper to generate invoice text
+  const generateInvoiceText = () => {
+    if (!selectedTicket) return '';
+    let lines = [];
+    lines.push(`Invoice No.: ${invoiceData.invoiceNumber}`);
+    lines.push(`Date of Consultation: ${selectedTicket.preferredDate} ${selectedTicket.preferredTime}`);
+    lines.push(`Patient Name: ${selectedTicket.patientName}`);
+    lines.push(`Mobile Number: ${selectedTicket.mobile}`);
+    lines.push(`Email Address: ${selectedTicket.email}`);
+    lines.push('');
+    lines.push('Invoice Items:');
+    invoiceData.items.forEach((item, idx) => {
+      lines.push(`  ${idx + 1}. ${item.name} - ${item.description} | Qty: ${item.quantity} | Amount: ₱${item.amount}`);
+    });
+    lines.push(`Platform Fee: ₱${invoiceData.platformFee}`);
+    lines.push(`E-Nurse Fee: ₱${invoiceData.eNurseFee}`);
+    lines.push(`Total Amount: ₱${invoiceTotal.toFixed(2)}`);
+    lines.push('');
+    lines.push(`Payment Link: ${invoiceData.paymentLink}`);
+    lines.push('');
+    lines.push('OkieDoc+ Address: 123 Health St, Wellness City, Country');
+    return lines.join('\n');
+  };
+
+  // Download invoice as text file
+  const handleDownloadInvoice = () => {
+    const text = generateInvoiceText();
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Invoice_${invoiceData.invoiceNumber || 'OkieDoc'}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 import "../App.css";
 import "./NurseStyles.css";
 import { useEffect, useMemo, useState } from "react";
@@ -32,6 +69,43 @@ function saveToStorage(key, value) {
 }
 
 export default function ManageAppointment() {
+  // Helper to generate invoice text
+  const generateInvoiceText = () => {
+    if (!selectedTicket) return '';
+    let lines = [];
+    lines.push(`Invoice No.: ${invoiceData.invoiceNumber}`);
+    lines.push(`Date of Consultation: ${selectedTicket.preferredDate} ${selectedTicket.preferredTime}`);
+    lines.push(`Patient Name: ${selectedTicket.patientName}`);
+    lines.push(`Mobile Number: ${selectedTicket.mobile}`);
+    lines.push(`Email Address: ${selectedTicket.email}`);
+    lines.push('');
+    lines.push('Invoice Items:');
+    invoiceData.items.forEach((item, idx) => {
+      lines.push(`  ${idx + 1}. ${item.name} - ${item.description} | Qty: ${item.quantity} | Amount: ₱${item.amount}`);
+    });
+    lines.push(`Platform Fee: ₱${invoiceData.platformFee}`);
+    lines.push(`E-Nurse Fee: ₱${invoiceData.eNurseFee}`);
+    lines.push(`Total Amount: ₱${invoiceTotal.toFixed(2)}`);
+    lines.push('');
+    lines.push(`Payment Link: ${invoiceData.paymentLink}`);
+    lines.push('');
+    lines.push('OkieDoc+ Address: 123 Health St, Wellness City, Country');
+    return lines.join('\n');
+  };
+
+  // Download invoice as text file
+  const handleDownloadInvoice = () => {
+    const text = generateInvoiceText();
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Invoice_${invoiceData.invoiceNumber || 'OkieDoc'}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
   const navigate = useNavigate();
   const [online, setOnline] = useState(true);
   const [tickets, setTickets] = useState(() => {
@@ -801,7 +875,7 @@ export default function ManageAppointment() {
                 </p>
                 <p>
                   <strong>Date of Consultation:</strong>{" "}
-                  {selectedTicket?.preferredDate}{" "}
+                  {selectedTicket?.preferredDate} {" "}
                   {selectedTicket?.preferredTime}
                 </p>
                 <p>
@@ -921,16 +995,16 @@ export default function ManageAppointment() {
                       <span>{item.name}</span>
                       <span>{item.description}</span>
                       <span>Qty: {item.quantity}</span>
-                      <span>Amount: ${item.amount}</span>
+                      <span>Amount: ₱{item.amount}</span>
                     </div>
                   ))}
                   <p>
-                    <strong>Platform Fee:</strong> ${invoiceData.platformFee}
+                    <strong>Platform Fee:</strong> ₱{invoiceData.platformFee}
                   </p>
                   <p>
-                    <strong>E-Nurse Fee:</strong> ${invoiceData.eNurseFee}
+                    <strong>E-Nurse Fee:</strong> ₱{invoiceData.eNurseFee}
                   </p>
-                  <h3>Total Amount: ${invoiceTotal.toFixed(2)}</h3>
+                  <h3>Total Amount: ₱{invoiceTotal.toFixed(2)}</h3>
                   <p>
                     <strong>Payment Link:</strong> {invoiceData.paymentLink}
                   </p>
@@ -942,6 +1016,14 @@ export default function ManageAppointment() {
                 <div className="modal-actions">
                   <button type="submit" className="submit-btn">
                     Send Invoice
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadInvoice}
+                    className="submit-btn"
+                    style={{ marginLeft: 8 }}
+                  >
+                    Download Invoice
                   </button>
                   <button
                     type="button"

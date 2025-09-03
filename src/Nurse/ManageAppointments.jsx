@@ -427,6 +427,47 @@ export default function ManageAppointment() {
         </div>
 
         <div className="tickets-container">
+          <div className="processing-tickets">
+            <h2>Processing Tickets ({processingTickets.length})</h2>
+            {processingTickets.map((ticket) => (
+              <div key={ticket.id} className="ticket-card processing">
+                <div className="ticket-header">
+                  <h3>{ticket.patientName}</h3>
+                  <span
+                    className="status-badge"
+                    style={{ backgroundColor: "#2196f3" }}
+                  >
+                    {ticket.status}
+                  </span>
+                </div>
+                <div className="ticket-actions">
+                  {/* If ticket is claimed, show Generate Invoice, else show Manage */}
+                  {ticket.claimedBy ? (
+                    <button
+                      className="action-btn edit"
+                      onClick={() => openInvoice(ticket)}
+                    >
+                      Generate Invoice
+                    </button>
+                  ) : (
+                    <button
+                      className="action-btn view"
+                      onClick={() => setSelectedTicket(ticket)}
+                    >
+                      Manage
+                    </button>
+                  )}
+                  <button
+                    className="action-btn"
+                    onClick={() => simulatePayment(ticket.id)}
+                  >
+                    Simulate Payment
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div className="tickets-list">
             <h2>Pending Tickets ({pendingTickets.length})</h2>
             {pendingTickets.map((ticket) => (
@@ -469,47 +510,6 @@ export default function ManageAppointment() {
                     disabled={!!ticket.claimedBy}
                   >
                     Claim Ticket
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="processing-tickets">
-            <h2>Processing Tickets ({processingTickets.length})</h2>
-            {processingTickets.map((ticket) => (
-              <div key={ticket.id} className="ticket-card processing">
-                <div className="ticket-header">
-                  <h3>{ticket.patientName}</h3>
-                  <span
-                    className="status-badge"
-                    style={{ backgroundColor: "#2196f3" }}
-                  >
-                    {ticket.status}
-                  </span>
-                </div>
-                <div className="ticket-actions">
-                  {/* If ticket is claimed, show Generate Invoice, else show Manage */}
-                  {ticket.claimedBy ? (
-                    <button
-                      className="action-btn edit"
-                      onClick={() => openInvoice(ticket)}
-                    >
-                      Generate Invoice
-                    </button>
-                  ) : (
-                    <button
-                      className="action-btn view"
-                      onClick={() => setSelectedTicket(ticket)}
-                    >
-                      Manage
-                    </button>
-                  )}
-                  <button
-                    className="action-btn"
-                    onClick={() => simulatePayment(ticket.id)}
-                  >
-                    Simulate Payment
                   </button>
                 </div>
               </div>

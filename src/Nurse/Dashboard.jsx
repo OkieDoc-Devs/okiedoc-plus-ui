@@ -10,7 +10,7 @@ export default function Dashboard() {
     {
       id: 1,
       type: "New Ticket",
-      message: "New ticket T005 submitted by Alex Brown",
+      message: "New ticket T005 submitted by Alex Smith",
       time: "5 mins ago",
       unread: true,
     },

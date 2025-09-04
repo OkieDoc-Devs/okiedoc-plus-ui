@@ -1,4 +1,4 @@
-import "../App.css";
+import "./auth.css";
 import { useNavigate } from "react-router";
 import { useState } from "react";
 
@@ -21,12 +21,10 @@ export default function Login() {
       ...prev,
       [id]: value,
     }));
-
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
 
     if (
       formData.email === dummyCredentials.email &&
@@ -54,13 +52,21 @@ export default function Login() {
 
   return (
     <div className="login-page-wrapper">
-      <div className="header-login">
-        <button className="back-btn" onClick={() => navigate("/")}>
-          <span className="material-symbols-outlined">arrow_back_2</span>
-        </button>
-        <img src="/okie-doc-logo.png" alt="Okie-Doc+" className="logo-image" />
-      </div>
       <div className="login-container">
+        <div className="header-inside-container">
+          <button
+            className="back-btn login-back-btn"
+            onClick={() => navigate("/")}
+          >
+            <span className="material-symbols-outlined">arrow_back_2</span>
+          </button>
+          <img
+            src="/okie-doc-logo.png"
+            alt="Okie-Doc+"
+            className="logo-image"
+          />
+          <div style={{ width: "2.5rem" }}></div>
+        </div>
         <h2 className="login-title">Sign in</h2>
         <form className="login-form" onSubmit={handleSubmit}>
           {error && (

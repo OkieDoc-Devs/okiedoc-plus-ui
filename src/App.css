@@ -7,14 +7,9 @@ body {
 }
 
 #root {
-  /*original style if problem happens in your code just restore this */
-  /* max-width: 1280px; */
-  /* margin: 0 auto; */
-  /* padding: 0 2rem 2rem 2rem; */
-  
-  max-width: none;
-  margin: 0;
-  padding: 0;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 2rem 2rem 2rem;
   text-align: center;
 }
 

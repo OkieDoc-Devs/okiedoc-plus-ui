@@ -35,7 +35,7 @@ function App() {
           <button
             className="mobile-nav-toggle"
             onClick={toggleDropdownMenu}
-            aria-label="Toggle mobile menu"
+            aria-label="Toggle dropdown menu"
           >
             ☰
           </button>

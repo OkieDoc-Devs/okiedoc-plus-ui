@@ -1,4 +1,4 @@
-import "../App.css";
+import "./auth.css";
 import { useNavigate } from "react-router";
 import { useState } from "react";
 
@@ -17,13 +17,13 @@ export default function Registration() {
       [id]: value,
     }));
 
-    console.log(`Registration - ${id}: ${value}`);
+    // console.log(`Registration - ${id}: ${value}`);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    console.log("Registration form submitted:", formData);
+    // console.log("Registration form submitted:", formData);
 
     const registeredUsers = JSON.parse(
       localStorage.getItem("registeredUsers") || "[]"
@@ -46,7 +46,7 @@ export default function Registration() {
     registeredUsers.push(newUser);
     localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
 
-    console.log("Registration successful - redirecting to login");
+    // console.log("Registration successful - redirecting to login");
     setSuccess("Registration successful! Please login with your credentials.");
 
     setFormData({ email: "", password: "" });
@@ -59,17 +59,21 @@ export default function Registration() {
   return (
     <>
       <div className="login-page-wrapper">
-        <div className="header-login">
-          <button className="back-btn" onClick={() => navigate("/")}>
-            <span className="material-symbols-outlined">arrow_back_2</span>
-          </button>
-          <img
-            src="/okie-doc-logo.png"
-            alt="Okie-Doc+"
-            className="logo-image"
-          />
-        </div>
         <div className="login-container">
+          <div className="header-inside-container">
+            <button
+              className="back-btn login-back-btn"
+              onClick={() => navigate("/")}
+            >
+              <span className="material-symbols-outlined">arrow_back_2</span>
+            </button>
+            <img
+              src="/okie-doc-logo.png"
+              alt="Okie-Doc+"
+              className="logo-image"
+            />
+            <div style={{ width: "2.5rem" }}></div>
+          </div>
           <h2 className="login-title">Register</h2>
           <form className="login-form" onSubmit={handleSubmit}>
             {success && (

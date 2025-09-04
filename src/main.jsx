@@ -10,6 +10,7 @@ import Dashboard from "./Nurse/Dashboard.jsx";
 import Notifications from "./Nurse/Notifications.jsx";
 import MyAccount from "./Nurse/MyAccount.jsx";
 import ManageAppointments from "./Nurse/ManageAppointments.jsx";
+import SpecialistDashboard from "./Admin/SpecialistDashboard/SpecialistDashboard.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -25,6 +26,9 @@ createRoot(document.getElementById("root")).render(
           path="/nurse-manage-appointments"
           element={<ManageAppointments />}
         />
+        <Route path="/dashboard" element={<Dashboard />} />
+        
+        <Route path="/admin/specialistdashboard" element={<SpecialistDashboard />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>

@@ -10,6 +10,11 @@ export default function Login() {
   });
   const [error, setError] = useState("");
 
+    const adminCredentials = {
+    email: "admin@okiedoc.com",
+    password: "password123",
+  };
+  
   const dummyCredentials = {
     nurse: {
       email: "nurse@okiedoc.com",
@@ -48,7 +53,7 @@ export default function Login() {
       formData.password === dummyCredentials.admin.password
     ) {
       setError("");
-      navigate("/admin-dashboard");
+      navigate("/admin/specialistdashboard");
       return;
     } else if (
       formData.email === dummyCredentials.patient.email &&

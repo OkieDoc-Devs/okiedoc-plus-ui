@@ -1,0 +1,184 @@
+  body {
+      font-family: Arial, sans-serif;
+      background: #F5F0F0;
+      margin: 0;
+      padding: 0;
+  }
+
+  .container {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      text-align: center;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+  }
+
+  .brand {
+      font-size: 2.2rem;
+      font-weight: 600;
+      color: #0B5388;
+      margin-bottom: 10px;
+  }
+
+  .brand .plus {
+      color: #4FC3F7;
+      font-weight: bold;
+  }
+
+  h2 {
+      color: #0B5388;
+      margin-bottom: 20px;
+      font-size: 1.5rem;
+  }
+
+
+  .gsi-material-button {
+      background-color: #fff;
+      border: 1px solid #747775;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Roboto', arial, sans-serif;
+      font-size: 14px;
+      height: 40px;
+      width: 100%;
+      max-width: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 10px auto;
+      transition: box-shadow .218s;
+  }
+
+  .gsi-material-button:hover {
+      box-shadow: 0 1px 2px 0 rgba(60, 64, 67, .30),
+      0 1px 3px 1px rgba(60, 64, 67, .15);
+  }
+
+  .gsi-material-button .gsi-material-button-content-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 100%;
+      width: 100%;
+  }
+
+  .gsi-material-button .gsi-material-button-icon {
+      height: 20px;
+      width: 20px;
+      display: flex;
+  }
+
+  .divider {
+      margin: 15px 0;
+      color: #888;
+  }
+
+  form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+  }
+
+  label, input {
+      width: 100%;
+      max-width: 300px;
+      margin-top: 10px;
+  }
+
+  label {
+      color: #000000;
+      font-weight: 500;
+      font-size: 0.9rem;
+      text-align: left;
+      margin-bottom: 5px;
+      display: block;
+  }
+
+  input {
+      padding: 8px;
+      border: 1px solid #BFE5F9;
+      border-radius: 4px;
+  }
+
+  button.primary {
+      background: #0B5388;
+      color: white;
+      padding: 12px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 300px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s, transform 0.2s;
+  }
+
+  button.primary:hover {
+      background: #09416a;
+      transform: scale(1.02);
+  }
+
+  .fade-enter {
+      opacity: 0;
+      transform: translateY(15px);
+  }
+
+  .fade-enter-active {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .fade-exit {
+      opacity: 1;
+      transform: translateY(0);
+  }
+
+  .fade-exit-active {
+      opacity: 0;
+      transform: translateY(-15px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .toggle {
+      margin-top: 15px;
+      font-size: 0.9rem;
+      color: #0B5388;
+      cursor: pointer;
+  }
+
+  .forgot {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #555;
+      cursor: pointer;
+  }
+
+  .message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-weight: 500;
+      text-align: center;
+  }
+
+  .message.success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+  }
+
+  .message.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+  }

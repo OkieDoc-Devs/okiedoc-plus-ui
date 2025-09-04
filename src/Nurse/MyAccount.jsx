@@ -386,7 +386,10 @@ export default function MyAccount() {
   return (
     <div className="myaccount-container">
       <div className="myaccount-header">
-        <button className="back-btn" onClick={() => navigate("/dashboard")}>
+        <button
+          className="back-btn"
+          onClick={() => navigate("/nurse-dashboard")}
+        >
           ← Back to Dashboard
         </button>
         <h2>My Account</h2>

@@ -18,10 +18,13 @@ createRoot(document.getElementById("root")).render(
         <Route path="/" element={<App />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registration" element={<Registration />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/myaccount" element={<MyAccount />} />
-        <Route path="/manage-appointments" element={<ManageAppointments />} />
+        <Route path="/nurse-dashboard" element={<Dashboard />} />
+        <Route path="/nurse-notifications" element={<Notifications />} />
+        <Route path="/nurse-myaccount" element={<MyAccount />} />
+        <Route
+          path="/nurse-manage-appointments"
+          element={<ManageAppointments />}
+        />
       </Routes>
     </BrowserRouter>
   </StrictMode>

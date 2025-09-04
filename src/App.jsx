@@ -1,34 +1,84 @@
 import "./App.css";
 import { useNavigate } from "react-router";
+import { useState } from "react";
 
 function App() {
   const navigate = useNavigate();
+  const [isDropdownMenuOpen, setIsDropdownMenuOpen] = useState(false);
+
+  const navLinks = [
+    "Products",
+    "Solutions",
+    "Community",
+    "Resources",
+    "Pricing",
+    "Contact",
+    "Link",
+  ];
+
+  const toggleDropdownMenu = () => {
+    setIsDropdownMenuOpen(!isDropdownMenuOpen);
+  };
+
   return (
     <>
-      <div class="container1">
-        <div class="header">
-          <h1>Okie-Doc</h1>
-          <h1 class="plus">+</h1>
-        </div>
-        <div className="button-group">
-          <button className="btn" onClick={() => navigate("/registration")}>Register</button>
-          <button className="btn" onClick={() => navigate("/login")}>
-            Login
+      <div className="container1">
+        <div className="header">
+          <div className="logo-section">
+            <img
+              src="/okie-doc-logo.png"
+              alt="Okie-Doc+"
+              className="logo-image"
+            />
+          </div>
+
+          <button
+            className="mobile-nav-toggle"
+            onClick={toggleDropdownMenu}
+            aria-label="Toggle mobile menu"
+          >
+            ☰
           </button>
+
+          <div className="text-and-buttons">
+            <nav className="nav-links">
+              {navLinks.map((link) => (
+                <a key={link} href="#" className="nav-link">
+                  {link}
+                </a>
+              ))}
+            </nav>
+          </div>
+
+          <div className="button-group">
+            <button className="btn" onClick={() => navigate("/login")}>
+              Login
+            </button>
+            <button className="btn" onClick={() => navigate("/registration")}>
+              Register
+            </button>
+          </div>
+
+          <div
+            className={`mobile-nav-dropdown ${
+              isDropdownMenuOpen ? "open" : ""
+            }`}
+          >
+            {navLinks.map((link) => (
+              <a key={link} href="#" className="nav-link">
+                {link}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div class="container2">
-        <div class="content-section">
-          <h2>The go-to platform for specialists</h2>
-          <button className="btn" onClick={() => navigate("/registration")}>
-            Join Okie-Doc+
-          </button>
-        </div>
-        <div class="imageContainer">
+      <div className="container2">
+        <div className="imageContainer">
           <img
-            src="stockPhoto.jpg"
-            alt="Picture of a specialist and a patient"
+            src="/okie-doc-logo.png"
+            alt="Okie-Doc+ Logo"
+            className="main-logo-image"
           ></img>
         </div>
       </div>

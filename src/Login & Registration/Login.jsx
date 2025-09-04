@@ -1,4 +1,4 @@
-import "./App.css";
+import "../App.css";
 import { useNavigate } from "react-router";
 import { useState } from "react";
 
@@ -11,6 +11,11 @@ export default function Login() {
   });
   const [error, setError] = useState("");
 
+    const adminCredentials = {
+    email: "admin@okiedoc.com",
+    password: "password123",
+  };
+  
   const dummyCredentials = {
     email: "nurse@okiedoc.com",
     password: "password123",
@@ -30,6 +35,17 @@ export default function Login() {
     e.preventDefault();
 
     console.log("Login form submitted:", formData);
+
+    if (
+      formData.email === adminCredentials.email &&
+      formData.password === adminCredentials.password
+    ) {
+      console.log("Admin login successful - redirecting to admin dashboard");
+      sessionStorage.setItem('isAdminLoggedIn', 'true');
+      setError("");
+      navigate("/admin/specialistdashboard");
+      return; 
+    }
 
     if (
       formData.email === dummyCredentials.email &&
@@ -68,8 +84,7 @@ export default function Login() {
         <button className="back-btn" onClick={() => navigate("/")}>
           <span className="material-symbols-outlined">arrow_back_2</span>
         </button>
-        <h1>Okie-Doc</h1>
-        <h1 className="plus">+</h1>
+        <img src="/okie-doc-logo.png" alt="Okie-Doc+" className="logo-image" />
       </div>
       <div className="login-container">
         <h2 className="login-title">Sign in</h2>

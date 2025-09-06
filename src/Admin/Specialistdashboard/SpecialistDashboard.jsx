@@ -9,6 +9,7 @@ import S2 from "../../assets/S2.png";
 import PRC from "../../assets/PRC_Sample.jpg";
 import PTR from "../../assets/PTR.png";
 import esig from "../../assets/esig.png";
+import OkieDocLogo from "../../assets/okie-doc-logo.png";
 
 // Header component defined locally
 const Header = () => {
@@ -19,7 +20,8 @@ const Header = () => {
   };
   return (
     <header>
-      <h1>OkieDoc+ Management</h1>
+      <img src={OkieDocLogo} alt="OkieDoc Logo" className="logo-image" />
+      <h1>Management</h1>
       <button id="logout-button" onClick={handleLogout}>
         Logout
       </button>

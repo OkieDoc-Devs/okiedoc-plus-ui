@@ -10,11 +10,11 @@ export default function Login() {
   });
   const [error, setError] = useState("");
 
-    const adminCredentials = {
+  const adminCredentials = {
     email: "admin@okiedoc.com",
     password: "password123",
   };
-  
+
   const dummyCredentials = {
     nurse: {
       email: "nurse@okiedoc.com",
@@ -53,21 +53,7 @@ export default function Login() {
       formData.password === dummyCredentials.admin.password
     ) {
       setError("");
-      navigate("/admin/specialistdashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.patient.email &&
-      formData.password === dummyCredentials.patient.password
-    ) {
-      setError("");
-      navigate("/nurse-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.admin.email &&
-      formData.password === dummyCredentials.admin.password
-    ) {
-      setError("");
-      navigate("/admin/specialistdashboard");
+      navigate("/admin/specialist-dashboard");
       return;
     } else if (
       formData.email === dummyCredentials.patient.email &&

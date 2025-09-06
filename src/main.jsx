@@ -10,7 +10,7 @@ import Dashboard from "./Nurse/Dashboard.jsx";
 import Notifications from "./Nurse/Notifications.jsx";
 import MyAccount from "./Nurse/MyAccount.jsx";
 import ManageAppointments from "./Nurse/ManageAppointments.jsx";
-import SpecialistDashboard from "./Admin/SpecialistDashboard/SpecialistDashboard.jsx";
+import SpecialistDashboard from "./Admin/Specialistdashboard/SpecialistDashboard.jsx";
 import PatientDashboard from "./Patient/jsx/PatientDashboard.jsx";
 
 createRoot(document.getElementById("root")).render(
@@ -28,8 +28,11 @@ createRoot(document.getElementById("root")).render(
           element={<ManageAppointments />}
         />
         <Route path="/dashboard" element={<Dashboard />} />
-        
-        <Route path="/admin/specialistdashboard" element={<SpecialistDashboard />} />
+
+        <Route
+          path="/admin/specialist-dashboard"
+          element={<SpecialistDashboard />}
+        />
         <Route path="/patient-dashboard" element={<PatientDashboard />} />
       </Routes>
     </BrowserRouter>

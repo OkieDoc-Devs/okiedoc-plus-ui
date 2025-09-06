@@ -164,7 +164,6 @@ select.login-input option {
   width: 18px;
   height: 18px;
 }
-
 .login-btn {
   width: 100%;
   min-width: 2rem;
@@ -252,7 +251,6 @@ select.login-input option {
 .login-back-btn:hover {
   color: #4aa7ed !important;
 }
-
 /* Password Requirements */
 .password-requirements {
   background-color: #f8f9fa;

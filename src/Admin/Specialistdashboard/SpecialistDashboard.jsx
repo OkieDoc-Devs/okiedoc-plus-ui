@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PendingTable from './PendingTable';
@@ -9,7 +10,6 @@ import S2 from '../../assets/S2.png';
 import PRC from '../../assets/PRC_Sample.jpg';
 import PTR from '../../assets/PTR.png';
 import esig from '../../assets/esig.png';
-
 
 // Header component defined locally
 const Header = () => {
@@ -28,7 +28,7 @@ const Header = () => {
 
 const SpecialistDashboard = () => {
   const [activeTab, setActiveTab] = useState('pending');  
-const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [filterSpecialization, setFilterSpecialization] = useState('');
 
   const [pendingApplications, setPendingApplications] = useState([
@@ -167,6 +167,7 @@ const [searchTerm, setSearchTerm] = useState('');
         </div>
 
         {/* This logic ensures the active tab highlight is retained */}
+
         {activeTab === 'pending' && (
           <PendingTable applications={filteredPending} />
         )}

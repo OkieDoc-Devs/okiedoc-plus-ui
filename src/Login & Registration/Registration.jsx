@@ -170,6 +170,7 @@ export default function Registration() {
     registeredUsers.push(newUser);
     localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
 
+
     setSuccess("Registration successful! Please login with your credentials.");
     setFormData({ firstName: "", lastName: "", email: "", password: "", confirmPassword: "", birthday: "", gender: "", mobileNumber: "" });
     setTermsAccepted(false);

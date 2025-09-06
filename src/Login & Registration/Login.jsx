@@ -60,6 +60,20 @@ export default function Login() {
       formData.password === dummyCredentials.patient.password
     ) {
       setError("");
+      navigate("/nurse-dashboard");
+      return;
+    } else if (
+      formData.email === dummyCredentials.admin.email &&
+      formData.password === dummyCredentials.admin.password
+    ) {
+      setError("");
+      navigate("/admin/specialistdashboard");
+      return;
+    } else if (
+      formData.email === dummyCredentials.patient.email &&
+      formData.password === dummyCredentials.patient.password
+    ) {
+      setError("");
       navigate("/patient-dashboard");
       return;
     }

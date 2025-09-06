@@ -2279,7 +2279,7 @@
   width: 32px;
   height: 32px;
   border: none;
-  background-color: #f8f9fa;
+  background-color: #4AA7ED;
   border-radius: 4px;
   cursor: pointer;
   display: flex;
@@ -2289,7 +2289,7 @@
 }
 
 .patient-close-btn:hover {
-  background-color: #e9ecef;
+  background-color: #0B5388;
 }
 
 .patient-modal-body {

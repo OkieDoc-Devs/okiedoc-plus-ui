@@ -1,19 +1,33 @@
-import "../App.css";
+import "./auth.css";
 import { useNavigate } from "react-router";
 import { useState } from "react";
 
 export default function Login() {
   const navigate = useNavigate();
-  // Temporary Registration System (Needs actual backend integration and proper forms like first name etc.)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
   const [error, setError] = useState("");
 
-  const dummyCredentials = {
-    email: "nurse@okiedoc.com",
+    const adminCredentials = {
+    email: "admin@okiedoc.com",
     password: "password123",
+  };
+  
+  const dummyCredentials = {
+    nurse: {
+      email: "nurse@okiedoc.com",
+      password: "password123",
+    },
+    admin: {
+      email: "admin@okiedoc.com",
+      password: "password123",
+    },
+    patient: {
+      email: "patient@okiedoc.com",
+      password: "password123",
+    },
   };
 
   const handleInputChange = (e) => {
@@ -22,24 +36,31 @@ export default function Login() {
       ...prev,
       [id]: value,
     }));
-
-    console.log(`Login - ${id}: ${value}`);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    console.log("Login form submitted:", formData);
-
     if (
-      formData.email === dummyCredentials.email &&
-      formData.password === dummyCredentials.password
+      formData.email === dummyCredentials.nurse.email &&
+      formData.password === dummyCredentials.nurse.password
     ) {
-      console.log(
-        "Login successful with dummy credentials - redirecting to dashboard"
-      );
       setError("");
-      navigate("/dashboard");
+      navigate("/nurse-dashboard");
+      return;
+    } else if (
+      formData.email === dummyCredentials.admin.email &&
+      formData.password === dummyCredentials.admin.password
+    ) {
+      setError("");
+      navigate("/admin/specialistdashboard");
+      return;
+    } else if (
+      formData.email === dummyCredentials.patient.email &&
+      formData.password === dummyCredentials.patient.password
+    ) {
+      setError("");
+      navigate("/patient-dashboard");
       return;
     }
 
@@ -51,26 +72,30 @@ export default function Login() {
     );
 
     if (user) {
-      console.log(
-        "Login successful with registered credentials - redirecting to dashboard"
-      );
       setError("");
       navigate("/dashboard");
     } else {
-      console.log("Login failed - invalid credentials");
       setError("Invalid email or password. Please try again.");
     }
   };
 
   return (
     <div className="login-page-wrapper">
-      <div className="header-login">
-        <button className="back-btn" onClick={() => navigate("/")}>
-          <span className="material-symbols-outlined">arrow_back_2</span>
-        </button>
-        <img src="/okie-doc-logo.png" alt="Okie-Doc+" className="logo-image" />
-      </div>
       <div className="login-container">
+        <div className="header-inside-container">
+          <button
+            className="back-btn login-back-btn"
+            onClick={() => navigate("/")}
+          >
+            <span className="material-symbols-outlined">arrow_back_2</span>
+          </button>
+          <img
+            src="/okie-doc-logo.png"
+            alt="Okie-Doc+"
+            className="logo-image"
+          />
+          <div style={{ width: "2.5rem" }}></div>
+        </div>
         <h2 className="login-title">Sign in</h2>
         <form className="login-form" onSubmit={handleSubmit}>
           {error && (

@@ -1,52 +1,77 @@
-import React from 'react';
-import { FaDollarSign, FaCreditCard, FaFileInvoiceDollar } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { FaCreditCard, FaFileInvoiceDollar, FaDownload } from 'react-icons/fa';
+import { FaPesoSign } from 'react-icons/fa6'
 
 const Billing = () => {
+  const [tickets, setTickets] = useState([
+    { id: 1, service: 'Medical Certificate', amount: 300, status: 'For Payment' },
+    { id: 2, service: 'Medical Clearance', amount: 1000, status: 'For Payment' },
+  ]);
+
+  const handlePay = (id) => {
+    setTickets(
+      tickets.map((ticket) =>
+        ticket.id === id ? { ...ticket, status: 'Completed' } : ticket
+      )
+    );
+    alert('Invoice email sent. Document download is now available.');
+  };
+
   return (
     <div className="patient-page-content">
-      <h2>Billing</h2>
+      <h2>Post Consultation Billing</h2>
+
       <div className="patient-billing-section">
+
+        {/* Balance Overview */}
         <div className="patient-billing-card">
           <h3>Current Balance</h3>
           <div className="patient-balance-amount">
-            <FaDollarSign className="patient-balance-icon" />
-            $150.00
+            <FaPesoSign className="patient-balance-icon" />
+            {tickets
+              .filter((t) => t.status === 'For Payment')
+              .reduce((sum, t) => sum + t.amount, 0)
+              .toFixed(2)}
           </div>
-          <button className="patient-pay-now-btn">
-            <FaCreditCard className="patient-pay-icon" />
-            Pay Now
-          </button>
+          {tickets.some((t) => t.status === 'For Payment')}
         </div>
-        
+
+        {/* Post Consultation Requests */}
         <div className="patient-billing-card">
-          <h3>Recent Bills</h3>
-          <div className="patient-bill-item">
-            <FaFileInvoiceDollar className="patient-bill-icon" />
-            <div className="patient-bill-info">
-              <span className="patient-bill-description">Cardiology Consultation</span>
-              <span className="patient-bill-date">April 15, 2024</span>
+          <h3>Additional Requests</h3>
+          {tickets.map((ticket) => (
+            <div key={ticket.id} className="patient-bill-item">
+              <FaFileInvoiceDollar className="patient-bill-icon" />
+              <div className="patient-bill-info">
+                <span className="patient-bill-description">{ticket.service}</span>
+                <span className="patient-bill-date">Requested Today</span>
+              </div>
+              <span className="patient-bill-amount">₱{ticket.amount}</span>
+              <span
+                className={`patient-bill-status ${
+                  ticket.status === 'Completed'
+                    ? 'patient-paid'
+                    : 'patient-pending'
+                }`}
+              >
+                {ticket.status}
+              </span>
+              {ticket.status === 'For Payment' ? (
+                <button
+                  className="patient-pay-now-btn"
+                  onClick={() => handlePay(ticket.id)}
+                >
+                  <FaCreditCard className="patient-pay-icon" />
+                  Pay Now
+                </button>
+              ) : (
+                <button className="patient-download-btn">
+                  <FaDownload />
+                  Download
+                </button>
+              )}
             </div>
-            <span className="patient-bill-amount">$75.00</span>
-            <span className="patient-bill-status patient-paid">Paid</span>
-          </div>
-          <div className="patient-bill-item">
-            <FaFileInvoiceDollar className="patient-bill-icon" />
-            <div className="patient-bill-info">
-              <span className="patient-bill-description">Lab Tests</span>
-              <span className="patient-bill-date">April 10, 2024</span>
-            </div>
-            <span className="patient-bill-amount">$50.00</span>
-            <span className="patient-bill-status patient-pending">Pending</span>
-          </div>
-          <div className="patient-bill-item">
-            <FaFileInvoiceDollar className="patient-bill-icon" />
-            <div className="patient-bill-info">
-              <span className="patient-bill-description">General Medicine Visit</span>
-              <span className="patient-bill-date">March 20, 2024</span>
-            </div>
-            <span className="patient-bill-amount">$25.00</span>
-            <span className="patient-bill-status patient-paid">Paid</span>
-          </div>
+          ))}
         </div>
       </div>
     </div>

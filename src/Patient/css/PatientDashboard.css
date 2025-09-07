@@ -3331,6 +3331,7 @@
   color: white;
   border-bottom-right-radius: 4px;
   margin-right: 0.5rem;
+  text-align: right;
 }
 
 .patient-message-nurse .patient-message-content {
@@ -3381,6 +3382,7 @@
   font-size: 0.9rem;
   background: #f0f2f5;
   transition: all 0.2s ease;
+  color: black !important;
 }
 
 .patient-chat-input:focus {
@@ -3582,6 +3584,7 @@
   font-size: 0.9rem;
   background: #f0f2f5;
   transition: all 0.2s ease;
+  color: black !important;
 }
 
 .patient-search-input:focus {

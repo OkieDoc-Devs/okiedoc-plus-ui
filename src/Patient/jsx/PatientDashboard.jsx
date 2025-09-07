@@ -1002,7 +1002,7 @@ const PatientDashboard = () => {
             onClick={() => setActivePage('billing')}
           >
             <FaReceipt className="patient-nav-icon" />
-            <span className="patient-nav-text">Billing</span>
+            <span className="patient-nav-text">Consultation Billing</span>
           </div>
           <div 
             className={`patient-nav-item ${activePage === 'consultation-history' ? 'patient-active' : ''}`}

@@ -21,7 +21,7 @@ function App() {
   };
 
   return (
-    <>
+    <div className="app-container">
       <div className="container1">
         <div className="header">
           <div className="logo-section">
@@ -82,7 +82,7 @@ function App() {
           ></img>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

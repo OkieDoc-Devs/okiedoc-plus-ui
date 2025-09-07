@@ -59,12 +59,21 @@ export default function Notifications() {
         <img src="/okie-doc-logo.png" alt="Okie-Doc+" className="logo-image" />
         <h2 className="dashboard-title">Notifications</h2>
         <div className="user-account">
-          <img src={localStorage.getItem("nurse.profileImageDataUrl") || "/account.svg"} alt="Account" className="account-icon" />
-          <span className="account-name">{localStorage.getItem("nurse.firstName") || "Nurse"}</span>
+          <img
+            src={
+              localStorage.getItem("nurse.profileImageDataUrl") ||
+              "/account.svg"
+            }
+            alt="Account"
+            className="account-icon"
+          />
+          <span className="account-name">
+            {localStorage.getItem("nurse.firstName") || "Nurse"}
+          </span>
           <div className="account-dropdown">
             <button
               className="dropdown-item"
-              onClick={() => navigate("/myaccount")}
+              onClick={() => navigate("/nurse-myaccount")}
             >
               My Account
             </button>
@@ -80,13 +89,13 @@ export default function Notifications() {
         <div className="dashboard-nav">
           <button
             className="nav-tab"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/nurse-dashboard")}
           >
             Dashboard
           </button>
           <button
             className="nav-tab"
-            onClick={() => navigate("/manage-appointments")}
+            onClick={() => navigate("/nurse-manage-appointments")}
           >
             Manage Appointments
           </button>

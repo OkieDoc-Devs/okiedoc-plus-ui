@@ -44,11 +44,9 @@ export default function Dashboard() {
     },
   ]);
 
-
-
   const handleTabClick = (tab) => {
     if (tab === "notifications") {
-      navigate("/notifications");
+      navigate("/nurse-notifications");
     }
   };
 
@@ -87,7 +85,10 @@ export default function Dashboard() {
   }, []);
 
   const confirmedTickets = useMemo(
-    () => tickets.filter((t) => t.status === "Confirmed" && t.claimedBy === nurseId),
+    () =>
+      tickets.filter(
+        (t) => t.status === "Confirmed" && t.claimedBy === nurseId
+      ),
     [tickets, nurseId]
   );
 
@@ -95,10 +96,12 @@ export default function Dashboard() {
     try {
       const startLocal = new Date(`${dateStr} ${timeStr}`);
       const endLocal = new Date(startLocal.getTime() + durationMinutes * 60000);
-      const fmt = (d) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+      const fmt = (d) =>
+        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
       return { start: fmt(startLocal), end: fmt(endLocal) };
     } catch {
-      const fmt = (d) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+      const fmt = (d) =>
+        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
       const now = new Date();
       const end = new Date(now.getTime() + durationMinutes * 60000);
       return { start: fmt(now), end: fmt(end) };
@@ -106,7 +109,11 @@ export default function Dashboard() {
   };
 
   const buildGoogleCalendarUrl = (ticket) => {
-    const { start, end } = toCalendarDateRange(ticket.preferredDate, ticket.preferredTime, 30);
+    const { start, end } = toCalendarDateRange(
+      ticket.preferredDate,
+      ticket.preferredTime,
+      30
+    );
     const title = encodeURIComponent(`Consultation: ${ticket.patientName}`);
     const details = encodeURIComponent(
       `Patient: ${ticket.patientName}\nEmail: ${ticket.email}\nMobile: ${ticket.mobile}\nChief Complaint: ${ticket.chiefComplaint}\nChannel: ${ticket.consultationChannel}\nSpecialist: ${ticket.preferredSpecialist}`
@@ -127,12 +134,21 @@ export default function Dashboard() {
         </div>
         <h3 className="dashboard-title">Nurse Dashboard</h3>
         <div className="user-account">
-          <img src={localStorage.getItem("nurse.profileImageDataUrl") || "/account.svg"} alt="Account" className="account-icon" />
-          <span className="account-name">{localStorage.getItem("nurse.firstName") || "Nurse"}</span>
+          <img
+            src={
+              localStorage.getItem("nurse.profileImageDataUrl") ||
+              "/account.svg"
+            }
+            alt="Account"
+            className="account-icon"
+          />
+          <span className="account-name">
+            {localStorage.getItem("nurse.firstName") || "Nurse"}
+          </span>
           <div className="account-dropdown">
             <button
               className="dropdown-item"
-              onClick={() => navigate("/myaccount")}
+              onClick={() => navigate("/nurse-myaccount")}
             >
               My Account
             </button>
@@ -153,7 +169,7 @@ export default function Dashboard() {
           </button>
           <button
             className={`nav-tab`}
-            onClick={() => navigate("/manage-appointments")}
+            onClick={() => navigate("/nurse-manage-appointments")}
           >
             Manage Appointments
           </button>
@@ -166,7 +182,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-
       {/* Confirmed Tickets for scheduling */}
       <div className="appointments-section">
         <div className="processing-tickets">
@@ -175,7 +190,12 @@ export default function Dashboard() {
             <div key={ticket.id} className="ticket-card processing">
               <div className="ticket-header">
                 <h3>{ticket.patientName}</h3>
-                <span className="status-badge" style={{ backgroundColor: "#4caf50" }}>Confirmed</span>
+                <span
+                  className="status-badge"
+                  style={{ backgroundColor: "#4caf50" }}
+                >
+                  Confirmed
+                </span>
               </div>
               <div className="ticket-actions">
                 <a
@@ -188,12 +208,19 @@ export default function Dashboard() {
                 </a>
                 <button
                   className="action-btn remove"
-                  style={{ marginLeft: 8, background: '#f44336', color: '#fff' }}
+                  style={{
+                    marginLeft: 8,
+                    background: "#f44336",
+                    color: "#fff",
+                  }}
                   onClick={() => {
                     // Remove ticket from state and localStorage
-                    setTickets(prev => {
-                      const updated = prev.filter(t => t.id !== ticket.id);
-                      localStorage.setItem("nurse.tickets", JSON.stringify(updated));
+                    setTickets((prev) => {
+                      const updated = prev.filter((t) => t.id !== ticket.id);
+                      localStorage.setItem(
+                        "nurse.tickets",
+                        JSON.stringify(updated)
+                      );
                       return updated;
                     });
                   }}

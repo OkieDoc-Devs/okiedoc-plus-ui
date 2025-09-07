@@ -1,0 +1,191 @@
+/* --- Brand Colors & Global Styles --- */
+:root {
+  --primary-blue: #4AA7ED;
+  --light-blue: #BFE5F9;
+  --dark-blue: #0B5388;
+  --off-white: #F5F0F0;
+  --white: #FFFFFF;
+  --black: #000000;
+  --success: #28a745;
+  --danger: #dc3545;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--off-white);
+  color: var(--dark-blue);
+  margin: 0;
+}
+
+h1, h2 {
+  color: var(--dark-blue);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* --- Dashboard & General Components --- */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background-color: var(--dark-blue);
+  color: var(--white);
+}
+header h1 { color: var(--white); margin: 0; font-size: 24px; text-align: left; }
+#logout-button {
+    width: auto;
+    padding: 10px 20px;
+    background-color: var(--primary-blue);
+    border: none;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.dashboard-container { padding: 20px; }
+.tabs {
+    display: flex;
+    border-bottom: 2px solid #ccc;
+    margin-bottom: 20px;
+}
+.tab-link {
+    padding: 10px 20px;
+    cursor: pointer;
+    color: var(--dark-blue);
+    font-weight: bold;
+    border: none;
+    background: none;
+    font-size: 16px;
+    position: relative;
+}
+.tab-link.active {
+    font-weight: bold;
+    color: var(--dark-blue);
+    border-bottom: 3px solid var(--primary-blue);
+}
+.badge {
+    background-color: var(--danger);
+    color: white;
+    border-radius: 50%;
+    padding: 2px 6px;
+    font-size: 12px;
+    position: absolute;
+    top: 5px;
+    right: 0;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.filters { display: flex; gap: 10px; flex-wrap: wrap; }
+.filters input, .filters select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+.add-btn {
+    background-color: var(--success);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+
+.table-wrapper { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  min-width: 600px;
+}
+th, td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+thead { background-color: var(--light-blue); }
+.action-btn, button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 5px;
+    font-size: 14px;
+}
+.btn-primary { background-color: var(--primary-blue); color: white; }
+.btn-success { background-color: var(--success); color: white; }
+.btn-danger { background-color: var(--danger); color: white; }
+
+
+
+.modal {
+    display: block; /* Controlled by React state */
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+}
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 8px;
+    position: relative;
+}
+.close-btn {
+    color: #aaa;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+#deny-reason-textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 10px;
+    box-sizing: border-box;
+}
+#add-specialist-form .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+#add-specialist-form input {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+/* --- Mobile --- */
+@media (max-width: 768px) {
+    header h1 { font-size: 18px; }
+    .toolbar, .filters { flex-direction: column; align-items: stretch; }
+    #add-specialist-form .form-grid { grid-template-columns: 1fr; }
+}

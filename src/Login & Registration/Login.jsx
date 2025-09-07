@@ -10,9 +10,24 @@ export default function Login() {
   });
   const [error, setError] = useState("");
 
-  const dummyCredentials = {
-    email: "nurse@okiedoc.com",
+  const adminCredentials = {
+    email: "admin@okiedoc.com",
     password: "password123",
+  };
+
+  const dummyCredentials = {
+    nurse: {
+      email: "nurse@okiedoc.com",
+      password: "password123",
+    },
+    admin: {
+      email: "admin@okiedoc.com",
+      password: "password123",
+    },
+    patient: {
+      email: "patient@okiedoc.com",
+      password: "password123",
+    },
   };
 
   const handleInputChange = (e) => {
@@ -27,11 +42,25 @@ export default function Login() {
     e.preventDefault();
 
     if (
-      formData.email === dummyCredentials.email &&
-      formData.password === dummyCredentials.password
+      formData.email === dummyCredentials.nurse.email &&
+      formData.password === dummyCredentials.nurse.password
     ) {
       setError("");
-      navigate("/dashboard");
+      navigate("/nurse-dashboard");
+      return;
+    } else if (
+      formData.email === dummyCredentials.admin.email &&
+      formData.password === dummyCredentials.admin.password
+    ) {
+      setError("");
+      navigate("/admin/specialist-dashboard");
+      return;
+    } else if (
+      formData.email === dummyCredentials.patient.email &&
+      formData.password === dummyCredentials.patient.password
+    ) {
+      setError("");
+      navigate("/patient-dashboard");
       return;
     }
 

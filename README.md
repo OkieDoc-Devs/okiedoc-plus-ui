@@ -15,5 +15,6 @@ Current features:
 * Added Avatar for each Applicant and Specialist
 * Added Viewing option for Applicants and Specialist
 * Added Placeholders for required Licenses and Records (PTR, S2, and PRC)
+* Added Transaction history for Admin dashboard
 
 Run npm install to download required files and npm run dev to start

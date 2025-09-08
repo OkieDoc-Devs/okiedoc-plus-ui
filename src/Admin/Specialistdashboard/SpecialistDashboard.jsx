@@ -21,7 +21,7 @@ const Header = () => {
   return (
     <header>
       <img src={OkieDocLogo} alt="OkieDoc Logo" className="logo-image" />
-      <h1>Management</h1>
+      <h1>Admin Dashboard</h1>
       <button id="logout-button" onClick={handleLogout}>
         Logout
       </button>
@@ -33,6 +33,75 @@ const SpecialistDashboard = () => {
   const [activeTab, setActiveTab] = useState("pending");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSpecialization, setFilterSpecialization] = useState("");
+
+// State for transaction filters
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+
+  // Dummy data for Transaction History
+  const [transactions, setTransactions] = useState([
+    {
+      id: 'TRN001',
+      patientName: 'Alice Johnson',
+      specialistName: 'Dr. John Doe',
+      specialty: 'Pediatrics',
+      date: '2025-09-05',
+      status: 'Completed',
+      channel: 'Platform Video Call',
+      paymentMethod: 'Credit Card'
+    },
+    {
+      id: 'TRN002',
+      patientName: 'Bob Williams',
+      specialistName: 'Dr. Jane Smith',
+      specialty: 'Cardiology',
+      date: '2025-09-04',
+      status: 'Confirmed',
+      channel: 'Mobile Call',
+      paymentMethod: 'HMO'
+    },
+    {
+      id: 'TRN003',
+      patientName: 'Charlie Brown',
+      specialistName: 'Dr. John Doe',
+      specialty: 'Pediatrics',
+      date: '2025-09-03',
+      status: 'For Payment',
+      channel: 'Platform Chat',
+      paymentMethod: 'GCash'
+    },
+     {
+      id: 'TRN004',
+      patientName: 'Diana Miller',
+      specialistName: 'Dr. Evelyn Reed',
+      specialty: 'Cardiology',
+      date: '2025-09-02',
+      status: 'Processing',
+      channel: 'Viber Video Call',
+      paymentMethod: 'Credit Card'
+    },
+    {
+      id: 'TRN005',
+      patientName: 'Ethan Davis',
+      specialistName: 'Dr. Samuel Chen',
+      specialty: 'Dermatology',
+      date: '2025-09-01',
+      status: 'Pending',
+      channel: 'Platform Chat',
+      paymentMethod: 'N/A'
+    },
+    {
+      id: 'TRN006',
+      patientName: 'Fiona Garcia',
+      specialistName: 'Dr. Jane Smith',
+      specialty: 'Cardiology',
+      date: '2025-08-30',
+      status: 'Incomplete',
+      channel: 'Mobile Call',
+      paymentMethod: 'GCash'
+    }
+  ]);
 
   const [pendingApplications, setPendingApplications] = useState([
     {
@@ -129,6 +198,7 @@ const SpecialistDashboard = () => {
     ...new Set([
       ...pendingApplications.flatMap((app) => app.details.specializations),
       ...specialists.flatMap((spec) => spec.details.specializations),
+      ...transactions.flatMap(t => t.specialty)
     ]),
   ];
 
@@ -150,6 +220,55 @@ const SpecialistDashboard = () => {
       : true;
     return matchesSearch && matchesFilter;
   });
+  
+  const filteredTransactions = transactions.filter(t => {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      
+      const matchesSearch = !searchTerm || 
+          t.patientName.toLowerCase().includes(lowerSearchTerm) ||
+          t.specialistName.toLowerCase().includes(lowerSearchTerm) ||
+          t.channel.toLowerCase().includes(lowerSearchTerm) ||
+          t.paymentMethod.toLowerCase().includes(lowerSearchTerm) ||
+          t.status.toLowerCase().includes(lowerSearchTerm);
+          
+      const matchesSpecialty = !filterSpecialization || t.specialty === filterSpecialization;
+      const matchesStatus = !filterStatus || t.status === filterStatus;
+      
+      const transactionDate = new Date(t.date);
+      const fromDate = filterDateFrom ? new Date(filterDateFrom) : null;
+      const toDate = filterDateTo ? new Date(filterDateTo) : null;
+      
+      // Adjust dates to ignore time and timezone differences
+      if(fromDate) fromDate.setHours(0,0,0,0);
+      if(toDate) toDate.setHours(23,59,59,999);
+
+      const matchesDate = (!fromDate || transactionDate >= fromDate) && (!toDate || transactionDate <= toDate);
+
+      return matchesSearch && matchesSpecialty && matchesStatus && matchesDate;
+  });
+
+  // Handler for the export button
+  const handleExport = () => {
+    if (filteredTransactions.length === 0) {
+      alert("No data to export.");
+      return;
+    }
+    // Simple CSV export simulation
+    const headers = ["ID", "Patient Name", "Specialist Name", "Specialty", "Date", "Status", "Channel", "Payment Method"];
+    const rows = filteredTransactions.map(t => 
+        [t.id, t.patientName, t.specialistName, t.specialty, t.date, t.status, t.channel, t.paymentMethod].join(',')
+    );
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(',') + "\n" + rows.join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "transaction_history.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    alert("Exporting filtered data...");
+  };
 
   return (
     <>
@@ -174,6 +293,22 @@ const SpecialistDashboard = () => {
                 </option>
               ))}
             </select>
+            {activeTab === 'transactions' && (
+              <>
+                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                    <option value="">Filter by Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Processing">Processing</option>
+                    <option value="For Payment">For Payment</option>
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="Incomplete">Incomplete</option>
+                    <option value="Completed">Completed</option>
+                </select>
+                <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} placeholder="From"/>
+                <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} placeholder="To"/>
+                <button className="add-btn" style={{backgroundColor: '#0B5388'}} onClick={handleExport}>Export Tickets</button>
+              </>
+            )}
           </div>
         </div>
 
@@ -193,6 +328,12 @@ const SpecialistDashboard = () => {
           >
             OkieDoc+ Specialists
           </button>
+          <button
+            className={`tab-link ${activeTab === "transactions" ? "active" : ""}`}
+            onClick={() => setActiveTab("transactions")}
+          >
+            Transaction History
+          </button>
         </div>
 
         {/* This logic ensures the active tab highlight is retained */}
@@ -206,6 +347,41 @@ const SpecialistDashboard = () => {
             specialists={filteredSpecialists}
             onAddSpecialist={handleAddSpecialist}
           />
+        )}
+        {activeTab === 'transactions' && (
+            <div id="transactions" className="tab-content active">
+                <h2>Transaction History & Management</h2>
+                <div className="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Patient Name</th>
+                                <th>Specialist</th>
+                                <th>Specialty</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Channel</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredTransactions.length > 0 ? filteredTransactions.map(t => (
+                                <tr key={t.id}>
+                                    <td>{t.patientName}</td>
+                                    <td>{t.specialistName}</td>
+                                    <td>{t.specialty}</td>
+                                    <td>{t.date}</td>
+                                    <td>{t.status}</td>
+                                    <td>{t.channel}</td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan="6" style={{textAlign: 'center'}}>No transactions found.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         )}
       </main>
     </>

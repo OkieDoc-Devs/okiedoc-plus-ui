@@ -1,46 +1,3 @@
-// Helper to generate invoice text
-const generateInvoiceText = () => {
-  if (!selectedTicket) return "";
-  let lines = [];
-  lines.push(`Invoice No.: ${invoiceData.invoiceNumber}`);
-  lines.push(
-    `Date of Consultation: ${selectedTicket.preferredDate} ${selectedTicket.preferredTime}`
-  );
-  lines.push(`Patient Name: ${selectedTicket.patientName}`);
-  lines.push(`Mobile Number: ${selectedTicket.mobile}`);
-  lines.push(`Email Address: ${selectedTicket.email}`);
-  lines.push("");
-  lines.push("Invoice Items:");
-  invoiceData.items.forEach((item, idx) => {
-    lines.push(
-      `  ${idx + 1}. ${item.name} - ${item.description} | Qty: ${
-        item.quantity
-      } | Amount: ₱${item.amount}`
-    );
-  });
-  lines.push(`Platform Fee: ₱${invoiceData.platformFee}`);
-  lines.push(`E-Nurse Fee: ₱${invoiceData.eNurseFee}`);
-  lines.push(`Total Amount: ₱${invoiceTotal.toFixed(2)}`);
-  lines.push("");
-  lines.push(`Payment Link: ${invoiceData.paymentLink}`);
-  lines.push("");
-  lines.push("OkieDoc+ Address: 123 Health St, Wellness City, Country");
-  return lines.join("\n");
-};
-
-// Download invoice as text file
-const handleDownloadInvoice = () => {
-  const text = generateInvoiceText();
-  const blob = new Blob([text], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Invoice_${invoiceData.invoiceNumber || "OkieDoc"}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-};
 import "../App.css";
 import "./NurseStyles.css";
 import { useEffect, useMemo, useState } from "react";
@@ -75,55 +32,49 @@ function saveToStorage(key, value) {
 }
 
 export default function ManageAppointment() {
-  // Helper to generate invoice text
-  const generateInvoiceText = () => {
-    if (!selectedTicket) return "";
-    let lines = [];
-    lines.push(`Invoice No.: ${invoiceData.invoiceNumber}`);
-    lines.push(
-      `Date of Consultation: ${selectedTicket.preferredDate} ${selectedTicket.preferredTime}`
-    );
-    lines.push(`Patient Name: ${selectedTicket.patientName}`);
-    lines.push(`Mobile Number: ${selectedTicket.mobile}`);
-    lines.push(`Email Address: ${selectedTicket.email}`);
-    lines.push("");
-    lines.push("Invoice Items:");
-    invoiceData.items.forEach((item, idx) => {
-      lines.push(
-        `  ${idx + 1}. ${item.name} - ${item.description} | Qty: ${
-          item.quantity
-        } | Amount: ₱${item.amount}`
-      );
-    });
-    lines.push(`Platform Fee: ₱${invoiceData.platformFee}`);
-    lines.push(`E-Nurse Fee: ₱${invoiceData.eNurseFee}`);
-    lines.push(`Total Amount: ₱${invoiceTotal.toFixed(2)}`);
-    lines.push("");
-    lines.push(`Payment Link: ${invoiceData.paymentLink}`);
-    lines.push("");
-    lines.push("OkieDoc+ Address: 123 Health St, Wellness City, Country");
-    return lines.join("\n");
-  };
-
-  // Download invoice as text file
-  const handleDownloadInvoice = () => {
-    const text = generateInvoiceText();
-    const blob = new Blob([text], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Invoice_${invoiceData.invoiceNumber || "OkieDoc"}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
   const navigate = useNavigate();
   const [online, setOnline] = useState(true);
+  const [notifications] = useState([
+    {
+      id: 1,
+      type: "New Ticket",
+      message: "New ticket T005 submitted by Alex Smith",
+      time: "5 mins ago",
+      unread: true,
+    },
+    {
+      id: 2,
+      type: "Payment Confirmation",
+      message: "Payment confirmed for appointment #A123",
+      time: "15 mins ago",
+      unread: true,
+    },
+    {
+      id: 3,
+      type: "Chat Notification",
+      message: "New message from Dr. Smith",
+      time: "30 mins ago",
+      unread: false,
+    },
+    {
+      id: 4,
+      type: "Upload Files",
+      message: "Patient uploaded medical records",
+      time: "1 hour ago",
+      unread: false,
+    },
+    {
+      id: 5,
+      type: "HMO Notification",
+      message: "HMO approval received for patient ID P001",
+      time: "2 hours ago",
+      unread: false,
+    },
+  ]);
+
   const [tickets, setTickets] = useState(() => {
     const existing = loadFromStorage(LOCAL_STORAGE_KEYS.tickets, []);
     if (existing.length > 0) return existing;
-    // Add dummy tickets if none exist
     return [
       {
         id: generateId(),
@@ -201,6 +152,7 @@ export default function ManageAppointment() {
   });
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceTicket, setInvoiceTicket] = useState(null);
   const [invoiceData, setInvoiceData] = useState({
     items: [
       {
@@ -235,7 +187,7 @@ export default function ManageAppointment() {
       loaCode: "",
       eLOAFile: null,
     },
-    source: "platform", // platform | hotline
+    source: "platform",
   });
   const [specialistAvailable, setSpecialistAvailable] = useState(null);
   const [hmoVerified, setHmoVerified] = useState(null);
@@ -303,7 +255,7 @@ export default function ManageAppointment() {
       );
   };
 
-  const openInvoice = (ticket) => {
+  const openInvoice = (ticket, fromDetailsModal = false) => {
     const invoiceNumber = generateId("INV");
     const paymentLink = `${window.location.origin}/pay/${invoiceNumber}`;
     setInvoiceData((prev) => ({
@@ -312,7 +264,7 @@ export default function ManageAppointment() {
       invoiceNumber,
       paymentLink,
     }));
-    setSelectedTicket(ticket);
+    setInvoiceTicket(ticket);
     setShowInvoiceModal(true);
   };
 
@@ -353,16 +305,35 @@ export default function ManageAppointment() {
 
   const sendInvoice = (e) => {
     e.preventDefault();
-    if (!selectedTicket) return;
-    // Keep ticket in Processing after invoice generation
-    updateStatus(selectedTicket.id, "Processing");
+    if (!invoiceTicket) return;
+    updateStatus(invoiceTicket.id, "Processing");
     setShowInvoiceModal(false);
     alert("Invoice sent to patient's email (simulated).");
   };
 
   const simulatePayment = (ticketId) => {
-    // Move ticket to Confirmed after payment
     updateStatus(ticketId, "Confirmed");
+  };
+
+  const handleReschedule = (ticketId) => {
+    if (rescheduleDate && rescheduleTime) {
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === ticketId
+            ? {
+                ...t,
+                preferredDate: rescheduleDate,
+                preferredTime: rescheduleTime,
+              }
+            : t
+        )
+      );
+      setRescheduleDate("");
+      setRescheduleTime("");
+      alert("Appointment rescheduled successfully!");
+    } else {
+      alert("Please select both date and time for rescheduling.");
+    }
   };
 
   const toCalendarDateRange = (dateStr, timeStr, durationMinutes = 30) => {
@@ -388,20 +359,6 @@ export default function ManageAppointment() {
         d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
       return { start: fmt(now), end: fmt(end) };
     }
-  };
-
-  const buildGoogleCalendarUrl = (ticket) => {
-    const { start, end } = toCalendarDateRange(
-      ticket.preferredDate,
-      ticket.preferredTime,
-      30
-    );
-    const title = encodeURIComponent(`Consultation: ${ticket.patientName}`);
-    const details = encodeURIComponent(
-      `Patient: ${ticket.patientName}\nEmail: ${ticket.email}\nMobile: ${ticket.mobile}\nChief Complaint: ${ticket.chiefComplaint}\nChannel: ${ticket.consultationChannel}\nSpecialist: ${ticket.preferredSpecialist}`
-    );
-    const location = encodeURIComponent("Okie-Doc+ Platform");
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${start}%2F${end}`;
   };
 
   const openCreateTicket = (source = "hotline") => {
@@ -440,6 +397,170 @@ export default function ManageAppointment() {
   const confirmedTickets = tickets.filter(
     (t) => t.status === "Confirmed" && t.claimedBy === nurseId
   );
+
+  const generateInvoicePDF = async () => {
+    if (!invoiceTicket) return;
+
+    const { default: jsPDF } = await import("jspdf");
+    const pdf = new jsPDF();
+
+    const logoUrl = "/okie-doc-logo.png";
+    try {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+      let displayWidth = 40;
+      let displayHeight = displayWidth / (1839 / 544);
+
+      img.onload = () => {
+        canvas.width = img.width + 12;
+        canvas.height = img.height + 12;
+
+        ctx.shadowColor = "#399eeb";
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 63;
+        ctx.shadowOffsetY = 80;
+
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+
+        const logoBase64 = canvas.toDataURL("image/png");
+
+        pdf.addImage(logoBase64, "PNG", 85, 10, displayWidth, displayHeight);
+
+        generatePDFContent(pdf);
+      };
+
+      img.src = logoUrl;
+    } catch {
+      generatePDFContent(pdf);
+    }
+  };
+
+  const generatePDFContent = (pdf) => {
+    pdf.setFont("helvetica");
+
+    pdf.setFontSize(12);
+    pdf.setFont("helvetica", "bold");
+
+    let yPosition = 35;
+
+    pdf.text(`Name: ${invoiceTicket.patientName}`, 20, yPosition);
+    pdf.text(`Date: ${new Date().toLocaleDateString()}`, 150, yPosition);
+    yPosition += 6;
+    pdf.text(`Invoice No: ${invoiceData.invoiceNumber}`, 20, yPosition);
+
+    yPosition += 6;
+    const formatDate = (dateStr) => {
+      if (!dateStr) return "";
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) {
+        const [y, m, day] = dateStr.split("-");
+        if (y && m && day) {
+          return `${day}/${m}/${y.slice(-2)}`;
+        }
+        return dateStr;
+      }
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = String(d.getFullYear()).slice(-2);
+      return `${day}/${month}/${year}`;
+    };
+
+    const formatTime = (timeStr) => {
+      if (!timeStr) return "";
+      let [h, m] = timeStr.split(":");
+      h = Number(h);
+      const ampm = h >= 12 ? "PM" : "AM";
+      h = h % 12 || 12;
+      return `${h}:${m} ${ampm}`;
+    };
+
+    pdf.text(
+      `Date of Consultation: ${formatDate(
+        invoiceTicket.preferredDate
+      )} ${formatTime(invoiceTicket.preferredTime)}`,
+      20,
+      yPosition
+    );
+
+    yPosition += 15;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("PATIENT INFORMATION:", 20, yPosition);
+
+    pdf.setFont("helvetica", "normal");
+    yPosition += 8;
+
+    pdf.text(`Mobile Number: ${invoiceTicket.mobile}`, 20, yPosition);
+    yPosition += 6;
+    pdf.text(`Email Address: ${invoiceTicket.email}`, 20, yPosition);
+
+    yPosition += 20;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("INVOICE ITEMS:", 20, yPosition);
+
+    yPosition += 10;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Item", 20, yPosition);
+    pdf.text("Description", 70, yPosition);
+    pdf.text("Qty", 130, yPosition);
+    pdf.text("Amount", 150, yPosition);
+
+    pdf.line(20, yPosition + 2, 180, yPosition + 2);
+
+    pdf.setFont("helvetica", "normal");
+    yPosition += 8;
+    invoiceData.items.forEach((item) => {
+      pdf.text(item.name, 20, yPosition);
+      pdf.text(item.description, 70, yPosition);
+      pdf.text(item.quantity.toString(), 130, yPosition);
+      pdf.text(`PHP ${item.amount}`, 150, yPosition);
+      yPosition += 8;
+    });
+
+    yPosition += 10;
+    pdf.line(20, yPosition, 180, yPosition);
+    yPosition += 8;
+
+    pdf.text(`Platform Fee:`, 120, yPosition);
+    pdf.text(`PHP ${invoiceData.platformFee}`, 150, yPosition);
+    yPosition += 6;
+
+    pdf.text(`E-Nurse Fee:`, 120, yPosition);
+    pdf.text(`PHP ${invoiceData.eNurseFee}`, 150, yPosition);
+    yPosition += 8;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.text(`TOTAL AMOUNT:`, 110, yPosition);
+    pdf.text(`PHP ${invoiceTotal.toFixed(2)}`, 150, yPosition);
+
+    yPosition += 15;
+    pdf.setFont("helvetica", "normal");
+    pdf.text("Payment Link:", 20, yPosition);
+    yPosition += 6;
+    pdf.setTextColor(0, 0, 255);
+    pdf.text(invoiceData.paymentLink, 20, yPosition);
+    pdf.setTextColor(0, 0, 0);
+
+    yPosition += 20;
+    pdf.setFontSize(8);
+    pdf.text("This is system generated -------", 105, yPosition, {
+      align: "center",
+    });
+
+    yPosition += 15;
+    pdf.text(
+      "OkieDoc+ Address: 123 Health St, Wellness City, Country",
+      105,
+      yPosition,
+      { align: "center" }
+    );
+
+    pdf.save(`Invoice_${invoiceData.invoiceNumber || "OkieDoc"}.pdf`);
+  };
+
+  const handleDownloadInvoice = () => {
+    generateInvoicePDF();
+  };
 
   return (
     <div className="dashboard">
@@ -492,7 +613,7 @@ export default function ManageAppointment() {
             className="nav-tab"
             onClick={() => navigate("/nurse-notifications")}
           >
-            Notifications
+            Notifications ({notifications.filter((n) => n.unread).length})
           </button>
         </div>
       </div>
@@ -530,7 +651,6 @@ export default function ManageAppointment() {
                   </span>
                 </div>
                 <div className="ticket-actions">
-                  {/* If ticket is claimed, show Generate Invoice, else show Manage */}
                   {ticket.claimedBy ? (
                     <button
                       className="action-btn edit"
@@ -609,7 +729,6 @@ export default function ManageAppointment() {
         </div>
       </div>
 
-      {/* Ticket Detail Modal */}
       {selectedTicket && (
         <div className="modal-overlay">
           <div className="ticket-modal">
@@ -844,7 +963,6 @@ export default function ManageAppointment() {
               </div>
 
               <div className="ticket-actions" style={{ marginTop: 12 }}>
-                {/* Only show Generate Invoice if ticket is not claimed and not Pending */}
                 {!selectedTicket.claimedBy &&
                   selectedTicket.status !== "Pending" && (
                     <button
@@ -890,17 +1008,16 @@ export default function ManageAppointment() {
                 </p>
                 <p>
                   <strong>Date of Consultation:</strong>{" "}
-                  {selectedTicket?.preferredDate}{" "}
-                  {selectedTicket?.preferredTime}
+                  {invoiceTicket?.preferredDate} {invoiceTicket?.preferredTime}
                 </p>
                 <p>
-                  <strong>Patient Name:</strong> {selectedTicket?.patientName}
+                  <strong>Patient Name:</strong> {invoiceTicket?.patientName}
                 </p>
                 <p>
-                  <strong>Mobile Number:</strong> {selectedTicket?.mobile}
+                  <strong>Mobile Number:</strong> {invoiceTicket?.mobile}
                 </p>
                 <p>
-                  <strong>Email Address:</strong> {selectedTicket?.email}
+                  <strong>Email Address:</strong> {invoiceTicket?.email}
                 </p>
               </div>
               <form onSubmit={sendInvoice} className="invoice-form">
@@ -1038,7 +1155,7 @@ export default function ManageAppointment() {
                     className="submit-btn"
                     style={{ marginLeft: 8 }}
                   >
-                    Download Invoice
+                    Download PDF
                   </button>
                   <button
                     type="button"
@@ -1271,7 +1388,21 @@ export default function ManageAppointment() {
                         setNewTicketData((prev) => ({
                           ...prev,
                           hasHMO: e.target.checked,
-                          hmo: e.target.checked ? prev.hmo : null,
+                          hmo: e.target.checked
+                            ? prev.hmo || {
+                                company: "",
+                                memberId: "",
+                                expirationDate: "",
+                                loaCode: "",
+                                eLOAFile: null,
+                              }
+                            : {
+                                company: "",
+                                memberId: "",
+                                expirationDate: "",
+                                loaCode: "",
+                                eLOAFile: null,
+                              },
                         }))
                       }
                     />{" "}

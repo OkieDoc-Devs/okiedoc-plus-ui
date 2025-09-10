@@ -444,9 +444,7 @@ export default function ManageAppointment() {
 
     let yPosition = 35;
 
-    pdf.text(`Name: ${invoiceTicket.patientName}`, 20, yPosition);
     pdf.text(`Date: ${new Date().toLocaleDateString()}`, 150, yPosition);
-    yPosition += 6;
     pdf.text(`Invoice No: ${invoiceData.invoiceNumber}`, 20, yPosition);
 
     yPosition += 6;
@@ -490,6 +488,8 @@ export default function ManageAppointment() {
     pdf.setFont("helvetica", "normal");
     yPosition += 8;
 
+    pdf.text(`Name: ${invoiceTicket.patientName}`, 20, yPosition);
+    yPosition += 6;
     pdf.text(`Mobile Number: ${invoiceTicket.mobile}`, 20, yPosition);
     yPosition += 6;
     pdf.text(`Email Address: ${invoiceTicket.email}`, 20, yPosition);
@@ -542,17 +542,21 @@ export default function ManageAppointment() {
     pdf.setTextColor(0, 0, 0);
 
     yPosition += 20;
-    pdf.setFontSize(8);
-    pdf.text("This is system generated -------", 105, yPosition, {
+    pdf.line(20, yPosition, 180, yPosition);
+    yPosition += 10;
+    pdf.setFontSize(10);
+    pdf.text("This is a system-generated invoice.", 105, yPosition, {
       align: "center",
     });
 
-    yPosition += 15;
+    yPosition += 8;
     pdf.text(
-      "OkieDoc+ Address: 123 Health St, Wellness City, Country",
+      "For inquiries, please contact support@okiedocplus.com",
       105,
       yPosition,
-      { align: "center" }
+      {
+        align: "center",
+      }
     );
 
     pdf.save(`Invoice_${invoiceData.invoiceNumber || "OkieDoc"}.pdf`);

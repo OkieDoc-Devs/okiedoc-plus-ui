@@ -1118,7 +1118,7 @@ const PatientDashboard = () => {
                 onClick={() => { setActivePage('billing'); setIsMobileMenuOpen(false); }}
               >
                 <FaReceipt className="patient-mobile-nav-icon" />
-                <span>Billing</span>
+                <span>Consultation Billing</span>
               </button>
               <button 
                 className={`patient-mobile-nav-item ${activePage === 'consultation-history' ? 'active' : ''}`}

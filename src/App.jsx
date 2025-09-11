@@ -21,7 +21,7 @@ function App() {
   };
 
   return (
-    <>
+    <div className="app-container">
       <div className="container1">
         <div className="header">
           <div className="logo-section">
@@ -35,7 +35,7 @@ function App() {
           <button
             className="mobile-nav-toggle"
             onClick={toggleDropdownMenu}
-            aria-label="Toggle mobile menu"
+            aria-label="Toggle dropdown menu"
           >
             ☰
           </button>
@@ -82,7 +82,7 @@ function App() {
           ></img>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

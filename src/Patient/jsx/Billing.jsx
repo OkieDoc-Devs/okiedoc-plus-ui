@@ -76,9 +76,8 @@ const Billing = () => {
           <div className="patient-modal-content patient-confirmation-modal" onClick={(e) => e.stopPropagation()}>
             <FaCheckCircle className="patient-confirm-icon" />
             <h3>Payment Confirmed!</h3>
-            <p>Please check your email and click{' '}
-              <strong>“Activate your {paidTicket.service}”</strong> button to
-              complete your request.
+            <p>Please check your email to find your{' '}
+              <strong>“{paidTicket.service} receipt”</strong>.
             </p>
 
             {/* Open Gmail button */}

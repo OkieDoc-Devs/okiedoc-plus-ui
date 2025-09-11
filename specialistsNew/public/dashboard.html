@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Okiedoc+ Specialist Portal</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4AA7ED;
+      --secondary: #BFESF9;
+      --navy: #0B5388;
+      --accent: #0AADEF;
+      --light-bg: #F5F0F0;
+      --dark: #000000;
+      --white: #FFFFFF;
+      --offwhite: #FFFFFB;
+      --gray: #7A7A7A;
+      --light-gray: #E5E5E5;
+      --success: #4CAF50;
+      --warning: #FF9800;
+      --danger: #F44336;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Poppins", sans-serif;
+    }
+    body {
+      background: #BFE5F9;
+      min-height: 100vh;
+      display: flex;
+    }
+    .sidebar { width: 260px; background: var(--navy); color: var(--white); height: 100vh; position: fixed; overflow-y: auto; }
+    .logo-container { padding: 1.5rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .logo { font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .nav-menu { padding: 1.5rem 0; }
+    .nav-item { padding: 0.9rem 1.5rem; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.3s; }
+    .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); }
+    .nav-item i { font-size: 1.2rem; }
+    .main-content { flex: 1; margin-left: 260px; padding: 1.5rem; display: block; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--light-gray); }
+    .page-title { font-size: 1.8rem; color: var(--navy); }
+    .user-menu { display: flex; align-items: center; gap: 15px; }
+    .user-profile { display: flex; align-items: center; gap: 10px; }
+    .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; }
+    .avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+    .dashboard-content { display: none; }
+    .dashboard-content.active { display: block; }
+    .filters { display: flex; gap: 15px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .filter-item { padding: 0.6rem 1rem; background: var(--white); border-radius: 8px; border: 1px solid var(--light-gray); cursor: pointer; }
+    .filter-item.active { background: var(--primary); color: var(--white); }
+    .ticket-list { background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .table-header { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 0.7fr; padding: 1rem; background: var(--light-bg); font-weight: 600; }
+    .ticket-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 0.7fr; padding: 1rem; border-bottom: 1px solid var(--light-gray); align-items: center; }
+    .ticket-row:last-child { border-bottom: none; }
+    .status-badge { padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; display: inline-block; }
+    .status-confirmed { background: #E8F5E9; color: var(--success); }
+    .status-pending { background: #FFF8E1; color: var(--warning); }
+    .status-cancelled { background: #FFEBEE; color: var(--danger); }
+    .action-btn { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; background: var(--primary); color: white; }
+    .profile-section { background: var(--white); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .section-title { font-size: 1.4rem; margin-bottom: 1.5rem; color: var(--navy); padding-bottom: 0.5rem; border-bottom: 1px solid var(--light-gray); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .input-group { margin-bottom: 1rem; }
+    .input-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    .input-group input, .input-group select, .input-group textarea { width: 100%; padding: 0.8rem; border: 1px solid var(--light-gray); border-radius: 8px; font-size: 1rem; }
+    .full-width { grid-column: 1 / -1; }
+    .profile-image-upload { display: flex; align-items: center; gap: 1rem; }
+    .profile-img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); }
+    .upload-btn { padding: 0.7rem 1.5rem; background: var(--light-bg); border: 1px dashed var(--gray); border-radius: 8px; cursor: pointer; }
+    .btn-primary { padding: 0.8rem 1.5rem; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
+    .calendar-container { background: var(--white); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .calendar-nav { display: flex; gap: 10px; align-items: center; }
+    .current-month { font-size: 1.4rem; font-weight: 600; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+    .calendar-day { height: 100px; border: 1px solid var(--light-gray); padding: 0.5rem; overflow-y: auto; }
+    .day-header { text-align: center; padding: 0.5rem; font-weight: 600; background: var(--light-bg); }
+    .other-month { color: var(--gray); background: #f9f9f9; }
+    .has-appointment { background: #E3F2FD; cursor: pointer; }
+    .appointment-badge { font-size: 0.8rem; padding: 0.2rem 0.4rem; background: var(--primary); color: white; border-radius: 4px; margin-bottom: 0.3rem; }
+    .services-container { background: var(--white); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .service-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--light-gray); }
+    .service-item:last-child { border-bottom: none; }
+    .service-info { display: flex; flex-direction: column; }
+    .service-name { font-weight: 600; }
+    .service-fee { color: var(--gray); }
+    .edit-btn { padding: 0.5rem 1rem; background: transparent; border: 1px solid var(--primary); color: var(--primary); border-radius: 6px; cursor: pointer; }
+    .transactions-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .transactions-table th, .transactions-table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--light-gray); }
+    .transactions-table th { background: var(--light-bg); font-weight: 600; }
+    @media (max-width: 992px) { .sidebar { width: 80px; } .sidebar .nav-text { display: none; } .main-content { margin-left: 80px; } }
+    @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } .table-header, .ticket-row { grid-template-columns: 1fr; gap: 0.5rem; } .filters { flex-direction: column; } }
+    @media (max-width: 480px) {
+      .sidebar { width: 64px; }
+      .main-content { margin-left: 64px; padding: 1rem; }
+      .page-title { font-size: 1.3rem; }
+      .user-menu { gap: 10px; }
+      .avatar { width: 32px; height: 32px; font-size: 0.85rem; }
+      .btn-primary { padding: 0.6rem 1rem; font-size: 0.9rem; }
+      .edit-btn { padding: 0.4rem 0.8rem; font-size: 0.9rem; }
+      .profile-img { width: 80px; height: 80px; }
+      .upload-btn { padding: 0.5rem 1rem; }
+      .calendar-day { height: 72px; padding: 0.4rem; }
+      .appointment-badge { font-size: 0.7rem; }
+      .table-header, .ticket-row { font-size: 0.95rem; }
+      .ticket-row > div { word-break: break-word; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo-container">
+      <div class="logo">
+        <i class="fas fa-hospital-heart"></i>
+        <span class="nav-text">Okiedoc+</span>
+      </div>
+    </div>
+    <div class="nav-menu">
+      <div class="nav-item active" data-target="dashboard">
+        <i class="fas fa-th-large"></i>
+        <span class="nav-text">Dashboard</span>
+      </div>
+      <div class="nav-item" data-target="profile">
+        <i class="fas fa-user"></i>
+        <span class="nav-text">Personal Data</span>
+      </div>
+      <div class="nav-item" data-target="schedule">
+        <i class="fas fa-calendar-alt"></i>
+        <span class="nav-text">Schedules</span>
+      </div>
+      <div class="nav-item" data-target="services">
+        <i class="fas fa-first-aid"></i>
+        <span class="nav-text">Services & Fees</span>
+      </div>
+      <div class="nav-item" data-target="transactions">
+        <i class="fas fa-money-bill-wave"></i>
+        <span class="nav-text">Transactions</span>
+      </div>
+      <div class="nav-item" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i>
+        <span class="nav-text">Logout</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content" id="app">
+    <div class="header">
+      <h1 class="page-title" id="pageTitle">Dashboard</h1>
+      <div class="user-menu">
+        <div class="user-profile">
+          <div class="avatar" id="userAvatar">
+            <span id="avatarInitials">DR</span>
+          </div>
+          <div class="user-info">
+            <div class="user-name" id="userName">Dr. Specialist Name</div>
+            <div class="user-role">Specialist</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-content active" id="dashboard">
+      <div class="filters">
+        <div class="filter-item active">All Tickets</div>
+        <div class="filter-item">Confirmed</div>
+        <div class="filter-item">Pending</div>
+        <div class="filter-item">Completed</div>
+      </div>
+      <div class="ticket-list">
+        <div class="table-header">
+          <div>Patient Name</div>
+          <div>Service Type</div>
+          <div>Date & Time</div>
+          <div>Status</div>
+          <div>Action</div>
+        </div>
+        <div id="ticketRows"></div>
+      </div>
+    </div>
+
+    <div class="dashboard-content" id="profile">
+      <div class="profile-section">
+        <h2 class="section-title">Personal Information</h2>
+        <div class="profile-image-upload">
+          <img src="" alt="Profile Image" class="profile-img" id="profileImage">
+          <div>
+            <div class="upload-btn" onclick="document.getElementById('fileUpload').click()">
+              <i class="fas fa-upload"></i> Upload Photo
+            </div>
+            <input type="file" id="fileUpload" style="display: none" accept="image/*">
+          </div>
+        </div>
+        <form class="form-grid">
+          <div class="input-group">
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" value="John">
+          </div>
+          <div class="input-group">
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" value="Doe">
+          </div>
+          <div class="input-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" value="john.doe@example.com">
+          </div>
+          <div class="input-group">
+            <label for="phone">Phone Number</label>
+            <input type="tel" id="phone" value="+63 ">
+          </div>
+          <div class="input-group">
+            <label for="prcNumber">PRC License Number</label>
+            <input type="text" id="prcNumber" placeholder="e.g., 1234567">
+          </div>
+          <div class="profile-image-upload">
+            <img src="" alt="PRC License" class="profile-img" id="prcPreview">
+            <div>
+              <div class="upload-btn" onclick="document.getElementById('prcUpload').click()">
+                <i class="fas fa-upload"></i> Upload PRC License Photo
+              </div>
+              <input type="file" id="prcUpload" style="display: none" accept="image/*">
+            </div>
+          </div>
+          <div class="input-group full-width">
+            <label for="specialization">Specialization</label>
+            <select id="specialization">
+              <option value="">Select specialization</option>
+              <option value="Cardiology">Cardiology</option>
+              <option value="Dermatology">Dermatology</option>
+              <option value="Orthopedics">Orthopedics</option>
+              <option value="Pediatrics">Pediatrics</option>
+              <option value="Internal Medicine">Internal Medicine</option>
+              <option value="Neurology">Neurology</option>
+              <option value="Ophthalmology">Ophthalmology</option>
+              <option value="Obstetrics & Gynecology">Obstetrics & Gynecology</option>
+              <option value="Otolaryngology (ENT)">Otolaryngology (ENT)</option>
+              <option value="Psychiatry">Psychiatry</option>
+              <option value="Urology">Urology</option>
+            </select>
+          </div>
+          <div class="input-group full-width">
+            <label for="subSpecialization">Sub Specialization</label>
+            <select id="subSpecialization">
+              <option value="">Select sub specialization</option>
+            </select>
+          </div>
+          <div class="input-group full-width">
+            <label for="bio">Bio</label>
+            <textarea id="bio" rows="4">Board-certified cardiologist with 10 years of experience.</textarea>
+          </div>
+          <div class="full-width">
+            <button type="button" class="btn-primary" onclick="saveProfile()">Save Changes</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="profile-section" style="margin-top: 2rem;">
+        <h2 class="section-title">Change Password</h2>
+        <form class="form-grid">
+          <div class="input-group">
+            <label for="currentPassword">Current Password</label>
+            <input type="password" id="currentPassword">
+          </div>
+          <div class="input-group">
+            <label for="newPassword">New Password</label>
+            <input type="password" id="newPassword">
+          </div>
+          <div class="input-group">
+            <label for="confirmPassword">Confirm New Password</label>
+            <input type="password" id="confirmPassword">
+          </div>
+          <div class="full-width">
+            <button type="button" class="btn-primary" onclick="updatePassword()">Update Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="dashboard-content" id="schedule">
+      <div class="calendar-container">
+        <div class="calendar-header">
+          <div class="current-month" id="currentMonthLabel">Month YYYY</div>
+          <div class="calendar-nav">
+            <button class="edit-btn" id="prevMonthBtn"><i class="fas fa-chevron-left"></i></button>
+            <button class="btn-primary" id="todayBtn">Today</button>
+            <button class="edit-btn" id="nextMonthBtn"><i class="fas fa-chevron-right"></i></button>
+            <button class="btn-primary" id="newScheduleBtn"><i class="fas fa-plus"></i> New Schedule</button>
+          </div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid">
+          <div class="day-header">Sun</div>
+          <div class="day-header">Mon</div>
+          <div class="day-header">Tue</div>
+          <div class="day-header">Wed</div>
+          <div class="day-header">Thu</div>
+          <div class="day-header">Fri</div>
+          <div class="day-header">Sat</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-content" id="services">
+      <div class="services-container">
+        <h2 class="section-title">Professional Fees</h2>
+        <div id="servicesList"></div>
+      </div>
+      <div class="services-container" style="margin-top: 2rem;">
+        <h2 class="section-title">Disbursement Account</h2>
+        <div class="form-grid">
+          <div class="input-group">
+            <label>Account Type</label>
+            <select id="accountType">
+              <option value="bank">Bank Account</option>
+              <option value="gcash">GCash</option>
+            </select>
+          </div>
+          <div class="input-group" id="bankAccountName">
+            <label for="accountName">Account Name</label>
+            <input type="text" id="accountName" value="John Doe">
+          </div>
+          <div class="input-group" id="bankAccountNumber">
+            <label for="accountNumber">Account Number</label>
+            <input type="text" id="accountNumber" value="XXXX-XXXX-XXXX-1234">
+          </div>
+          <div class="input-group" id="gcashPhone" style="display: none">
+            <label for="gcashNumber">Phone Number</label>
+            <input type="tel" id="gcashNumber" value="+63 ">
+          </div>
+        </div>
+        <div id="gcashQrBlock" style="display:none; margin-top: 1rem;">
+          <div class="profile-image-upload">
+            <img src="" alt="GCash QR" class="profile-img" id="gcashQrPreview">
+            <div>
+              <div class="upload-btn" onclick="document.getElementById('gcashQrUpload').click()">
+                <i class="fas fa-upload"></i> Upload GCash QR
+              </div>
+              <input type="file" id="gcashQrUpload" style="display:none" accept="image/*">
+            </div>
+          </div>
+        </div>
+        <div style="margin-top: 1rem;">
+          <button class="btn-primary" onclick="saveAccountDetails()">Save Account Details</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-content" id="transactions">
+      <div class="services-container">
+        <h2 class="section-title">Payments to be Disbursed</h2>
+        <table class="transactions-table">
+          <thead>
+            <tr>
+              <th>Ticket #</th>
+              <th>Patient</th>
+              <th>Service</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>TKT-001</td>
+              <td>John Doe</td>
+              <td>Consultation</td>
+              <td>₱100.00</td>
+              <td><span class="status-badge status-pending">Pending</span></td>
+            </tr>
+            <tr>
+              <td>TKT-003</td>
+              <td>Robert Johnson</td>
+              <td>Medical Clearance</td>
+              <td>₱75.00</td>
+              <td><span class="status-badge status-confirmed">Processing</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="services-container" style="margin-top: 2rem;">
+        <h2 class="section-title">HMO Transactions</h2>
+        <table class="transactions-table">
+          <thead>
+            <tr>
+              <th>Ticket #</th>
+              <th>Patient</th>
+              <th>Service</th>
+              <th>HMO Provider</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>TKT-002</td>
+              <td>Jane Smith</td>
+              <td>Medical Certificate</td>
+              <td>Maxicare</td>
+              <td><span class="status-badge status-pending">Verification</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="editServiceModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000;">
+    <div class="modal-content" style="background:#fff; padding:2rem; border-radius:12px; width:90%; max-width:500px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2>Edit Service Fee</h2>
+        <span class="close-modal" onclick="closeModal('editServiceModal')" style="font-size:1.5rem; cursor:pointer;">&times;</span>
+      </div>
+      <div class="input-group">
+        <label for="serviceName">Service Name</label>
+        <input type="text" id="serviceName" readonly>
+      </div>
+      <div class="input-group">
+        <label for="serviceFee">Professional Fee ($)</label>
+        <input type="number" id="serviceFee" min="0" step="0.01">
+      </div>
+      <div style="margin-top: 1.5rem;">
+        <button class="btn-primary" onclick="updateServiceFee()">Update Fee</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ticket Details Modal -->
+  <div class="modal" id="ticketDetailsModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000;">
+    <div class="modal-content" style="background:#fff; padding:2rem; border-radius:12px; width:90%; max-width:520px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2>Ticket Details</h2>
+        <span class="close-modal" onclick="closeModal('ticketDetailsModal')" style="font-size:1.5rem; cursor:pointer;">&times;</span>
+      </div>
+      <div class="input-group"><label>Ticket #</label><input id="tdTicket" readonly></div>
+      <div class="input-group"><label>Patient</label><input id="tdPatient" readonly></div>
+      <div class="input-group"><label>Service</label><input id="tdService" readonly></div>
+      <div class="input-group"><label>Date & Time</label><input id="tdWhen" readonly></div>
+      <div class="input-group"><label>Status</label><input id="tdStatus" readonly></div>
+      <div style="margin-top: 1.2rem; display:flex; gap:10px;">
+        <button class="btn-primary" onclick="updateTicketStatus('Confirmed')">Mark Confirmed</button>
+        <button class="edit-btn" onclick="updateTicketStatus('Completed')">Mark Completed</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Require session; if missing, redirect to login
+    (function guard() {
+      const email = localStorage.getItem('currentUserEmail');
+      if (!email) {
+        window.location.href = 'login.html';
+        return;
+      }
+      const user = JSON.parse(localStorage.getItem(email) || '{}');
+      document.getElementById('userName').textContent = 'Dr. ' + (user.fName || 'Specialist') + ' ' + (user.lName || 'Name');
+      const initials = ((user.fName || 'D')[0] + (user.lName || 'R')[0]).toUpperCase();
+      document.getElementById('avatarInitials').textContent = initials;
+      document.getElementById('firstName').value = user.fName || document.getElementById('firstName').value;
+      document.getElementById('lastName').value = user.lName || document.getElementById('lastName').value;
+      document.getElementById('email').value = email;
+      // Prefill saved profile fields if any
+      try {
+        const profile = JSON.parse(localStorage.getItem('profile:'+email) || '{}');
+        if (profile.phone) document.getElementById('phone').value = profile.phone;
+        if (profile.prcNumber) document.getElementById('prcNumber').value = profile.prcNumber;
+        if (profile.prcImage) document.getElementById('prcPreview').src = profile.prcImage;
+        if (profile.specialization) document.getElementById('specialization').value = profile.specialization;
+        const subValue = profile.subSpecialization || '';
+        if (profile.bio) document.getElementById('bio').value = profile.bio;
+        // Defer populate until after constants/functions are initialized
+        setTimeout(function(){
+          if (typeof populateSubSpecializations === 'function') {
+            populateSubSpecializations();
+            if (subValue) {
+              const subEl = document.getElementById('subSpecialization');
+              if (subEl) subEl.value = subValue;
+            }
+          }
+        }, 0);
+      } catch(e) { /* ignore */ }
+    })();
+
+    // Navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+      if (!item.onclick) {
+        item.addEventListener('click', function() {
+          const target = this.getAttribute('data-target');
+          if (target) {
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            this.classList.add('active');
+            document.querySelectorAll('.dashboard-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(target).classList.add('active');
+            document.getElementById('pageTitle').textContent = this.querySelector('.nav-text').textContent;
+          }
+        });
+      }
+    });
+
+    // Account type toggle
+    (function setupAccountTypeToggle(){
+      const accountTypeEl = document.getElementById('accountType');
+      if (!accountTypeEl) return;
+      accountTypeEl.addEventListener('change', function() {
+        const type = this.value;
+        const bankName = document.getElementById('bankAccountName');
+        const bankNum = document.getElementById('bankAccountNumber');
+        const gcash = document.getElementById('gcashPhone');
+        const qrBlock = document.getElementById('gcashQrBlock');
+        if (!bankName || !bankNum || !gcash) return;
+        if (type === 'bank') {
+          bankName.style.display = 'block';
+          bankNum.style.display = 'block';
+          gcash.style.display = 'none';
+          if (qrBlock) qrBlock.style.display = 'none';
+        } else {
+          bankName.style.display = 'none';
+          bankNum.style.display = 'none';
+          gcash.style.display = 'block';
+          if (qrBlock) qrBlock.style.display = 'block';
+        }
+      });
+    })();
+
+    // Modal functions
+    function openEditServiceModal(name, fee) {
+      document.getElementById('serviceName').value = name;
+      document.getElementById('serviceFee').value = fee;
+      document.getElementById('editServiceModal').style.display = 'flex';
+    }
+    function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+    function updateServiceFee() {
+      const serviceName = document.getElementById('serviceName').value;
+      const newFee = parseFloat(document.getElementById('serviceFee').value || '0');
+      if (Number.isNaN(newFee) || newFee < 0) { alert('Please enter a valid fee.'); return; }
+      // Persist to localStorage
+      const email = localStorage.getItem('currentUserEmail') || 'guest';
+      const key = 'services:'+email;
+      const existing = JSON.parse(localStorage.getItem(key) || '{}');
+      existing[serviceName] = newFee;
+      localStorage.setItem(key, JSON.stringify(existing));
+      renderServices();
+      closeModal('editServiceModal');
+    }
+
+    // Sub specialization options mapping and behavior
+    const SUB_SPECIALIZATIONS = {
+      'Cardiology': ['Interventional Cardiology','Electrophysiology','Heart Failure','Pediatric Cardiology'],
+      'Dermatology': ['Cosmetic Dermatology','Mohs Surgery','Pediatric Dermatology','Dermatopathology'],
+      'Orthopedics': ['Sports Medicine','Spine Surgery','Hand Surgery','Joint Replacement'],
+      'Pediatrics': ['Neonatology','Pediatric Neurology','Pediatric Cardiology','Pediatric Endocrinology'],
+      'Internal Medicine': ['Endocrinology','Gastroenterology','Pulmonology','Nephrology','Rheumatology','Infectious Disease'],
+      'Neurology': ['Stroke','Epilepsy','Movement Disorders','Neuromuscular'],
+      'Ophthalmology': ['Glaucoma','Retina','Cornea','Pediatric Ophthalmology'],
+      'Obstetrics & Gynecology': ['Maternal-Fetal Medicine','Reproductive Endocrinology','Gynecologic Oncology','Urogynecology'],
+      'Otolaryngology (ENT)': ['Rhinology','Laryngology','Otology','Head & Neck Surgery'],
+      'Psychiatry': ['Child & Adolescent','Addiction','Geriatric','Consultation-Liaison'],
+      'Urology': ['Endourology','Urologic Oncology','Pediatric Urology','Female Urology']
+    };
+    function populateSubSpecializations() {
+      const specEl = document.getElementById('specialization');
+      const subEl = document.getElementById('subSpecialization');
+      if (!specEl || !subEl) return;
+      const options = SUB_SPECIALIZATIONS[specEl.value] || [];
+      subEl.innerHTML = '<option value="">Select sub specialization</option>' +
+        options.map(o => `<option value="${o}">${o}</option>`).join('');
+    }
+    (function bindSpecChange(){
+      const specEl = document.getElementById('specialization');
+      if (!specEl) return;
+      specEl.addEventListener('change', populateSubSpecializations);
+    })();
+
+    // PRC license image upload preview
+    (function setupPrcUpload(){
+      const prcInput = document.getElementById('prcUpload');
+      if (!prcInput) return;
+      prcInput.addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function(e2) {
+            const prcImg = document.getElementById('prcPreview');
+            if (prcImg) prcImg.src = e2.target.result;
+            // Persist PRC image immediately
+            const email = localStorage.getItem('currentUserEmail');
+            if (email) {
+              const profile = JSON.parse(localStorage.getItem('profile:'+email) || '{}');
+              profile.prcImage = e2.target.result;
+              localStorage.setItem('profile:'+email, JSON.stringify(profile));
+            }
+          }
+          reader.readAsDataURL(e.target.files[0]);
+        }
+      });
+    })();
+    // GCash QR upload preview
+    (function setupGcashQrUpload(){
+      const qrInput = document.getElementById('gcashQrUpload');
+      if (!qrInput) return;
+      qrInput.addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function(e2) {
+            const qrImg = document.getElementById('gcashQrPreview');
+            if (qrImg) qrImg.src = e2.target.result;
+          }
+          reader.readAsDataURL(e.target.files[0]);
+        }
+      });
+    })();
+
+    // Save profile details
+    function saveProfile() {
+      const email = localStorage.getItem('currentUserEmail');
+      if (!email) { window.location.href = 'login.html'; return; }
+      const fName = document.getElementById('firstName').value.trim();
+      const lName = document.getElementById('lastName').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const prcNumber = document.getElementById('prcNumber').value.trim();
+      const specialization = document.getElementById('specialization').value;
+      const subSpecialization = document.getElementById('subSpecialization').value;
+      const bio = document.getElementById('bio').value.trim();
+
+      // Update user basic info
+      const user = JSON.parse(localStorage.getItem(email) || '{}');
+      user.fName = fName || user.fName;
+      user.lName = lName || user.lName;
+      localStorage.setItem(email, JSON.stringify(user));
+
+      // Save profile
+      const existing = JSON.parse(localStorage.getItem('profile:'+email) || '{}');
+      const profile = Object.assign(existing, { phone, prcNumber, specialization, subSpecialization, bio });
+      localStorage.setItem('profile:'+email, JSON.stringify(profile));
+
+      // Update header
+      document.getElementById('userName').textContent = 'Dr. ' + (user.fName || 'Specialist') + ' ' + (user.lName || 'Name');
+      const initials = ((user.fName || 'D')[0] + (user.lName || 'R')[0]).toUpperCase();
+      document.getElementById('avatarInitials').textContent = initials;
+
+      alert('Profile saved successfully.');
+    }
+    window.saveProfile = saveProfile;
+
+    // Update password
+    function updatePassword() {
+      const email = localStorage.getItem('currentUserEmail');
+      if (!email) { window.location.href = 'login.html'; return; }
+      const current = document.getElementById('currentPassword').value;
+      const next = document.getElementById('newPassword').value;
+      const confirmNext = document.getElementById('confirmPassword').value;
+      if (!current || !next || !confirmNext) { alert('Please fill in all password fields.'); return; }
+      if (next.length < 3) { alert('New password must be at least 3 characters.'); return; }
+      if (next !== confirmNext) { alert('New passwords do not match.'); return; }
+      const user = JSON.parse(localStorage.getItem(email) || '{}');
+      if (!user || user.password !== current) { alert('Current password is incorrect.'); return; }
+      user.password = next;
+      localStorage.setItem(email, JSON.stringify(user));
+      // Clear inputs
+      document.getElementById('currentPassword').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('confirmPassword').value = '';
+      alert('Password updated successfully.');
+    }
+    window.updatePassword = updatePassword;
+
+    // ----- Services rendering and persistence -----
+    const DEFAULT_SERVICES = {
+      'Consultation': 100,
+      'Medical Certificate': 25,
+      'Medical Clearance': 75
+    };
+    function getServices() {
+      const email = localStorage.getItem('currentUserEmail') || 'guest';
+      const key = 'services:'+email;
+      const raw = localStorage.getItem(key);
+      if (!raw) return { ...DEFAULT_SERVICES };
+      try { return { ...DEFAULT_SERVICES, ...JSON.parse(raw) }; } catch { return { ...DEFAULT_SERVICES }; }
+    }
+    function renderServices() {
+      const list = document.getElementById('servicesList');
+      if (!list) return;
+      const data = getServices();
+      list.innerHTML = Object.keys(data).map(name => {
+        const fee = data[name];
+        return `
+          <div class="service-item">
+            <div class="service-info">
+              <div class="service-name">${name}</div>
+              <div class="service-fee">₱${Number(fee).toFixed(2)}</div>
+            </div>
+            <button class="edit-btn" onclick="openEditServiceModal('${name.replace(/'/g, "&#39;")}', ${fee})">Edit</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Disbursement account save/load
+    function saveAccountDetails() {
+      const email = localStorage.getItem('currentUserEmail') || 'guest';
+      const key = 'account:'+email;
+      const accountType = document.getElementById('accountType').value;
+      const accountName = (document.getElementById('accountName').value || '').trim();
+      const accountNumber = (document.getElementById('accountNumber').value || '').trim();
+      const gcashNumber = (document.getElementById('gcashNumber').value || '').trim();
+      const payload = { accountType, accountName, accountNumber, gcashNumber };
+      const qrImg = document.getElementById('gcashQrPreview');
+      if (qrImg && qrImg.src) payload.gcashQr = qrImg.src;
+      localStorage.setItem(key, JSON.stringify(payload));
+      alert('Account details saved.');
+    }
+    function loadAccountDetails() {
+      const email = localStorage.getItem('currentUserEmail') || 'guest';
+      const key = 'account:'+email;
+      try {
+        const data = JSON.parse(localStorage.getItem(key) || '{}');
+        if (data.accountType) document.getElementById('accountType').value = data.accountType;
+        if (data.accountType === 'bank') {
+          document.getElementById('bankAccountName').style.display = 'block';
+          document.getElementById('bankAccountNumber').style.display = 'block';
+          document.getElementById('gcashPhone').style.display = 'none';
+          const qrBlock = document.getElementById('gcashQrBlock');
+          if (qrBlock) qrBlock.style.display = 'none';
+        } else if (data.accountType === 'gcash') {
+          document.getElementById('bankAccountName').style.display = 'none';
+          document.getElementById('bankAccountNumber').style.display = 'none';
+          document.getElementById('gcashPhone').style.display = 'block';
+          const qrBlock = document.getElementById('gcashQrBlock');
+          if (qrBlock) qrBlock.style.display = 'block';
+        }
+        if (data.accountName) document.getElementById('accountName').value = data.accountName;
+        if (data.accountNumber) document.getElementById('accountNumber').value = data.accountNumber;
+        if (data.gcashNumber) document.getElementById('gcashNumber').value = data.gcashNumber;
+        if (data.gcashQr) document.getElementById('gcashQrPreview').src = data.gcashQr;
+      } catch(e) { /* ignore */ }
+    }
+
+    // ----- Schedule: state, storage, rendering -----
+    const SCHEDULE_KEY_PREFIX = 'schedule:'; // schedule:<email>
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth(); // 0-11
+
+    function getScheduleStoreKey() {
+      const email = localStorage.getItem('currentUserEmail') || 'guest';
+      return SCHEDULE_KEY_PREFIX + email;
+    }
+    function getSchedules() {
+      const raw = localStorage.getItem(getScheduleStoreKey());
+      if (!raw) return {};
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    function setSchedules(data) {
+      localStorage.setItem(getScheduleStoreKey(), JSON.stringify(data));
+    }
+
+    function monthLabel(y, m) {
+      return new Date(y, m, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+    }
+    function ymd(y, m, d) {
+      const mm = (m + 1).toString().padStart(2, '0');
+      const dd = d.toString().padStart(2, '0');
+      return `${y}-${mm}-${dd}`;
+    }
+
+    function renderCalendar() {
+      const grid = document.getElementById('calendarGrid');
+      const label = document.getElementById('currentMonthLabel');
+      if (!grid || !label) return;
+      // Keep headers
+      grid.innerHTML = `
+        <div class="day-header">Sun</div>
+        <div class="day-header">Mon</div>
+        <div class="day-header">Tue</div>
+        <div class="day-header">Wed</div>
+        <div class="day-header">Thu</div>
+        <div class="day-header">Fri</div>
+        <div class="day-header">Sat</div>
+      `;
+
+      label.textContent = monthLabel(currentYear, currentMonth);
+
+      const firstDay = new Date(currentYear, currentMonth, 1);
+      const startWeekday = firstDay.getDay();
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const prevDays = new Date(currentYear, currentMonth, 0).getDate();
+
+      // Leading days from previous month
+      for (let i = 0; i < startWeekday; i++) {
+        const dayNum = prevDays - startWeekday + 1 + i;
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day other-month';
+        cell.textContent = dayNum;
+        grid.appendChild(cell);
+      }
+
+      const schedules = getSchedules();
+      // Current month days
+      for (let d = 1; d <= daysInMonth; d++) {
+        const cellDate = ymd(currentYear, currentMonth, d);
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day';
+        cell.setAttribute('data-date', cellDate);
+        cell.innerHTML = `${d}`;
+        const items = schedules[cellDate] || [];
+        if (items.length > 0) {
+          cell.classList.add('has-appointment');
+          items.slice(0, 2).forEach(it => {
+            const badge = document.createElement('div');
+            badge.className = 'appointment-badge';
+            badge.textContent = `${it.time} - ${it.title}`;
+            cell.appendChild(badge);
+          });
+          if (items.length > 2) {
+            const more = document.createElement('div');
+            more.className = 'appointment-badge';
+            more.textContent = `+${items.length - 2} more`;
+            cell.appendChild(more);
+          }
+        }
+        cell.addEventListener('click', () => openDay(cellDate));
+        grid.appendChild(cell);
+      }
+
+      // Trailing days to fill the week row
+      const totalCells = grid.children.length;
+      const remainder = totalCells % 7;
+      if (remainder !== 0) {
+        const toAdd = 7 - remainder;
+        for (let i = 1; i <= toAdd; i++) {
+          const cell = document.createElement('div');
+          cell.className = 'calendar-day other-month';
+          cell.textContent = i;
+          grid.appendChild(cell);
+        }
+      }
+    }
+
+    function openDay(dateStr) {
+      const schedules = getSchedules();
+      const items = schedules[dateStr] || [];
+      const details = items.map((it, idx) => `${idx + 1}. ${it.time} - ${it.title}`).join('\n') || 'No schedules.';
+      const addNew = confirm(`${dateStr}\n\n${details}\n\nAdd new schedule?`);
+      if (addNew) openNewScheduleModal(dateStr);
+    }
+
+    function openNewScheduleModal(prefillDate) {
+      const title = prompt('Enter schedule title (e.g., Clinic, Rounds, Meeting):');
+      if (!title) return;
+      const date = prefillDate || prompt('Enter date (YYYY-MM-DD):');
+      if (!date) return;
+      const time = prompt('Enter time (e.g., 09:00 AM):');
+      if (!time) return;
+      const schedules = getSchedules();
+      schedules[date] = schedules[date] || [];
+      schedules[date].push({ title, time });
+      setSchedules(schedules);
+      renderCalendar();
+      alert('Schedule saved.');
+    }
+
+    // Bind calendar controls
+    (function bindCalendarControls(){
+      const prev = document.getElementById('prevMonthBtn');
+      const next = document.getElementById('nextMonthBtn');
+      const today = document.getElementById('todayBtn');
+      const newBtn = document.getElementById('newScheduleBtn');
+      if (prev) prev.addEventListener('click', function(){ currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(); });
+      if (next) next.addEventListener('click', function(){ currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(); });
+      if (today) today.addEventListener('click', function(){ const now = new Date(); currentYear = now.getFullYear(); currentMonth = now.getMonth(); renderCalendar(); });
+      if (newBtn) newBtn.addEventListener('click', function(){ const now = new Date(); openNewScheduleModal(ymd(now.getFullYear(), now.getMonth(), now.getDate())); });
+    })();
+
+    // Initial calendar render
+    renderCalendar();
+    // Initial services/account render
+    renderServices();
+    loadAccountDetails();
+
+    // removed later profile save/dropdowns to revert to interactive-dashboard-only state
+
+    // Ticket data and rendering
+    const TICKETS_KEY = 'specialistTickets';
+    function monthName(idx) {
+      return ["January","February","March","April","May","June","July","August","September","October","November","December"][idx];
+    }
+    function formatDateLabel(dt, timeLabel) {
+      return `${monthName(dt.getMonth())} ${dt.getDate()}, ${dt.getFullYear()} - ${timeLabel}`;
+    }
+    function generateDefaultTickets() {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const plusDays = (n) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + n);
+      return [
+        { id: 'TKT-001', patient: 'John Doe', service: 'Consultation', when: formatDateLabel(plusDays(0), '10:30 AM'), status: 'Confirmed' },
+        { id: 'TKT-002', patient: 'Jane Smith', service: 'Medical Certificate', when: formatDateLabel(plusDays(1), '2:15 PM'), status: 'Pending' },
+        { id: 'TKT-003', patient: 'Robert Johnson', service: 'Medical Clearance', when: formatDateLabel(plusDays(2), '9:00 AM'), status: 'Confirmed' }
+      ];
+    }
+    function getTickets() {
+      const raw = localStorage.getItem(TICKETS_KEY);
+      if (!raw) {
+        const defaults = generateDefaultTickets();
+        localStorage.setItem(TICKETS_KEY, JSON.stringify(defaults));
+        return [...defaults];
+      }
+      try { return JSON.parse(raw); } catch { return generateDefaultTickets(); }
+    }
+    function setTickets(tickets) {
+      localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
+    }
+    function statusBadgeClass(status) {
+      const s = (status || '').toLowerCase();
+      if (s === 'confirmed' || s === 'processing') return 'status-confirmed';
+      if (s === 'pending') return 'status-pending';
+      if (s === 'completed') return 'status-confirmed';
+      return 'status-pending';
+    }
+    function renderTickets(filter = 'All') {
+      const container = document.getElementById('ticketRows');
+      if (!container) return;
+      const tickets = getTickets();
+      const filtered = filter === 'All' ? tickets : tickets.filter(t => t.status.toLowerCase() === filter.toLowerCase());
+      container.innerHTML = filtered.map(t => `
+        <div class="ticket-row" data-id="${t.id}">
+          <div>${t.patient}</div>
+          <div>${t.service}</div>
+          <div>${t.when}</div>
+          <div><span class="status-badge ${statusBadgeClass(t.status)}">${t.status}</span></div>
+          <div><button class="action-btn" onclick="viewTicket('${t.id}')">View</button></div>
+        </div>
+      `).join('');
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="padding:1rem; color:#7A7A7A;">No tickets found.</div>';
+      }
+    }
+    // Initial render
+    renderTickets('All');
+
+    // Filter click handlers
+    document.querySelectorAll('.filters .filter-item').forEach(el => {
+      el.addEventListener('click', function() {
+        document.querySelectorAll('.filters .filter-item').forEach(x => x.classList.remove('active'));
+        this.classList.add('active');
+        const label = this.textContent.trim();
+        const filter = label === 'All Tickets' ? 'All' : label;
+        renderTickets(filter);
+      });
+    });
+
+    // View ticket modal
+    function viewTicket(ticketId) {
+      const t = getTickets().find(x => x.id === ticketId);
+      if (!t) return;
+      document.getElementById('tdTicket').value = t.id;
+      document.getElementById('tdPatient').value = t.patient;
+      document.getElementById('tdService').value = t.service;
+      document.getElementById('tdWhen').value = t.when;
+      document.getElementById('tdStatus').value = t.status;
+      document.getElementById('ticketDetailsModal').style.display = 'flex';
+    }
+    window.viewTicket = viewTicket;
+
+    function updateTicketStatus(newStatus) {
+      const id = document.getElementById('tdTicket').value;
+      const tickets = getTickets();
+      const idx = tickets.findIndex(t => t.id === id);
+      if (idx >= 0) {
+        tickets[idx].status = newStatus;
+        setTickets(tickets);
+        // Re-render with current active filter
+        const activeFilterEl = document.querySelector('.filters .filter-item.active');
+        const label = activeFilterEl ? activeFilterEl.textContent.trim() : 'All Tickets';
+        const filter = label === 'All Tickets' ? 'All' : label;
+        renderTickets(filter);
+        document.getElementById('tdStatus').value = newStatus;
+      }
+    }
+    window.updateTicketStatus = updateTicketStatus;
+
+
+    // Profile image upload
+    (function setupProfileUpload(){
+      const uploadEl = document.getElementById('fileUpload');
+      if (!uploadEl) return;
+      uploadEl.addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function(e2) {
+            const imgEl = document.getElementById('profileImage');
+            const avatarEl = document.getElementById('userAvatar');
+            if (imgEl) imgEl.src = e2.target.result;
+            if (avatarEl) avatarEl.innerHTML = `<img src="${e2.target.result}" alt="Profile Image">`;
+          }
+          reader.readAsDataURL(e.target.files[0]);
+        }
+      });
+    })();
+
+    // Logout
+    function logout() {
+      if (!confirm('Are you sure you want to logout?')) return;
+      localStorage.removeItem('currentUserEmail');
+      window.location.href = 'login.html';
+    }
+
+    // Close modal if clicked outside
+    window.addEventListener('click', function(e) {
+      const modals = document.getElementsByClassName('modal');
+      for (let modal of modals) {
+        if (e.target === modal) { modal.style.display = 'none'; }
+      }
+    });
+  </script>
+</body>
+</html>
+
+

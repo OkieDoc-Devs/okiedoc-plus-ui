@@ -103,6 +103,39 @@ const SpecialistDashboard = () => {
     }
   ]);
 
+  const [systemFees, setSystemFees] = useState({
+    doctorsFee: { isActive: true, name: "Doctor's Fee" },
+    processingFee: { isActive: true, name: "Processing Fee" },
+    convenienceFee: { isActive: true, name: "Convenience Fee" },
+  });
+
+  const [discount, setDiscount] = useState({
+    name: "Discount",
+    type: "percentage", // 'percentage' or 'peso'
+    value: 0,
+    isActive: false,
+  });
+
+  const [notes, setNotes] = useState({
+    checkout: "",
+    isActive: true,
+  });
+
+  const handleFeeToggle = (feeName) => {
+    setSystemFees((prev) => ({
+      ...prev,
+      [feeName]: { ...prev[feeName], isActive: !prev[feeName].isActive },
+    }));
+  };
+
+  const handleDiscountToggle = () => {
+    setDiscount((prev) => ({ ...prev, isActive: !prev.isActive }));
+  };
+
+  const handleNotesToggle = () => {
+    setNotes((prev) => ({ ...prev, isActive: !prev.isActive }));
+  };
+
   const [pendingApplications, setPendingApplications] = useState([
     {
       id: "APP001",
@@ -274,28 +307,32 @@ const SpecialistDashboard = () => {
     <>
       <Header />
       <main className="dashboard-container">
-        <div className="toolbar">
-          <div className="filters">
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <select
-              value={filterSpecialization}
-              onChange={(e) => setFilterSpecialization(e.target.value)}
-            >
-              <option value="">Filter by Specialization</option>
-              {allSpecializations.map((spec) => (
-                <option key={spec} value={spec}>
-                  {spec}
-                </option>
-              ))}
-            </select>
-            {activeTab === 'transactions' && (
-              <>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+        {activeTab !== "settings" && (
+          <div className="toolbar">
+            <div className="filters">
+              <input
+                type="text"
+                placeholder="Search by name or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <select
+                value={filterSpecialization}
+                onChange={(e) => setFilterSpecialization(e.target.value)}
+              >
+                <option value="">Filter by Specialization</option>
+                {allSpecializations.map((spec) => (
+                  <option key={spec} value={spec}>
+                    {spec}
+                  </option>
+                ))}
+              </select>
+              {activeTab === "transactions" && (
+                <>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                  >
                     <option value="">Filter by Status</option>
                     <option value="Pending">Pending</option>
                     <option value="Processing">Processing</option>
@@ -303,14 +340,31 @@ const SpecialistDashboard = () => {
                     <option value="Confirmed">Confirmed</option>
                     <option value="Incomplete">Incomplete</option>
                     <option value="Completed">Completed</option>
-                </select>
-                <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} placeholder="From"/>
-                <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} placeholder="To"/>
-                <button className="add-btn" style={{backgroundColor: '#0B5388'}} onClick={handleExport}>Export Tickets</button>
-              </>
-            )}
+                  </select>
+                  <input
+                    type="date"
+                    value={filterDateFrom}
+                    onChange={(e) => setFilterDateFrom(e.target.value)}
+                    placeholder="From"
+                  />
+                  <input
+                    type="date"
+                    value={filterDateTo}
+                    onChange={(e) => setFilterDateTo(e.target.value)}
+                    placeholder="To"
+                  />
+                  <button
+                    className="add-btn"
+                    style={{ backgroundColor: "#0B5388" }}
+                    onClick={handleExport}
+                  >
+                    Export Tickets
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="tabs">
           <button
@@ -333,6 +387,12 @@ const SpecialistDashboard = () => {
             onClick={() => setActiveTab("transactions")}
           >
             Transaction History
+          </button>
+          <button
+            className={`tab-link ${activeTab === "settings" ? "active" : ""}`}
+            onClick={() => setActiveTab("settings")}
+          >
+            System Fee Settings
           </button>
         </div>
 
@@ -382,6 +442,107 @@ const SpecialistDashboard = () => {
                     </table>
                 </div>
             </div>
+        )}
+        {activeTab === "settings" && (
+          <div id="settings" className="tab-content active settings-tab-content">
+            <h2>System Fee & Discount Settings</h2>
+            <div className="settings-grid">
+              {/* System Fees */}
+              <div className="settings-card">
+                <h3>System Fees</h3>
+                {Object.entries(systemFees).map(([key, fee]) => (
+                  <div className="settings-item" key={key}>
+                    <span>{fee.name}</span>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={fee.isActive}
+                        onChange={() => handleFeeToggle(key)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              {/* Discount */}
+              <div className="settings-card">
+                <h3>Discount</h3>
+                <div className="settings-item">
+                  <span>Activate Discount</span>
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={discount.isActive}
+                      onChange={handleDiscountToggle}
+                    />
+                    <span className="slider round"></span>
+                  </label>
+                </div>
+                {discount.isActive && (
+                  <>
+                    <div className="settings-item">
+                      <label>Discount Type:</label>
+                      <select
+                        value={discount.type}
+                        onChange={(e) =>
+                          setDiscount({ ...discount, type: e.target.value })
+                        }
+                      >
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="peso">Peso (₱)</option>
+                      </select>
+                    </div>
+                    <div className="settings-item">
+                      <label>Discount Value:</label>
+                      <input
+                        type="number"
+                        value={discount.value}
+                        onChange={(e) =>
+                          setDiscount({
+                            ...discount,
+                            value: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Notes */}
+              <div className="settings-card notes-card">
+                <h3>Checkout Notes</h3>
+                <div className="settings-item">
+                  <span>Display Notes on Checkout</span>
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={notes.isActive}
+                      onChange={handleNotesToggle}
+                    />
+                    <span className="slider round"></span>
+                  </label>
+                </div>
+                {notes.isActive && (
+                  <div className="settings-item-full">
+                    <label htmlFor="checkout-notes-textarea">
+                      Notes to Display:
+                    </label>
+                    <textarea
+                      id="checkout-notes-textarea"
+                      value={notes.checkout}
+                      onChange={(e) =>
+                        setNotes({ ...notes, checkout: e.target.value })
+                      }
+                      rows="4"
+                      placeholder="Enter notes to show on the checkout summary..."
+                    ></textarea>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </>

@@ -549,4 +549,165 @@ const SpecialistDashboard = () => {
   );
 };
 
+// Consultation Histories
+
+
+// src/Admin/ConsultationHistory/pdfHelpers.js
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+
+/**
+ * Utility: Add a header to all PDFs
+ */
+const addHeader = (doc, title) => {
+  doc.setFontSize(16);
+  doc.text(title, 14, 20);
+  doc.setFontSize(10);
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+  doc.line(14, 32, 196, 32); // divider
+  doc.setFontSize(12);
+};
+
+/**
+ * Download all consultations as one PDF
+ */
+export const downloadFullHistoryPDF = (consultations) => {
+  const doc = new jsPDF();
+  addHeader(doc, "Consultation History");
+
+  const rows = consultations.map((c, i) => [
+    i + 1,
+    c.date || "-",
+    c.ticket || "-",
+    c.complaint || "-",
+    c.specialist || "-",
+  ]);
+
+  doc.autoTable({
+    startY: 40,
+    head: [["#", "Date", "Ticket", "Complaint", "Specialist"]],
+    body: rows,
+  });
+
+  doc.save("consultation_history.pdf");
+};
+
+/**
+ * Treatment Plan PDF
+ */
+export const downloadTreatmentPlanPDF = (consultation) => {
+  const doc = new jsPDF();
+  addHeader(doc, "Treatment Plan");
+
+  doc.text(`Date: ${consultation.date || "-"}`, 14, 40);
+  doc.text(`Ticket: ${consultation.ticket || "-"}`, 14, 48);
+  doc.text(`Chief Complaint: ${consultation.complaint || "-"}`, 14, 56);
+
+  doc.text("SOAP Notes:", 14, 70);
+  doc.text(consultation.soap || "-", 14, 78, { maxWidth: 180 });
+
+  doc.text("Doctor’s Note:", 14, 100);
+  doc.text(consultation.doctorsNote || "-", 14, 108, { maxWidth: 180 });
+
+  doc.save("treatment_plan.pdf");
+};
+
+/**
+ * Prescription PDF
+ */
+export const downloadPrescriptionPDF = (consultation) => {
+  const doc = new jsPDF();
+  addHeader(doc, "Medicine Prescription");
+
+  const rows = (consultation.prescription || []).map((p, i) => [
+    i + 1,
+    p.brand || "-",
+    p.generic || "-",
+    p.dosage || "-",
+    p.form || "-",
+    p.quantity || "-",
+    p.instructions || "-",
+  ]);
+
+  doc.autoTable({
+    startY: 40,
+    head: [["#", "Brand", "Generic", "Dosage", "Form", "Qty", "Instructions"]],
+    body: rows,
+  });
+
+  doc.save("prescription.pdf");
+};
+
+/**
+ * Lab Request PDF
+ */
+export const downloadLabRequestPDF = (consultation) => {
+  const doc = new jsPDF();
+  addHeader(doc, "Lab Requests");
+
+  const rows = (consultation.labs || []).map((l, i) => [
+    i + 1,
+    l.test || "-",
+    l.remarks || "-",
+  ]);
+
+  doc.autoTable({
+    startY: 40,
+    head: [["#", "Lab Test", "Remarks"]],
+    body: rows,
+  });
+
+  doc.save("lab_requests.pdf");
+};
+
+/**
+ * Medical Certificate PDF
+ */
+export const downloadMedicalCertificatePDF = (consultation) => {
+  const doc = new jsPDF();
+  addHeader(doc, "Medical Certificate");
+
+  doc.text("This certifies that:", 14, 50);
+  doc.text(`Patient: ${consultation.ticket || "-"}`, 14, 60);
+  doc.text(
+    `Has been seen on: ${consultation.date || "-"}`,
+    14,
+    70
+  );
+
+  doc.text("Findings / Notes:", 14, 90);
+  doc.text(consultation.doctorsNote || "-", 14, 100, { maxWidth: 180 });
+
+  doc.text("Referral Info:", 14, 120);
+  doc.text(
+    `Specialist: ${consultation.referralSpecialist || "-"}`,
+    14,
+    130
+  );
+  doc.text(
+    `Assigned Specialist: ${consultation.assignedSpecialist || "-"}`,
+    14,
+    140
+  );
+  doc.text(
+    `Assigned Nurse: ${consultation.assignedNurse || "-"}`,
+    14,
+    150
+  );
+
+  doc.text("Follow-up Date:", 14, 170);
+  doc.text(consultation.followUp || "-", 14, 180);
+
+  doc.save("medical_certificate.pdf");
+};
+
+/**
+ * Simulated Send to Email
+ * (Replace with real API call later)
+ */
+export const sendToEmail = (consultation) => {
+  console.log("Sending consultation to email:", consultation);
+  alert("Consultation details sent to patient's email (simulation).");
+};
+
 export default SpecialistDashboard;

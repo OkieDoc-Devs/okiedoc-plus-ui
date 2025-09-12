@@ -1,10 +1,9 @@
-import painMapLabeled from "../assets/pain-map-labeled.png";
 import "../App.css";
 import "./NurseStyles.css";
 import "./NurseStyles.css";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import NurseConsultationHistory from "./ConsultationHistory";
+import NurseConsultationHistory from "../Patient/jsx/ConsultationHistory";
 
 const LOCAL_STORAGE_KEYS = {
   tickets: "nurse.tickets",

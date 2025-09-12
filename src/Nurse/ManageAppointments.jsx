@@ -1535,97 +1535,93 @@ export default function ManageAppointment() {
                     <div className="form-row">
                       <div className="form-group">
                         <label htmlFor="actualChiefComplaint">Actual Chief Complaint (Nurse)</label>
-                        <input
-                          id="actualChiefComplaint"
-                          name="actualChiefComplaint"
-                          value={newTicketData.actualChiefComplaint || ""}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              actualChiefComplaint: e.target.value,
-                            })
-                          }
-                          placeholder="Enter actual chief complaint"
-                        />
+                          <textarea
+                            id="actualChiefComplaint"
+                            name="actualChiefComplaint"
+                            rows="2"
+                            value={newTicketData.actualChiefComplaint || ""}
+                            onChange={(e) =>
+                              setNewTicketData({
+                                ...newTicketData,
+                                actualChiefComplaint: e.target.value,
+                              })
+                            }
+                          />
                       </div>
                       <div className="form-group">
                         <label htmlFor="medicalRecords">Medical Records</label>
-                        <textarea
-                          id="medicalRecords"
-                          name="medicalRecords"
-                          value={newTicketData.medicalRecords || ""}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              medicalRecords: e.target.value,
-                            })
-                          }
-                          placeholder="Enter medical records"
-                        />
+                          <textarea
+                            id="medicalRecords"
+                            name="medicalRecords"
+                            value={newTicketData.medicalRecords || ""}
+                            onChange={(e) =>
+                              setNewTicketData({
+                                ...newTicketData,
+                                medicalRecords: e.target.value,
+                              })
+                            }
+                          />
                       </div>
                     </div>
                     <div className="form-row">
                       <div className="form-group">
                         <label htmlFor="familyHistory">Family History</label>
-                        <textarea
-                          id="familyHistory"
-                          name="familyHistory"
-                          value={newTicketData.familyHistory || ""}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              familyHistory: e.target.value,
-                            })
-                          }
-                          placeholder="Enter family history"
-                        />
+                          <textarea
+                            id="familyHistory"
+                            name="familyHistory"
+                            value={newTicketData.familyHistory || ""}
+                            onChange={(e) =>
+                              setNewTicketData({
+                                ...newTicketData,
+                                familyHistory: e.target.value,
+                              })
+                            }
+                          />
                       </div>
                       <div className="form-group">
                         <label htmlFor="allergies">Allergies</label>
-                        <input
-                          id="allergies"
-                          name="allergies"
-                          value={newTicketData.allergies || ""}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              allergies: e.target.value,
-                            })
-                          }
-                          placeholder="Enter allergies"
-                        />
+                          <textarea
+                            id="allergies"
+                            name="allergies"
+                            rows="2"
+                            value={newTicketData.allergies || ""}
+                            onChange={(e) =>
+                              setNewTicketData({
+                                ...newTicketData,
+                                allergies: e.target.value,
+                              })
+                            }
+                          />
                       </div>
                     </div>
                     <div className="form-row">
                       <div className="form-group">
                         <label htmlFor="smoking">Smoking</label>
-                        <input
-                          id="smoking"
-                          name="smoking"
-                          value={newTicketData.smoking || ""}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              smoking: e.target.value,
-                            })
-                          }
-                          placeholder="Smoking status"
-                        />
+                          <input
+                            id="smoking"
+                            name="smoking"
+                            value={newTicketData.smoking || ""}
+                            onChange={(e) =>
+                              setNewTicketData({
+                                ...newTicketData,
+                                smoking: e.target.value,
+                              })
+                            }
+                          />
                       </div>
                       <div className="form-group">
                         <label htmlFor="drinking">Drinking</label>
-                        <input
-                          id="drinking"
-                          name="drinking"
-                          value={newTicketData.drinking || ""}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              drinking: e.target.value,
-                            })
-                          }
-                          placeholder="Drinking status"
-                        />
+                          <input
+                            id="drinking"
+                            name="drinking"
+                            value={newTicketData.drinking || ""}
+                            onChange={(e) =>
+                              setNewTicketData({
+                                ...newTicketData,
+                                drinking: e.target.value,
+                              })
+                            }
+                          />
                       </div>
                     </div>
                   </div>
@@ -1639,6 +1635,7 @@ export default function ManageAppointment() {
                           id="preferredDate"
                           name="preferredDate"
                           value={newTicketData.preferredDate}
+                          min={new Date().toISOString().split('T')[0]}
                           onChange={(e) =>
                             setNewTicketData({
                               ...newTicketData,
@@ -1654,6 +1651,7 @@ export default function ManageAppointment() {
                           id="preferredTime"
                           name="preferredTime"
                           value={newTicketData.preferredTime}
+                          min={newTicketData.preferredDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0,5) : undefined}
                           onChange={(e) =>
                             setNewTicketData({
                               ...newTicketData,

@@ -198,7 +198,7 @@ export default function ManageAppointment() {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
   const [createTicketTab, setCreateTicketTab] = useState("medical");
-  
+
   const painMapFields = [
     "Thymus",
     "Lung and diaphragm",
@@ -213,15 +213,15 @@ export default function ManageAppointment() {
     "Urinary bladder",
     "Ureter",
     "Appendix",
-    "Liver and gall bladder"
+    "Liver and gall bladder",
   ];
-                <button
-                  className={createTicketTab === 'painmap' ? 'tab-btn active' : 'tab-btn'}
-                  onClick={() => setCreateTicketTab('painmap')}
-                  type="button"
-                >
-                  Pain Map
-                </button>
+  <button
+    className={createTicketTab === "painmap" ? "tab-btn active" : "tab-btn"}
+    onClick={() => setCreateTicketTab("painmap")}
+    type="button"
+  >
+    Pain Map
+  </button>;
 
   const rosFields = {
     constitutional: [
@@ -453,7 +453,6 @@ export default function ManageAppointment() {
     }
   };
 
-
   const openCreateTicket = (source = "hotline") => {
     setNewTicketData({
       patientName: "",
@@ -465,7 +464,8 @@ export default function ManageAppointment() {
       preferredDate: "",
       preferredTime: "",
       preferredSpecialist: "",
-      consultationChannel: source === "hotline" ? "Mobile Call" : "Platform Chat",
+      consultationChannel:
+        source === "hotline" ? "Mobile Call" : "Platform Chat",
       hasHMO: false,
       hmo: {
         company: "",
@@ -482,7 +482,7 @@ export default function ManageAppointment() {
       familyHistory: "",
       allergies: "",
       smoking: "",
-      drinking: ""
+      drinking: "",
     });
     setShowCreateTicketModal(true);
   };
@@ -560,9 +560,7 @@ export default function ManageAppointment() {
 
     let yPosition = 35;
 
-    pdf.text(`Name: ${invoiceTicket.patientName}`, 20, yPosition);
     pdf.text(`Date: ${new Date().toLocaleDateString()}`, 150, yPosition);
-    yPosition += 6;
     pdf.text(`Invoice No: ${invoiceData.invoiceNumber}`, 20, yPosition);
 
     yPosition += 6;
@@ -606,6 +604,8 @@ export default function ManageAppointment() {
     pdf.setFont("helvetica", "normal");
     yPosition += 8;
 
+    pdf.text(`Name: ${invoiceTicket.patientName}`, 20, yPosition);
+    yPosition += 6;
     pdf.text(`Mobile Number: ${invoiceTicket.mobile}`, 20, yPosition);
     yPosition += 6;
     pdf.text(`Email Address: ${invoiceTicket.email}`, 20, yPosition);
@@ -658,17 +658,21 @@ export default function ManageAppointment() {
     pdf.setTextColor(0, 0, 0);
 
     yPosition += 20;
-    pdf.setFontSize(8);
-    pdf.text("This is system generated -------", 105, yPosition, {
+    pdf.line(20, yPosition, 180, yPosition);
+    yPosition += 10;
+    pdf.setFontSize(10);
+    pdf.text("This is a system-generated invoice.", 105, yPosition, {
       align: "center",
     });
 
-    yPosition += 15;
+    yPosition += 8;
     pdf.text(
-      "OkieDoc+ Address: 123 Health St, Wellness City, Country",
+      "For inquiries, please contact support@okiedocplus.com",
       105,
       yPosition,
-      { align: "center" }
+      {
+        align: "center",
+      }
     );
 
     pdf.save(`Invoice_${invoiceData.invoiceNumber || "OkieDoc"}.pdf`);
@@ -766,7 +770,10 @@ export default function ManageAppointment() {
                     {ticket.status}
                   </span>
                 </div>
-                <div className="ticket-actions" style={{display:'flex',gap:8}}>
+                <div
+                  className="ticket-actions"
+                  style={{ display: "flex", gap: 8 }}
+                >
                   {ticket.claimedBy ? (
                     <button
                       className="action-btn edit"
@@ -791,7 +798,7 @@ export default function ManageAppointment() {
                   {/* Rightmost button to view consultation history */}
                   <button
                     className="action-btn"
-                    style={{marginLeft:'auto'}}
+                    style={{ marginLeft: "auto" }}
                     onClick={() => setShowConsultationHistory(true)}
                   >
                     View Consultation History
@@ -799,7 +806,7 @@ export default function ManageAppointment() {
                 </div>
               </div>
             ))}
-              {/* Nurse Consultation History removed from Processing Tickets */}
+            {/* Nurse Consultation History removed from Processing Tickets */}
           </div>
 
           <div className="tickets-list">
@@ -831,7 +838,10 @@ export default function ManageAppointment() {
                     {ticket.hasHMO ? "Yes" : ticket.hmo ? "Yes" : "No"}
                   </p>
                 </div>
-                <div className="ticket-actions" style={{display:'flex',gap:8}}>
+                <div
+                  className="ticket-actions"
+                  style={{ display: "flex", gap: 8 }}
+                >
                   <button
                     className="action-btn view"
                     onClick={() => setSelectedTicket(ticket)}
@@ -848,7 +858,7 @@ export default function ManageAppointment() {
                   {/* Rightmost button to view consultation history */}
                   <button
                     className="action-btn"
-                    style={{marginLeft:'auto'}}
+                    style={{ marginLeft: "auto" }}
                     onClick={() => setShowConsultationHistory(true)}
                   >
                     View Consultation History
@@ -856,7 +866,7 @@ export default function ManageAppointment() {
                 </div>
               </div>
             ))}
-              {/* Nurse Consultation History removed from Pending Tickets */}
+            {/* Nurse Consultation History removed from Pending Tickets */}
           </div>
 
           {showConsultationHistory && (
@@ -1138,36 +1148,51 @@ export default function ManageAppointment() {
                 </div>
               </div>
 
-
               {/* Review of Systems Section */}
               <div className="ros-info" style={{ marginTop: 24 }}>
                 <h3>Review of Systems</h3>
                 <div className="info-grid">
-                  {selectedTicket.ros && Object.values(selectedTicket.ros).flat().length > 0 ? (
-                    Object.values(selectedTicket.ros).flat().map((item, idx) => (
-                      <div key={idx} className="info-item">
-                        <span>{item}</span>
-                      </div>
-                    ))
+                  {selectedTicket.ros &&
+                  Object.values(selectedTicket.ros).flat().length > 0 ? (
+                    Object.values(selectedTicket.ros)
+                      .flat()
+                      .map((item, idx) => (
+                        <div key={idx} className="info-item">
+                          <span>{item}</span>
+                        </div>
+                      ))
                   ) : (
                     <div className="info-item">No ROS data provided.</div>
                   )}
                 </div>
               </div>
 
-
               {/* Pain Map Section */}
 
               <div className="painmap-info" style={{ marginTop: 24 }}>
                 <h3>Pain Map</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 16,
+                  }}
+                >
                   <img
                     src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/1506_Referred_Pain_Chart.jpg/1280px-1506_Referred_Pain_Chart.jpg"
                     alt="Pain Map"
-                    style={{ height: 180, borderRadius: 8, border: '1px solid #ccc', background: '#fff', marginBottom: 12 }}
+                    style={{
+                      height: 180,
+                      borderRadius: 8,
+                      border: "1px solid #ccc",
+                      background: "#fff",
+                      marginBottom: 12,
+                    }}
                   />
-                  <div style={{ textAlign: 'center' }}>
-                    {selectedTicket.painMap && selectedTicket.painMap.length > 0 ? (
+                  <div style={{ textAlign: "center" }}>
+                    {selectedTicket.painMap &&
+                    selectedTicket.painMap.length > 0 ? (
                       selectedTicket.painMap.map((area, idx) => (
                         <div key={idx} className="info-item">
                           <span>{area}</span>
@@ -1402,30 +1427,36 @@ export default function ManageAppointment() {
               </button>
             </div>
             <div className="modal-body">
-              <div style={{marginBottom:24, display:'flex', gap:16}}>
+              <div style={{ marginBottom: 24, display: "flex", gap: 16 }}>
                 <button
-                  className={createTicketTab === 'medical' ? 'tab-btn active' : 'tab-btn'}
+                  className={
+                    createTicketTab === "medical" ? "tab-btn active" : "tab-btn"
+                  }
                   type="button"
-                  onClick={() => setCreateTicketTab('medical')}
+                  onClick={() => setCreateTicketTab("medical")}
                 >
                   Medical Info
                 </button>
                 <button
-                  className={createTicketTab === 'ros' ? 'tab-btn active' : 'tab-btn'}
+                  className={
+                    createTicketTab === "ros" ? "tab-btn active" : "tab-btn"
+                  }
                   type="button"
-                  onClick={() => setCreateTicketTab('ros')}
+                  onClick={() => setCreateTicketTab("ros")}
                 >
                   Review of Systems (ROS)
                 </button>
                 <button
-                  className={createTicketTab === 'painmap' ? 'tab-btn active' : 'tab-btn'}
+                  className={
+                    createTicketTab === "painmap" ? "tab-btn active" : "tab-btn"
+                  }
                   type="button"
-                  onClick={() => setCreateTicketTab('painmap')}
+                  onClick={() => setCreateTicketTab("painmap")}
                 >
                   Pain Map
                 </button>
               </div>
-              {createTicketTab === 'medical' && (
+              {createTicketTab === "medical" && (
                 <form
                   onSubmit={submitCreateTicket}
                   className="create-appointment-form"
@@ -1533,94 +1564,96 @@ export default function ManageAppointment() {
                     {/* Nurse input fields for ticket creation */}
                     <div className="form-row">
                       <div className="form-group">
-                        <label htmlFor="actualChiefComplaint">Actual Chief Complaint (Nurse)</label>
-                          <textarea
-                            id="actualChiefComplaint"
-                            name="actualChiefComplaint"
-                            rows="2"
-                            value={newTicketData.actualChiefComplaint || ""}
-                            onChange={(e) =>
-                              setNewTicketData({
-                                ...newTicketData,
-                                actualChiefComplaint: e.target.value,
-                              })
-                            }
-                          />
+                        <label htmlFor="actualChiefComplaint">
+                          Actual Chief Complaint (Nurse)
+                        </label>
+                        <textarea
+                          id="actualChiefComplaint"
+                          name="actualChiefComplaint"
+                          rows="2"
+                          value={newTicketData.actualChiefComplaint || ""}
+                          onChange={(e) =>
+                            setNewTicketData({
+                              ...newTicketData,
+                              actualChiefComplaint: e.target.value,
+                            })
+                          }
+                        />
                       </div>
                       <div className="form-group">
                         <label htmlFor="medicalRecords">Medical Records</label>
-                          <textarea
-                            id="medicalRecords"
-                            name="medicalRecords"
-                            value={newTicketData.medicalRecords || ""}
-                            onChange={(e) =>
-                              setNewTicketData({
-                                ...newTicketData,
-                                medicalRecords: e.target.value,
-                              })
-                            }
-                          />
+                        <textarea
+                          id="medicalRecords"
+                          name="medicalRecords"
+                          value={newTicketData.medicalRecords || ""}
+                          onChange={(e) =>
+                            setNewTicketData({
+                              ...newTicketData,
+                              medicalRecords: e.target.value,
+                            })
+                          }
+                        />
                       </div>
                     </div>
                     <div className="form-row">
                       <div className="form-group">
                         <label htmlFor="familyHistory">Family History</label>
-                          <textarea
-                            id="familyHistory"
-                            name="familyHistory"
-                            value={newTicketData.familyHistory || ""}
-                            onChange={(e) =>
-                              setNewTicketData({
-                                ...newTicketData,
-                                familyHistory: e.target.value,
-                              })
-                            }
-                          />
+                        <textarea
+                          id="familyHistory"
+                          name="familyHistory"
+                          value={newTicketData.familyHistory || ""}
+                          onChange={(e) =>
+                            setNewTicketData({
+                              ...newTicketData,
+                              familyHistory: e.target.value,
+                            })
+                          }
+                        />
                       </div>
                       <div className="form-group">
                         <label htmlFor="allergies">Allergies</label>
-                          <textarea
-                            id="allergies"
-                            name="allergies"
-                            rows="2"
-                            value={newTicketData.allergies || ""}
-                            onChange={(e) =>
-                              setNewTicketData({
-                                ...newTicketData,
-                                allergies: e.target.value,
-                              })
-                            }
-                          />
+                        <textarea
+                          id="allergies"
+                          name="allergies"
+                          rows="2"
+                          value={newTicketData.allergies || ""}
+                          onChange={(e) =>
+                            setNewTicketData({
+                              ...newTicketData,
+                              allergies: e.target.value,
+                            })
+                          }
+                        />
                       </div>
                     </div>
                     <div className="form-row">
                       <div className="form-group">
                         <label htmlFor="smoking">Smoking</label>
-                          <input
-                            id="smoking"
-                            name="smoking"
-                            value={newTicketData.smoking || ""}
-                            onChange={(e) =>
-                              setNewTicketData({
-                                ...newTicketData,
-                                smoking: e.target.value,
-                              })
-                            }
-                          />
+                        <input
+                          id="smoking"
+                          name="smoking"
+                          value={newTicketData.smoking || ""}
+                          onChange={(e) =>
+                            setNewTicketData({
+                              ...newTicketData,
+                              smoking: e.target.value,
+                            })
+                          }
+                        />
                       </div>
                       <div className="form-group">
                         <label htmlFor="drinking">Drinking</label>
-                          <input
-                            id="drinking"
-                            name="drinking"
-                            value={newTicketData.drinking || ""}
-                            onChange={(e) =>
-                              setNewTicketData({
-                                ...newTicketData,
-                                drinking: e.target.value,
-                              })
-                            }
-                          />
+                        <input
+                          id="drinking"
+                          name="drinking"
+                          value={newTicketData.drinking || ""}
+                          onChange={(e) =>
+                            setNewTicketData({
+                              ...newTicketData,
+                              drinking: e.target.value,
+                            })
+                          }
+                        />
                       </div>
                     </div>
                   </div>
@@ -1634,7 +1667,7 @@ export default function ManageAppointment() {
                           id="preferredDate"
                           name="preferredDate"
                           value={newTicketData.preferredDate}
-                          min={new Date().toISOString().split('T')[0]}
+                          min={new Date().toISOString().split("T")[0]}
                           onChange={(e) =>
                             setNewTicketData({
                               ...newTicketData,
@@ -1650,7 +1683,12 @@ export default function ManageAppointment() {
                           id="preferredTime"
                           name="preferredTime"
                           value={newTicketData.preferredTime}
-                          min={newTicketData.preferredDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0,5) : undefined}
+                          min={
+                            newTicketData.preferredDate ===
+                            new Date().toISOString().split("T")[0]
+                              ? new Date().toTimeString().slice(0, 5)
+                              : undefined
+                          }
                           onChange={(e) =>
                             setNewTicketData({
                               ...newTicketData,
@@ -1770,7 +1808,10 @@ export default function ManageAppointment() {
                               onChange={(e) =>
                                 setNewTicketData((prev) => ({
                                   ...prev,
-                                  hmo: { ...prev.hmo, memberId: e.target.value },
+                                  hmo: {
+                                    ...prev.hmo,
+                                    memberId: e.target.value,
+                                  },
                                 }))
                               }
                             />
@@ -1778,7 +1819,9 @@ export default function ManageAppointment() {
                         </div>
                         <div className="form-row">
                           <div className="form-group">
-                            <label htmlFor="hmoExpiration">Expiration Date</label>
+                            <label htmlFor="hmoExpiration">
+                              Expiration Date
+                            </label>
                             <input
                               type="date"
                               id="hmoExpiration"
@@ -1843,26 +1886,52 @@ export default function ManageAppointment() {
                   </div>
                 </form>
               )}
-              {createTicketTab === 'painmap' && (
+              {createTicketTab === "painmap" && (
                 <div className="painmap-section">
                   <h3>Pain Map</h3>
-                  <div style={{textAlign:'center', marginBottom:24}}>
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/1506_Referred_Pain_Chart.jpg/1280px-1506_Referred_Pain_Chart.jpg" alt="Pain Map" style={{maxWidth:'100%', height:'auto', borderRadius:12, boxShadow:'0 2px 8px rgba(11,83,136,0.07)'}} />
+                  <div style={{ textAlign: "center", marginBottom: 24 }}>
+                    <img
+                      src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/1506_Referred_Pain_Chart.jpg/1280px-1506_Referred_Pain_Chart.jpg"
+                      alt="Pain Map"
+                      style={{
+                        maxWidth: "100%",
+                        height: "auto",
+                        borderRadius: 12,
+                        boxShadow: "0 2px 8px rgba(11,83,136,0.07)",
+                      }}
+                    />
                   </div>
                   <div className="painmap-checklist">
-                    <strong style={{display:'block', marginBottom:10, color:'#2a4d6c'}}>Select pain locations:</strong>
-                    <div style={{display:'flex', flexWrap:'wrap', gap:'16px 24px'}}>
-                      {painMapFields.map(part => (
+                    <strong
+                      style={{
+                        display: "block",
+                        marginBottom: 10,
+                        color: "#2a4d6c",
+                      }}
+                    >
+                      Select pain locations:
+                    </strong>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "16px 24px",
+                      }}
+                    >
+                      {painMapFields.map((part) => (
                         <label key={part} className="painmap-item-label">
                           <input
                             type="checkbox"
-                            checked={newTicketData.painMap && newTicketData.painMap.includes(part)}
-                            onChange={e => {
+                            checked={
+                              newTicketData.painMap &&
+                              newTicketData.painMap.includes(part)
+                            }
+                            onChange={(e) => {
                               let painMap = newTicketData.painMap || [];
                               if (e.target.checked) {
                                 painMap = [...painMap, part];
                               } else {
-                                painMap = painMap.filter(p => p !== part);
+                                painMap = painMap.filter((p) => p !== part);
                               }
                               setNewTicketData({ ...newTicketData, painMap });
                             }}
@@ -1874,35 +1943,49 @@ export default function ManageAppointment() {
                   </div>
                 </div>
               )}
-              {createTicketTab === 'ros' && (
+              {createTicketTab === "ros" && (
                 <div className="ros-section">
                   <h3>Review of Systems</h3>
-                  <div style={{marginBottom:18}}>
+                  <div style={{ marginBottom: 18 }}>
                     <label className="ros-item-label">
                       <input
                         type="checkbox"
                         checked={newTicketData.rosNone || false}
-                        onChange={e => setNewTicketData({ ...newTicketData, rosNone: e.target.checked })}
+                        onChange={(e) =>
+                          setNewTicketData({
+                            ...newTicketData,
+                            rosNone: e.target.checked,
+                          })
+                        }
                       />
                       None apply
                     </label>
                   </div>
                   {Object.entries(rosFields).map(([group, items]) => (
                     <div key={group} className="ros-group">
-                      <span className="ros-group-title">{group.charAt(0).toUpperCase() + group.slice(1).replace(/([A-Z])/g, ' $1')}</span>
+                      <span className="ros-group-title">
+                        {group.charAt(0).toUpperCase() +
+                          group.slice(1).replace(/([A-Z])/g, " $1")}
+                      </span>
                       <div className="ros-items">
-                        {items.map(item => (
+                        {items.map((item) => (
                           <label key={item} className="ros-item-label">
                             <input
                               type="checkbox"
-                              checked={newTicketData.ros && newTicketData.ros[group] ? newTicketData.ros[group].includes(item) : false}
-                              onChange={e => {
-                                const ros = {...(newTicketData.ros || {})};
+                              checked={
+                                newTicketData.ros && newTicketData.ros[group]
+                                  ? newTicketData.ros[group].includes(item)
+                                  : false
+                              }
+                              onChange={(e) => {
+                                const ros = { ...(newTicketData.ros || {}) };
                                 ros[group] = ros[group] || [];
                                 if (e.target.checked) {
                                   ros[group] = [...ros[group], item];
                                 } else {
-                                  ros[group] = ros[group].filter(i => i !== item);
+                                  ros[group] = ros[group].filter(
+                                    (i) => i !== item
+                                  );
                                 }
                                 setNewTicketData({ ...newTicketData, ros });
                               }}

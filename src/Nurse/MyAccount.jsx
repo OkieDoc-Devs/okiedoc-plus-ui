@@ -188,8 +188,7 @@ export default function MyAccount() {
 
         <div className="profile-row">
           <label>Email:</label>
-            <span>{userData.email}</span>
-          )}
+          <span>{userData.email}</span>
         </div>
 
         <div className="profile-row">

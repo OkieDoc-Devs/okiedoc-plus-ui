@@ -102,7 +102,7 @@ export default function Login() {
           </button>
           <img
             src="/okie-doc-logo.png"
-            alt="Okie-Doc+"
+            alt="OkieDoc+"
             className="logo-image"
           />
           <div style={{ width: "2.5rem" }}></div>

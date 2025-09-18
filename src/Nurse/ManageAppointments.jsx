@@ -199,6 +199,48 @@ export default function ManageAppointment() {
   const [rescheduleTime, setRescheduleTime] = useState("");
   const [createTicketTab, setCreateTicketTab] = useState("medical");
 
+  const [textPills, setTextPills] = useState({
+    medicalRecords: [],
+    familyHistory: [],
+    allergies: [],
+  });
+  const [textInput, setTextInput] = useState({
+    medicalRecords: "",
+    familyHistory: "",
+    allergies: "",
+  });
+
+  const addTextPill = (field, text) => {
+    if (!text.trim()) return;
+
+    const trimmedText = text.trim();
+    if (textPills[field].includes(trimmedText)) return;
+
+    setTextPills((prev) => ({
+      ...prev,
+      [field]: [...prev[field], trimmedText],
+    }));
+
+    setTextInput((prev) => ({
+      ...prev,
+      [field]: "",
+    }));
+  };
+
+  const removeTextPill = (field, textToRemove) => {
+    setTextPills((prev) => ({
+      ...prev,
+      [field]: prev[field].filter((text) => text !== textToRemove),
+    }));
+  };
+
+  const handleTextInputKeyPress = (e, field) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTextPill(field, textInput[field]);
+    }
+  };
+
   const painMapFields = [
     "Thymus",
     "Lung and diaphragm",
@@ -484,6 +526,16 @@ export default function ManageAppointment() {
       smoking: "",
       drinking: "",
     });
+    setTextPills({
+      medicalRecords: [],
+      familyHistory: [],
+      allergies: [],
+    });
+    setTextInput({
+      medicalRecords: "",
+      familyHistory: "",
+      allergies: "",
+    });
     setShowCreateTicketModal(true);
   };
 
@@ -493,6 +545,9 @@ export default function ManageAppointment() {
     const newTicket = {
       id,
       ...newTicketData,
+      medicalRecordsPills: textPills.medicalRecords,
+      familyHistoryPills: textPills.familyHistory,
+      allergiesPills: textPills.allergies,
       hmo: newTicketData.hasHMO ? newTicketData.hmo : null,
       status: "Pending",
       createdAt: new Date().toISOString(),
@@ -500,6 +555,16 @@ export default function ManageAppointment() {
     };
     setTickets((prev) => [newTicket, ...prev]);
     setShowCreateTicketModal(false);
+    setTextPills({
+      medicalRecords: [],
+      familyHistory: [],
+      allergies: [],
+    });
+    setTextInput({
+      medicalRecords: "",
+      familyHistory: "",
+      allergies: "",
+    });
     addNotification(
       "New Ticket",
       `Ticket ${id} created via ${newTicket.source}`
@@ -795,7 +860,6 @@ export default function ManageAppointment() {
                   >
                     Simulate Payment
                   </button>
-                  {/* Rightmost button to view consultation history */}
                   <button
                     className="action-btn"
                     style={{ marginLeft: "auto" }}
@@ -806,7 +870,6 @@ export default function ManageAppointment() {
                 </div>
               </div>
             ))}
-            {/* Nurse Consultation History removed from Processing Tickets */}
           </div>
 
           <div className="tickets-list">
@@ -855,7 +918,6 @@ export default function ManageAppointment() {
                   >
                     Claim Ticket
                   </button>
-                  {/* Rightmost button to view consultation history */}
                   <button
                     className="action-btn"
                     style={{ marginLeft: "auto" }}
@@ -866,7 +928,6 @@ export default function ManageAppointment() {
                 </div>
               </div>
             ))}
-            {/* Nurse Consultation History removed from Pending Tickets */}
           </div>
 
           {showConsultationHistory && (
@@ -936,22 +997,64 @@ export default function ManageAppointment() {
                     <label>Other Symptoms:</label>
                     <span>{selectedTicket.otherSymptoms || "None"}</span>
                   </div>
-                  {/* Nurse input fields for ticket details */}
                   <div className="info-item">
                     <label>Actual Chief Complaint (Nurse):</label>
                     <span>{selectedTicket.actualChiefComplaint || ""}</span>
                   </div>
                   <div className="info-item">
                     <label>Medical Records:</label>
-                    <span>{selectedTicket.medicalRecords || ""}</span>
+                    <div className="view-pills-container">
+                      {selectedTicket.medicalRecordsPills &&
+                      selectedTicket.medicalRecordsPills.length > 0 ? (
+                        <div className="view-pills">
+                          {selectedTicket.medicalRecordsPills.map(
+                            (text, index) => (
+                              <div key={index} className="view-pill">
+                                <span>{text}</span>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      ) : (
+                        <span>No data</span>
+                      )}
+                    </div>
                   </div>
                   <div className="info-item">
                     <label>Family History:</label>
-                    <span>{selectedTicket.familyHistory || ""}</span>
+                    <div className="view-pills-container">
+                      {selectedTicket.familyHistoryPills &&
+                      selectedTicket.familyHistoryPills.length > 0 ? (
+                        <div className="view-pills">
+                          {selectedTicket.familyHistoryPills.map(
+                            (text, index) => (
+                              <div key={index} className="view-pill">
+                                <span>{text}</span>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      ) : (
+                        <span>No data</span>
+                      )}
+                    </div>
                   </div>
                   <div className="info-item">
                     <label>Allergies:</label>
-                    <span>{selectedTicket.allergies || ""}</span>
+                    <div className="view-pills-container">
+                      {selectedTicket.allergiesPills &&
+                      selectedTicket.allergiesPills.length > 0 ? (
+                        <div className="view-pills">
+                          {selectedTicket.allergiesPills.map((text, index) => (
+                            <div key={index} className="view-pill">
+                              <span>{text}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span>No data</span>
+                      )}
+                    </div>
                   </div>
                   <div className="info-item">
                     <label>Smoking:</label>
@@ -1016,7 +1119,14 @@ export default function ManageAppointment() {
 
               <div className="specialist-verification">
                 <h3>Specialist & HMO Verification</h3>
-                <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 16,
+                    marginBottom: 12,
+                    justifyContent: "center",
+                  }}
+                >
                   <button
                     className="action-btn confirm"
                     style={{ background: "#4caf50", color: "#fff" }}
@@ -1033,7 +1143,14 @@ export default function ManageAppointment() {
                   </button>
                 </div>
                 {selectedTicket.hasHMO && (
-                  <div style={{ marginBottom: 12 }}>
+                  <div
+                    style={{
+                      marginBottom: 12,
+                      display: "flex",
+                      gap: 16,
+                      justifyContent: "center",
+                    }}
+                  >
                     <button
                       className="action-btn confirm"
                       style={{ background: "#2196f3", color: "#fff" }}
@@ -1104,7 +1221,14 @@ export default function ManageAppointment() {
                 style={{ marginTop: 16, marginBottom: 0 }}
               >
                 <h3 style={{ marginBottom: 8 }}>Reschedule</h3>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    justifyContent: "center",
+                  }}
+                >
                   <label htmlFor="reschedule-date" style={{ marginRight: 4 }}>
                     Date:
                   </label>
@@ -1148,7 +1272,6 @@ export default function ManageAppointment() {
                 </div>
               </div>
 
-              {/* Review of Systems Section */}
               <div className="ros-info" style={{ marginTop: 24 }}>
                 <h3>Review of Systems</h3>
                 <div className="info-grid">
@@ -1166,8 +1289,6 @@ export default function ManageAppointment() {
                   )}
                 </div>
               </div>
-
-              {/* Pain Map Section */}
 
               <div className="painmap-info" style={{ marginTop: 24 }}>
                 <h3>Pain Map</h3>
@@ -1561,7 +1682,6 @@ export default function ManageAppointment() {
                         />
                       </div>
                     </div>
-                    {/* Nurse input fields for ticket creation */}
                     <div className="form-row">
                       <div className="form-group">
                         <label htmlFor="actualChiefComplaint">
@@ -1582,78 +1702,222 @@ export default function ManageAppointment() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="medicalRecords">Medical Records</label>
-                        <textarea
-                          id="medicalRecords"
-                          name="medicalRecords"
-                          value={newTicketData.medicalRecords || ""}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              medicalRecords: e.target.value,
-                            })
-                          }
-                        />
+                        <div className="text-input-container">
+                          {textPills.medicalRecords.length > 0 && (
+                            <div className="text-pills">
+                              {textPills.medicalRecords.map((text, index) => (
+                                <div key={index} className="text-pill">
+                                  <span>{text}</span>
+                                  <button
+                                    type="button"
+                                    className="remove-pill"
+                                    onClick={() =>
+                                      removeTextPill("medicalRecords", text)
+                                    }
+                                    aria-label="Remove text"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <input
+                            type="text"
+                            id="medicalRecords"
+                            name="medicalRecords"
+                            placeholder="Type and press Enter to add"
+                            value={textInput.medicalRecords}
+                            onChange={(e) =>
+                              setTextInput((prev) => ({
+                                ...prev,
+                                medicalRecords: e.target.value,
+                              }))
+                            }
+                            onKeyPress={(e) =>
+                              handleTextInputKeyPress(e, "medicalRecords")
+                            }
+                            onBlur={() => {
+                              if (textInput.medicalRecords.trim()) {
+                                addTextPill(
+                                  "medicalRecords",
+                                  textInput.medicalRecords
+                                );
+                              }
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="form-row">
                       <div className="form-group">
                         <label htmlFor="familyHistory">Family History</label>
-                        <textarea
-                          id="familyHistory"
-                          name="familyHistory"
-                          value={newTicketData.familyHistory || ""}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              familyHistory: e.target.value,
-                            })
-                          }
-                        />
+                        <div className="text-input-container">
+                          {textPills.familyHistory.length > 0 && (
+                            <div className="text-pills">
+                              {textPills.familyHistory.map((text, index) => (
+                                <div key={index} className="text-pill">
+                                  <span>{text}</span>
+                                  <button
+                                    type="button"
+                                    className="remove-pill"
+                                    onClick={() =>
+                                      removeTextPill("familyHistory", text)
+                                    }
+                                    aria-label="Remove text"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <input
+                            type="text"
+                            id="familyHistory"
+                            name="familyHistory"
+                            placeholder="Type and press Enter to add"
+                            value={textInput.familyHistory}
+                            onChange={(e) =>
+                              setTextInput((prev) => ({
+                                ...prev,
+                                familyHistory: e.target.value,
+                              }))
+                            }
+                            onKeyPress={(e) =>
+                              handleTextInputKeyPress(e, "familyHistory")
+                            }
+                            onBlur={() => {
+                              if (textInput.familyHistory.trim()) {
+                                addTextPill(
+                                  "familyHistory",
+                                  textInput.familyHistory
+                                );
+                              }
+                            }}
+                          />
+                        </div>
                       </div>
                       <div className="form-group">
                         <label htmlFor="allergies">Allergies</label>
-                        <textarea
-                          id="allergies"
-                          name="allergies"
-                          rows="2"
-                          value={newTicketData.allergies || ""}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              allergies: e.target.value,
-                            })
-                          }
-                        />
+                        <div className="text-input-container">
+                          {textPills.allergies.length > 0 && (
+                            <div className="text-pills">
+                              {textPills.allergies.map((text, index) => (
+                                <div key={index} className="text-pill">
+                                  <span>{text}</span>
+                                  <button
+                                    type="button"
+                                    className="remove-pill"
+                                    onClick={() =>
+                                      removeTextPill("allergies", text)
+                                    }
+                                    aria-label="Remove text"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <input
+                            type="text"
+                            id="allergies"
+                            name="allergies"
+                            placeholder="Type and press Enter to add"
+                            value={textInput.allergies}
+                            onChange={(e) =>
+                              setTextInput((prev) => ({
+                                ...prev,
+                                allergies: e.target.value,
+                              }))
+                            }
+                            onKeyPress={(e) =>
+                              handleTextInputKeyPress(e, "allergies")
+                            }
+                            onBlur={() => {
+                              if (textInput.allergies.trim()) {
+                                addTextPill("allergies", textInput.allergies);
+                              }
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="form-row">
                       <div className="form-group">
-                        <label htmlFor="smoking">Smoking</label>
-                        <input
-                          id="smoking"
-                          name="smoking"
-                          value={newTicketData.smoking || ""}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              smoking: e.target.value,
-                            })
-                          }
-                        />
+                        <label>Smoking</label>
+                        <div className="checkbox-group">
+                          <label className="checkbox-item">
+                            <input
+                              type="checkbox"
+                              name="smoking"
+                              value="yes"
+                              checked={newTicketData.smoking === "yes"}
+                              onChange={(e) =>
+                                setNewTicketData({
+                                  ...newTicketData,
+                                  smoking: e.target.checked ? "yes" : "",
+                                })
+                              }
+                            />
+                            <span className="checkmark"></span>
+                            Yes
+                          </label>
+                          <label className="checkbox-item">
+                            <input
+                              type="checkbox"
+                              name="smoking"
+                              value="no"
+                              checked={newTicketData.smoking === "no"}
+                              onChange={(e) =>
+                                setNewTicketData({
+                                  ...newTicketData,
+                                  smoking: e.target.checked ? "no" : "",
+                                })
+                              }
+                            />
+                            <span className="checkmark"></span>
+                            No
+                          </label>
+                        </div>
                       </div>
                       <div className="form-group">
-                        <label htmlFor="drinking">Drinking</label>
-                        <input
-                          id="drinking"
-                          name="drinking"
-                          value={newTicketData.drinking || ""}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              drinking: e.target.value,
-                            })
-                          }
-                        />
+                        <label>Drinking</label>
+                        <div className="checkbox-group">
+                          <label className="checkbox-item">
+                            <input
+                              type="checkbox"
+                              name="drinking"
+                              value="yes"
+                              checked={newTicketData.drinking === "yes"}
+                              onChange={(e) =>
+                                setNewTicketData({
+                                  ...newTicketData,
+                                  drinking: e.target.checked ? "yes" : "",
+                                })
+                              }
+                            />
+                            <span className="checkmark"></span>
+                            Yes
+                          </label>
+                          <label className="checkbox-item">
+                            <input
+                              type="checkbox"
+                              name="drinking"
+                              value="no"
+                              checked={newTicketData.drinking === "no"}
+                              onChange={(e) =>
+                                setNewTicketData({
+                                  ...newTicketData,
+                                  drinking: e.target.checked ? "no" : "",
+                                })
+                              }
+                            />
+                            <span className="checkmark"></span>
+                            No
+                          </label>
+                        </div>
                       </div>
                     </div>
                   </div>

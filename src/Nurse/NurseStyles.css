@@ -1,5 +1,6 @@
-html, body {
-  font-family: 'Inter', Arial, sans-serif;
+html,
+body {
+  font-family: "Inter", Arial, sans-serif;
   background: #f7f8fa;
   color: #222;
   min-height: 100vh;
@@ -7,7 +8,27 @@ html, body {
   padding: 0;
   opacity: 1 !important;
 }
-.dashboard, .dashboard-header, .dashboard-title, .dashboard-nav, .appointments-section, .tickets-container, .ticket-card, .modal-overlay, .modal-content, .modal-header, .modal-actions, .invoice-modal, .invoice-form, .invoice-items, .invoice-item, .invoice-fees, .fee-item, .add-item-btn, .remove-item-btn, .submit-btn, .cancel-btn {
+.dashboard,
+.dashboard-header,
+.dashboard-title,
+.dashboard-nav,
+.appointments-section,
+.tickets-container,
+.ticket-card,
+.modal-overlay,
+.modal-content,
+.modal-header,
+.modal-actions,
+.invoice-modal,
+.invoice-form,
+.invoice-items,
+.invoice-item,
+.invoice-fees,
+.fee-item,
+.add-item-btn,
+.remove-item-btn,
+.submit-btn,
+.cancel-btn {
   opacity: 1 !important;
 }
 .calendar {
@@ -83,7 +104,8 @@ html, body {
 .create-appointment-form input[type="date"]::-webkit-calendar-picker-indicator,
 .create-appointment-form input[type="time"]::-webkit-calendar-picker-indicator {
   opacity: 1 !important;
-  filter: brightness(0) saturate(100%) invert(21%) sepia(78%) saturate(1000%) hue-rotate(181deg) brightness(92%) contrast(95%);
+  filter: brightness(0) saturate(100%) invert(21%) sepia(78%) saturate(1000%)
+    hue-rotate(181deg) brightness(92%) contrast(95%);
   cursor: pointer;
 }
 /* Firefox (uses a different indicator pseudo-element) */
@@ -127,7 +149,6 @@ html, body {
 .cancel-btn:hover {
   background-color: #da190b;
 }
-
 
 .calendar select.form-input {
   appearance: none;
@@ -506,7 +527,7 @@ html, body {
 }
 
 .save-btn {
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -825,21 +846,37 @@ html, body {
 /* Pending vs Processing ticket colors */
 .tickets-list .ticket-card {
   border-left: 4px solid #ff9800;
-  background: linear-gradient(0deg, rgba(255, 152, 0, 0.06), rgba(255, 255, 255, 1));
+  background: linear-gradient(
+    0deg,
+    rgba(255, 152, 0, 0.06),
+    rgba(255, 255, 255, 1)
+  );
   color: #000000;
 }
 
 .processing-tickets .ticket-card {
   border-left: 4px solid #2196f3;
-  background: linear-gradient(0deg, rgba(33, 150, 243, 0.06), rgba(255, 255, 255, 1));
+  background: linear-gradient(
+    0deg,
+    rgba(33, 150, 243, 0.06),
+    rgba(255, 255, 255, 1)
+  );
   color: #000000;
 }
 
 /* Ensure text inside ticket cards is readable */
-.ticket-card .ticket-header h3 { color: #0b5388; }
-.ticket-card .ticket-details p { color: #0b5388; }
-.ticket-card .ticket-time { color: #0b5388; }
-.ticket-card .ticket-details strong { color: #0b5388; }
+.ticket-card .ticket-header h3 {
+  color: #0b5388;
+}
+.ticket-card .ticket-details p {
+  color: #0b5388;
+}
+.ticket-card .ticket-time {
+  color: #0b5388;
+}
+.ticket-card .ticket-details strong {
+  color: #0b5388;
+}
 
 .appointment-card {
   background-color: white;
@@ -921,16 +958,16 @@ html, body {
 }
 
 .action-btn.edit {
-  background-color: #2196F3;
+  background-color: #2196f3;
   color: white;
 }
 
 .action-btn.edit:hover {
-  background-color: #1976D2;
+  background-color: #1976d2;
 }
 
 .action-btn.view {
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
 }
 
@@ -1098,7 +1135,8 @@ html, body {
 .create-appointment-form input[type="date"]::-webkit-calendar-picker-indicator,
 .create-appointment-form input[type="time"]::-webkit-calendar-picker-indicator {
   opacity: 1 !important;
-  filter: brightness(0) saturate(100%) invert(21%) sepia(78%) saturate(1000%) hue-rotate(181deg) brightness(92%) contrast(95%);
+  filter: brightness(0) saturate(100%) invert(21%) sepia(78%) saturate(1000%)
+    hue-rotate(181deg) brightness(92%) contrast(95%);
   cursor: pointer;
 }
 
@@ -1259,7 +1297,7 @@ html, body {
   border-radius: 12px;
   padding: 24px 20px;
   margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(11,83,136,0.07);
+  box-shadow: 0 2px 8px rgba(11, 83, 136, 0.07);
 }
 .ros-section h3 {
   margin-top: 0;
@@ -1288,7 +1326,7 @@ html, body {
   border-radius: 6px;
   padding: 6px 12px;
   margin: 0;
-  box-shadow: 0 1px 4px rgba(11,83,136,0.04);
+  box-shadow: 0 1px 4px rgba(11, 83, 136, 0.04);
   font-size: 0.98rem;
   display: flex;
   align-items: center;
@@ -1316,27 +1354,186 @@ html, body {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .search-box {
     min-width: auto;
   }
-  
+
   .filter-buttons {
     justify-content: center;
   }
-  
+
   .detail-row {
     grid-template-columns: 1fr;
     gap: 5px;
   }
-  
+
   .appointment-actions {
     flex-direction: column;
     align-items: stretch;
   }
-  
-  .action-btn, .status-select {
+
+  .action-btn,
+  .status-select {
     width: 100%;
     text-align: center;
   }
+}
+
+/* Text Pills Styling */
+.text-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+  min-height: 40px;
+}
+
+.text-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.text-pill {
+  display: flex;
+  align-items: center;
+  background: #f0f8ff;
+  border: 1px solid #399eeb;
+  border-radius: 16px;
+  padding: 4px 8px 4px 12px;
+  font-size: 14px;
+  color: #0b5388;
+  gap: 6px;
+}
+
+.text-pill span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.remove-pill {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.remove-pill:hover {
+  background: #ff4444;
+  color: white;
+}
+
+.text-input-container input[type="text"] {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  padding: 4px;
+  background: transparent;
+  flex: 1;
+  min-width: 200px;
+}
+
+.text-input-container input[type="text"]::placeholder {
+  color: #888;
+  font-style: italic;
+}
+
+/* View Pills Styling (for displaying saved pills in ticket view) */
+.view-pills-container {
+  margin-top: 5px;
+}
+
+.view-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.view-pill {
+  display: flex;
+  align-items: center;
+  background: #f0f8ff;
+  border: 1px solid #399eeb;
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 14px;
+  color: #0b5388;
+}
+
+.view-pill span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* Checkbox Group Styling */
+.checkbox-group {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 5px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  gap: 8px;
+  position: relative;
+}
+
+.checkbox-item input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  height: 18px;
+  width: 18px;
+  background-color: #ffffff;
+  border: 2px solid #d0d7de;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.checkbox-item:hover .checkmark {
+  border-color: #399eeb;
+}
+
+.checkbox-item input:checked ~ .checkmark {
+  background-color: #399eeb;
+  border-color: #399eeb;
+}
+
+.checkbox-item input:checked ~ .checkmark:after {
+  content: "\2713";
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
 }

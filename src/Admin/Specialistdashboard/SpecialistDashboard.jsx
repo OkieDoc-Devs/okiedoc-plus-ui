@@ -559,6 +559,16 @@ import "jspdf-autotable";
 /**
  * Utility: Add a header to all PDFs
  */
+import React, { useState } from "react";
+import {
+  downloadTreatmentPlanPDF,
+  downloadPrescriptionPDF,
+  downloadLabRequestPDF,
+  downloadMedicalCertificatePDF,
+  downloadMasterPDF,
+  sendToEmail,
+} from "./ConsultationHistory/pdfHelpers";
+
 const SpecialistDashboard = ({ consultations }) => {
   const [selectedConsultation, setSelectedConsultation] = useState(null);
 
@@ -716,7 +726,7 @@ const SpecialistDashboard = ({ consultations }) => {
                 onClick={() => downloadLabRequestPDF(selectedConsultation)}
                 className="bg-yellow-500 text-black px-3 py-1 rounded"
               >
-                 Lab PDF
+                */ Lab PDF
               </button>
               <button
                 onClick={() => downloadMedicalCertificatePDF(selectedConsultation)}

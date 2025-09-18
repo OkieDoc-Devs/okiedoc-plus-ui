@@ -981,7 +981,7 @@ const PatientDashboard = () => {
         <div className="patient-logo">
           <img
             src="/okie-doc-logo.png"
-            alt="Okie-Doc+"
+            alt="OkieDoc+"
             className="patient-logo-image"
           />
         </div>

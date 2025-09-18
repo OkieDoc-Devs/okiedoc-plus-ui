@@ -27,7 +27,7 @@ function App() {
           <div className="logo-section">
             <img
               src="/okie-doc-logo.png"
-              alt="Okie-Doc+"
+              alt="OkieDoc+"
               className="logo-image"
             />
           </div>
@@ -77,7 +77,7 @@ function App() {
         <div className="imageContainer">
           <img
             src="/okie-doc-logo.png"
-            alt="Okie-Doc+ Logo"
+            alt="OkieDoc+ Logo"
             className="main-logo-image"
           ></img>
         </div>

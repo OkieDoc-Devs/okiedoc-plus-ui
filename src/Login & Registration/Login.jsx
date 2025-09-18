@@ -28,6 +28,10 @@ export default function Login() {
       email: "patient@okiedoc.com",
       password: "password123",
     },
+    specialist: {
+      email: "specialist@okiedoc.com",
+      password: "password123",
+    },
   };
 
   const handleInputChange = (e) => {
@@ -61,6 +65,13 @@ export default function Login() {
     ) {
       setError("");
       navigate("/patient-dashboard");
+      return;
+    } else if (
+      formData.email === dummyCredentials.specialist.email &&
+      formData.password === dummyCredentials.specialist.password
+    ) {
+      setError("");
+      navigate("/specialist-dashboard");
       return;
     }
 
@@ -131,6 +142,9 @@ export default function Login() {
           <p className="login-text">
             Don't have an Okie-Doc+ account?{" "}
             <a href="/registration">Register</a>
+          </p>
+          <p className="specialist-text">
+            Are you a specialist? <a href="/specialist-login">Login Here</a>
           </p>
         </form>
       </div>

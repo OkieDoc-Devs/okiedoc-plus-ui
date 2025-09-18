@@ -212,4 +212,203 @@ const SpecialistDashboard = () => {
   );
 };
 
+// Consultation Histories 
+
+
+import React, { useState } from "react";
+import {
+  downloadTreatmentPlanPDF,
+  downloadPrescriptionPDF,
+  downloadLabRequestPDF,
+  downloadMedicalCertificatePDF,
+  downloadMasterPDF,
+  sendToEmail,
+} from "./ConsultationHistory/pdfHelpers";
+
+const SpecialistDashboard = ({ consultations }) => {
+  const [selectedConsultation, setSelectedConsultation] = useState(null);
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Specialist Dashboard</h1>
+
+      {/* Table */}
+      <table className="w-full border">
+        <thead>
+          <tr className="bg-gray-200">
+            <th className="p-2 border">Date</th>
+            <th className="p-2 border">Ticket</th>
+            <th className="p-2 border">Patient</th>
+            <th className="p-2 border">Complaint</th>
+            <th className="p-2 border">Specialist</th>
+            <th className="p-2 border">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {consultations.map((consultation, idx) => (
+            <tr
+              key={idx}
+              className="border-b hover:bg-gray-100 cursor-pointer"
+              onClick={() => setSelectedConsultation(consultation)}
+            >
+              <td className="p-2 border">{consultation.date}</td>
+              <td className="p-2 border">{consultation.ticket}</td>
+              <td className="p-2 border">{consultation.patientName}</td>
+              <td className="p-2 border">{consultation.complaint}</td>
+              <td className="p-2 border">{consultation.specialist}</td>
+              <td
+                className="p-2 border space-x-2"
+                onClick={(e) => e.stopPropagation()} // stop row click
+              >
+                <button
+                  onClick={() => downloadTreatmentPlanPDF(consultation)}
+                  className="bg-blue-500 text-white px-2 py-1 rounded"
+                >
+                  Treatment
+                </button>
+                <button
+                  onClick={() => downloadPrescriptionPDF(consultation)}
+                  className="bg-green-500 text-white px-2 py-1 rounded"
+                >
+                  Prescription
+                </button>
+                <button
+                  onClick={() => downloadLabRequestPDF(consultation)}
+                  className="bg-yellow-500 text-black px-2 py-1 rounded"
+                >
+                  Lab
+                </button>
+                <button
+                  onClick={() => downloadMedicalCertificatePDF(consultation)}
+                  className="bg-purple-500 text-white px-2 py-1 rounded"
+                >
+                  Certificate
+                </button>
+                <button
+                  onClick={() => downloadMasterPDF(consultation)}
+                  className="bg-indigo-600 text-white px-2 py-1 rounded"
+                >
+                  Master PDF
+                </button>
+                <button
+                  onClick={() => sendToEmail(consultation)}
+                  className="bg-gray-600 text-white px-2 py-1 rounded"
+                >
+                  Email
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Modal (only shows if a consultation is selected) */}
+      {selectedConsultation && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white p-6 rounded-lg w-3/4 max-h-[90vh] overflow-y-auto shadow-xl">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">
+                Consultation - {selectedConsultation.patientName}
+              </h2>
+              <button
+                onClick={() => setSelectedConsultation(null)}
+                className="text-red-500 hover:text-red-700 font-semibold"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {/* Patient Info */}
+            <div className="flex items-center space-x-4 mb-6">
+              {selectedConsultation.patientImage && (
+                <img
+                  src={selectedConsultation.patientImage}
+                  alt="Patient"
+                  className="w-20 h-20 rounded-full border"
+                />
+              )}
+              <div>
+                <p><strong>Ticket:</strong> {selectedConsultation.ticket}</p>
+                <p><strong>Date:</strong> {selectedConsultation.date}</p>
+                <p><strong>Specialist:</strong> {selectedConsultation.specialist}</p>
+              </div>
+            </div>
+
+            {/* Complaint & Notes */}
+            <p><strong>Chief Complaint:</strong> {selectedConsultation.complaint}</p>
+            <p className="mt-2"><strong>SOAP Notes:</strong> {selectedConsultation.soap}</p>
+            <p className="mt-2"><strong>Doctor’s Note:</strong> {selectedConsultation.doctorsNote}</p>
+
+            {/* Prescriptions */}
+            <div className="mt-4">
+              <strong>Prescriptions:</strong>
+              <ul className="list-disc ml-6">
+                {selectedConsultation.prescription?.map((p, idx) => (
+                  <li key={idx}>
+                    {p.brand} ({p.generic}) - {p.dosage} {p.form} × {p.quantity}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Lab Requests */}
+            <div className="mt-4">
+              <strong>Lab Requests:</strong>
+              <ul className="list-disc ml-6">
+                {selectedConsultation.labs?.map((l, idx) => (
+                  <li key={idx}>
+                    {l.test} - {l.remarks}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="mt-6 flex flex-wrap gap-2">
+              <button
+                onClick={() => downloadTreatmentPlanPDF(selectedConsultation)}
+                className="bg-blue-500 text-white px-3 py-1 rounded"
+              >
+                Treatment PDF
+              </button>
+              <button
+                onClick={() => downloadPrescriptionPDF(selectedConsultation)}
+                className="bg-green-500 text-white px-3 py-1 rounded"
+              >
+                Prescription PDF
+              </button>
+              <button
+                onClick={() => downloadLabRequestPDF(selectedConsultation)}
+                className="bg-yellow-500 text-black px-3 py-1 rounded"
+              >
+                */ Lab PDF
+              </button>
+              <button
+                onClick={() => downloadMedicalCertificatePDF(selectedConsultation)}
+                className="bg-purple-500 text-white px-3 py-1 rounded"
+              >
+                Certificate PDF
+              </button>
+              <button
+                onClick={() => downloadMasterPDF(selectedConsultation)}
+                className="bg-indigo-600 text-white px-3 py-1 rounded"
+              >
+                Master PDF
+              </button>
+              <button
+                onClick={() => sendToEmail(selectedConsultation)}
+                className="bg-gray-600 text-white px-3 py-1 rounded"
+              >
+                Send Email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 export default SpecialistDashboard;

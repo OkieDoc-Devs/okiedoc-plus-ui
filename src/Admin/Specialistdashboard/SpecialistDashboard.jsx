@@ -559,155 +559,189 @@ import "jspdf-autotable";
 /**
  * Utility: Add a header to all PDFs
  */
-const addHeader = (doc, title) => {
-  doc.setFontSize(16);
-  doc.text(title, 14, 20);
-  doc.setFontSize(10);
-  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
-  doc.line(14, 32, 196, 32); // divider
-  doc.setFontSize(12);
-};
+const SpecialistDashboard = ({ consultations }) => {
+  const [selectedConsultation, setSelectedConsultation] = useState(null);
 
-/**
- * Download all consultations as one PDF
- */
-export const downloadFullHistoryPDF = (consultations) => {
-  const doc = new jsPDF();
-  addHeader(doc, "Consultation History");
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Specialist Dashboard</h1>
 
-  const rows = consultations.map((c, i) => [
-    i + 1,
-    c.date || "-",
-    c.ticket || "-",
-    c.complaint || "-",
-    c.specialist || "-",
-  ]);
+      {/* Table */}
+      <table className="w-full border">
+        <thead>
+          <tr className="bg-gray-200">
+            <th className="p-2 border">Date</th>
+            <th className="p-2 border">Ticket</th>
+            <th className="p-2 border">Patient</th>
+            <th className="p-2 border">Complaint</th>
+            <th className="p-2 border">Specialist</th>
+            <th className="p-2 border">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {consultations.map((consultation, idx) => (
+            <tr
+              key={idx}
+              className="border-b hover:bg-gray-100 cursor-pointer"
+              onClick={() => setSelectedConsultation(consultation)}
+            >
+              <td className="p-2 border">{consultation.date}</td>
+              <td className="p-2 border">{consultation.ticket}</td>
+              <td className="p-2 border">{consultation.patientName}</td>
+              <td className="p-2 border">{consultation.complaint}</td>
+              <td className="p-2 border">{consultation.specialist}</td>
+              <td
+                className="p-2 border space-x-2"
+                onClick={(e) => e.stopPropagation()} // stop row click
+              >
+                <button
+                  onClick={() => downloadTreatmentPlanPDF(consultation)}
+                  className="bg-blue-500 text-white px-2 py-1 rounded"
+                >
+                  Treatment
+                </button>
+                <button
+                  onClick={() => downloadPrescriptionPDF(consultation)}
+                  className="bg-green-500 text-white px-2 py-1 rounded"
+                >
+                  Prescription
+                </button>
+                <button
+                  onClick={() => downloadLabRequestPDF(consultation)}
+                  className="bg-yellow-500 text-black px-2 py-1 rounded"
+                >
+                  Lab
+                </button>
+                <button
+                  onClick={() => downloadMedicalCertificatePDF(consultation)}
+                  className="bg-purple-500 text-white px-2 py-1 rounded"
+                >
+                  Certificate
+                </button>
+                <button
+                  onClick={() => downloadMasterPDF(consultation)}
+                  className="bg-indigo-600 text-white px-2 py-1 rounded"
+                >
+                  Master PDF
+                </button>
+                <button
+                  onClick={() => sendToEmail(consultation)}
+                  className="bg-gray-600 text-white px-2 py-1 rounded"
+                >
+                  Email
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-  doc.autoTable({
-    startY: 40,
-    head: [["#", "Date", "Ticket", "Complaint", "Specialist"]],
-    body: rows,
-  });
+      {/* Modal (only shows if a consultation is selected) */}
+      {selectedConsultation && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white p-6 rounded-lg w-3/4 max-h-[90vh] overflow-y-auto shadow-xl">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">
+                Consultation - {selectedConsultation.patientName}
+              </h2>
+              <button
+                onClick={() => setSelectedConsultation(null)}
+                className="text-red-500 hover:text-red-700 font-semibold"
+              >
+                ✕ Close
+              </button>
+            </div>
 
-  doc.save("consultation_history.pdf");
-};
+            {/* Patient Info */}
+            <div className="flex items-center space-x-4 mb-6">
+              {selectedConsultation.patientImage && (
+                <img
+                  src={selectedConsultation.patientImage}
+                  alt="Patient"
+                  className="w-20 h-20 rounded-full border"
+                />
+              )}
+              <div>
+                <p><strong>Ticket:</strong> {selectedConsultation.ticket}</p>
+                <p><strong>Date:</strong> {selectedConsultation.date}</p>
+                <p><strong>Specialist:</strong> {selectedConsultation.specialist}</p>
+              </div>
+            </div>
 
-/**
- * Treatment Plan PDF
- */
-export const downloadTreatmentPlanPDF = (consultation) => {
-  const doc = new jsPDF();
-  addHeader(doc, "Treatment Plan");
+            {/* Complaint & Notes */}
+            <p><strong>Chief Complaint:</strong> {selectedConsultation.complaint}</p>
+            <p className="mt-2"><strong>SOAP Notes:</strong> {selectedConsultation.soap}</p>
+            <p className="mt-2"><strong>Doctor’s Note:</strong> {selectedConsultation.doctorsNote}</p>
 
-  doc.text(`Date: ${consultation.date || "-"}`, 14, 40);
-  doc.text(`Ticket: ${consultation.ticket || "-"}`, 14, 48);
-  doc.text(`Chief Complaint: ${consultation.complaint || "-"}`, 14, 56);
+            {/* Prescriptions */}
+            <div className="mt-4">
+              <strong>Prescriptions:</strong>
+              <ul className="list-disc ml-6">
+                {selectedConsultation.prescription?.map((p, idx) => (
+                  <li key={idx}>
+                    {p.brand} ({p.generic}) - {p.dosage} {p.form} × {p.quantity}
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-  doc.text("SOAP Notes:", 14, 70);
-  doc.text(consultation.soap || "-", 14, 78, { maxWidth: 180 });
+            {/* Lab Requests */}
+            <div className="mt-4">
+              <strong>Lab Requests:</strong>
+              <ul className="list-disc ml-6">
+                {selectedConsultation.labs?.map((l, idx) => (
+                  <li key={idx}>
+                    {l.test} - {l.remarks}
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-  doc.text("Doctor’s Note:", 14, 100);
-  doc.text(consultation.doctorsNote || "-", 14, 108, { maxWidth: 180 });
-
-  doc.save("treatment_plan.pdf");
-};
-
-/**
- * Prescription PDF
- */
-export const downloadPrescriptionPDF = (consultation) => {
-  const doc = new jsPDF();
-  addHeader(doc, "Medicine Prescription");
-
-  const rows = (consultation.prescription || []).map((p, i) => [
-    i + 1,
-    p.brand || "-",
-    p.generic || "-",
-    p.dosage || "-",
-    p.form || "-",
-    p.quantity || "-",
-    p.instructions || "-",
-  ]);
-
-  doc.autoTable({
-    startY: 40,
-    head: [["#", "Brand", "Generic", "Dosage", "Form", "Qty", "Instructions"]],
-    body: rows,
-  });
-
-  doc.save("prescription.pdf");
-};
-
-/**
- * Lab Request PDF
- */
-export const downloadLabRequestPDF = (consultation) => {
-  const doc = new jsPDF();
-  addHeader(doc, "Lab Requests");
-
-  const rows = (consultation.labs || []).map((l, i) => [
-    i + 1,
-    l.test || "-",
-    l.remarks || "-",
-  ]);
-
-  doc.autoTable({
-    startY: 40,
-    head: [["#", "Lab Test", "Remarks"]],
-    body: rows,
-  });
-
-  doc.save("lab_requests.pdf");
-};
-
-/**
- * Medical Certificate PDF
- */
-export const downloadMedicalCertificatePDF = (consultation) => {
-  const doc = new jsPDF();
-  addHeader(doc, "Medical Certificate");
-
-  doc.text("This certifies that:", 14, 50);
-  doc.text(`Patient: ${consultation.ticket || "-"}`, 14, 60);
-  doc.text(
-    `Has been seen on: ${consultation.date || "-"}`,
-    14,
-    70
+            {/* Action Buttons */}
+            <div className="mt-6 flex flex-wrap gap-2">
+              <button
+                onClick={() => downloadTreatmentPlanPDF(selectedConsultation)}
+                className="bg-blue-500 text-white px-3 py-1 rounded"
+              >
+                Treatment PDF
+              </button>
+              <button
+                onClick={() => downloadPrescriptionPDF(selectedConsultation)}
+                className="bg-green-500 text-white px-3 py-1 rounded"
+              >
+                Prescription PDF
+              </button>
+              <button
+                onClick={() => downloadLabRequestPDF(selectedConsultation)}
+                className="bg-yellow-500 text-black px-3 py-1 rounded"
+              >
+                 Lab PDF
+              </button>
+              <button
+                onClick={() => downloadMedicalCertificatePDF(selectedConsultation)}
+                className="bg-purple-500 text-white px-3 py-1 rounded"
+              >
+                Certificate PDF
+              </button>
+              <button
+                onClick={() => downloadMasterPDF(selectedConsultation)}
+                className="bg-indigo-600 text-white px-3 py-1 rounded"
+              >
+                Master PDF
+              </button>
+              <button
+                onClick={() => sendToEmail(selectedConsultation)}
+                className="bg-gray-600 text-white px-3 py-1 rounded"
+              >
+                Send Email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
-
-  doc.text("Findings / Notes:", 14, 90);
-  doc.text(consultation.doctorsNote || "-", 14, 100, { maxWidth: 180 });
-
-  doc.text("Referral Info:", 14, 120);
-  doc.text(
-    `Specialist: ${consultation.referralSpecialist || "-"}`,
-    14,
-    130
-  );
-  doc.text(
-    `Assigned Specialist: ${consultation.assignedSpecialist || "-"}`,
-    14,
-    140
-  );
-  doc.text(
-    `Assigned Nurse: ${consultation.assignedNurse || "-"}`,
-    14,
-    150
-  );
-
-  doc.text("Follow-up Date:", 14, 170);
-  doc.text(consultation.followUp || "-", 14, 180);
-
-  doc.save("medical_certificate.pdf");
-};
-
-/**
- * Simulated Send to Email
- * (Replace with real API call later)
- */
-export const sendToEmail = (consultation) => {
-  console.log("Sending consultation to email:", consultation);
-  alert("Consultation details sent to patient's email (simulation).");
 };
 
 export default SpecialistDashboard;

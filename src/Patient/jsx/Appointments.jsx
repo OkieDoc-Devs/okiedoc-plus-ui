@@ -20,6 +20,7 @@ const Appointments = ({ onAppointmentAdded }) => {
     otherSymptoms: '',
     preferredDate: '',
     preferredTime: '',
+    specialization: '',
     preferredSpecialist: '',
     consultationChannel: 'Platform Chat',
     hmoCompany: '',
@@ -42,15 +43,21 @@ const Appointments = ({ onAppointmentAdded }) => {
 
   // Available specialists
   const specialists = [
-    { id: 1, name: "Dr. Maria Santos", specialty: "General Medicine" },
     { id: 2, name: "Dr. John Smith", specialty: "Hematology" },
     { id: 3, name: "Dr. Lisa Garcia", specialty: "Radiology" },
     { id: 4, name: "Dr. Michael Brown", specialty: "Cardiology" },
-    { id: 5, name: "Dr. Sarah Wilson", specialty: "Emergency Medicine" },
     { id: 6, name: "Dr. David Lee", specialty: "Dermatology" },
     { id: 7, name: "Dr. Jennifer Martinez", specialty: "Pediatrics" },
     { id: 8, name: "Dr. Robert Johnson", specialty: "Orthopedics" }
   ];
+
+  // Get unique specializations for dropdown
+  const specializations = [...new Set(specialists.map(specialist => specialist.specialty))].sort();
+
+  // Filter specialists based on selected specialization
+  const availableSpecialists = appointmentForm.specialization 
+    ? specialists.filter(specialist => specialist.specialty === appointmentForm.specialization)
+    : [];
 
   // Consultation channels
   const consultationChannels = [
@@ -187,6 +194,7 @@ const Appointments = ({ onAppointmentAdded }) => {
       otherSymptoms: '',
       preferredDate: '',
       preferredTime: '',
+      specialization: '',
       preferredSpecialist: '',
       consultationChannel: 'Platform Chat',
       hmoCompany: '',
@@ -201,10 +209,20 @@ const Appointments = ({ onAppointmentAdded }) => {
   // Handle form input changes
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setAppointmentForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // If specialization changes, clear the selected specialist
+    if (name === 'specialization') {
+      setAppointmentForm(prev => ({
+        ...prev,
+        [name]: value,
+        preferredSpecialist: '' // Clear specialist when specialization changes
+      }));
+    } else {
+      setAppointmentForm(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
     
     // Clear error when user starts typing
     if (formErrors[name]) {
@@ -270,6 +288,9 @@ const Appointments = ({ onAppointmentAdded }) => {
     }
     if (!appointmentForm.preferredTime) {
       errors.preferredTime = 'Preferred time is required';
+    }
+    if (!appointmentForm.specialization) {
+      errors.specialization = 'Please select a specialization';
     }
     if (!appointmentForm.preferredSpecialist) {
       errors.preferredSpecialist = 'Please select a specialist';
@@ -692,6 +713,31 @@ const Appointments = ({ onAppointmentAdded }) => {
                   </div>
                 </div>
 
+                {/* Specialization Selection */}
+                <div className="patient-form-group">
+                  <label className="patient-form-label" htmlFor="specialization">
+                    Medical Specialization *
+                  </label>
+                  <select
+                    id="specialization"
+                    name="specialization"
+                    className={`patient-form-select ${formErrors.specialization ? 'patient-form-error' : ''}`}
+                    value={appointmentForm.specialization}
+                    onChange={handleFormChange}
+                    required
+                  >
+                    <option value="">Select a specialization</option>
+                    {specializations.map(specialization => (
+                      <option key={specialization} value={specialization}>
+                        {specialization}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.specialization && (
+                    <span className="patient-error-message">{formErrors.specialization}</span>
+                  )}
+                </div>
+
                 {/* Preferred Specialist */}
                 <div className="patient-form-group">
                   <label className="patient-form-label" htmlFor="preferredSpecialist">
@@ -703,12 +749,15 @@ const Appointments = ({ onAppointmentAdded }) => {
                     className={`patient-form-select ${formErrors.preferredSpecialist ? 'patient-form-error' : ''}`}
                     value={appointmentForm.preferredSpecialist}
                     onChange={handleFormChange}
+                    disabled={!appointmentForm.specialization}
                     required
                   >
-                    <option value="">Select a specialist</option>
-                    {specialists.map(specialist => (
+                    <option value="">
+                      {appointmentForm.specialization ? 'Select a specialist' : 'Please select a specialization first'}
+                    </option>
+                    {availableSpecialists.map(specialist => (
                       <option key={specialist.id} value={specialist.name}>
-                        {specialist.name} - {specialist.specialty}
+                        {specialist.name}
                       </option>
                     ))}
                   </select>

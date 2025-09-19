@@ -552,14 +552,14 @@ const SpecialistDashboard = () => {
 // Consultation Histories
 
 
-// src/Admin/ConsultationHistory/pdfHelpers.js
+// src/Admin/Specialistdashboard/ConsultationHistory/pdfHelpers.js
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
 /**
  * Utility: Add a header to all PDFs
  */
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   downloadTreatmentPlanPDF,
   downloadPrescriptionPDF,
@@ -569,130 +569,191 @@ import {
   sendToEmail,
 } from "./ConsultationHistory/pdfHelpers";
 
-const SpecialistDashboard = ({ consultations }) => {
+const ITEMS_PER_PAGE = 10;
+
+const SpecialistDashboard = ({ consultations = [] }) => {
   const [selectedConsultation, setSelectedConsultation] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
+
+  // Filter consultations by patient name or date
+  const filteredConsultations = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return consultations.filter(
+      (c) =>
+        (c.patientName?.toLowerCase().includes(query) || false) ||
+        (c.date?.toLowerCase().includes(query) || false)
+    );
+  }, [consultations, searchQuery]);
+
+  // Sort consultations
+  const sortedConsultations = useMemo(() => {
+    const sorted = [...filteredConsultations];
+    if (sortConfig.key) {
+      sorted.sort((a, b) => {
+        const aVal = a[sortConfig.key] || "";
+        const bVal = b[sortConfig.key] || "";
+        if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    return sorted;
+  }, [filteredConsultations, sortConfig]);
+
+  const totalPages = Math.ceil(sortedConsultations.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const currentConsultations = sortedConsultations.slice(
+    startIndex,
+    startIndex + ITEMS_PER_PAGE
+  );
+
+  const goToPage = (page) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
+
+  const requestSort = (key) => {
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIndicator = (key) => {
+    if (sortConfig.key !== key) return null;
+    return sortConfig.direction === "asc" ? " ▲" : " ▼";
+  };
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Specialist Dashboard</h1>
 
-      {/* Table */}
-      <table className="w-full border">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="p-2 border">Date</th>
-            <th className="p-2 border">Ticket</th>
-            <th className="p-2 border">Patient</th>
-            <th className="p-2 border">Complaint</th>
-            <th className="p-2 border">Specialist</th>
-            <th className="p-2 border">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {consultations.map((consultation, idx) => (
-            <tr
-              key={idx}
-              className="border-b hover:bg-gray-100 cursor-pointer"
-              onClick={() => setSelectedConsultation(consultation)}
-            >
-              <td className="p-2 border">{consultation.date}</td>
-              <td className="p-2 border">{consultation.ticket}</td>
-              <td className="p-2 border">{consultation.patientName}</td>
-              <td className="p-2 border">{consultation.complaint}</td>
-              <td className="p-2 border">{consultation.specialist}</td>
-              <td
-                className="p-2 border space-x-2"
-                onClick={(e) => e.stopPropagation()} // stop row click
-              >
-                <button
-                  onClick={() => downloadTreatmentPlanPDF(consultation)}
-                  className="bg-blue-500 text-white px-2 py-1 rounded"
-                >
-                  Treatment
-                </button>
-                <button
-                  onClick={() => downloadPrescriptionPDF(consultation)}
-                  className="bg-green-500 text-white px-2 py-1 rounded"
-                >
-                  Prescription
-                </button>
-                <button
-                  onClick={() => downloadLabRequestPDF(consultation)}
-                  className="bg-yellow-500 text-black px-2 py-1 rounded"
-                >
-                  Lab
-                </button>
-                <button
-                  onClick={() => downloadMedicalCertificatePDF(consultation)}
-                  className="bg-purple-500 text-white px-2 py-1 rounded"
-                >
-                  Certificate
-                </button>
-                <button
-                  onClick={() => downloadMasterPDF(consultation)}
-                  className="bg-indigo-600 text-white px-2 py-1 rounded"
-                >
-                  Master PDF
-                </button>
-                <button
-                  onClick={() => sendToEmail(consultation)}
-                  className="bg-gray-600 text-white px-2 py-1 rounded"
-                >
-                  Email
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* Search */}
+      <div className="mb-4 flex items-center gap-2">
+        <input
+          type="text"
+          placeholder="Search by patient name or date"
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="border p-2 rounded w-full max-w-md"
+        />
+      </div>
 
-      {/* Modal (only shows if a consultation is selected) */}
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full border">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="p-2 border cursor-pointer" onClick={() => requestSort("date")}>
+                Date{getSortIndicator("date")}
+              </th>
+              <th className="p-2 border cursor-pointer" onClick={() => requestSort("ticket")}>
+                Ticket{getSortIndicator("ticket")}
+              </th>
+              <th className="p-2 border cursor-pointer" onClick={() => requestSort("patientName")}>
+                Patient{getSortIndicator("patientName")}
+              </th>
+              <th className="p-2 border">Complaint</th>
+              <th className="p-2 border">Specialist</th>
+              <th className="p-2 border">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentConsultations.length > 0 ? (
+              currentConsultations.map((c, idx) => (
+                <tr
+                  key={c.id || idx}
+                  className="border-b hover:bg-gray-100 cursor-pointer"
+                  onClick={() => setSelectedConsultation(c)}
+                >
+                  <td className="p-2 border">{c.date || "—"}</td>
+                  <td className="p-2 border">{c.ticket || "—"}</td>
+                  <td className="p-2 border">{c.patientName || "—"}</td>
+                  <td className="p-2 border">{c.complaint || "—"}</td>
+                  <td className="p-2 border">{c.specialist || "—"}</td>
+                  <td className="p-2 border space-x-2" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => downloadTreatmentPlanPDF(c)} className="bg-blue-500 text-white px-2 py-1 rounded">Treatment</button>
+                    <button onClick={() => downloadPrescriptionPDF(c)} className="bg-green-500 text-white px-2 py-1 rounded">Prescription</button>
+                    <button onClick={() => downloadLabRequestPDF(c)} className="bg-yellow-500 text-black px-2 py-1 rounded">Lab</button>
+                    <button onClick={() => downloadMedicalCertificatePDF(c)} className="bg-purple-500 text-white px-2 py-1 rounded">Certificate</button>
+                    <button onClick={() => downloadMasterPDF(c)} className="bg-indigo-600 text-white px-2 py-1 rounded">Master PDF</button>
+                    <button onClick={() => sendToEmail(c)} className="bg-gray-600 text-white px-2 py-1 rounded">Email</button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="p-2 border text-center" colSpan={6}>No consultations found.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex justify-center items-center gap-2 flex-wrap">
+          <button onClick={() => goToPage(1)} disabled={currentPage === 1} className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50">{"<<"} First</button>
+          <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50">Previous</button>
+
+          {Array.from(
+            { length: Math.min(totalPages, 5) },
+            (_, i) => Math.min(totalPages, Math.max(1, currentPage - 2)) + i
+          ).map((page) => (
+            <button key={page} onClick={() => goToPage(page)} className={`px-3 py-1 rounded ${currentPage === page ? "bg-blue-500 text-white" : "bg-gray-200"}`}>
+              {page}
+            </button>
+          ))}
+
+          <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50">Next</button>
+          <button onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages} className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50">Last {">>"}</button>
+        </div>
+      )}
+
+      {/* Modal */}
       {selectedConsultation && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white p-6 rounded-lg w-3/4 max-h-[90vh] overflow-y-auto shadow-xl">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40" onClick={() => setSelectedConsultation(null)}>
+          <div className="bg-white p-6 rounded-lg w-3/4 max-h-[90vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">
-                Consultation - {selectedConsultation.patientName}
-              </h2>
-              <button
-                onClick={() => setSelectedConsultation(null)}
-                className="text-red-500 hover:text-red-700 font-semibold"
-              >
-                ✕ Close
-              </button>
+              <h2 className="text-xl font-bold">Consultation - {selectedConsultation.patientName}</h2>
+              <button onClick={() => setSelectedConsultation(null)} className="text-red-500 hover:text-red-700 font-semibold">✕ Close</button>
             </div>
 
             {/* Patient Info */}
             <div className="flex items-center space-x-4 mb-6">
-              {selectedConsultation.patientImage && (
-                <img
-                  src={selectedConsultation.patientImage}
-                  alt="Patient"
-                  className="w-20 h-20 rounded-full border"
-                />
+              {selectedConsultation.patientImage ? (
+                <img src={selectedConsultation.patientImage} alt="Patient" className="w-20 h-20 rounded-full border" />
+              ) : (
+                <div className="w-20 h-20 rounded-full border bg-gray-200 flex items-center justify-center">No Image</div>
               )}
               <div>
-                <p><strong>Ticket:</strong> {selectedConsultation.ticket}</p>
-                <p><strong>Date:</strong> {selectedConsultation.date}</p>
-                <p><strong>Specialist:</strong> {selectedConsultation.specialist}</p>
+                <p><strong>Ticket:</strong> {selectedConsultation.ticket || "—"}</p>
+                <p><strong>Date:</strong> {selectedConsultation.date || "—"}</p>
+                <p><strong>Specialist:</strong> {selectedConsultation.specialist || "—"}</p>
               </div>
             </div>
 
             {/* Complaint & Notes */}
-            <p><strong>Chief Complaint:</strong> {selectedConsultation.complaint}</p>
-            <p className="mt-2"><strong>SOAP Notes:</strong> {selectedConsultation.soap}</p>
-            <p className="mt-2"><strong>Doctor’s Note:</strong> {selectedConsultation.doctorsNote}</p>
+            <p><strong>Chief Complaint:</strong> {selectedConsultation.complaint || "—"}</p>
+            <p className="mt-2"><strong>SOAP Notes:</strong> {selectedConsultation.soap || "—"}</p>
+            <p className="mt-2"><strong>Doctor’s Note:</strong> {selectedConsultation.doctorsNote || "—"}</p>
 
             {/* Prescriptions */}
             <div className="mt-4">
               <strong>Prescriptions:</strong>
               <ul className="list-disc ml-6">
-                {selectedConsultation.prescription?.map((p, idx) => (
-                  <li key={idx}>
-                    {p.brand} ({p.generic}) - {p.dosage} {p.form} × {p.quantity}
-                  </li>
-                ))}
+                {selectedConsultation.prescription?.length > 0 ? (
+                  selectedConsultation.prescription.map((p, idx) => (
+                    <li key={idx}>{p.brand} ({p.generic}) - {p.dosage} {p.form} × {p.quantity}</li>
+                  ))
+                ) : (<li>No prescriptions</li>)}
               </ul>
             </div>
 
@@ -700,52 +761,22 @@ const SpecialistDashboard = ({ consultations }) => {
             <div className="mt-4">
               <strong>Lab Requests:</strong>
               <ul className="list-disc ml-6">
-                {selectedConsultation.labs?.map((l, idx) => (
-                  <li key={idx}>
-                    {l.test} - {l.remarks}
-                  </li>
-                ))}
+                {selectedConsultation.labs?.length > 0 ? (
+                  selectedConsultation.labs.map((l, idx) => (
+                    <li key={idx}>{l.test} - {l.remarks}</li>
+                  ))
+                ) : (<li>No lab requests</li>)}
               </ul>
             </div>
 
             {/* Action Buttons */}
             <div className="mt-6 flex flex-wrap gap-2">
-              <button
-                onClick={() => downloadTreatmentPlanPDF(selectedConsultation)}
-                className="bg-blue-500 text-white px-3 py-1 rounded"
-              >
-                Treatment PDF
-              </button>
-              <button
-                onClick={() => downloadPrescriptionPDF(selectedConsultation)}
-                className="bg-green-500 text-white px-3 py-1 rounded"
-              >
-                Prescription PDF
-              </button>
-              <button
-                onClick={() => downloadLabRequestPDF(selectedConsultation)}
-                className="bg-yellow-500 text-black px-3 py-1 rounded"
-              >
-                */ Lab PDF
-              </button>
-              <button
-                onClick={() => downloadMedicalCertificatePDF(selectedConsultation)}
-                className="bg-purple-500 text-white px-3 py-1 rounded"
-              >
-                Certificate PDF
-              </button>
-              <button
-                onClick={() => downloadMasterPDF(selectedConsultation)}
-                className="bg-indigo-600 text-white px-3 py-1 rounded"
-              >
-                Master PDF
-              </button>
-              <button
-                onClick={() => sendToEmail(selectedConsultation)}
-                className="bg-gray-600 text-white px-3 py-1 rounded"
-              >
-                Send Email
-              </button>
+              <button onClick={() => downloadTreatmentPlanPDF(selectedConsultation)} className="bg-blue-500 text-white px-3 py-1 rounded">Treatment PDF</button>
+              <button onClick={() => downloadPrescriptionPDF(selectedConsultation)} className="bg-green-500 text-white px-3 py-1 rounded">Prescription PDF</button>
+              <button onClick={() => downloadLabRequestPDF(selectedConsultation)} className="bg-yellow-500 text-black px-3 py-1 rounded">Lab PDF</button>
+              <button onClick={() => downloadMedicalCertificatePDF(selectedConsultation)} className="bg-purple-500 text-white px-3 py-1 rounded">Certificate PDF</button>
+              <button onClick={() => downloadMasterPDF(selectedConsultation)} className="bg-indigo-600 text-white px-3 py-1 rounded">Master PDF</button>
+              <button onClick={() => sendToEmail(selectedConsultation)} className="bg-gray-600 text-white px-3 py-1 rounded">Send Email</button>
             </div>
           </div>
         </div>
@@ -753,5 +784,6 @@ const SpecialistDashboard = ({ consultations }) => {
     </div>
   );
 };
+
 
 export default SpecialistDashboard;

@@ -6,9 +6,9 @@ function Dashboard({ navigateTo }) {
   React.useEffect(() => {
     const email = localStorage.getItem('currentUserEmail');
     if (!email) {
-      navigateTo('login');
+      window.location.href = '/login';
     }
-  }, [navigateTo]);
+  }, []);
 
   // Services
   const DEFAULT_SERVICES = React.useMemo(() => ({
@@ -284,7 +284,7 @@ function Dashboard({ navigateTo }) {
     if (!window.confirm('Are you sure you want to logout?')) return;
     localStorage.removeItem('currentUserEmail');
     localStorage.removeItem('sessionActive');
-    navigateTo('login');
+    window.location.href = '/login';
   }
 
   // --- Encounter (per ticket) state ---
@@ -890,7 +890,7 @@ function Dashboard({ navigateTo }) {
               <div className="full-width">
                 <button type="button" className="btn-primary" onClick={() => {
                   const email = localStorage.getItem('currentUserEmail');
-                  if (!email) { navigateTo('login'); return; }
+                  if (!email) { window.location.href = '/login'; return; }
                   const fName = document.getElementById('firstName').value.trim();
                   const lName = document.getElementById('lastName').value.trim();
                   const phone = document.getElementById('phone').value.trim();
@@ -921,7 +921,7 @@ function Dashboard({ navigateTo }) {
               <div className="input-group"><label htmlFor="confirmPassword">Confirm New Password</label><input type="password" id="confirmPassword" /></div>
               <div className="full-width"><button type="button" className="btn-primary" onClick={() => {
                 const email = localStorage.getItem('currentUserEmail');
-                if (!email) { navigateTo('login'); return; }
+                if (!email) { window.location.href = '/login'; return; }
                 const current = document.getElementById('currentPassword').value;
                 const next = document.getElementById('newPassword').value;
                 const confirmNext = document.getElementById('confirmPassword').value;

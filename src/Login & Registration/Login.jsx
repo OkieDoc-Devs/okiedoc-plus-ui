@@ -66,11 +66,17 @@ export default function Login() {
       formData.password === dummyCredentials.specialist.password
     ) {
       setError("");
-      // Set the specialist session for the dashboard
-      localStorage.setItem(
-        "currentSpecialistEmail",
-        dummyCredentials.specialist.email
-      );
+      // Set specialist session data
+      localStorage.setItem('currentUserEmail', formData.email);
+      localStorage.setItem('sessionActive', '1');
+      // Create specialist user data if it doesn't exist
+      if (!localStorage.getItem(formData.email)) {
+        localStorage.setItem(formData.email, JSON.stringify({
+          fName: 'Okie',
+          lName: 'Specialist',
+          password: formData.password
+        }));
+      }
       navigate("/specialist-dashboard");
       return;
     }

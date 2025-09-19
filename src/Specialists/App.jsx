@@ -1,12 +1,12 @@
 import React from 'react';
 import './App.css';
-import Login from './pages/Login.jsx';
+import SpecialistAuth from './pages/SpecialistAuth.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 
 function App() {
-  const [view, setView] = React.useState('login');
+  const [view, setView] = React.useState('registration');
 
-  // Determine initial view on mount only (avoid reading localStorage during SSR or constructor)
+  // Check if user is already logged in
   React.useEffect(() => {
     const sessionActive = localStorage.getItem('sessionActive') === '1';
     const email = localStorage.getItem('currentUserEmail');
@@ -14,7 +14,7 @@ function App() {
       setView('dashboard');
     } else {
       if (!sessionActive) localStorage.removeItem('currentUserEmail');
-      setView('login');
+      setView('registration');
     }
   }, []);
 
@@ -26,12 +26,12 @@ function App() {
     const onStorage = () => {
       const sessionActive = localStorage.getItem('sessionActive') === '1';
       const email = localStorage.getItem('currentUserEmail');
-      if (!sessionActive || !email) { setView('login'); return; }
+      if (!sessionActive || !email) { setView('registration'); return; }
       const userRaw = localStorage.getItem(email);
       if (!userRaw) {
         localStorage.removeItem('currentUserEmail');
         localStorage.removeItem('sessionActive');
-        setView('login');
+        setView('registration');
         return;
       }
       setView('dashboard');
@@ -42,8 +42,8 @@ function App() {
 
   return (
     <div className="App">
-      {view === 'login' ? (
-        <Login navigateTo={navigateTo} />
+      {view === 'registration' ? (
+        <SpecialistAuth />
       ) : (
         <Dashboard navigateTo={navigateTo} />
       )}

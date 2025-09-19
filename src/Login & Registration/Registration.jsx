@@ -373,6 +373,9 @@ export default function Registration() {
             <p className="login-text">
               Already have an Okie-Doc+ account? <a href="/login">Login</a>
             </p>
+            <p className="login-text">
+              Are you a specialist? <a href="/specialist-registration">Register as a specialist</a>
+            </p>
           </form>
         </div>
       </div>

@@ -330,8 +330,8 @@ const ConsultationHistory = () => {
 
       {/* Consultation Summary Modal */}
       {showSummaryModal && selectedConsultation && (
-        <div className="patient-modal-overlay">
-          <div className="patient-modal-content patient-summary-modal">
+        <div className="patient-modal-overlay" onClick={() => setShowSummaryModal(false)}>
+          <div className="patient-modal-content patient-summary-modal" onClick={(e) => e.stopPropagation()}>
             <div className="patient-modal-header">
               <h3>
                 Consultation Summary - {selectedConsultation.ticketNumber}
@@ -564,12 +564,6 @@ const ConsultationHistory = () => {
 
             {/* Add close button at the bottom */}
             <div className="patient-modal-footer">
-              <button
-                className="patient-close-modal-btn"
-                onClick={() => setShowSummaryModal(false)}
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

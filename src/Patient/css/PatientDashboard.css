@@ -851,6 +851,11 @@
 .patient-book-appointment {
   text-align: center;
   margin-top: 20px;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .patient-book-btn {
@@ -1059,7 +1064,6 @@
   font-weight: bold;
   color: #dc3545;
   margin-bottom: 15px;
-  display: flex;
   align-items: center;
   gap: 8px;
 }
@@ -1095,16 +1099,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
-  gap: 15px;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid #eee;
+  gap: 1rem;
 }
 
 .patient-bill-icon {
-  font-size: 16px;
+  font-size: 1.2rem;
   color: #007bff;
-  width: 20px;
-  text-align: center;
+  flex-shrink: 0;
 }
 
 .patient-bill-item:last-child {
@@ -1114,26 +1117,32 @@
 .patient-bill-info {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 2;
+  justify-content: center;
 }
 
 .patient-bill-description {
   font-weight: 500;
+  margin-bottom: 0.2rem;
   color: #333;
 }
 
 .patient-bill-date {
   color: #666;
-  font-size: 14px;
+  font-size: 0.85rem;
 }
 
 .patient-bill-amount {
-  font-weight: 500;
+  flex: 0 0 80px;
+  text-align: right;
+  font-weight: 600;
   color: #333;
   margin-right: 15px;
 }
 
 .patient-bill-status {
+  flex: 0 0 100px;
+  text-align: center;
   font-size: 12px;
   font-weight: 500;
   padding: 4px 8px;
@@ -1415,6 +1424,26 @@
 
 .patient-action-buttons .patient-cancel-btn:hover {
   background-color: #545b62;
+}
+
+.patient-open-gmail-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #fff;
+  color: #444;
+  border: 1px solid #ccc;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  margin-bottom: 0.8rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.patient-open-gmail-btn:hover {
+  background: #f1f1f1;
 }
 
 /* Change Password Button - More compact and centered */
@@ -1809,6 +1838,21 @@
   transition: background-color 0.2s;
 }
 
+.patient-close-modal-btn {
+  background: #4cafef;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s ease-in-out;
+}
+
+.patient-close-modal-btn:hover {
+  background: #3a9edc;
+}
+
 .patient-close-btn:hover {
   background-color: #0B5388;
 }
@@ -2059,6 +2103,7 @@
 .patient-status-text {
   font-weight: 600;
   font-size: 14px;
+  color: #333;
 }
 
 .patient-consultation-details {
@@ -2275,6 +2320,22 @@
   font-size: 20px;
 }
 
+.patient-confirmation-modal {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 16px;
+  text-align: center;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  animation: fadeInScale 0.3s ease-in-out;
+}
+
+.patient-confirmation-modal h3 {
+  margin-bottom: 0.5rem;
+  font-size: 1.4rem;
+}
+
 .patient-close-btn {
   width: 32px;
   height: 32px;
@@ -2321,6 +2382,12 @@
 .patient-section-icon {
   color: #007bff;
   font-size: 16px;
+}
+
+.patient-confirm-icon {
+  font-size: 3rem;
+  color: #4cafef;
+  margin-bottom: 1rem;
 }
 
 .patient-team-details {
@@ -2521,6 +2588,16 @@
 .patient-document-price {
   color: #28a745;
   font-weight: 600;
+}
+
+.patient-pay-now-btn,
+.patient-download-btn {
+  flex: 0 0 110px;
+  text-align: center;
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .patient-download-btn, .patient-request-btn {
@@ -2800,6 +2877,7 @@
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  color: #333;
 }
 
 .patient-appointment-actions {
@@ -2862,6 +2940,11 @@
 
 .patient-book-appointment {
   margin-top: 0;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .patient-book-btn {
@@ -2880,13 +2963,40 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Hotline button styling to match book appointment button */
+.patient-hotline-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.1);
+}
+
 .patient-book-btn:hover {
   background: #0891d4;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+.patient-hotline-btn:hover {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+}
+
 .patient-book-icon {
+  font-size: 1rem;
+}
+
+.patient-hotline-icon {
   font-size: 1rem;
 }
 
@@ -2916,6 +3026,7 @@
 }
 
 
+
 .patient-home-tickets-container {
   flex: 1;
   overflow-y: auto;
@@ -2923,7 +3034,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding-right: 0.5rem;
+  padding: 0 0.5rem 2rem 0;
   min-height: 0;
   margin-top: 0;
 }
@@ -3036,6 +3147,7 @@
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  color: #333;
 }
 
 .patient-home-ticket-actions {
@@ -3160,12 +3272,20 @@
   color: #ffc107;
 }
 
+.patient-status-pending .patient-status-text {
+  color: #b45309;
+}
+
 .patient-status-processing {
   border-left-color: #17a2b8;
 }
 
 .patient-status-processing .patient-status-icon {
   color: #17a2b8;
+}
+
+.patient-status-processing .patient-status-text {
+  color: #0c5460;
 }
 
 .patient-status-payment {
@@ -3176,6 +3296,22 @@
   color: #fd7e14;
 }
 
+.patient-status-payment .patient-status-text {
+  color: #c2410c;
+}
+
+.patient-status-for-payment {
+  border-left-color: #dc2626;
+}
+
+.patient-status-for-payment .patient-status-icon {
+  color: #dc2626;
+}
+
+.patient-status-for-payment .patient-status-text {
+  color: #b91c1c;
+}
+
 .patient-status-confirmed {
   border-left-color: #28a745;
 }
@@ -3184,12 +3320,20 @@
   color: #28a745;
 }
 
+.patient-status-confirmed .patient-status-text {
+  color: #155724;
+}
+
 .patient-status-active {
   border-left-color: #6f42c1;
 }
 
 .patient-status-active .patient-status-icon {
   color: #6f42c1;
+}
+
+.patient-status-active .patient-status-text {
+  color: #4c1d95;
 }
 
 /* Chat Modal Styles - Messenger Style */
@@ -3331,6 +3475,7 @@
   color: white;
   border-bottom-right-radius: 4px;
   margin-right: 0.5rem;
+  text-align: right;
 }
 
 .patient-message-nurse .patient-message-content {
@@ -3381,6 +3526,7 @@
   font-size: 0.9rem;
   background: #f0f2f5;
   transition: all 0.2s ease;
+  color: black !important;
 }
 
 .patient-chat-input:focus {
@@ -3582,6 +3728,7 @@
   font-size: 0.9rem;
   background: #f0f2f5;
   transition: all 0.2s ease;
+  color: black !important;
 }
 
 .patient-search-input:focus {
@@ -4270,9 +4417,11 @@
   word-wrap: break-word;
 }
 
-/* Mobile Bottom Navigation */
+/* Mobile Bottom Navigation - Hidden by default */
 .patient-mobile-bottom-nav {
-  display: none;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -4282,6 +4431,9 @@
   padding: 8px 0;
   z-index: 1000;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  pointer-events: none !important;
+  height: 0 !important;
+  overflow: hidden !important;
 }
 
 .patient-mobile-bottom-nav .patient-mobile-nav-item {
@@ -4778,6 +4930,12 @@
   margin-bottom: 2rem;
 }
 
+.patient-mobile-action-buttons .patient-hotline-btn {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
 .patient-mobile-action-btn {
   display: flex;
   align-items: center;
@@ -4911,6 +5069,7 @@
   font-weight: 500;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
+  color: #333;
 }
 
 .patient-mobile-ticket-actions {
@@ -5229,7 +5388,7 @@
   flex-direction: column;
   gap: 0.75rem;
   min-height: 0;
-  padding-right: 0.5rem;
+  padding: 0 0.5rem 2rem 0;
   margin-top: 0;
 }
 
@@ -5522,29 +5681,145 @@
     color: #ffc107;
   }
 
+  .patient-mobile-status-pending .patient-mobile-status-text {
+    color: #b45309;
+  }
+
   .patient-mobile-status-processing .patient-mobile-status-icon {
     color: #17a2b8;
+  }
+
+  .patient-mobile-status-processing .patient-mobile-status-text {
+    color: #0c5460;
   }
 
   .patient-mobile-status-payment .patient-mobile-status-icon {
     color: #dc3545;
   }
 
+  .patient-mobile-status-payment .patient-mobile-status-text {
+    color: #c2410c;
+  }
+
   .patient-mobile-status-confirmed .patient-mobile-status-icon {
     color: #28a745;
+  }
+
+  .patient-mobile-status-confirmed .patient-mobile-status-text {
+    color: #155724;
   }
 
   .patient-mobile-status-active .patient-mobile-status-icon {
     color: #6f42c1;
   }
 
+  .patient-mobile-status-active .patient-mobile-status-text {
+    color: #4c1d95;
+  }
+
   .patient-mobile-status-text {
-    color: #666;
+    color: #333;
   }
 
   .patient-mobile-bottom-nav {
-    display: flex;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    height: auto !important;
+    overflow: visible !important;
   }
+  
+  /* Add padding only when bottom navigation is visible */
+  .patient-dashboard {
+    padding-bottom: 60px;
+  }
+}
+
+/* Ensure bottom navigation is completely hidden on web view (screens larger than 768px) */
+@media (min-width: 769px) {
+  .patient-mobile-bottom-nav {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  /* Ensure no bottom padding on web view */
+  .patient-dashboard {
+    padding-bottom: 0 !important;
+  }
+}
+
+/* Additional rule for desktop/large screens */
+@media (min-width: 1024px) {
+  .patient-mobile-bottom-nav {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+  }
+}
+
+/* Empty State Styles */
+.patient-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #dee2e6;
+}
+
+.patient-empty-icon {
+  font-size: 48px;
+  color: #6c757d;
+  margin-bottom: 16px;
+}
+
+.patient-empty-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #495057;
+  margin: 0 0 8px 0;
+}
+
+.patient-empty-message {
+  font-size: 14px;
+  color: #6c757d;
+  margin: 0;
+  line-height: 1.5;
+  max-width: 300px;
+}
+
+/* Mobile Empty State */
+@media (max-width: 768px) {
+  .patient-empty-state {
+    padding: 40px 16px;
+  }
+  
+  .patient-empty-icon {
+    font-size: 36px;
+  }
+  
+  .patient-empty-title {
+    font-size: 18px;
+  }
+  
+  .patient-empty-message {
+    font-size: 13px;
+  }
+}
 
   /* Show logo image on mobile sidebar, hide text */
   .patient-sidebar .patient-logo-image {
@@ -5561,7 +5836,7 @@
   /* Prevent page scrolling on mobile - only content should scroll */
   .patient-dashboard {
     overflow: hidden;
-    padding-bottom: 60px;
+    padding-bottom: 0;
   }
   
   .patient-main-content {

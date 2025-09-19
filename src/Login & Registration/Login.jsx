@@ -12,16 +12,16 @@ export default function Login() {
 
   const dummyCredentials = {
     nurse: {
-      email: "nurse@okiedoc.com",
-      password: "password123",
+      email: "nurse@okiedocplus.com",
+      password: "nurseOkDoc123",
     },
     admin: {
-      email: "admin@okiedoc.com",
-      password: "password123",
+      email: "admin@okiedocplus.com",
+      password: "adminOkDoc123",
     },
     patient: {
-      email: "patient@okiedoc.com",
-      password: "password123",
+      email: "patient@okiedocplus.com",
+      password: "patientOkDoc123",
     },
     specialist: {
       email: "specialists@okiedoc.com",
@@ -61,24 +61,6 @@ export default function Login() {
       setError("");
       navigate("/patient-dashboard");
       return;
-    } else if (
-      formData.email === dummyCredentials.specialist.email &&
-      formData.password === dummyCredentials.specialist.password
-    ) {
-      setError("");
-      // Set specialist session data
-      localStorage.setItem('currentUserEmail', formData.email);
-      localStorage.setItem('sessionActive', '1');
-      // Create specialist user data if it doesn't exist
-      if (!localStorage.getItem(formData.email)) {
-        localStorage.setItem(formData.email, JSON.stringify({
-          fName: 'Okie',
-          lName: 'Specialist',
-          password: formData.password
-        }));
-      }
-      navigate("/specialist-dashboard");
-      return;
     }
 
     const registeredUsers = JSON.parse(
@@ -106,11 +88,7 @@ export default function Login() {
           >
             <span className="material-symbols-outlined">arrow_back_2</span>
           </button>
-          <img
-            src="/okie-doc-logo.png"
-            alt="Okie-Doc+"
-            className="logo-image"
-          />
+          <img src="/okie-doc-logo.png" alt="OkieDoc+" className="logo-image" />
           <div style={{ width: "2.5rem" }}></div>
         </div>
         <h2 className="login-title">Sign in</h2>
@@ -148,6 +126,9 @@ export default function Login() {
           <p className="login-text">
             Don't have an Okie-Doc+ account?{" "}
             <a href="/registration">Register</a>
+          </p>
+          <p className="specialist-text">
+            Are you a specialist? <a href="/specialist-login">Login Here</a>
           </p>
         </form>
       </div>

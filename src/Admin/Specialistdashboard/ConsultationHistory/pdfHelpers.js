@@ -3,84 +3,49 @@
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
-/**
- * Utility function: Download a PDF with a title and table data
- */
-const generatePDF = (title, data, filename) => {
-  const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text(title, 14, 20);
-
-  if (data && data.length > 0) {
-    doc.autoTable({
-      startY: 30,
-      head: [Object.keys(data[0])],
-      body: data.map((row) => Object.values(row)),
-    });
-  } else {
-    doc.text("No data available", 14, 30);
-  }
-
-  doc.save(filename);
-};
-
-// Download functions
 export const downloadTreatmentPlanPDF = (consultation) => {
-  generatePDF(
-    `Treatment Plan - ${consultation.patientName}`,
-    consultation.treatmentPlan || [],
-    `TreatmentPlan_${consultation.patientName}.pdf`
-  );
+  const doc = new jsPDF();
+  doc.text(`Treatment Plan for ${consultation.patientName}`, 14, 20);
+  doc.text(`Date: ${consultation.date}`, 14, 30);
+  doc.save(`${consultation.patientName}-TreatmentPlan.pdf`);
 };
 
 export const downloadPrescriptionPDF = (consultation) => {
-  generatePDF(
-    `Prescription - ${consultation.patientName}`,
-    consultation.prescription || [],
-    `Prescription_${consultation.patientName}.pdf`
-  );
+  const doc = new jsPDF();
+  doc.text(`Prescription for ${consultation.patientName}`, 14, 20);
+  consultation.prescription?.forEach((p, i) => {
+    doc.text(`${i + 1}. ${p.brand} (${p.generic}) - ${p.dosage} ${p.form} × ${p.quantity}`, 14, 30 + i * 10);
+  });
+  doc.save(`${consultation.patientName}-Prescription.pdf`);
 };
 
 export const downloadLabRequestPDF = (consultation) => {
-  generatePDF(
-    `Lab Requests - ${consultation.patientName}`,
-    consultation.labs || [],
-    `LabRequests_${consultation.patientName}.pdf`
-  );
+  const doc = new jsPDF();
+  doc.text(`Lab Requests for ${consultation.patientName}`, 14, 20);
+  consultation.labs?.forEach((l, i) => {
+    doc.text(`${i + 1}. ${l.test} - ${l.remarks}`, 14, 30 + i * 10);
+  });
+  doc.save(`${consultation.patientName}-LabRequests.pdf`);
 };
 
 export const downloadMedicalCertificatePDF = (consultation) => {
   const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text(`Medical Certificate - ${consultation.patientName}`, 14, 20);
-  doc.text(`Issued by: ${consultation.specialist || "—"}`, 14, 30);
-  doc.text(`Date: ${consultation.date || "—"}`, 14, 40);
-  doc.save(`MedicalCertificate_${consultation.patientName}.pdf`);
+  doc.text(`Medical Certificate for ${consultation.patientName}`, 14, 20);
+  doc.text(`Date: ${consultation.date}`, 14, 30);
+  doc.save(`${consultation.patientName}-MedicalCertificate.pdf`);
 };
 
 export const downloadMasterPDF = (consultation) => {
   const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text(`Consultation Summary - ${consultation.patientName}`, 14, 20);
-  doc.text(`Ticket: ${consultation.ticket || "—"}`, 14, 30);
-  doc.text(`Date: ${consultation.date || "—"}`, 14, 40);
-  doc.text(`Specialist: ${consultation.specialist || "—"}`, 14, 50);
-
-  doc.text("Chief Complaint:", 14, 60);
-  doc.text(consultation.complaint || "—", 14, 70);
-
-  doc.text("SOAP Notes:", 14, 80);
-  doc.text(consultation.soap || "—", 14, 90);
-
-  doc.text("Doctor's Note:", 14, 100);
-  doc.text(consultation.doctorsNote || "—", 14, 110);
-
-  doc.save(`MasterPDF_${consultation.patientName}.pdf`);
+  doc.text(`Full Consultation Record for ${consultation.patientName}`, 14, 20);
+  doc.text(`Date: ${consultation.date}`, 14, 30);
+  doc.text(`Complaint: ${consultation.complaint}`, 14, 40);
+  doc.text(`SOAP Notes: ${consultation.soap || "—"}`, 14, 50);
+  doc.save(`${consultation.patientName}-MasterPDF.pdf`);
 };
 
 export const sendToEmail = (consultation) => {
-  alert(
-    `Pretend sending email for ${consultation.patientName}. Implement real email logic here.`
-  );
+  alert(`Send consultation of ${consultation.patientName} to email`);
 };
+
 

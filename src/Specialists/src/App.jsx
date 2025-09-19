@@ -1,6 +1,6 @@
 import React from 'react';
 import './App.css';
-import SpecialistAuth from './pages/SpecialistAuth.jsx';
+import SpecialistAuth from '../pages/SpecialistAuth.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 
 function App() {

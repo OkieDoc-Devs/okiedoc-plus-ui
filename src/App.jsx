@@ -21,13 +21,13 @@ function App() {
   };
 
   return (
-    <>
+    <div className="app-container">
       <div className="container1">
         <div className="header">
           <div className="logo-section">
             <img
               src="/okie-doc-logo.png"
-              alt="Okie-Doc+"
+              alt="OkieDoc+"
               className="logo-image"
             />
           </div>
@@ -35,7 +35,7 @@ function App() {
           <button
             className="mobile-nav-toggle"
             onClick={toggleDropdownMenu}
-            aria-label="Toggle mobile menu"
+            aria-label="Toggle dropdown menu"
           >
             ☰
           </button>
@@ -77,12 +77,12 @@ function App() {
         <div className="imageContainer">
           <img
             src="/okie-doc-logo.png"
-            alt="Okie-Doc+ Logo"
+            alt="OkieDoc+ Logo"
             className="main-logo-image"
           ></img>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

@@ -8,6 +8,7 @@ import LabResults from './LabResults';
 import Billing from './Billing';
 import MyAccount from './MyAccount';
 import ConsultationHistory from './ConsultationHistory';
+import appointmentService from '../services/appointmentService';
 import { 
   FaHome, 
   FaCalendarAlt, 
@@ -78,59 +79,49 @@ const PatientDashboard = () => {
   const [showMobileProfileModal, setShowMobileProfileModal] = useState(false);
   const navigate = useNavigate();
 
-  // Sample appointment data for home page
-  const homeAppointments = [
-    {
-      id: 1,
-      title: "General Consultation",
-      status: "Pending",
-      specialist: "Dr. Maria Santos",
-      date: "2024-01-15",
-      time: "10:00 AM",
-      specialty: "General Medicine",
-      description: "Routine checkup and health assessment"
-    },
-    {
-      id: 2,
-      title: "Blood Test Results Review",
-      status: "Processing",
-      specialist: "Dr. John Smith",
-      date: "2024-01-16",
-      time: "2:00 PM",
-      specialty: "Hematology",
-      description: "Review of recent blood test results"
-    },
-    {
-      id: 3,
-      title: "X-Ray Consultation",
-      status: "For Payment",
-      specialist: "Dr. Lisa Garcia",
-      date: "2024-01-17",
-      time: "11:30 AM",
-      specialty: "Radiology",
-      description: "X-ray examination and consultation"
-    },
-    {
-      id: 4,
-      title: "Follow-up Consultation",
-      status: "Confirmed",
-      specialist: "Dr. Michael Brown",
-      date: "2024-01-18",
-      time: "3:00 PM",
-      specialty: "Cardiology",
-      description: "Follow-up appointment for previous treatment"
-    },
-    {
-      id: 5,
-      title: "Emergency Consultation",
-      status: "Active",
-      specialist: "Dr. Sarah Wilson",
-      date: "2024-01-19",
-      time: "9:00 AM",
-      specialty: "Emergency Medicine",
-      description: "Urgent consultation for symptoms"
-    }
-  ];
+  // State for home appointments
+  const [homeAppointments, setHomeAppointments] = useState([]);
+  
+  // State for mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Load appointments from localStorage on component mount
+  useEffect(() => {
+    loadHomeAppointments();
+  }, []);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Debug: Monitor homeAppointments changes
+  useEffect(() => {
+    console.log('homeAppointments state changed:', homeAppointments);
+    console.log('homeAppointments length:', homeAppointments.length);
+  }, [homeAppointments]);
+
+  const loadHomeAppointments = () => {
+    // Initialize dummy tickets if none exist, but don't clear existing ones
+    appointmentService.initializeDummyTickets();
+    const savedAppointments = appointmentService.getAllAppointments();
+    console.log('Home appointments loaded:', savedAppointments);
+    console.log('Total appointments count:', savedAppointments.length);
+    setHomeAppointments(savedAppointments);
+  };
+
+  // Refresh appointments when new ones are added
+  const refreshAppointments = () => {
+    console.log('Refreshing home appointments...');
+    loadHomeAppointments();
+  };
 
 
   // Chat functions
@@ -377,7 +368,18 @@ const PatientDashboard = () => {
             <div className="patient-left-column">
               <div className="patient-home-section">
                 <div className="patient-home-tickets-container">
-                  {homeAppointments.map(appointment => (
+                  {homeAppointments.length === 0 ? (
+                    <div className="patient-empty-state">
+                      <FaCalendarAlt className="patient-empty-icon" />
+                      <h3 className="patient-empty-title">No Appointments Yet</h3>
+                      <p className="patient-empty-message">
+                        You haven't booked any appointments yet. Go to the Appointments page to book your first consultation.
+                      </p>
+                    </div>
+                  ) : (
+                    homeAppointments.map(appointment => {
+                      console.log('Rendering appointment:', appointment.title, appointment.status, 'ID:', appointment.id);
+                      return (
                     <div key={appointment.id} className={`patient-home-ticket-card ${getWebStatusColor(appointment.status)}`}>
                       <div className="patient-home-ticket-left">
                         <h4 className="patient-home-ticket-title">{appointment.title}</h4>
@@ -422,7 +424,9 @@ const PatientDashboard = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                    })
+                  )}
                 </div>
               </div>
             </div>
@@ -648,7 +652,16 @@ const PatientDashboard = () => {
                 {/* Tickets Section */}
                 <div className="patient-mobile-tickets-section">
                   <div className="patient-mobile-tickets-container">
-                    {homeAppointments.map((appointment, index) => (
+                    {homeAppointments.length === 0 ? (
+                      <div className="patient-empty-state">
+                        <FaCalendarAlt className="patient-empty-icon" />
+                        <h3 className="patient-empty-title">No Appointments Yet</h3>
+                        <p className="patient-empty-message">
+                          You haven't booked any appointments yet. Go to the Appointments page to book your first consultation.
+                        </p>
+                      </div>
+                    ) : (
+                      homeAppointments.map((appointment, index) => (
                       <div key={index} className={`patient-mobile-appointment-card ${getStatusColor(appointment.status)}`}>
                         <div className="patient-mobile-appointment-left">
                           <h3 className="patient-mobile-appointment-title">{appointment.title}</h3>
@@ -708,7 +721,8 @@ const PatientDashboard = () => {
                           </div>
                         </div>
                       </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
 
@@ -844,7 +858,16 @@ const PatientDashboard = () => {
               {/* Tickets Section */}
               <div className="patient-mobile-tickets-section">
                 <div className="patient-mobile-tickets-container">
-                  {homeAppointments.map((appointment, index) => (
+                  {homeAppointments.length === 0 ? (
+                    <div className="patient-empty-state">
+                      <FaCalendarAlt className="patient-empty-icon" />
+                      <h3 className="patient-empty-title">No Appointments Yet</h3>
+                      <p className="patient-empty-message">
+                        You haven't booked any appointments yet. Go to the Appointments page to book your first consultation.
+                      </p>
+                    </div>
+                  ) : (
+                    homeAppointments.map((appointment, index) => (
                     <div key={index} className={`patient-mobile-appointment-card ${getStatusColor(appointment.status)}`}>
                       <div className="patient-mobile-appointment-left">
                         <h3 className="patient-mobile-appointment-title">{appointment.title}</h3>
@@ -889,7 +912,8 @@ const PatientDashboard = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -919,7 +943,7 @@ const PatientDashboard = () => {
           </div>
         );
       case 'appointments':
-        return <Appointments />;
+        return <Appointments onAppointmentAdded={refreshAppointments} />;
       case 'messages':
         return <Messages />;
       case 'medical-records':
@@ -957,7 +981,7 @@ const PatientDashboard = () => {
         <div className="patient-logo">
           <img
             src="/okie-doc-logo.png"
-            alt="Okie-Doc+"
+            alt="OkieDoc+"
             className="patient-logo-image"
           />
         </div>
@@ -1002,7 +1026,7 @@ const PatientDashboard = () => {
             onClick={() => setActivePage('billing')}
           >
             <FaReceipt className="patient-nav-icon" />
-            <span className="patient-nav-text">Billing</span>
+            <span className="patient-nav-text">Consultation Billing</span>
           </div>
           <div 
             className={`patient-nav-item ${activePage === 'consultation-history' ? 'patient-active' : ''}`}
@@ -1118,7 +1142,7 @@ const PatientDashboard = () => {
                 onClick={() => { setActivePage('billing'); setIsMobileMenuOpen(false); }}
               >
                 <FaReceipt className="patient-mobile-nav-icon" />
-                <span>Billing</span>
+                <span>Consultation Billing</span>
               </button>
               <button 
                 className={`patient-mobile-nav-item ${activePage === 'consultation-history' ? 'active' : ''}`}
@@ -1139,8 +1163,9 @@ const PatientDashboard = () => {
         </div>
       )}
 
-      {/* Mobile Bottom Navigation */}
-      <div className="patient-mobile-bottom-nav">
+      {/* Mobile Bottom Navigation - Only render on mobile */}
+      {isMobile && (
+        <div className="patient-mobile-bottom-nav">
         <button 
           className={`patient-mobile-nav-item ${activePage === 'home' ? 'active' : ''}`}
           onClick={() => setActivePage('home')}
@@ -1169,7 +1194,8 @@ const PatientDashboard = () => {
           <FaBars className="patient-mobile-nav-icon" />
           <span className="patient-mobile-nav-label">Menu</span>
         </button>
-      </div>
+        </div>
+      )}
 
       {/* Mobile Profile Modal */}
       {showMobileProfileModal && (

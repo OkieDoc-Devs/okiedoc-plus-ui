@@ -191,6 +191,7 @@ select.login-input option {
   color: #000000;
   text-align: center;
   margin-top: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .login-text a {
@@ -199,6 +200,23 @@ select.login-input option {
 }
 
 .login-text a:hover {
+  text-decoration: underline;
+}
+
+.specialist-text {
+  font-family: "Inter", Arial, sans-serif;
+  color: #000000;
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.specialist-text a {
+  color: #0b5388;
+  text-decoration: none;
+}
+
+.specialist-text a:hover {
   text-decoration: underline;
 }
 

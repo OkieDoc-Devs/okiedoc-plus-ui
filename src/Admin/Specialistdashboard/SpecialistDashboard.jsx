@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react"; // Import useEffect
 import { useNavigate } from "react-router-dom";
 import PendingTable from "./PendingTable";
 import SpecialistTable from "./SpecialistTable";
@@ -10,8 +10,8 @@ import PRC from "../../assets/PRC_Sample.jpg";
 import PTR from "../../assets/PTR.png";
 import esig from "../../assets/esig.png";
 import OkieDocLogo from "../../assets/okie-doc-logo.png";
+import ConsultationHistory from "../ConsultationHistory/ConsultationHistory";
 
-// Header component defined locally
 const Header = () => {
   const navigate = useNavigate();
   const handleLogout = () => {
@@ -30,11 +30,32 @@ const Header = () => {
 };
 
 const SpecialistDashboard = () => {
+
+  useEffect(() => {
+
+    const root = document.getElementById('root');
+    if (root) {
+      const originalMaxWidth = root.style.maxWidth;
+      const originalPadding = root.style.padding;
+      const originalMargin = root.style.margin;
+
+      root.style.maxWidth = '95%';
+      root.style.padding = '1';
+      root.style.margin = '1';
+
+      return () => {
+        root.style.maxWidth = originalMaxWidth;
+        root.style.padding = originalPadding;
+        root.style.margin = originalMargin;
+      };
+    }
+  }, []);
+
   const [activeTab, setActiveTab] = useState("pending");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSpecialization, setFilterSpecialization] = useState("");
 
-// State for transaction filters
+  // State for transaction filters
   const [filterStatus, setFilterStatus] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
@@ -219,6 +240,49 @@ const SpecialistDashboard = () => {
     },
   ]);
 
+    const [consultations, setConsultations] = useState([
+    {
+      id: 'CON001',
+      patientName: 'Alice Johnson',
+      date: '2025-09-05',
+      ticket: 'TKT001',
+      chiefComplaint: 'Headache',
+      assignedSpecialist: 'Dr. John Doe',
+      soap: {
+        subjective: 'Patient complains of a persistent headache for the last 3 days.',
+        objective: 'BP: 120/80, Temp: 98.6F',
+        assessment: 'Tension headache',
+        plan: 'Prescribe pain relievers and recommend rest.'
+      },
+      medicinePrescription: [
+        { brand: 'Advil', generic: 'Ibuprofen', dosage: '200mg', form: 'Tablet', quantity: 20, instructions: 'Take one tablet every 6 hours as needed for pain.' }
+      ],
+      labRequests: [],
+      doctorsNote: { remarks: 'Follow up if headache persists for more than a week.' },
+      referrals: 'None',
+      specialistName: 'Dr. John Doe',
+      assignedNurse: 'Nurse Jane',
+      followUp: '2025-09-12'
+    },
+    {
+      id: 'CON002',
+      patientName: 'Bob Williams',
+      date: '2025-09-04',
+      ticket: 'TKT002',
+      chiefComplaint: 'Sore Throat',
+      assignedSpecialist: 'Dr. Jane Smith',
+	  soap: {
+        subjective: 'Patient complains of a sore throat and difficulty swallowing.',
+        objective: 'Red and swollen tonsils observed.',
+        assessment: 'Strep throat',
+        plan: 'Prescribe antibiotics.'
+      },
+	  medicinePrescription: [
+        { brand: 'Amoxil', generic: 'Amoxicillin', dosage: '500mg', form: 'Capsule', quantity: 30, instructions: 'Take one capsule every 8 hours for 10 days.' }
+      ],
+    },
+  ]);
+
   const handleAddSpecialist = (newSpecialist) => {
     const newId = `SPEC${String(specialists.length + 1).padStart(3, "0")}`;
     setSpecialists((prev) => [
@@ -389,6 +453,12 @@ const SpecialistDashboard = () => {
             Transaction History
           </button>
           <button
+            className={`tab-link ${activeTab === "consultations" ? "active" : ""}`}
+            onClick={() => setActiveTab("consultations")}
+          >
+            Consultation History
+          </button>
+          <button
             className={`tab-link ${activeTab === "settings" ? "active" : ""}`}
             onClick={() => setActiveTab("settings")}
           >
@@ -412,7 +482,7 @@ const SpecialistDashboard = () => {
             <div id="transactions" className="tab-content active">
                 <h2>Transaction History & Management</h2>
                 <div className="table-wrapper">
-                    <table>
+                    <table className="dashboard-table">
                         <thead>
                             <tr>
                                 <th>Patient Name</th>
@@ -442,6 +512,9 @@ const SpecialistDashboard = () => {
                     </table>
                 </div>
             </div>
+        )}
+        {activeTab === "consultations" && (
+          <ConsultationHistory consultations={consultations} />
         )}
         {activeTab === "settings" && (
           <div id="settings" className="tab-content active settings-tab-content">
@@ -549,383 +622,4 @@ const SpecialistDashboard = () => {
   );
 };
 
-// Consultation Histories
-
-
-// src/Admin/Specialistdashboard/ConsultationHistory/pdfHelpers.js
-
-import React, { useState, useMemo } from "react";
-import {
-  downloadTreatmentPlanPDF,
-  downloadPrescriptionPDF,
-  downloadLabRequestPDF,
-  downloadMedicalCertificatePDF,
-  sendToEmail,
-} from "../../ConsultationHistory/pdfHelpers"; // check path
-
-const ITEMS_PER_PAGE = 10;
-
-const ConsultationHistory = ({ consultations = [] }) => {
-  const [selectedConsultation, setSelectedConsultation] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
-
-  // Filter consultations
-  const filteredConsultations = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    return consultations.filter(
-      (c) =>
-        (c.patientName?.toLowerCase().includes(q) || false) ||
-        (c.date?.toLowerCase().includes(q) || false) ||
-        (c.chiefComplaint?.toLowerCase().includes(q) || false)
-    );
-  }, [consultations, searchQuery]);
-
-  // Sort consultations
-  const sortedConsultations = useMemo(() => {
-    const sorted = [...filteredConsultations];
-    if (sortConfig.key) {
-      sorted.sort((a, b) => {
-        const aVal = a[sortConfig.key] || "";
-        const bVal = b[sortConfig.key] || "";
-        if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
-        if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
-      });
-    }
-    return sorted;
-  }, [filteredConsultations, sortConfig]);
-
-  const totalPages = Math.ceil(sortedConsultations.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const currentConsultations = sortedConsultations.slice(
-    startIndex,
-    startIndex + ITEMS_PER_PAGE
-  );
-
-  const goToPage = (page) => {
-    if (page < 1 || page > totalPages) return;
-    setCurrentPage(page);
-  };
-
-  const requestSort = (key) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
-  };
-
-  const getSortIndicator = (key) => {
-    if (sortConfig.key !== key) return null;
-    return sortConfig.direction === "asc" ? " ▲" : " ▼";
-  };
-
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Consultation History</h1>
-
-      {/* Search */}
-      <div className="mb-4 flex items-center gap-2">
-        <input
-          type="text"
-          placeholder="Search by patient, complaint, or date"
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="border p-2 rounded w-full max-w-md"
-        />
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border">
-          <thead>
-            <tr className="bg-gray-200">
-              <th
-                className="p-2 border cursor-pointer"
-                onClick={() => requestSort("date")}
-              >
-                Date{getSortIndicator("date")}
-              </th>
-              <th
-                className="p-2 border cursor-pointer"
-                onClick={() => requestSort("ticket")}
-              >
-                Ticket{getSortIndicator("ticket")}
-              </th>
-              <th
-                className="p-2 border cursor-pointer"
-                onClick={() => requestSort("patientName")}
-              >
-                Patient{getSortIndicator("patientName")}
-              </th>
-              <th className="p-2 border">Chief Complaint</th>
-              <th className="p-2 border">Assigned Specialist</th>
-              <th className="p-2 border">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentConsultations.length > 0 ? (
-              currentConsultations.map((c, idx) => (
-                <tr
-                  key={c.id || idx}
-                  className="border-b hover:bg-gray-100 cursor-pointer"
-                  onClick={() => setSelectedConsultation(c)}
-                >
-                  <td className="p-2 border">{c.date || "—"}</td>
-                  <td className="p-2 border">{c.ticket || "—"}</td>
-                  <td className="p-2 border">{c.patientName || "—"}</td>
-                  <td className="p-2 border">{c.chiefComplaint || "—"}</td>
-                  <td className="p-2 border">{c.assignedSpecialist || "—"}</td>
-                  <td className="p-2 border space-x-2" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => downloadTreatmentPlanPDF(c)}
-                      className="bg-blue-500 text-white px-2 py-1 rounded"
-                    >
-                      Treatment
-                    </button>
-                    <button
-                      onClick={() => downloadPrescriptionPDF(c)}
-                      className="bg-green-500 text-white px-2 py-1 rounded"
-                    >
-                      Prescription
-                    </button>
-                    <button
-                      onClick={() => downloadLabRequestPDF(c)}
-                      className="bg-yellow-500 text-black px-2 py-1 rounded"
-                    >
-                      Lab
-                    </button>
-                    <button
-                      onClick={() => downloadMedicalCertificatePDF(c)}
-                      className="bg-purple-500 text-white px-2 py-1 rounded"
-                    >
-                      Certificate
-                    </button>
-                    <button
-                      onClick={() => sendToEmail(c)}
-                      className="bg-gray-600 text-white px-2 py-1 rounded"
-                    >
-                      Email
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td className="p-2 border text-center" colSpan={6}>
-                  No consultations found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-4 flex justify-center items-center gap-2 flex-wrap">
-          <button
-            onClick={() => goToPage(1)}
-            disabled={currentPage === 1}
-            className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
-          >
-            {"<<"} First
-          </button>
-          <button
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
-          >
-            Previous
-          </button>
-          {Array.from(
-            { length: Math.min(totalPages, 5) },
-            (_, i) => Math.min(totalPages, Math.max(1, currentPage - 2)) + i
-          ).map((page) => (
-            <button
-              key={page}
-              onClick={() => goToPage(page)}
-              className={`px-3 py-1 rounded ${
-                currentPage === page ? "bg-blue-500 text-white" : "bg-gray-200"
-              }`}
-            >
-              {page}
-            </button>
-          ))}
-          <button
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
-          >
-            Next
-          </button>
-          <button
-            onClick={() => goToPage(totalPages)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
-          >
-            Last {">>"}
-          </button>
-        </div>
-      )}
-
-      {/* Modal */}
-      {selectedConsultation && (
-        <div
-          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50"
-          onClick={() => setSelectedConsultation(null)}
-        >
-          <div
-            className="bg-white p-6 rounded-lg w-full sm:w-11/12 md:w-3/4 max-h-[90vh] overflow-y-auto shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">
-                Consultation - {selectedConsultation.patientName}
-              </h2>
-              <button
-                onClick={() => setSelectedConsultation(null)}
-                className="text-red-500 hover:text-red-700 font-semibold"
-              >
-                ✕ Close
-              </button>
-            </div>
-
-            {/* Main Details */}
-            <div className="space-y-2 text-sm md:text-base">
-              <p>
-                <strong>Chief Complaint:</strong>{" "}
-                {selectedConsultation.chiefComplaint || "N/A"}
-              </p>
-              <p><strong>SOAP:</strong></p>
-              <ul className="pl-4 list-disc">
-                <li>
-                  <strong>Subjective:</strong>{" "}
-                  {selectedConsultation.soap?.subjective || "N/A"}
-                </li>
-                <li>
-                  <strong>Objective:</strong>{" "}
-                  {selectedConsultation.soap?.objective || "N/A"}
-                </li>
-                <li>
-                  <strong>Assessment:</strong>{" "}
-                  {selectedConsultation.soap?.assessment || "N/A"}
-                </li>
-                <li>
-                  <strong>Plan:</strong>{" "}
-                  {selectedConsultation.soap?.plan || "N/A"}
-                </li>
-              </ul>
-
-              {/* Medicine Prescription */}
-              {selectedConsultation.medicinePrescription?.length > 0 && (
-                <>
-                  <p><strong>Medicine Prescription:</strong></p>
-                  <table className="w-full border mb-2 text-xs md:text-sm">
-                    <thead className="bg-gray-200">
-                      <tr>
-                        <th className="border p-1">Brand</th>
-                        <th className="border p-1">Generic</th>
-                        <th className="border p-1">Dosage</th>
-                        <th className="border p-1">Form</th>
-                        <th className="border p-1">Quantity</th>
-                        <th className="border p-1">Instructions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedConsultation.medicinePrescription.map((med, idx) => (
-                        <tr key={med.id || idx}>
-                          <td className="border p-1">{med.brand}</td>
-                          <td className="border p-1">{med.generic}</td>
-                          <td className="border p-1">{med.dosage}</td>
-                          <td className="border p-1">{med.form}</td>
-                          <td className="border p-1">{med.quantity}</td>
-                          <td className="border p-1">{med.instructions}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </>
-              )}
-
-              {/* Lab Requests */}
-              {selectedConsultation.labRequests?.length > 0 && (
-                <>
-                  <p><strong>Lab Requests:</strong></p>
-                  <table className="w-full border mb-2 text-xs md:text-sm">
-                    <thead className="bg-gray-200">
-                      <tr>
-                        <th className="border p-1">Lab Test</th>
-                        <th className="border p-1">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedConsultation.labRequests.map((lab, idx) => (
-                        <tr key={lab.id || idx}>
-                          <td className="border p-1">{lab.test}</td>
-                          <td className="border p-1">{lab.remarks}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </>
-              )}
-
-              {/* Other Info */}
-              <p><strong>Doctor's Note:</strong> {selectedConsultation.doctorsNote?.remarks || "N/A"}</p>
-              <p><strong>Date:</strong> {selectedConsultation.date || "N/A"}</p>
-              <p><strong>Referrals:</strong> {selectedConsultation.referrals || "N/A"}</p>
-              <p><strong>Specialist Name:</strong> {selectedConsultation.specialistName || "N/A"}</p>
-              <p><strong>Assigned Specialist:</strong> {selectedConsultation.assignedSpecialist || "N/A"}</p>
-              <p><strong>Assigned Nurse:</strong> {selectedConsultation.assignedNurse || "N/A"}</p>
-              <p><strong>Follow-up:</strong> {selectedConsultation.followUp || "N/A"}</p>
-
-              {/* PDF & Email Links */}
-              <div className="flex flex-wrap gap-2 mt-2">
-                <button
-                  onClick={() => downloadTreatmentPlanPDF(selectedConsultation)}
-                  className="bg-blue-500 text-white px-2 py-1 rounded"
-                >
-                  Download Treatment Plan
-                </button>
-                <button
-                  onClick={() => downloadPrescriptionPDF(selectedConsultation)}
-                  className="bg-green-500 text-white px-2 py-1 rounded"
-                >
-                  Download Prescription
-                </button>
-                <button
-                  onClick={() => downloadLabRequestPDF(selectedConsultation)}
-                  className="bg-yellow-500 text-black px-2 py-1 rounded"
-                >
-                  Download Lab Request
-                </button>
-                <button
-                  onClick={() => downloadMedicalCertificatePDF(selectedConsultation)}
-                  className="bg-purple-500 text-white px-2 py-1 rounded"
-                >
-                  Download Medical Certificate
-                </button>
-                <button
-                  onClick={() => sendToEmail(selectedConsultation)}
-                  className="bg-gray-600 text-white px-2 py-1 rounded"
-                >
-                  Send to Email
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default ConsultationHistory;
-
+export default SpecialistDashboard;

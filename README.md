@@ -19,5 +19,6 @@ Admin Features:
 * Added Placeholders for required Licenses and Records (PTR, S2, and PRC)
 * Added Transaction history for Admin dashboard
 * Added Added System Fee Settings
+* Added Consultation History tab
 
 Run npm install to download required files and npm run dev to start

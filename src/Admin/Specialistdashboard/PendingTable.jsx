@@ -47,7 +47,7 @@ const PendingTable = ({ applications = [] }) => {
       <div id="pending" className="tab-content active">
         <h2>Pending Specialist Applications</h2>
         <div className="table-wrapper">
-          <table>
+          <table className="dashboard-table">
             <thead>
               <tr><th>Applicant Name</th><th>Email</th><th>Application Date</th><th>Actions</th></tr>
             </thead>

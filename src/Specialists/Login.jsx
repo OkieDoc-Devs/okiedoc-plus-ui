@@ -143,18 +143,20 @@ const SpecialistLogin = () => {
   return (
     <div className="specialist-auth-body">
       <div className="login-container">
-        {/* Header with back button and logo */}
+        {/* Header with back button */}
         <div className="header-inside-container">
           <button
             className="back-btn specialist-back-btn"
-            onClick={() => navigate("/")}
+            onClick={() => {
+              if (isSignUp) {
+                setIsSignUp(false);
+              } else {
+                navigate("/");
+              }
+            }}
           >
             <span className="material-symbols-outlined">arrow_back_2</span>
           </button>
-          <div className="logo-container">
-            <span className="logo-text">OkieDoc</span>
-            <span className="logo-plus">+</span>
-          </div>
           <div style={{ width: "2.5rem" }}></div>
         </div>
 

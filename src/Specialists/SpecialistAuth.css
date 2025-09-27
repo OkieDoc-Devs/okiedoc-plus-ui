@@ -29,7 +29,7 @@
 .header-inside-container {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   margin-bottom: 2rem;
 }
 
@@ -55,26 +55,6 @@
   font-size: 1.2rem;
 }
 
-.logo-container {
-  display: flex;
-  align-items: center;
-  background: #4aa7ed;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-}
-
-.logo-text {
-  color: white;
-  font-weight: 700;
-  font-size: 1.1rem;
-}
-
-.logo-plus {
-  color: white;
-  font-weight: 700;
-  font-size: 1.1rem;
-  margin-left: 0.1rem;
-}
 
 /* Form Styles */
 .login-title {

@@ -311,8 +311,25 @@ const PatientDashboard = () => {
   }, []);
 
 
-  const handleLogout = () => {
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      const patientId = localStorage.getItem("patientId");
+      if (patientId) {
+        // Call backend logout API. PLS DO NOT UPDATE API YET ON audit_trailing.last_active
+        await apiService.logoutPatient(patientId);
+      }
+
+      // Clear storage
+      localStorage.removeItem("patientId");
+
+      // Redirect to login
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout Error:", error);
+      // clear storage and force redirect anyway 
+      localStorage.removeItem("patientId");
+      navigate("/login");
+    }
   };
 
   // Profile editing functions

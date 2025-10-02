@@ -47,6 +47,14 @@ class ApiService {
     });
   }
 
+  // Logout patient
+  async logoutPatient(patientId) {
+    return await this.fetchData('/patient-logout', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: patientId }),
+    });
+  }
+
   // Register patient
   async registerPatient(patientData) {
     return await this.fetchData('/patient-register', {

@@ -108,6 +108,12 @@ html:has(body.specialist-dashboard-body) {
   overflow-x: hidden;
 }
 
+.specialist-dashboard .main-content.schedule-active {
+  margin-left: 260px;
+  width: calc(100vw - 260px);
+  padding: 0;
+}
+
 .specialist-dashboard .header {
   display: flex;
   justify-content: space-between;
@@ -133,6 +139,7 @@ html:has(body.specialist-dashboard-body) {
   padding: 0;
   margin: 0;
   height: calc(100vh - 80px);
+  width: 100%;
 }
 
 .specialist-dashboard .profile-section {
@@ -691,17 +698,34 @@ html:has(body.specialist-dashboard-body) {
 
 .schedule-layout {
   display: flex;
-  height: 100%;
+  height: calc(100vh - 80px);
   width: 100%;
   gap: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .calendar-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 1rem;
+  padding: 0.5rem;
   min-width: 0;
+  background: var(--white);
+  width: 100%;
+}
+
+.schedule-page-title {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--light-gray);
+  margin-bottom: 1rem;
+}
+
+.schedule-page-title h1 {
+  color: var(--navy);
+  font-size: 1.8rem;
+  margin: 0;
+  font-weight: 600;
 }
 
 .calendar-header {
@@ -743,22 +767,34 @@ html:has(body.specialist-dashboard-body) {
   transform: translateY(0);
 }
 
-.calendar {
-  flex: 1;
+.specialist-dashboard .calendar-container {
+  display: flex;
+  justify-content: center;   /* center the calendar inside */
+  align-items: flex-start;
+  width: 100%;
+  height: auto;
+}
+
+.specialist-dashboard .calendar {
+  flex: 1;                   /* allow it to stretch */
+  max-width: 100%;           /* prevent overflow */
+  height: calc(100vh - 200px); /* Fixed height */
+  min-height: 600px;         /* adjust as needed */
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  background: var(--white);
-  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid var(--light-gray);
-  height: 100%;
 }
 
 .calendar-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: var(--navy);
-  color: var(--white);
+  background: var(--white);
+  color: var(--navy);
+  border-bottom: 1px solid var(--light-gray);
 }
 
 .weekday {
@@ -768,7 +804,7 @@ html:has(body.specialist-dashboard-body) {
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid var(--light-gray);
 }
 
 .weekday:last-child {
@@ -782,7 +818,8 @@ html:has(body.specialist-dashboard-body) {
   grid-template-rows: repeat(6, 1fr);
   gap: 0;
   width: 100%;
-  background: var(--light-gray);
+  background: var(--white);
+  min-height: 500px;
   height: 100%;
 }
 
@@ -800,6 +837,7 @@ html:has(body.specialist-dashboard-body) {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  min-height: 70px;
 }
 
 .calendar-day:nth-child(7n) {
@@ -901,9 +939,9 @@ html:has(body.specialist-dashboard-body) {
 }
 
 .selected-date-panel {
-  width: 350px;
+  width: 300px;
   flex-shrink: 0;
-  padding: 1.5rem;
+  padding: 1rem;
   background: var(--light-bg);
   border-left: 1px solid var(--light-gray);
   overflow-y: auto;
@@ -985,10 +1023,12 @@ html:has(body.specialist-dashboard-body) {
 
   .schedule-layout {
     flex-direction: column;
+    height: calc(100vh - 160px);
   }
 
   .calendar-main {
-    padding: 1rem;
+    padding: 0.5rem;
+    width: 100%;
   }
 
   .calendar-header h2 {
@@ -1008,6 +1048,7 @@ html:has(body.specialist-dashboard-body) {
   .calendar-days {
     grid-template-rows: repeat(6, 1fr);
     height: 100%;
+    min-height: 400px;
   }
 
   .calendar-day {
@@ -1060,7 +1101,8 @@ html:has(body.specialist-dashboard-body) {
   }
 
   .calendar-main {
-    padding: 0.75rem;
+    padding: 0.25rem;
+    width: 100%;
   }
 
   .calendar-header {

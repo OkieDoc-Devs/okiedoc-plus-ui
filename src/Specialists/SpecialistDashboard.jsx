@@ -808,15 +808,17 @@ const SpecialistDashboard = () => {
               </button>
             </div>
 
-            <div className="calendar">
-              <div className="calendar-weekdays">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                  <div key={day} className="weekday">
-                    {day}
-                  </div>
-                ))}
+            <div className="calendar-container">
+              <div className="calendar">
+                <div className="calendar-weekdays">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                    <div key={day} className="weekday">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+                <div className="calendar-days">{renderCalendar()}</div>
               </div>
-              <div className="calendar-days">{renderCalendar()}</div>
             </div>
           </div>
 

@@ -124,9 +124,15 @@ html:has(body.specialist-dashboard-body) {
   height: calc(100vh - 80px);
   display: flex;
   flex-direction: column;
-  padding: 1rem;
+  padding: 0;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+.specialist-dashboard .dashboard-content.schedule-page {
+  padding: 0;
+  margin: 0;
+  height: calc(100vh - 80px);
 }
 
 .specialist-dashboard .profile-section {
@@ -209,8 +215,8 @@ html:has(body.specialist-dashboard-body) {
   border: 3px solid var(--light-gray);
 }
 
-.upload-btn {
-  background: var(--primary);
+.specialist-dashboard .upload-btn {
+  background: #4aa7ed !important;
   color: var(--white);
   border: none;
   border-radius: 8px;
@@ -226,9 +232,10 @@ html:has(body.specialist-dashboard-body) {
   overflow: hidden;
 }
 
-.upload-btn:hover {
-  background: var(--navy);
+.specialist-dashboard .upload-btn:hover {
+  background: #0b5388 !important;
   transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(74, 167, 237, 0.3);
 }
 
 .upload-btn input[type="file"] {
@@ -458,29 +465,6 @@ html:has(body.specialist-dashboard-body) {
   border: 2px solid var(--primary);
 }
 
-.upload-btn {
-  padding: 0.7rem 1.5rem;
-  background: var(--light-bg);
-  border: 1px dashed var(--gray);
-  border-radius: 8px;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.upload-btn:hover {
-  background: var(--light-gray);
-}
-
-.upload-btn input[type="file"] {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-}
 
 .btn-primary {
   padding: 0.8rem 1.5rem;
@@ -692,15 +676,32 @@ html:has(body.specialist-dashboard-body) {
 
 .schedule-container {
   background: var(--white);
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin: 1rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  height: calc(100vh - 140px);
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+  height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  width: calc(100% - 2rem);
+  width: 100%;
+  flex: 1;
+  position: relative;
+}
+
+.schedule-layout {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  gap: 0;
+}
+
+.calendar-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  min-width: 0;
 }
 
 .calendar-header {
@@ -750,6 +751,7 @@ html:has(body.specialist-dashboard-body) {
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--light-gray);
+  height: 100%;
 }
 
 .calendar-weekdays {
@@ -781,6 +783,7 @@ html:has(body.specialist-dashboard-body) {
   gap: 0;
   width: 100%;
   background: var(--light-gray);
+  height: 100%;
 }
 
 .calendar-day {
@@ -795,8 +798,8 @@ html:has(body.specialist-dashboard-body) {
   justify-content: flex-start;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-height: 100px;
   position: relative;
+  overflow: hidden;
 }
 
 .calendar-day:nth-child(7n) {
@@ -861,13 +864,50 @@ html:has(body.specialist-dashboard-body) {
   right: 0.25rem;
 }
 
+.ticket-indicator {
+  background: var(--primary);
+  color: var(--white);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 600;
+  position: absolute;
+  bottom: 0.25rem;
+  left: 0.25rem;
+}
+
+.calendar-day.has-tickets {
+  border-left: 3px solid var(--primary);
+}
+
+.schedule-item.ticket-item {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-left: 4px solid var(--primary);
+}
+
+.ticket-badge {
+  background: var(--primary);
+  color: var(--white);
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .selected-date-panel {
-  margin-top: 1.5rem;
+  width: 350px;
+  flex-shrink: 0;
   padding: 1.5rem;
   background: var(--light-bg);
-  border-radius: 8px;
-  border-left: 4px solid var(--primary);
-  flex-shrink: 0;
+  border-left: 1px solid var(--light-gray);
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 .selected-date-panel h3 {
@@ -937,9 +977,18 @@ html:has(body.specialist-dashboard-body) {
 
 @media (max-width: 768px) {
   .schedule-container {
+    padding: 0;
+    margin: 0;
+    height: calc(100vh - 80px);
+    width: 100%;
+  }
+
+  .schedule-layout {
+    flex-direction: column;
+  }
+
+  .calendar-main {
     padding: 1rem;
-    margin: 0.5rem;
-    height: calc(100vh - 120px);
   }
 
   .calendar-header h2 {
@@ -956,9 +1005,13 @@ html:has(body.specialist-dashboard-body) {
     font-size: 0.75rem;
   }
 
+  .calendar-days {
+    grid-template-rows: repeat(6, 1fr);
+    height: 100%;
+  }
+
   .calendar-day {
     padding: 0.5rem 0.25rem;
-    min-height: 60px;
   }
 
   .day-number {
@@ -971,9 +1024,18 @@ html:has(body.specialist-dashboard-body) {
     font-size: 0.65rem;
   }
 
+  .ticket-indicator {
+    width: 14px;
+    height: 14px;
+    font-size: 0.55rem;
+  }
+
   .selected-date-panel {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--light-gray);
+    max-height: 300px;
     padding: 1rem;
-    margin-top: 1rem;
   }
 
   .schedule-item {
@@ -991,8 +1053,14 @@ html:has(body.specialist-dashboard-body) {
 
 @media (max-width: 480px) {
   .schedule-container {
+    padding: 0;
+    margin: 0;
+    height: calc(100vh - 80px);
+    width: 100%;
+  }
+
+  .calendar-main {
     padding: 0.75rem;
-    margin: 0.25rem;
   }
 
   .calendar-header {
@@ -1010,13 +1078,21 @@ html:has(body.specialist-dashboard-body) {
     font-size: 0.7rem;
   }
 
+  .calendar-days {
+    grid-template-rows: repeat(6, 1fr);
+    height: 100%;
+  }
+
   .calendar-day {
     padding: 0.25rem;
-    min-height: 50px;
   }
 
   .day-number {
     font-size: 0.8rem;
+  }
+
+  .selected-date-panel {
+    padding: 0.75rem;
   }
 }
 

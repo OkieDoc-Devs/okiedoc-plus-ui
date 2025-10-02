@@ -712,6 +712,34 @@ const SpecialistDashboard = () => {
     for (let day = 1; day <= daysInMonth; day++) {
       const dateKey = formatDateKey(currentYear, currentMonth, day);
       const hasSchedule = schedules[dateKey] && schedules[dateKey].length > 0;
+      
+      // Check for confirmed tickets on this date
+      const dayTickets = tickets.filter(ticket => {
+        if (ticket.status !== 'Confirmed') return false;
+        
+        // Parse the ticket date from the "when" field
+        const ticketDateStr = ticket.when;
+        if (!ticketDateStr) return false;
+        
+        // Extract date from format like "January 15, 2024 - 10:30 AM"
+        const dateMatch = ticketDateStr.match(/(\w+)\s+(\d+),\s+(\d+)/);
+        if (!dateMatch) return false;
+        
+        const [, monthName, dayStr, yearStr] = dateMatch;
+        const monthNames = [
+          "January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"
+        ];
+        const ticketMonth = monthNames.indexOf(monthName);
+        const ticketDay = parseInt(dayStr);
+        const ticketYear = parseInt(yearStr);
+        
+        return ticketYear === currentYear && ticketMonth === currentMonth && ticketDay === day;
+      });
+      
+      const hasTickets = dayTickets.length > 0;
+      const totalItems = (schedules[dateKey]?.length || 0) + dayTickets.length;
+      
       const isToday = isCurrentMonth && today.getDate() === day;
       const isPast =
         new Date(currentYear, currentMonth, day) <
@@ -720,15 +748,20 @@ const SpecialistDashboard = () => {
       days.push(
         <div
           key={day}
-          className={`calendar-day ${hasSchedule ? "has-schedule" : ""} ${
+          className={`calendar-day ${hasSchedule || hasTickets ? "has-schedule" : ""} ${
             isToday ? "today" : ""
-          } ${isPast ? "past" : ""}`}
+          } ${isPast ? "past" : ""} ${hasTickets ? "has-tickets" : ""}`}
           onClick={() => !isPast && setSelectedDate(day)}
         >
           <span className="day-number">{day}</span>
-          {hasSchedule && (
+          {totalItems > 0 && (
             <div className="schedule-indicator">
-              {schedules[dateKey].length}
+              {totalItems}
+            </div>
+          )}
+          {hasTickets && (
+            <div className="ticket-indicator">
+              T
             </div>
           )}
         </div>
@@ -739,64 +772,110 @@ const SpecialistDashboard = () => {
   };
 
   const renderSchedules = () => (
-    <div className="dashboard-content">
+    <div className="dashboard-content schedule-page">
       <div className="schedule-container">
-        <div className="calendar-header">
-          <button
-            className="calendar-nav"
-            onClick={() => {
-              if (currentMonth === 0) {
-                setCurrentMonth(11);
-                setCurrentYear(currentYear - 1);
-              } else {
-                setCurrentMonth(currentMonth - 1);
-              }
-            }}
-          >
-            ‹
-          </button>
-          <h2>
-            {getMonthName(currentMonth)} {currentYear}
-          </h2>
-          <button
-            className="calendar-nav"
-            onClick={() => {
-              if (currentMonth === 11) {
-                setCurrentMonth(0);
-                setCurrentYear(currentYear + 1);
-              } else {
-                setCurrentMonth(currentMonth + 1);
-              }
-            }}
-          >
-            ›
-          </button>
-        </div>
+        <div className="schedule-layout">
+          <div className="calendar-main">
+            <div className="calendar-header">
+              <button
+                className="calendar-nav"
+                onClick={() => {
+                  if (currentMonth === 0) {
+                    setCurrentMonth(11);
+                    setCurrentYear(currentYear - 1);
+                  } else {
+                    setCurrentMonth(currentMonth - 1);
+                  }
+                }}
+              >
+                ‹
+              </button>
+              <h2>
+                {getMonthName(currentMonth)} {currentYear}
+              </h2>
+              <button
+                className="calendar-nav"
+                onClick={() => {
+                  if (currentMonth === 11) {
+                    setCurrentMonth(0);
+                    setCurrentYear(currentYear + 1);
+                  } else {
+                    setCurrentMonth(currentMonth + 1);
+                  }
+                }}
+              >
+                ›
+              </button>
+            </div>
 
-        <div className="calendar">
-          <div className="calendar-weekdays">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div key={day} className="weekday">
-                {day}
+            <div className="calendar">
+              <div className="calendar-weekdays">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                  <div key={day} className="weekday">
+                    {day}
+                  </div>
+                ))}
               </div>
-            ))}
+              <div className="calendar-days">{renderCalendar()}</div>
+            </div>
           </div>
-          <div className="calendar-days">{renderCalendar()}</div>
-        </div>
 
-        {selectedDate && (
-          <div className="selected-date-panel">
-            <h3>
-              {getMonthName(currentMonth)} {selectedDate}, {currentYear}
-            </h3>
-            <button
-              className="btn-primary"
-              onClick={() => setShowScheduleModal(true)}
-            >
-              Add Schedule
-            </button>
+          {selectedDate && (
+            <div className="selected-date-panel">
+              <h3>
+                {getMonthName(currentMonth)} {selectedDate}, {currentYear}
+              </h3>
+              <button
+                className="btn-primary"
+                onClick={() => setShowScheduleModal(true)}
+              >
+                Add Schedule
+              </button>
 
-            <div className="day-schedules">
+              <div className="day-schedules">
+              {/* Show confirmed tickets for this day */}
+              {(() => {
+                const dayTickets = tickets.filter(ticket => {
+                  if (ticket.status !== 'Confirmed') return false;
+                  
+                  const ticketDateStr = ticket.when;
+                  if (!ticketDateStr) return false;
+                  
+                  const dateMatch = ticketDateStr.match(/(\w+)\s+(\d+),\s+(\d+)/);
+                  if (!dateMatch) return false;
+                  
+                  const [, monthName, dayStr, yearStr] = dateMatch;
+                  const monthNames = [
+                    "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"
+                  ];
+                  const ticketMonth = monthNames.indexOf(monthName);
+                  const ticketDay = parseInt(dayStr);
+                  const ticketYear = parseInt(yearStr);
+                  
+                  return ticketYear === currentYear && ticketMonth === currentMonth && ticketDay === selectedDate;
+                });
+
+                return dayTickets.map((ticket) => {
+                  // Extract time from ticket.when
+                  const timeMatch = ticket.when.match(/(\d{1,2}:\d{2}\s*[AP]M)/i);
+                  const ticketTime = timeMatch ? timeMatch[1] : 'Time TBD';
+                  
+                  return (
+                    <div key={`ticket-${ticket.id}`} className="schedule-item ticket-item">
+                      <div className="schedule-time">{ticketTime}</div>
+                      <div className="schedule-duration">Consultation</div>
+                      <div className="schedule-notes">
+                        <strong>Patient:</strong> {ticket.patient}<br />
+                        <strong>Service:</strong> {ticket.service}
+                      </div>
+                      <div className="ticket-badge">Ticket</div>
+                    </div>
+                  );
+                });
+              })()}
+
+              {/* Show regular schedules */}
               {schedules[
                 formatDateKey(currentYear, currentMonth, selectedDate)
               ]?.map((schedule) => (
@@ -818,10 +897,32 @@ const SpecialistDashboard = () => {
                     Delete
                   </button>
                 </div>
-              )) || <p>No schedules for this day</p>}
+              ))}
+
+              {/* Show message if no items */}
+              {!schedules[formatDateKey(currentYear, currentMonth, selectedDate)]?.length && 
+               !tickets.some(ticket => {
+                 if (ticket.status !== 'Confirmed') return false;
+                 const ticketDateStr = ticket.when;
+                 if (!ticketDateStr) return false;
+                 const dateMatch = ticketDateStr.match(/(\w+)\s+(\d+),\s+(\d+)/);
+                 if (!dateMatch) return false;
+                 const [, monthName, dayStr, yearStr] = dateMatch;
+                 const monthNames = [
+                   "January", "February", "March", "April", "May", "June",
+                   "July", "August", "September", "October", "November", "December"
+                 ];
+                 const ticketMonth = monthNames.indexOf(monthName);
+                 const ticketDay = parseInt(dayStr);
+                 const ticketYear = parseInt(yearStr);
+                 return ticketYear === currentYear && ticketMonth === currentMonth && ticketDay === selectedDate;
+               }) && (
+                <p>No schedules or appointments for this day</p>
+              )}
             </div>
           </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1066,24 +1167,25 @@ const SpecialistDashboard = () => {
             className="profile-img"
           />
           <div>
-            <div className="upload-btn">
+            <label htmlFor="profile-photo-upload" className="upload-btn">
               <FaUpload /> Upload Photo
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                      handleProfileChange("profileImage", e.target.result);
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-                style={{ display: "none" }}
-              />
-            </div>
+            </label>
+            <input
+              id="profile-photo-upload"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (e) => {
+                    handleProfileChange("profileImage", e.target.result);
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+              style={{ display: "none" }}
+            />
           </div>
         </div>
 
@@ -1132,24 +1234,25 @@ const SpecialistDashboard = () => {
               className="profile-img"
             />
             <div>
-              <div className="upload-btn">
+              <label htmlFor="prc-license-upload" className="upload-btn">
                 <FaUpload /> Upload PRC License Photo
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (e) => {
-                        handleProfileChange("prcImage", e.target.result);
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                  style={{ display: "none" }}
-                />
-              </div>
+              </label>
+              <input
+                id="prc-license-upload"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                      handleProfileChange("prcImage", e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                style={{ display: "none" }}
+              />
             </div>
           </div>
           <div className="input-group full-width">
@@ -1341,27 +1444,28 @@ const SpecialistDashboard = () => {
                   className="profile-img"
                 />
                 <div>
-                  <div className="upload-btn">
+                  <label htmlFor="gcash-qr-upload" className="upload-btn">
                     <FaUpload /> Upload GCash QR
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (e) => {
-                            setAccountDetails((prev) => ({
-                              ...prev,
-                              gcashQr: e.target.result,
-                            }));
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      style={{ display: "none" }}
-                    />
-                  </div>
+                  </label>
+                  <input
+                    id="gcash-qr-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                          setAccountDetails((prev) => ({
+                            ...prev,
+                            gcashQr: e.target.result,
+                          }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    style={{ display: "none" }}
+                  />
                 </div>
               </div>
             </>

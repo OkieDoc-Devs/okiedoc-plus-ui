@@ -2,6 +2,7 @@ import "./auth.css";
 import { useNavigate } from "react-router";
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import apiService from "../Patient/services/apiService";
 
 export default function Registration() {
   const navigate = useNavigate();
@@ -82,11 +83,12 @@ export default function Registration() {
     return false; // Always return false to hide requirements
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Clear previous errors
+    // Clear previous errors and success messages
     setErrors({});
+    setSuccess("");
 
     // Validation
     const newErrors = {};
@@ -142,43 +144,73 @@ export default function Registration() {
       return;
     }
 
-    // Check if user already exists
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
-    );
-    const userExists = registeredUsers.find(
-      (user) => user.email === formData.email
-    );
+    try {
+      console.log("Attempting backend registration for:", formData.email);
+      
+      // Create patient data for backend
+      const patientData = {
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.mobileNumber.trim(),
+        date_of_birth: formData.birthday,
+        gender: formData.gender,
+        password: formData.password,
+        address: "Not provided", // Default for optional field
+        emergency_contact_name: "Not provided", // Default for optional field
+        emergency_contact_phone: formData.mobileNumber.trim() // Use patient phone as default
+      };
 
-    if (userExists) {
-      setErrors({ email: "User with this email already exists. Please login instead." });
-      return;
+      // Call backend API
+      const response = await apiService.registerPatient(patientData);
+      
+      if (response.success) {
+        console.log("Registration successful:", response.patient);
+        
+        setSuccess("Registration successful! Please login with your credentials.");
+        
+        // Clear form
+        setFormData({ 
+          firstName: "", 
+          lastName: "", 
+          email: "", 
+          password: "", 
+          confirmPassword: "", 
+          birthday: "", 
+          gender: "", 
+          mobileNumber: "" 
+        });
+        setTermsAccepted(false);
+        setPrivacyAccepted(false);
+
+        // Redirect to login page after successful registration
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
+      }
+
+    } catch (error) {
+      console.error("Registration error:", error);
+      
+      // Handle specific error types
+      if (error.message && error.message.includes('409')) {
+        setErrors({ 
+          email: "This email is already registered. Please login instead or use a different email." 
+        });
+      } else if (error.message && error.message.includes('400')) {
+        setErrors({ 
+          general: "Please check all required fields and try again." 
+        });
+      } else if (error.message && error.message.includes('500')) {
+        setErrors({ 
+          general: "Server error. Please ensure the backend is running and try again." 
+        });
+      } else {
+        setErrors({ 
+          general: "Registration failed. Please check your connection and try again." 
+        });
+      }
     }
-
-    // Create new user
-    const newUser = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      password: formData.password,
-      birthday: formData.birthday,
-      gender: formData.gender,
-      mobileNumber: formData.mobileNumber,
-      registeredAt: new Date().toISOString(),
-    };
-
-    registeredUsers.push(newUser);
-    localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
-
-
-    setSuccess("Registration successful! Please login with your credentials.");
-    setFormData({ firstName: "", lastName: "", email: "", password: "", confirmPassword: "", birthday: "", gender: "", mobileNumber: "" });
-    setTermsAccepted(false);
-    setPrivacyAccepted(false);
-
-    setTimeout(() => {
-      navigate("/login");
-    }, 2000);
   };
 
   return (
@@ -194,7 +226,7 @@ export default function Registration() {
             </button>
             <img
               src="/okie-doc-logo.png"
-              alt="Okie-Doc+"
+              alt="OkieDoc+"
               className="logo-image"
             />
             <div style={{ width: "2.5rem" }}></div>
@@ -202,7 +234,10 @@ export default function Registration() {
           <h2 className="login-title">Register</h2>
           <form className="login-form" onSubmit={handleSubmit}>
             {success && (
-              <p style={{ color: "green", marginBottom: "10px" }}>{success}</p>
+              <p style={{ color: "green", marginBottom: "10px", padding: "10px", backgroundColor: "#d4edda", borderRadius: "4px" }}>{success}</p>
+            )}
+            {errors.general && (
+              <p style={{ color: "#721c24", marginBottom: "10px", padding: "10px", backgroundColor: "#f8d7da", borderRadius: "4px" }}>{errors.general}</p>
             )}
             
             {/* First Name */}

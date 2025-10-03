@@ -495,6 +495,20 @@ export default function ManageAppointment() {
     }
   };
 
+  const buildGoogleCalendarUrl = (ticket) => {
+    const { start, end } = toCalendarDateRange(
+      ticket.preferredDate,
+      ticket.preferredTime,
+      30
+    );
+    const title = encodeURIComponent(`Consultation: ${ticket.patientName}`);
+    const details = encodeURIComponent(
+      `Patient: ${ticket.patientName}\nEmail: ${ticket.email}\nMobile: ${ticket.mobile}\nChief Complaint: ${ticket.chiefComplaint}\nChannel: ${ticket.consultationChannel}\nSpecialist: ${ticket.preferredSpecialist}`
+    );
+    const location = encodeURIComponent("OkieDoc+ Platform");
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${start}%2F${end}`;
+  };
+
   const openCreateTicket = (source = "hotline") => {
     setNewTicketData({
       patientName: "",

@@ -12,6 +12,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import "./SpecialistDashboard.css";
+import authService from "./authService";
 
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
@@ -71,6 +72,7 @@ const SpecialistDashboard = () => {
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [editingService, setEditingService] = useState({ name: "", fee: 0 });
+  const [isLoading, setIsLoading] = useState(true);
 
   // SOAP Notes and Encounter Management
   const [selectedTicketId, setSelectedTicketId] = useState(null);
@@ -237,40 +239,34 @@ const SpecialistDashboard = () => {
   useEffect(() => {
     document.body.classList.add("specialist-dashboard-body");
 
-    const email = localStorage.getItem("currentSpecialistEmail");
-    if (!email) {
-      navigate("/login");
+    // Check authentication using auth service
+    const currentUser = authService.getCurrentUser();
+    
+    if (!currentUser || currentUser.userType !== 'specialist') {
+      navigate("/login?specialist=true");
       return;
     }
 
-    let user = JSON.parse(localStorage.getItem(email) || "{}");
-    if (!user.fName) {
-      user = {
-        fName: "Dr. John",
-        lName: "Specialist",
-        password: "password123",
-      };
-      localStorage.setItem(email, JSON.stringify(user));
-    }
-
-    setCurrentUser(user);
+    setCurrentUser(currentUser.user);
+    setIsLoading(false);
 
     const initials = (
-      (user.fName || "D")[0] + (user.lName || "S")[0]
+      (currentUser.user.firstName || currentUser.user.fName || "D")[0] + 
+      (currentUser.user.lastName || currentUser.user.lName || "S")[0]
     ).toUpperCase();
     setUserInitials(initials);
 
     const profile = JSON.parse(
-      localStorage.getItem("profile:" + email) || "{}"
+      localStorage.getItem("profile:" + currentUser.user.email) || "{}"
     );
     setProfileData((prev) => ({
       ...prev,
-      firstName: user.fName || "",
-      lastName: user.lName || "",
-      email: email,
-      phone: profile.phone || "+63 ",
-      prcNumber: profile.prcNumber || "",
-      specialization: profile.specialization || "",
+      firstName: currentUser.user.firstName || currentUser.user.fName || "",
+      lastName: currentUser.user.lastName || currentUser.user.lName || "",
+      email: currentUser.user.email,
+      phone: profile.phone || currentUser.user.phone || "+63 ",
+      prcNumber: profile.prcNumber || currentUser.user.licenseNumber || "",
+      specialization: profile.specialization || currentUser.user.specialty || "",
       subSpecialization: profile.subSpecialization || "",
       bio:
         profile.bio || "Board-certified specialist with years of experience.",
@@ -279,17 +275,17 @@ const SpecialistDashboard = () => {
     }));
 
     const savedServices = JSON.parse(
-      localStorage.getItem("services:" + email) || "{}"
+      localStorage.getItem("services:" + currentUser.user.email) || "{}"
     );
     setServices((prev) => ({ ...prev, ...savedServices }));
 
     const savedAccount = JSON.parse(
-      localStorage.getItem("account:" + email) || "{}"
+      localStorage.getItem("account:" + currentUser.user.email) || "{}"
     );
     setAccountDetails((prev) => ({ ...prev, ...savedAccount }));
 
     const savedSchedules = JSON.parse(
-      localStorage.getItem("schedule:" + email) || "{}"
+      localStorage.getItem("schedule:" + currentUser.user.email) || "{}"
     );
     setSchedules(savedSchedules);
 
@@ -335,7 +331,7 @@ const SpecialistDashboard = () => {
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) {
-      localStorage.removeItem("currentSpecialistEmail");
+      authService.logout();
       navigate("/");
     }
   };
@@ -1551,6 +1547,22 @@ const SpecialistDashboard = () => {
     </div>
   );
 
+  if (isLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh', 
+        backgroundColor: '#f0f8ff',
+        fontSize: '18px',
+        color: '#333'
+      }}>
+        Loading specialist dashboard...
+      </div>
+    );
+  }
+
   return (
     <div className="specialist-dashboard">
       <div className="sidebar">
@@ -1619,8 +1631,8 @@ const SpecialistDashboard = () => {
               </div>
               <div className="user-info">
                 <div className="user-name">
-                  Dr. {currentUser?.fName || "Specialist"}{" "}
-                  {currentUser?.lName || "Name"}
+                  Dr. {currentUser?.firstName || currentUser?.fName || "Specialist"}{" "}
+                  {currentUser?.lastName || currentUser?.lName || "Name"}
                 </div>
                 <div className="user-role">Specialist</div>
               </div>

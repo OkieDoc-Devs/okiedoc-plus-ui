@@ -128,10 +128,10 @@ const PatientDashboard = () => {
           emergencyContact: patient.emergency_contact_name || 'Not provided',
           emergencyPhone: patient.emergency_contact_phone || ''
         });
-        console.log('✅ Patient profile loaded from backend');
+        console.log('Patient profile loaded from backend');
       }
     } catch (error) {
-      console.error('❌ Failed to load patient profile:', error);
+      console.error('Failed to load patient profile:', error);
       // Set default values on error
       setProfileData({
         firstName: 'Patient',
@@ -196,10 +196,10 @@ const PatientDashboard = () => {
       });
       
       // Show success message
-      console.log('✅ API data loaded successfully!');
-      console.log('📊 Using API appointments:', patientData.appointments.length, 'appointments');
+      console.log('API data loaded successfully!');
+      console.log('Using API appointments:', patientData.appointments.length, 'appointments');
     } catch (error) {
-      console.error('❌ Failed to load API data:', error);
+      console.error(' Failed to load API data:', error);
       // Fallback to localStorage data
       console.log('Using localStorage data as fallback');
     } finally {

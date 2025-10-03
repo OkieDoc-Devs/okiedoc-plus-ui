@@ -24,8 +24,8 @@ export default function Login() {
       password: "patientOkDoc123",
     },
     specialist: {
-      email: "specialist@okiedocplus.com",
-      password: "specialistOkDoc123",
+      email: "specialists@okiedoc.com",
+      password: "password123",
     },
   };
 
@@ -61,15 +61,8 @@ export default function Login() {
       setError("");
       navigate("/patient-dashboard");
       return;
-    } else if (
-      formData.email === dummyCredentials.specialist.email &&
-      formData.password === dummyCredentials.specialist.password
-    ) {
-      setError("");
-      navigate("/specialist-dashboard");
-      return;
     }
-    
+
     const registeredUsers = JSON.parse(
       localStorage.getItem("registeredUsers") || "[]"
     );
@@ -95,11 +88,7 @@ export default function Login() {
           >
             <span className="material-symbols-outlined">arrow_back_2</span>
           </button>
-          <img
-            src="/okie-doc-logo.png"
-            alt="OkieDoc+"
-            className="logo-image"
-          />
+          <img src="/okie-doc-logo.png" alt="OkieDoc+" className="logo-image" />
           <div style={{ width: "2.5rem" }}></div>
         </div>
         <h2 className="login-title">Sign in</h2>

@@ -7,20 +7,13 @@ body {
 }
 
 #root {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  text-align: initial;
-}
-
-.app-container {
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 2rem 2rem 2rem;
   text-align: center;
 }
 
-.app-container .header {
+.header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -34,7 +27,7 @@ body {
   min-width: 0;
 }
 
-.app-container .header h1 {
+.header h1 {
   margin: 0;
   padding: 0;
   color: black;
@@ -42,7 +35,7 @@ body {
   font-family: "Inter", Arial, sans-serif;
   font-weight: 900;
 }
-.app-container .header h1.plus {
+.header h1.plus {
   color: black;
 }
 
@@ -695,7 +688,7 @@ body {
 }
 
 @media (max-width: 1250px) {
-  .app-container {
+  #root {
     padding: 0 1rem 1rem 1rem;
     margin: 0 10px;
   }
@@ -843,7 +836,7 @@ body {
 }
 
 @media (max-width: 480px) {
-  .app-container {
+  #root {
     padding: 0 0.5rem 0.5rem 0.5rem;
     margin: 0 5px;
   }

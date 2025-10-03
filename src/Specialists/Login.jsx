@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router";
+import { useNavigate } from "react-router";
 import {
   FaEnvelope,
   FaLock,
@@ -11,7 +11,6 @@ import "./SpecialistAuth.css";
 
 const SpecialistLogin = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -41,12 +40,7 @@ const SpecialistLogin = () => {
     if (current) {
       navigate("/specialist-dashboard");
     }
-
-    // Check if user came from registration link - show signup form
-    if (location.state?.fromRegistration || location.search.includes('register=true')) {
-      setIsSignUp(true);
-    }
-  }, [navigate, location]);
+  }, [navigate]);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -143,161 +137,139 @@ const SpecialistLogin = () => {
   return (
     <div className="specialist-auth-body">
       <div className="login-container">
-        {/* Header with back button */}
-        <div className="header-inside-container">
-          <button
-            className="back-btn specialist-back-btn"
-            onClick={() => {
-              if (isSignUp) {
-                setIsSignUp(false);
-              } else {
-                navigate("/");
-              }
-            }}
-          >
-            <span className="material-symbols-outlined">arrow_back_2</span>
-          </button>
-          <div style={{ width: "2.5rem" }}></div>
-        </div>
-
         {!isSignUp ? (
           <div id="signinView">
-            <h2 className="login-title">Sign in</h2>
-            <form className="login-form" onSubmit={handleLogin}>
-              <label className="login-label" htmlFor="email">
-                Email address
-              </label>
-              <input
-                className="login-input"
-                id="email"
-                type="email"
-                name="email"
-                placeholder="Enter your email address"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-              />
-              <label className="login-label" htmlFor="password">
-                Password
-              </label>
-              <div className="login-password">
+            <h1 className="form-title">Okiedoc+ Specialist Login</h1>
+            <form onSubmit={handleLogin}>
+              <div className="login-input-group">
+                <FaEnvelope />
                 <input
-                  className="login-input"
-                  id="password"
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="login-input-group">
+                <FaLock />
+                <input
                   type="password"
                   name="password"
-                  placeholder="Enter your password"
+                  placeholder="Password"
                   value={formData.password}
                   onChange={handleInputChange}
                   required
                 />
               </div>
-              <button className="login-btn" type="submit">
-                Sign in
+              <button type="submit" className="btn">
+                Sign In
               </button>
-              <p className="login-text">
-                Don't have an Okie-Doc+ account?{" "}
+            </form>
+            <button className="social-btn google-btn">
+              <FaGoogle /> Sign in with Google
+            </button>
+            <button className="social-btn fb-btn">
+              <FaFacebookF /> Sign in with Facebook
+            </button>
+            <div className="links">
+              <p>
+                Don't have an account?{" "}
                 <button type="button" onClick={() => setIsSignUp(true)}>
-                  Register
+                  Sign Up
                 </button>
               </p>
-              <p className="specialist-text">
+            </div>
+            <div className="other-login-link">
+              <p>
                 Patient or Nurse?{" "}
                 <button type="button" onClick={() => navigate("/login")}>
                   Login Here
                 </button>
               </p>
-            </form>
+            </div>
           </div>
         ) : (
+          // Sign Up Form
           <div id="signupView">
-            <h2 className="login-title">Register</h2>
-            <form className="login-form" onSubmit={handleSignUp}>
-              <label className="login-label" htmlFor="firstName">
-                First Name
-              </label>
-              <input
-                className="login-input"
-                id="firstName"
-                type="text"
-                name="firstName"
-                placeholder="Enter your first name"
-                value={formData.firstName}
-                onChange={handleInputChange}
-                required
-              />
-              <label className="login-label" htmlFor="lastName">
-                Last Name
-              </label>
-              <input
-                className="login-input"
-                id="lastName"
-                type="text"
-                name="lastName"
-                placeholder="Enter your last name"
-                value={formData.lastName}
-                onChange={handleInputChange}
-                required
-              />
-              <label className="login-label" htmlFor="email">
-                Email address
-              </label>
-              <input
-                className="login-input"
-                id="email"
-                type="email"
-                name="email"
-                placeholder="Enter your email address"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-              />
-              <label className="login-label" htmlFor="password">
-                Password
-              </label>
-              <div className="login-password">
+            <h1 className="form-title">Create your account</h1>
+            <form onSubmit={handleSignUp}>
+              <div className="login-input-group">
+                <FaUser />
                 <input
-                  className="login-input"
-                  id="password"
+                  type="text"
+                  name="firstName"
+                  placeholder="First name"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="login-input-group">
+                <FaUser />
+                <input
+                  type="text"
+                  name="lastName"
+                  placeholder="Last name"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="login-input-group">
+                <FaEnvelope />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="login-input-group">
+                <FaLock />
+                <input
                   type="password"
                   name="password"
-                  placeholder="Enter your password"
+                  placeholder="Password (min 3 chars)"
                   value={formData.password}
                   onChange={handleInputChange}
                   required
                 />
               </div>
-              <label className="login-label" htmlFor="confirmPassword">
-                Confirm Password
-              </label>
-              <div className="login-password">
+              <div className="login-input-group">
+                <FaLock />
                 <input
-                  className="login-input"
-                  id="confirmPassword"
                   type="password"
                   name="confirmPassword"
-                  placeholder="Confirm your password"
+                  placeholder="Confirm password"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   required
                 />
               </div>
-              <button className="login-btn" type="submit">
-                Register
+              <button type="submit" className="btn">
+                Create Account
               </button>
-              <p className="login-text">
-                Already have an Okie-Doc+ account?{" "}
+            </form>
+            <div className="links">
+              <p>
+                Already have an account?{" "}
                 <button type="button" onClick={() => setIsSignUp(false)}>
-                  Login
+                  Back to Sign In
                 </button>
               </p>
-              <p className="specialist-text">
+            </div>
+            <div className="other-login-link">
+              <p>
                 Patient or Nurse?{" "}
                 <button type="button" onClick={() => navigate("/login")}>
                   Login Here
                 </button>
               </p>
-            </form>
+            </div>
           </div>
         )}
       </div>

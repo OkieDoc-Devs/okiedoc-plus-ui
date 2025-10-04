@@ -128,16 +128,6 @@ const PatientDashboard = () => {
           emergencyContact: patient.emergency_contact_name || 'Not provided',
           emergencyPhone: patient.emergency_contact_phone || ''
         });
-
-        // Load profile image from backend if available
-        console.log('Profile image from backend:', patient.profile_image_url ? 'Present' : 'Not found');
-        if (patient.profile_image_url) {
-          setProfileImage(patient.profile_image_url);
-          console.log('Profile image loaded from backend');
-        } else {
-          console.log('No profile image found in backend data');
-        }
-
         console.log('Patient profile loaded from backend');
       }
     } catch (error) {

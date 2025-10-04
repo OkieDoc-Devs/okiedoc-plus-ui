@@ -47,6 +47,14 @@ class ApiService {
     });
   }
 
+  // Logout patient
+  async logoutPatient(patientId) {
+    return await this.fetchData('/patient-logout', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: patientId }),
+    });
+  }
+
   // Register patient
   async registerPatient(patientData) {
     return await this.fetchData('/patient-register', {
@@ -69,6 +77,17 @@ class ApiService {
       ? `/patient-profile?patient_id=${patientId}` 
       : '/patient-profile';
     return await this.fetchData(endpoint);
+  }
+
+  // Update patient profile
+  async updatePatientProfile(patientId, profileData) {
+    return await this.fetchData('/patient-profile', {
+      method: 'PUT',
+      body: JSON.stringify({
+        patient_id: patientId,
+        ...profileData
+      }),
+    });
   }
 
   // Get appointments specifically
@@ -111,6 +130,22 @@ class ApiService {
       const appointmentService = await import('./appointmentService.js');
       return appointmentService.default.getAllAppointments();
     }
+  }
+
+  // User Type Detection - Check which table contains the email
+  async checkUserType(email) {
+    return await this.fetchData('/check-user-type', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  // Generic Login Handler - Routes to appropriate authentication based on user type
+  async loginUser(email, password) {
+    return await this.fetchData('/login-user', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
   }
 }
 

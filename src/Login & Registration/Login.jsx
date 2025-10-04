@@ -13,24 +13,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const dummyCredentials = {
-    nurse: {
-      email: "nurse@okiedocplus.com",
-      password: "nurseOkDoc123",
-    },
-    admin: {
-      email: "admin@okiedocplus.com",
-      password: "adminOkDoc123",
-    },
-    patient: {
-      email: "patient@okiedocplus.com",
-      password: "patientOkDoc123",
-    },
-    specialist: {
-      email: "specialist@okiedocplus.com",
-      password: "specialistOkDoc123",
-    },
-  };
+  // Dummy credentials removed - now using backend user type detection
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -48,91 +31,50 @@ export default function Login() {
     e.preventDefault();
     setError("");
 
-    // Check for hardcoded non-patient accounts first
-    if (
-      formData.email === dummyCredentials.nurse.email &&
-      formData.password === dummyCredentials.nurse.password
-    ) {
-      navigate("/nurse-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.admin.email &&
-      formData.password === dummyCredentials.admin.password
-    ) {
-      navigate("/admin/specialist-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.specialist.email &&
-      formData.password === dummyCredentials.specialist.password
-    ) {
-      navigate("/specialist-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.patient.email &&
-      formData.password === dummyCredentials.patient.password
-    ) {
-      // Try backend authentication for patient@okiedocplus.com first
-      try {
-        console.log("Attempting backend login for patient:", formData.email);
-        const response = await apiService.loginPatient(formData.email, formData.password);
-        
-        if (response.success && response.patient) {
-          console.log("Backend login successful:", response.patient);
-          
-          // Store only patient ID for session management (backend is source of truth)
-          localStorage.setItem("patientId", response.patient.patient_id);
-          
-          // Navigate to patient dashboard
-          navigate("/patient-dashboard");
-          return;
-        } else {
-          // Fallback to dummy navigation if backend fails
-          console.log("Backend failed, using dummy navigation");
-          navigate("/patient-dashboard");
-          return;
-        }
-      } catch (error) {
-        console.error("Backend login error:", error);
-        // Fallback to dummy navigation if backend fails
-        console.log("Backend failed, using dummy navigation");
-        navigate("/patient-dashboard");
-        return;
-      }
-    }
-
-    // Try backend authentication for other patient accounts
     try {
-      console.log("Attempting backend login for:", formData.email);
-      const response = await apiService.loginPatient(formData.email, formData.password);
+      console.log("Attempting login for:", formData.email);
       
-      if (response.success && response.patient) {
-        console.log("Login successful:", response.patient);
+      // Use the generic login handler that detects user type from backend
+      const response = await apiService.loginUser(formData.email, formData.password);
+      
+      if (response.success) {
+        console.log("Login successful:", response);
         
-        // Store only patient ID for session management (backend is source of truth)
-        localStorage.setItem("patientId", response.patient.patient_id);
-        
-        // Navigate to patient dashboard
-        navigate("/patient-dashboard");
-        return;
+        // Store user information based on user type
+        switch (response.userType) {
+          case 'patient':
+            localStorage.setItem("patientId", response.patient.patient_id);
+            localStorage.setItem("userType", "patient");
+            navigate("/patient-dashboard");
+            break;
+            
+          case 'nurse':
+            localStorage.setItem("nurseId", response.userId);
+            localStorage.setItem("userType", "nurse");
+            navigate("/nurse-dashboard");
+            break;
+            
+          case 'admin':
+            localStorage.setItem("adminId", response.userId);
+            localStorage.setItem("userType", "admin");
+            navigate("/admin/specialist-dashboard");
+            break;
+            
+          case 'specialist':
+            localStorage.setItem("specialistId", response.userId);
+            localStorage.setItem("userType", "specialist");
+            navigate("/specialist-dashboard");
+            break;
+            
+          default:
+            setError("Unknown user type. Please contact support.");
+        }
       } else {
-        setError("Invalid email or password. Please try again.");
+        setError(response.error || "Login failed. Please check your credentials.");
       }
     } catch (error) {
       console.error("Login error:", error);
-      
-      // Fallback to localStorage check
-      const registeredUsers = JSON.parse(
-        localStorage.getItem("registeredUsers") || "[]"
-      );
-      const user = registeredUsers.find(
-        (u) => u.email === formData.email && u.password === formData.password
-      );
-
-      if (user) {
-        navigate("/dashboard");
-      } else {
-        setError("Login failed. Please check your credentials or try again later.");
-      }
+      setError("Login failed. Please check your credentials or try again later.");
     }
   };
 

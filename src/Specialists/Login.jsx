@@ -21,18 +21,18 @@ const SpecialistLogin = () => {
   });
 
   useEffect(() => {
-    if (!localStorage.getItem("specialist@okiedoc.com")) {
+    if (!localStorage.getItem("specialist@okiedocplus.com")) {
       localStorage.setItem(
-        "specialist@okiedoc.com",
+        "specialist@okiedocplus.com",
         JSON.stringify({
           fName: "John",
           lName: "Smith",
-          password: "password123",
+          password: "specialistOkDoc123",
         })
       );
       console.log("Dummy credential added:", {
-        email: "specialist@okiedoc.com",
-        password: "password123",
+        email: "specialist@okiedocplus.com",
+        password: "specialistOkDoc123",
       });
     }
 
@@ -59,10 +59,10 @@ const SpecialistLogin = () => {
     }
 
     if (
-      email.trim() === "specialist@okiedoc.com" &&
-      password === "password123"
+      email.trim() === "specialist@okiedocplus.com" &&
+      password === "specialistOkDoc123"
     ) {
-      localStorage.setItem("currentSpecialistEmail", "specialist@okiedoc.com");
+      localStorage.setItem("currentSpecialistEmail", "specialist@okiedocplus.com");
       alert("Welcome, Dr. John Smith 👋");
       navigate("/specialist-dashboard");
       return;

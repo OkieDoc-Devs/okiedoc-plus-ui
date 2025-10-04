@@ -128,10 +128,20 @@ const PatientDashboard = () => {
           emergencyContact: patient.emergency_contact_name || 'Not provided',
           emergencyPhone: patient.emergency_contact_phone || ''
         });
-        console.log('✅ Patient profile loaded from backend');
+
+        // Load profile image from backend if available
+        console.log('Profile image from backend:', patient.profile_image_url ? 'Present' : 'Not found');
+        if (patient.profile_image_url) {
+          setProfileImage(patient.profile_image_url);
+          console.log('Profile image loaded from backend');
+        } else {
+          console.log('No profile image found in backend data');
+        }
+
+        console.log('Patient profile loaded from backend');
       }
     } catch (error) {
-      console.error('❌ Failed to load patient profile:', error);
+      console.error('Failed to load patient profile:', error);
       // Set default values on error
       setProfileData({
         firstName: 'Patient',
@@ -196,10 +206,10 @@ const PatientDashboard = () => {
       });
       
       // Show success message
-      console.log('✅ API data loaded successfully!');
-      console.log('📊 Using API appointments:', patientData.appointments.length, 'appointments');
+      console.log('API data loaded successfully!');
+      console.log('Using API appointments:', patientData.appointments.length, 'appointments');
     } catch (error) {
-      console.error('❌ Failed to load API data:', error);
+      console.error(' Failed to load API data:', error);
       // Fallback to localStorage data
       console.log('Using localStorage data as fallback');
     } finally {
@@ -311,8 +321,25 @@ const PatientDashboard = () => {
   }, []);
 
 
-  const handleLogout = () => {
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      const patientId = localStorage.getItem("patientId");
+      if (patientId) {
+        // Call backend logout API. PLS DO NOT UPDATE API YET ON audit_trailing.last_active
+        await apiService.logoutPatient(patientId);
+      }
+
+      // Clear storage
+      localStorage.removeItem("patientId");
+
+      // Redirect to login
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout Error:", error);
+      // clear storage and force redirect anyway 
+      localStorage.removeItem("patientId");
+      navigate("/login");
+    }
   };
 
   // Profile editing functions
@@ -343,10 +370,48 @@ const PatientDashboard = () => {
     }));
   };
 
-  const handleSaveProfile = () => {
-    console.log('Saving profile:', profileData);
-    setIsEditingProfile(false);
-    // You can add API call here to save to backend
+  const handleSaveProfile = async () => {
+    try {
+      const patientId = localStorage.getItem('patientId');
+      if (!patientId) {
+        console.error('No patient ID found in session');
+        return;
+      }
+
+      console.log('Saving profile:', profileData);
+      
+      // Prepare profile data for backend
+      const profileUpdateData = {
+        first_name: profileData.firstName,
+        last_name: profileData.lastName,
+        phone: profileData.phone,
+        address: profileData.address,
+        emergency_contact_name: profileData.emergencyContact,
+        emergency_contact_phone: profileData.emergencyPhone,
+        date_of_birth: profileData.dateOfBirth,
+      };
+
+      // Include profile image if it's been uploaded
+      if (profileImage) {
+        profileUpdateData.profile_image_url = profileImage;
+      }
+
+      // Call backend API to update profile
+      const response = await apiService.updatePatientProfile(patientId, profileUpdateData);
+      
+      if (response.success) {
+        console.log('Profile saved successfully');
+        setIsEditingProfile(false);
+        // Optionally show success message
+        alert('Profile updated successfully!');
+      } else {
+        console.error('Failed to save profile:', response.error);
+        alert('Failed to save profile. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Error saving profile. Please try again.');
+    }
   };
 
   const handleSavePassword = () => {

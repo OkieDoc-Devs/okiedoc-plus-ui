@@ -1,6 +1,7 @@
 import "./auth.css";
 import { useNavigate } from "react-router";
 import { useState } from "react";
+import { loginAdmin } from '../api/Admin/api';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -10,75 +11,48 @@ export default function Login() {
   });
   const [error, setError] = useState("");
 
-  const dummyCredentials = {
-    nurse: {
-      email: "nurse@okiedocplus.com",
-      password: "nurseOkDoc123",
-    },
-    admin: {
-      email: "admin@okiedocplus.com",
-      password: "adminOkDoc123",
-    },
-    patient: {
-      email: "patient@okiedocplus.com",
-      password: "patientOkDoc123",
-    },
-    specialist: {
-      email: "specialist@okiedocplus.com",
-      password: "specialistOkDoc123",
-    },
-  };
-
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [id]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
 
-    if (
-      formData.email === dummyCredentials.nurse.email &&
-      formData.password === dummyCredentials.nurse.password
-    ) {
-      setError("");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+
+    if (formData.email.includes("admin@")) {
+      try {
+        await loginAdmin(formData.email, formData.password);
+
+        navigate("/admin/specialist-dashboard");
+      } catch (err) {
+
+        setError(err.message || "Invalid admin credentials. Please try again.");
+      }
+      return; 
+    }
+
+    if (formData.email === "nurse@okiedocplus.com") {
       navigate("/nurse-dashboard");
       return;
-    } else if (
-      formData.email === dummyCredentials.admin.email &&
-      formData.password === dummyCredentials.admin.password
-    ) {
-      setError("");
-      navigate("/admin/specialist-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.patient.email &&
-      formData.password === dummyCredentials.patient.password
-    ) {
-      setError("");
+    }
+    if (formData.email === "patient@okiedocplus.com") {
       navigate("/patient-dashboard");
       return;
-    } else if (
-      formData.email === dummyCredentials.specialist.email &&
-      formData.password === dummyCredentials.specialist.password
-    ) {
-      setError("");
+    }
+    if (formData.email === "specialist@okiedocplus.com") {
       navigate("/specialist-dashboard");
       return;
     }
-    
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
-    );
+
+    const registeredUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
     const user = registeredUsers.find(
       (u) => u.email === formData.email && u.password === formData.password
     );
 
     if (user) {
-      setError("");
       navigate("/dashboard");
     } else {
       setError("Invalid email or password. Please try again.");

@@ -1,6 +1,7 @@
 import "./auth.css";
 import { useNavigate } from "react-router";
 import { useState } from "react";
+import { loginAdmin } from "../api/Admin/api.js";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -14,10 +15,6 @@ export default function Login() {
     nurse: {
       email: "nurse@okiedocplus.com",
       password: "nurseOkDoc123",
-    },
-    admin: {
-      email: "admin@okiedocplus.com",
-      password: "adminOkDoc123",
     },
     patient: {
       email: "patient@okiedocplus.com",
@@ -37,35 +34,37 @@ export default function Login() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
+    if (formData.email === "admin@okiedocplus.com") {
+      try {
+        await loginAdmin(formData.email, formData.password);
+        navigate("/admin/specialist-dashboard");
+        return;
+      } catch (err) {
+        setError(err.message || "Invalid admin credentials. Please try again.");
+        return;
+      }
+    }
+    
     if (
       formData.email === dummyCredentials.nurse.email &&
       formData.password === dummyCredentials.nurse.password
     ) {
-      setError("");
       navigate("/nurse-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.admin.email &&
-      formData.password === dummyCredentials.admin.password
-    ) {
-      setError("");
-      navigate("/admin/specialist-dashboard");
       return;
     } else if (
       formData.email === dummyCredentials.patient.email &&
       formData.password === dummyCredentials.patient.password
     ) {
-      setError("");
       navigate("/patient-dashboard");
       return;
     } else if (
       formData.email === dummyCredentials.specialist.email &&
       formData.password === dummyCredentials.specialist.password
     ) {
-      setError("");
       navigate("/specialist-dashboard");
       return;
     }
@@ -78,8 +77,7 @@ export default function Login() {
     );
 
     if (user) {
-      setError("");
-      navigate("/dashboard");
+      navigate("/patient-dashboard");
     } else {
       setError("Invalid email or password. Please try again.");
     }

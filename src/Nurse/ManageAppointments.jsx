@@ -37,44 +37,6 @@ export default function ManageAppointment() {
   const [showConsultationHistory, setShowConsultationHistory] = useState(false);
   const navigate = useNavigate();
   const [online, setOnline] = useState(true);
-  const [notifications] = useState([
-    {
-      id: 1,
-      type: "New Ticket",
-      message: "New ticket T005 submitted by Alex Smith",
-      time: "5 mins ago",
-      unread: true,
-    },
-    {
-      id: 2,
-      type: "Payment Confirmation",
-      message: "Payment confirmed for appointment #A123",
-      time: "15 mins ago",
-      unread: true,
-    },
-    {
-      id: 3,
-      type: "Chat Notification",
-      message: "New message from Dr. Smith",
-      time: "30 mins ago",
-      unread: false,
-    },
-    {
-      id: 4,
-      type: "Upload Files",
-      message: "Patient uploaded medical records",
-      time: "1 hour ago",
-      unread: false,
-    },
-    {
-      id: 5,
-      type: "HMO Notification",
-      message: "HMO approval received for patient ID P001",
-      time: "2 hours ago",
-      unread: false,
-    },
-  ]);
-
   const [tickets, setTickets] = useState(() => {
     const existing = loadFromStorage(LOCAL_STORAGE_KEYS.tickets, []);
     if (existing.length > 0) return existing;
@@ -153,6 +115,129 @@ export default function ManageAppointment() {
       },
     ];
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const API_BASE_URL =
+    process.env.NODE_ENV === "production"
+      ? "https://your-production-url.com"
+      : "http://localhost:1337";
+
+  useEffect(() => {
+    const loadTickets = async () => {
+      try {
+        setLoading(true);
+        console.log("Loading tickets from API...");
+
+        const response = await fetch(`${API_BASE_URL}/api/nurse/tickets`, {
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          setTickets(data.data || []);
+          setError(null);
+          console.log("Tickets loaded successfully:", data.data);
+        } else {
+          throw new Error(data.message || "Failed to load tickets");
+        }
+      } catch (error) {
+        console.error("Error loading tickets:", error);
+        setError(error.message);
+
+        const fallbackTickets = [
+          {
+            id: "T001",
+            patientName: "John Doe",
+            email: "john.doe@email.com",
+            mobile: "+1-555-0100",
+            chiefComplaint: "Chest pain and shortness of breath",
+            symptoms: "Sharp pain in chest, difficulty breathing",
+            preferredDate: "2025-10-10",
+            preferredTime: "14:00",
+            preferredSpecialist: "Dr. Smith",
+            consultationChannel: "Platform",
+            hasHmo: false,
+            status: "Pending",
+            claimedBy: null,
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "T002",
+            patientName: "Jane Smith",
+            email: "jane.smith@email.com",
+            mobile: "+1-555-0101",
+            chiefComplaint: "Severe headache and nausea",
+            symptoms: "Persistent headache, feeling nauseous",
+            preferredDate: "2025-10-11",
+            preferredTime: "10:30",
+            preferredSpecialist: "Dr. Lee",
+            consultationChannel: "Mobile Call",
+            hasHmo: true,
+            status: "Confirmed",
+            claimedBy: "N001",
+            createdAt: new Date().toISOString(),
+          },
+        ];
+
+        setTickets(fallbackTickets);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTickets();
+
+    const interval = setInterval(loadTickets, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const [notifications] = useState([
+    {
+      id: 1,
+      type: "New Ticket",
+      message: "New ticket T005 submitted by Alex Smith",
+      time: "5 mins ago",
+      unread: true,
+    },
+    {
+      id: 2,
+      type: "Payment Confirmation",
+      message: "Payment confirmed for appointment #A123",
+      time: "15 mins ago",
+      unread: true,
+    },
+    {
+      id: 3,
+      type: "Chat Notification",
+      message: "New message from Dr. Smith",
+      time: "30 mins ago",
+      unread: false,
+    },
+    {
+      id: 4,
+      type: "Upload Files",
+      message: "Patient uploaded medical records",
+      time: "1 hour ago",
+      unread: false,
+    },
+    {
+      id: 5,
+      type: "HMO Notification",
+      message: "HMO approval received for patient ID P001",
+      time: "2 hours ago",
+      unread: false,
+    },
+  ]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceTicket, setInvoiceTicket] = useState(null);

@@ -9,6 +9,7 @@ export default function Login() {
     password: "",
   });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const dummyCredentials = {
     nurse: {
@@ -29,6 +30,25 @@ export default function Login() {
     },
   };
 
+  const loginWithAPI = async (email, password) => {
+    const response = await fetch("http://localhost:1337/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Login failed");
+    }
+
+    return data;
+  };
+
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({
@@ -37,51 +57,71 @@ export default function Login() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
-    if (
-      formData.email === dummyCredentials.nurse.email &&
-      formData.password === dummyCredentials.nurse.password
-    ) {
-      setError("");
-      navigate("/nurse-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.admin.email &&
-      formData.password === dummyCredentials.admin.password
-    ) {
-      setError("");
-      navigate("/admin/specialist-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.patient.email &&
-      formData.password === dummyCredentials.patient.password
-    ) {
-      setError("");
-      navigate("/patient-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.specialist.email &&
-      formData.password === dummyCredentials.specialist.password
-    ) {
-      setError("");
-      navigate("/specialist-dashboard");
-      return;
-    }
-    
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
-    );
-    const user = registeredUsers.find(
-      (u) => u.email === formData.email && u.password === formData.password
-    );
+    try {
+      const result = await loginWithAPI(formData.email, formData.password);
 
-    if (user) {
-      setError("");
-      navigate("/dashboard");
-    } else {
+      if (result.success) {
+        localStorage.setItem("currentUser", JSON.stringify(result.user));
+        navigate(result.user.dashboardRoute);
+        return;
+      }
+    } catch (apiError) {
+      console.warn(
+        "API login failed, trying fallback credentials:",
+        apiError.message
+      );
+
+      if (
+        formData.email === dummyCredentials.nurse.email &&
+        formData.password === dummyCredentials.nurse.password
+      ) {
+        setError("");
+        navigate("/nurse-dashboard");
+        return;
+      } else if (
+        formData.email === dummyCredentials.admin.email &&
+        formData.password === dummyCredentials.admin.password
+      ) {
+        setError("");
+        navigate("/admin/specialist-dashboard");
+        return;
+      } else if (
+        formData.email === dummyCredentials.patient.email &&
+        formData.password === dummyCredentials.patient.password
+      ) {
+        setError("");
+        navigate("/patient-dashboard");
+        return;
+      } else if (
+        formData.email === dummyCredentials.specialist.email &&
+        formData.password === dummyCredentials.specialist.password
+      ) {
+        setError("");
+        navigate("/specialist-dashboard");
+        return;
+      }
+
+      const registeredUsers = JSON.parse(
+        localStorage.getItem("registeredUsers") || "[]"
+      );
+      const user = registeredUsers.find(
+        (u) => u.email === formData.email && u.password === formData.password
+      );
+
+      if (user) {
+        setError("");
+        navigate("/dashboard");
+        return;
+      }
+
       setError("Invalid email or password. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -95,11 +135,7 @@ export default function Login() {
           >
             <span className="material-symbols-outlined">arrow_back_2</span>
           </button>
-          <img
-            src="/okie-doc-logo.png"
-            alt="OkieDoc+"
-            className="logo-image"
-          />
+          <img src="/okie-doc-logo.png" alt="OkieDoc+" className="logo-image" />
           <div style={{ width: "2.5rem" }}></div>
         </div>
         <h2 className="login-title">Sign in</h2>
@@ -118,6 +154,7 @@ export default function Login() {
             value={formData.email}
             onChange={handleInputChange}
             required
+            disabled={isLoading}
           />
           <label className="login-label">Password</label>
           <div className="login-password">
@@ -129,10 +166,11 @@ export default function Login() {
               value={formData.password}
               onChange={handleInputChange}
               required
+              disabled={isLoading}
             />
           </div>
-          <button className="login-btn" type="submit">
-            Sign in
+          <button className="login-btn" type="submit" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Sign in"}
           </button>
           <p className="login-text">
             Don't have an Okie-Doc+ account?{" "}

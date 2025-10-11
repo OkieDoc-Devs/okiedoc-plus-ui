@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { logoutPatient } from "../services/auth";
 import { useNavigate } from 'react-router';
 import MedicalRecords from './MedicalRecords';
 import Appointments from './Appointments';
@@ -216,8 +217,13 @@ const PatientDashboard = () => {
   }, []);
 
 
-  const handleLogout = () => {
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logoutPatient();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   // Profile editing functions
@@ -1153,8 +1159,7 @@ const PatientDashboard = () => {
               </button>
               <button 
                 className="patient-mobile-logout-btn"
-                onClick={handleLogout}
-              >
+                onClick={handleLogout}>
                 <FaSignOutAlt className="patient-mobile-logout-icon" />
                 <span>Sign Out</span>
               </button>

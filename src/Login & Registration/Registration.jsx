@@ -3,6 +3,28 @@ import { useNavigate } from "react-router";
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
+const registerPatient = async (formData) => {
+  const response = await fetch("http://localhost:1337/api/auth/register", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      password: formData.password,
+      birthday: formData.birthday,
+      gender: formData.gender,
+      mobileNumber: formData.mobileNumber,
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || "Registration failed");
+  return data;
+};
+
 export default function Registration() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -82,103 +104,51 @@ export default function Registration() {
     return false; // Always return false to hide requirements
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Clear previous errors
+    // Clear previous errors messages
     setErrors({});
-
+    // Clear previous success messages
+    setSuccess("");
     // Validation
     const newErrors = {};
 
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = "First name is required";
-    }
-
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = "Last name is required";
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-    }
-
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-
-    if (!formData.birthday) {
-      newErrors.birthday = "Birthday is required";
-    }
-
-    if (!formData.gender) {
-      newErrors.gender = "Gender is required";
-    }
-
-    if (!formData.mobileNumber.trim()) {
-      newErrors.mobileNumber = "Mobile number is required";
-    } else if (!/^(\+63|0)?[9][0-9]{9}$/.test(formData.mobileNumber.replace(/\s/g, ''))) {
-      newErrors.mobileNumber = "Please enter a valid Philippine mobile number";
-    }
-
-    if (!termsAccepted) {
-      newErrors.terms = "You must accept the terms and conditions";
-    }
-
-    if (!privacyAccepted) {
-      newErrors.privacy = "You must accept the privacy policy";
-    }
+    if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
+    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
+    if (!formData.email.trim()) {newErrors.email = "Email is required";} 
+      else if (!/\S+@\S+\.\S+/.test(formData.email)) {newErrors.email = "Please enter a valid email address";}
+    if (!formData.password) newErrors.password = "Password is required";
+    if (!formData.confirmPassword) {newErrors.confirmPassword = "Please confirm your password";} 
+      else if (formData.password !== formData.confirmPassword) {newErrors.confirmPassword = "Passwords do not match";}
+    if (!termsAccepted) newErrors.terms = "You must accept the terms and conditions";
+    if (!privacyAccepted) newErrors.privacy = "You must accept the privacy policy";
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    // Check if user already exists
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
-    );
-    const userExists = registeredUsers.find(
-      (user) => user.email === formData.email
-    );
-
-    if (userExists) {
-      setErrors({ email: "User with this email already exists. Please login instead." });
-      return;
+    try {
+      const result = await registerPatient(formData);
+      if (result.success) {
+        setSuccess("Registration successful! Redirecting to login...");
+        setFormData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          birthday: "",
+          gender: "",
+          mobileNumber: "",
+        });
+        setTimeout(() => navigate("/login"), 2000);
+      }
+    } catch (error) {
+      console.error("Registration failed:", error);
+      setErrors({ email: error.message || "Registration failed." });
     }
-
-    // Create new user
-    const newUser = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      password: formData.password,
-      birthday: formData.birthday,
-      gender: formData.gender,
-      mobileNumber: formData.mobileNumber,
-      registeredAt: new Date().toISOString(),
-    };
-
-    registeredUsers.push(newUser);
-    localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
-
-
-    setSuccess("Registration successful! Please login with your credentials.");
-    setFormData({ firstName: "", lastName: "", email: "", password: "", confirmPassword: "", birthday: "", gender: "", mobileNumber: "" });
-    setTermsAccepted(false);
-    setPrivacyAccepted(false);
-
-    setTimeout(() => {
-      navigate("/login");
-    }, 2000);
   };
 
   return (

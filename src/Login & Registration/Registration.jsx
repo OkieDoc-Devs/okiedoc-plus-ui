@@ -133,6 +133,13 @@ export default function Registration() {
       const result = await registerPatient(formData);
       if (result.success) {
         setSuccess("Registration successful! Redirecting to login...");
+        const userData = {
+          id: result.user.id,
+          email: result.user.email,
+          userType: result.user.userType,
+          globalId: result.user.globalId, // <-- add this
+        };
+        localStorage.setItem("currentUser", JSON.stringify(userData));
         setFormData({
           firstName: "",
           lastName: "",
@@ -241,10 +248,10 @@ export default function Registration() {
               onChange={handleInputChange}
             >
               <option value="">Select your gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-              <option value="prefer-not-to-say">Prefer not to say</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+              <option value="Prefer-not-to-say">Prefer not to say</option>
             </select>
             {errors.gender && <span className="error-message">{errors.gender}</span>}
 

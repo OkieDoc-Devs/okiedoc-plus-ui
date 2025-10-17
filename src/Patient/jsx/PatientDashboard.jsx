@@ -51,6 +51,7 @@ import {
 } from 'react-icons/fa';
 
 const PatientDashboard = () => {
+  const [globalId, setGlobalId] = useState("");
   const [activePage, setActivePage] = useState('home');
   const [profileImage, setProfileImage] = useState(null);
   const [activeTicket, setActiveTicket] = useState(null);
@@ -85,6 +86,12 @@ const PatientDashboard = () => {
   
   // State for mobile detection
   const [isMobile, setIsMobile] = useState(false);
+
+  // Shows Global ID
+  useEffect(() => {
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    if (currentUser.globalId) setGlobalId(currentUser.globalId);
+  }, []);
 
   // Load appointments from localStorage on component mount
   useEffect(() => {
@@ -220,6 +227,7 @@ const PatientDashboard = () => {
   const handleLogout = async () => {
     try {
       await logoutPatient();
+      localStorage.removeItem("currentUser");
       navigate("/login");
     } catch (error) {
       console.error("Logout error:", error);

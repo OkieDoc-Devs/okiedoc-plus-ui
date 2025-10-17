@@ -11,25 +11,6 @@ export default function Login() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const dummyCredentials = {
-    nurse: {
-      email: "nurse@okiedocplus.com",
-      password: "nurseOkDoc123",
-    },
-    admin: {
-      email: "admin@okiedocplus.com",
-      password: "adminOkDoc123",
-    },
-    patient: {
-      email: "patient@okiedocplus.com",
-      password: "patientOkDoc123",
-    },
-    specialist: {
-      email: "specialist@okiedocplus.com",
-      password: "specialistOkDoc123",
-    },
-  };
-
   const loginWithAPI = async (email, password) => {
     const response = await fetch("http://localhost:1337/api/auth/login", {
       method: "POST",
@@ -66,9 +47,17 @@ export default function Login() {
       const result = await loginWithAPI(formData.email, formData.password);
 
       if (result.success) {
-        localStorage.setItem("currentUser", JSON.stringify(result.user));
-        navigate(result.user.dashboardRoute);
-        return;
+          localStorage.setItem(
+            "currentUser",
+            JSON.stringify({
+              id: result.user.id,
+              email: result.user.email,
+              userType: result.user.userType,
+              globalId: result.user.globalId || null, // fallback if missing
+            })
+          );
+          navigate(result.user.dashboardRoute);
+          return;
       }
     } catch (apiError) {
       console.warn(

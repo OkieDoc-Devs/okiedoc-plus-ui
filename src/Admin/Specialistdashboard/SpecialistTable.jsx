@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { sanitizeInput } from '../../Specialists/utils/validationUtils';
 
 const Modal = ({ children, title, onClose }) => {
   return (

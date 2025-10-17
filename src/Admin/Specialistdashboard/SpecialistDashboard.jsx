@@ -11,6 +11,13 @@ import PTR from "../../assets/PTR.png";
 import esig from "../../assets/esig.png";
 import OkieDocLogo from "../../assets/okie-doc-logo.png";
 import ConsultationHistory from "../ConsultationHistory/ConsultationHistory";
+import {
+  filterBySearchTerm,
+  filterBySpecialization,
+  filterTransactions,
+  getAllSpecializations,
+  exportTransactionsToCSV
+} from "../../Specialists/utils";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -291,80 +298,35 @@ const SpecialistDashboard = () => {
     ]);
   };
 
-  const allSpecializations = [
-    ...new Set([
-      ...pendingApplications.flatMap((app) => app.details.specializations),
-      ...specialists.flatMap((spec) => spec.details.specializations),
-      ...transactions.flatMap(t => t.specialty)
-    ]),
-  ];
+  const allSpecializations = getAllSpecializations([
+    ...pendingApplications,
+    ...specialists,
+    ...transactions
+  ], "details.specializations");
 
-  const filteredPending = pendingApplications.filter((app) => {
-    const searchString = `${app.name} ${app.email}`.toLowerCase();
-    const matchesSearch = searchString.includes(searchTerm.toLowerCase());
-    const matchesFilter = filterSpecialization
-      ? app.details.specializations.includes(filterSpecialization)
-      : true;
-    return matchesSearch && matchesFilter;
-  });
+  const filteredPending = filterBySpecialization(
+    filterBySearchTerm(pendingApplications, searchTerm, ["name", "email"]),
+    filterSpecialization,
+    "details.specializations"
+  );
 
-  const filteredSpecialists = specialists.filter((spec) => {
-    const searchString =
-      `${spec.firstName} ${spec.lastName} ${spec.email}`.toLowerCase();
-    const matchesSearch = searchString.includes(searchTerm.toLowerCase());
-    const matchesFilter = filterSpecialization
-      ? spec.details.specializations.includes(filterSpecialization)
-      : true;
-    return matchesSearch && matchesFilter;
-  });
+  const filteredSpecialists = filterBySpecialization(
+    filterBySearchTerm(specialists, searchTerm, ["firstName", "lastName", "email"]),
+    filterSpecialization,
+    "details.specializations"
+  );
   
-  const filteredTransactions = transactions.filter(t => {
-      const lowerSearchTerm = searchTerm.toLowerCase();
-      
-      const matchesSearch = !searchTerm || 
-          t.patientName.toLowerCase().includes(lowerSearchTerm) ||
-          t.specialistName.toLowerCase().includes(lowerSearchTerm) ||
-          t.channel.toLowerCase().includes(lowerSearchTerm) ||
-          t.paymentMethod.toLowerCase().includes(lowerSearchTerm) ||
-          t.status.toLowerCase().includes(lowerSearchTerm);
-          
-      const matchesSpecialty = !filterSpecialization || t.specialty === filterSpecialization;
-      const matchesStatus = !filterStatus || t.status === filterStatus;
-      
-      const transactionDate = new Date(t.date);
-      const fromDate = filterDateFrom ? new Date(filterDateFrom) : null;
-      const toDate = filterDateTo ? new Date(filterDateTo) : null;
-      
-      // Adjust dates to ignore time and timezone differences
-      if(fromDate) fromDate.setHours(0,0,0,0);
-      if(toDate) toDate.setHours(23,59,59,999);
-
-      const matchesDate = (!fromDate || transactionDate >= fromDate) && (!toDate || transactionDate <= toDate);
-
-      return matchesSearch && matchesSpecialty && matchesStatus && matchesDate;
+  const filteredTransactions = filterTransactions(transactions, {
+    searchTerm,
+    specialization: filterSpecialization,
+    status: filterStatus,
+    dateFrom: filterDateFrom,
+    dateTo: filterDateTo
   });
 
   // Handler for the export button
   const handleExport = () => {
-    if (filteredTransactions.length === 0) {
-      alert("No data to export.");
-      return;
-    }
-    // Simple CSV export simulation
-    const headers = ["ID", "Patient Name", "Specialist Name", "Specialty", "Date", "Status", "Channel", "Payment Method"];
-    const rows = filteredTransactions.map(t => 
-        [t.id, t.patientName, t.specialistName, t.specialty, t.date, t.status, t.channel, t.paymentMethod].join(',')
-    );
-    const csvContent = "data:text/csv;charset=utf-8," + headers.join(',') + "\n" + rows.join("\n");
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "transaction_history.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    alert("Exporting filtered data...");
+    exportTransactionsToCSV(filteredTransactions, "transaction_history.csv");
   };
 
   return (

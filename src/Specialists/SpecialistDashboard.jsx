@@ -13,6 +13,76 @@ import {
 } from "react-icons/fa";
 import "./SpecialistDashboard.css";
 import authService from "./authService";
+import {
+  formatDateLabel,
+  getDaysInMonth,
+  getFirstDayOfMonth,
+  getMonthName,
+  formatDateKey,
+  parseTicketDate,
+  isToday,
+  isPastDate,
+  loadTickets,
+  saveTickets,
+  loadProfileData,
+  saveProfileData,
+  loadServicesData,
+  saveServicesData,
+  loadAccountData,
+  saveAccountData,
+  loadScheduleData,
+  saveScheduleData,
+  loadEncounterData,
+  saveEncounterData,
+  loadMedicalHistoryData,
+  saveMedicalHistoryData,
+  getCurrentUserEmail,
+  getStatusBadgeClass,
+  filterTicketsByStatus,
+  filterBySearchTerm,
+  filterBySpecialization,
+  filterTransactions,
+  getAllSpecializations,
+  formatFileSize,
+  generateUserInitials,
+  validateFormData,
+  SUB_SPECIALIZATIONS,
+  createDefaultEncounter,
+  createDefaultMedicineForm,
+  createDefaultLabForm,
+  validateMedicine,
+  validateLabRequest,
+  addMedicineToEncounter,
+  removeMedicineFromEncounter,
+  addLabRequestToEncounter,
+  removeLabRequestFromEncounter,
+  createMedicalHistoryRequest,
+  updateMedicalHistoryStatus,
+  formatMedicineDisplay,
+  formatLabRequestDisplay,
+  getSubSpecializations,
+  isValidSpecialization,
+  isValidSubSpecialization,
+  exportTransactionsToCSV,
+  generateMedicalHistoryHTML,
+  openPrintWindow,
+  downloadMedicalHistoryPDF,
+  generateEncounterSummaryHTML,
+  downloadEncounterSummaryPDF,
+  exportToJSON,
+  validateEmail,
+  validatePassword,
+  validatePhone,
+  validatePRCLicense,
+  validateSpecialistProfile,
+  validatePasswordChange,
+  validateServiceFee,
+  validateAccountDetails,
+  validateScheduleData,
+  validateMedicalHistoryRequest,
+  sanitizeInput,
+  validateFileUpload
+} from "./utils";
 
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
@@ -76,32 +146,13 @@ const SpecialistDashboard = () => {
 
   // SOAP Notes and Encounter Management
   const [selectedTicketId, setSelectedTicketId] = useState(null);
-  const [encounter, setEncounter] = useState({
-    subjective: "",
-    objective: "",
-    assessment: "",
-    plan: "",
-    referral: "",
-    followUp: false,
-    medicines: [],
-    labRequests: []
-  });
+  const [encounter, setEncounter] = useState(createDefaultEncounter());
 
   // Medicine prescription form
-  const [medForm, setMedForm] = useState({
-    brand: "",
-    generic: "",
-    dosage: "",
-    form: "",
-    quantity: "",
-    instructions: ""
-  });
+  const [medForm, setMedForm] = useState(createDefaultMedicineForm());
 
   // Lab request form
-  const [labForm, setLabForm] = useState({
-    test: "",
-    remarks: ""
-  });
+  const [labForm, setLabForm] = useState(createDefaultLabForm());
 
   // Medical History Requests
   const [mhRequests, setMhRequests] = useState([]);
@@ -116,92 +167,11 @@ const SpecialistDashboard = () => {
   // Center panel tab (Medicine | Lab)
   const [centerTab, setCenterTab] = useState("medicine");
 
-  const SUB_SPECIALIZATIONS = {
-    Cardiology: [
-      "Interventional Cardiology",
-      "Electrophysiology",
-      "Heart Failure",
-      "Pediatric Cardiology",
-    ],
-    Dermatology: [
-      "Cosmetic Dermatology",
-      "Mohs Surgery",
-      "Pediatric Dermatology",
-      "Dermatopathology",
-    ],
-    Orthopedics: [
-      "Sports Medicine",
-      "Spine Surgery",
-      "Hand Surgery",
-      "Joint Replacement",
-    ],
-    Pediatrics: [
-      "Neonatology",
-      "Pediatric Neurology",
-      "Pediatric Cardiology",
-      "Pediatric Endocrinology",
-    ],
-    "Internal Medicine": [
-      "Endocrinology",
-      "Gastroenterology",
-      "Pulmonology",
-      "Nephrology",
-      "Rheumatology",
-      "Infectious Disease",
-    ],
-    Neurology: ["Stroke", "Epilepsy", "Movement Disorders", "Neuromuscular"],
-    Ophthalmology: ["Glaucoma", "Retina", "Cornea", "Pediatric Ophthalmology"],
-    "Obstetrics & Gynecology": [
-      "Maternal-Fetal Medicine",
-      "Reproductive Endocrinology",
-      "Gynecologic Oncology",
-      "Urogynecology",
-    ],
-    "Otolaryngology (ENT)": [
-      "Rhinology",
-      "Laryngology",
-      "Otology",
-      "Head & Neck Surgery",
-    ],
-    Psychiatry: [
-      "Child & Adolescent",
-      "Addiction",
-      "Geriatric",
-      "Consultation-Liaison",
-    ],
-    Urology: [
-      "Endourology",
-      "Urologic Oncology",
-      "Pediatric Urology",
-      "Female Urology",
-    ],
-  };
 
-  const formatDateLabel = (dt, timeLabel) => {
-    const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-    return `${
-      monthNames[dt.getMonth()]
-    } ${dt.getDate()}, ${dt.getFullYear()} - ${timeLabel}`;
-  };
 
-  const loadTickets = useCallback(() => {
-    const savedTickets = localStorage.getItem("specialistTickets");
-    if (savedTickets) {
-      setTickets(JSON.parse(savedTickets));
-    } else {
+  const loadTicketsData = useCallback(() => {
+    const savedTickets = loadTickets();
+    if (savedTickets.length === 0) {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const plusDays = (n) =>
@@ -232,7 +202,9 @@ const SpecialistDashboard = () => {
       ];
 
       setTickets(defaultTickets);
-      localStorage.setItem("specialistTickets", JSON.stringify(defaultTickets));
+      saveTickets(defaultTickets);
+    } else {
+      setTickets(savedTickets);
     }
   }, []);
 
@@ -250,15 +222,13 @@ const SpecialistDashboard = () => {
     setCurrentUser(currentUser.user);
     setIsLoading(false);
 
-    const initials = (
-      (currentUser.user.firstName || currentUser.user.fName || "D")[0] + 
-      (currentUser.user.lastName || currentUser.user.lName || "S")[0]
-    ).toUpperCase();
+    const initials = generateUserInitials(
+      currentUser.user.firstName || currentUser.user.fName,
+      currentUser.user.lastName || currentUser.user.lName
+    );
     setUserInitials(initials);
 
-    const profile = JSON.parse(
-      localStorage.getItem("profile:" + currentUser.user.email) || "{}"
-    );
+    const profile = loadProfileData(currentUser.user.email);
     setProfileData((prev) => ({
       ...prev,
       firstName: currentUser.user.firstName || currentUser.user.fName || "",
@@ -274,27 +244,21 @@ const SpecialistDashboard = () => {
       profileImage: profile.profileImage || "",
     }));
 
-    const savedServices = JSON.parse(
-      localStorage.getItem("services:" + currentUser.user.email) || "{}"
-    );
+    const savedServices = loadServicesData(currentUser.user.email);
     setServices((prev) => ({ ...prev, ...savedServices }));
 
-    const savedAccount = JSON.parse(
-      localStorage.getItem("account:" + currentUser.user.email) || "{}"
-    );
+    const savedAccount = loadAccountData(currentUser.user.email);
     setAccountDetails((prev) => ({ ...prev, ...savedAccount }));
 
-    const savedSchedules = JSON.parse(
-      localStorage.getItem("schedule:" + currentUser.user.email) || "{}"
-    );
+    const savedSchedules = loadScheduleData(currentUser.user.email);
     setSchedules(savedSchedules);
 
-    loadTickets();
+    loadTicketsData();
 
     return () => {
       document.body.classList.remove("specialist-dashboard-body");
     };
-  }, [navigate, loadTickets]);
+  }, [navigate, loadTicketsData]);
 
   // Handle ticket selection and encounter loading
   useEffect(() => {
@@ -305,22 +269,13 @@ const SpecialistDashboard = () => {
 
   useEffect(() => {
     if (selectedTicketId) {
-      const data = readEncounter(selectedTicketId);
+      const data = loadEncounterData(selectedTicketId);
       if (data) {
         setEncounter(data);
       } else {
-        setEncounter({
-          subjective: "",
-          objective: "",
-          assessment: "",
-          plan: "",
-          referral: "",
-          followUp: false,
-          medicines: [],
-          labRequests: []
-        });
+        setEncounter(createDefaultEncounter());
       }
-      setMhRequests(readMh(selectedTicketId));
+      setMhRequests(loadMedicalHistoryData(selectedTicketId));
     }
   }, [selectedTicketId]);
 
@@ -345,8 +300,16 @@ const SpecialistDashboard = () => {
   };
 
   const saveProfile = () => {
-    const email = localStorage.getItem("currentSpecialistEmail");
+    const email = getCurrentUserEmail();
     if (!email) return;
+
+    // Validate profile data
+    const validation = validateSpecialistProfile(profileData);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      alert(firstError);
+      return;
+    }
 
     const user = JSON.parse(localStorage.getItem(email) || "{}");
     user.fName = profileData.firstName || user.fName;
@@ -362,38 +325,28 @@ const SpecialistDashboard = () => {
       prcImage: profileData.prcImage,
       profileImage: profileData.profileImage,
     };
-    localStorage.setItem("profile:" + email, JSON.stringify(profile));
+    saveProfileData(email, profile);
 
     setCurrentUser(user);
-    const initials = (
-      (user.fName || "D")[0] + (user.lName || "R")[0]
-    ).toUpperCase();
+    const initials = generateUserInitials(user.fName, user.lName);
     setUserInitials(initials);
 
     alert("Profile saved successfully.");
   };
 
   const updatePassword = () => {
-    const email = localStorage.getItem("currentSpecialistEmail");
+    const email = getCurrentUserEmail();
     if (!email) return;
 
-    const { currentPassword, newPassword, confirmPassword } = passwordData;
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      alert("Please fill in all password fields.");
+    // Validate password data
+    const validation = validatePasswordChange(passwordData);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      alert(firstError);
       return;
     }
 
-    if (newPassword.length < 3) {
-      alert("New password must be at least 3 characters.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      alert("New passwords do not match.");
-      return;
-    }
-
+    const { currentPassword, newPassword } = passwordData;
     const user = JSON.parse(localStorage.getItem(email) || "{}");
     if (!user || user.password !== currentPassword) {
       alert("Current password is incorrect.");
@@ -417,22 +370,32 @@ const SpecialistDashboard = () => {
   };
 
   const updateServiceFee = () => {
-    const newFee = parseFloat(editingService.fee);
-    if (isNaN(newFee) || newFee < 0) {
-      alert("Please enter a valid fee.");
+    // Validate service fee
+    const validation = validateServiceFee(editingService);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      alert(firstError);
       return;
     }
 
-    const email = localStorage.getItem("currentSpecialistEmail");
-    const updatedServices = { ...services, [editingService.name]: newFee };
+    const email = getCurrentUserEmail();
+    const updatedServices = { ...services, [editingService.name]: parseFloat(editingService.fee) };
     setServices(updatedServices);
-    localStorage.setItem("services:" + email, JSON.stringify(updatedServices));
+    saveServicesData(email, updatedServices);
     setShowEditServiceModal(false);
   };
 
   const saveAccountDetails = () => {
-    const email = localStorage.getItem("currentSpecialistEmail");
-    localStorage.setItem("account:" + email, JSON.stringify(accountDetails));
+    // Validate account details
+    const validation = validateAccountDetails(accountDetails);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      alert(firstError);
+      return;
+    }
+
+    const email = getCurrentUserEmail();
+    saveAccountData(email, accountDetails);
     alert("Account details saved.");
   };
 
@@ -451,212 +414,106 @@ const SpecialistDashboard = () => {
       t.id === selectedTicket.id ? { ...t, status: newStatus } : t
     );
     setTickets(updatedTickets);
-    localStorage.setItem("specialistTickets", JSON.stringify(updatedTickets));
+    saveTickets(updatedTickets);
     setSelectedTicket({ ...selectedTicket, status: newStatus });
   };
 
   // Encounter Management Functions
-  const getEncounterKey = (ticketId) => `encounter:${ticketId}`;
-  
-  const readEncounter = (ticketId) => {
-    if (!ticketId) return null;
-    try {
-      return JSON.parse(localStorage.getItem(getEncounterKey(ticketId)) || 'null');
-    } catch {
-      return null;
-    }
-  };
-
-  const writeEncounter = (ticketId, data) => {
-    if (!ticketId) return;
-    localStorage.setItem(getEncounterKey(ticketId), JSON.stringify(data));
-  };
-
   const saveEncounter = (updated) => {
     const next = { ...encounter, ...(updated || {}) };
     setEncounter(next);
-    if (selectedTicketId) writeEncounter(selectedTicketId, next);
+    if (selectedTicketId) saveEncounterData(selectedTicketId, next);
   };
 
   // Medicine Management
   const addMedicine = () => {
-    const payload = { ...medForm };
-    if (!payload.brand && !payload.generic) {
-      alert('Enter medicine brand or generic.');
-      return;
+    try {
+      const updatedEncounter = addMedicineToEncounter(encounter, medForm);
+      setEncounter(updatedEncounter);
+      setMedForm(createDefaultMedicineForm());
+      saveEncounter({ medicines: updatedEncounter.medicines });
+    } catch (error) {
+      alert(error.message);
     }
-    if (!payload.instructions) {
-      alert('Enter instructions.');
-      return;
-    }
-    const list = (encounter.medicines || []).slice();
-    list.push(payload);
-    setMedForm({ brand: "", generic: "", dosage: "", form: "", quantity: "", instructions: "" });
-    saveEncounter({ medicines: list });
   };
 
   const removeMedicine = (idx) => {
-    const list = (encounter.medicines || []).slice();
-    list.splice(idx, 1);
-    saveEncounter({ medicines: list });
+    const updatedEncounter = removeMedicineFromEncounter(encounter, idx);
+    setEncounter(updatedEncounter);
+    saveEncounter({ medicines: updatedEncounter.medicines });
   };
 
   // Lab Request Management
   const addLab = () => {
-    const test = (labForm.test || '').trim();
-    const remarks = (labForm.remarks || '').trim();
-    if (!test) {
-      alert('Enter a lab test.');
-      return;
+    try {
+      const updatedEncounter = addLabRequestToEncounter(encounter, labForm);
+      setEncounter(updatedEncounter);
+      setLabForm(createDefaultLabForm());
+      saveEncounter({ labRequests: updatedEncounter.labRequests });
+    } catch (error) {
+      alert(error.message);
     }
-    const list = Array.isArray(encounter.labRequests) ? encounter.labRequests.slice() : [];
-    list.push({ test, remarks });
-    setLabForm({ test: "", remarks: "" });
-    saveEncounter({ labRequests: list });
   };
 
   const removeLab = (idx) => {
-    const list = (encounter.labRequests || []).slice();
-    list.splice(idx, 1);
-    saveEncounter({ labRequests: list });
+    const updatedEncounter = removeLabRequestFromEncounter(encounter, idx);
+    setEncounter(updatedEncounter);
+    saveEncounter({ labRequests: updatedEncounter.labRequests });
   };
 
   // Medical History Management
-  const mhKey = (ticketId) => `mh:${ticketId}`;
-  
-  const readMh = (ticketId) => {
-    try {
-      return JSON.parse(localStorage.getItem(mhKey(ticketId)) || '[]');
-    } catch {
-      return [];
-    }
-  };
-
-  const writeMh = (ticketId, items) => {
-    localStorage.setItem(mhKey(ticketId), JSON.stringify(items || []));
-  };
-
   const openMhModal = () => {
     setMhModal({ open: true, reason: "", from: "", to: "", consent: false });
   };
 
   const submitMh = () => {
-    if (!mhModal.consent) {
-      alert('Please confirm consent.');
-      return;
+    try {
+      const item = createMedicalHistoryRequest(mhModal);
+      const list = loadMedicalHistoryData(selectedTicketId).concat([item]);
+      saveMedicalHistoryData(selectedTicketId, list);
+      setMhRequests(list);
+      setMhModal({ open: false, reason: "", from: "", to: "", consent: false });
+      downloadMhPdf(item);
+    } catch (error) {
+      alert(error.message);
     }
-    const item = {
-      id: 'MH-' + Date.now(),
-      reason: (mhModal.reason || '').trim(),
-      from: mhModal.from || '',
-      to: mhModal.to || '',
-      consent: true,
-      status: 'Pending',
-      createdAt: new Date().toISOString()
-    };
-    const list = readMh(selectedTicketId).concat([item]);
-    writeMh(selectedTicketId, list);
-    setMhRequests(list);
-    setMhModal({ open: false, reason: "", from: "", to: "", consent: false });
-    downloadMhPdf(item);
   };
 
   const updateMhStatus = (id, status) => {
-    const list = readMh(selectedTicketId).map(x => 
-      x.id === id ? { ...x, status, updatedAt: new Date().toISOString() } : x
+    const list = loadMedicalHistoryData(selectedTicketId).map(x => 
+      updateMedicalHistoryStatus(x, status)
     );
-    writeMh(selectedTicketId, list);
+    saveMedicalHistoryData(selectedTicketId, list);
     setMhRequests(list);
   };
 
   const downloadMhPdf = (item) => {
     const t = tickets.find(x => x.id === selectedTicketId) || {};
-    const html = `
-      <h1>Medical History Request</h1>
-      <div class="meta">
-        <div><strong>Patient:</strong> ${t.patient || ''}</div>
-        <div><strong>Ticket:</strong> ${selectedTicketId || ''}</div>
-        <div><strong>Created:</strong> ${new Date(item.createdAt).toLocaleString()}</div>
-        <div><strong>Status:</strong> ${item.status}</div>
-      </div>
-      <div class="box">
-        <div><strong>Reason:</strong> ${item.reason || '—'}</div>
-        <div><strong>Date range:</strong> ${item.from || '—'} to ${item.to || '—'}</div>
-        <div><strong>Consent:</strong> Yes</div>
-      </div>
-    `;
-    openPrintWindow(html);
+    downloadMedicalHistoryPDF(item, t);
   };
 
-  const openPrintWindow = (html) => {
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.open();
-    w.document.write(`<!DOCTYPE html><html><head><title>Medical History Request</title><style>
-      body{font-family:Poppins,Arial,sans-serif;padding:24px;color:#111}
-      h1{font-size:20px;margin-bottom:8px}
-      h2{font-size:16px;margin:10px 0}
-      .meta div{margin:4px 0}
-      .box{background:#f2f2f2;padding:16px;border-radius:10px}
-    </style></head><body>${html}</body></html>`);
-    w.document.close();
-    setTimeout(() => { try { w.focus(); w.print(); } catch(e){} }, 300);
-  };
 
   const filteredTickets = useMemo(() => {
-    if (ticketFilter === "All") return tickets;
-    return tickets.filter(
-      (t) => t.status.toLowerCase() === ticketFilter.toLowerCase()
-    );
+    return filterTicketsByStatus(tickets, ticketFilter);
   }, [tickets, ticketFilter]);
 
-  const getStatusBadgeClass = (status) => {
-    const s = (status || "").toLowerCase();
-    if (s === "confirmed" || s === "processing" || s === "completed")
-      return "status-confirmed";
-    if (s === "pending") return "status-pending";
-    return "status-pending";
-  };
 
-  const getDaysInMonth = (year, month) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (year, month) => {
-    return new Date(year, month, 1).getDay();
-  };
-
-  const getMonthName = (month) => {
-    const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-    return monthNames[month];
-  };
-
-  const formatDateKey = (year, month, day) => {
-    return `${year}-${String(month + 1).padStart(2, "0")}-${String(
-      day
-    ).padStart(2, "0")}`;
-  };
 
   const addSchedule = () => {
-    if (!selectedDate || !scheduleData.time) {
-      alert("Please select a date and time.");
+    if (!selectedDate) {
+      alert("Please select a date.");
       return;
     }
 
-    const email = localStorage.getItem("currentSpecialistEmail");
+    // Validate schedule data
+    const validation = validateScheduleData(scheduleData);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      alert(firstError);
+      return;
+    }
+
+    const email = getCurrentUserEmail();
     const dateKey = formatDateKey(currentYear, currentMonth, selectedDate);
     const newSchedule = {
       time: scheduleData.time,
@@ -671,7 +528,7 @@ const SpecialistDashboard = () => {
     };
 
     setSchedules(updatedSchedules);
-    localStorage.setItem("schedule:" + email, JSON.stringify(updatedSchedules));
+    saveScheduleData(email, updatedSchedules);
 
     setShowScheduleModal(false);
     setSelectedDate(null);
@@ -679,7 +536,7 @@ const SpecialistDashboard = () => {
   };
 
   const deleteSchedule = (dateKey, scheduleId) => {
-    const email = localStorage.getItem("currentSpecialistEmail");
+    const email = getCurrentUserEmail();
     const updatedSchedules = {
       ...schedules,
       [dateKey]: schedules[dateKey].filter((s) => s.id !== scheduleId),
@@ -690,7 +547,7 @@ const SpecialistDashboard = () => {
     }
 
     setSchedules(updatedSchedules);
-    localStorage.setItem("schedule:" + email, JSON.stringify(updatedSchedules));
+    saveScheduleData(email, updatedSchedules);
   };
 
   const renderCalendar = () => {
@@ -698,8 +555,7 @@ const SpecialistDashboard = () => {
     const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
     const days = [];
     const today = new Date();
-    const isCurrentMonth =
-      today.getFullYear() === currentYear && today.getMonth() === currentMonth;
+    const isCurrentMonth = isToday(currentYear, currentMonth, today.getDate());
 
     for (let i = 0; i < firstDay; i++) {
       days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
@@ -713,39 +569,25 @@ const SpecialistDashboard = () => {
       const dayTickets = tickets.filter(ticket => {
         if (ticket.status !== 'Confirmed') return false;
         
-        // Parse the ticket date from the "when" field
-        const ticketDateStr = ticket.when;
-        if (!ticketDateStr) return false;
+        const parsedDate = parseTicketDate(ticket.when);
+        if (!parsedDate) return false;
         
-        // Extract date from format like "January 15, 2024 - 10:30 AM"
-        const dateMatch = ticketDateStr.match(/(\w+)\s+(\d+),\s+(\d+)/);
-        if (!dateMatch) return false;
-        
-        const [, monthName, dayStr, yearStr] = dateMatch;
-        const monthNames = [
-          "January", "February", "March", "April", "May", "June",
-          "July", "August", "September", "October", "November", "December"
-        ];
-        const ticketMonth = monthNames.indexOf(monthName);
-        const ticketDay = parseInt(dayStr);
-        const ticketYear = parseInt(yearStr);
-        
-        return ticketYear === currentYear && ticketMonth === currentMonth && ticketDay === day;
+        return parsedDate.year === currentYear && 
+               parsedDate.month === currentMonth && 
+               parsedDate.day === day;
       });
       
       const hasTickets = dayTickets.length > 0;
       const totalItems = (schedules[dateKey]?.length || 0) + dayTickets.length;
       
-      const isToday = isCurrentMonth && today.getDate() === day;
-      const isPast =
-        new Date(currentYear, currentMonth, day) <
-        new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const isTodayDate = isToday(currentYear, currentMonth, day);
+      const isPast = isPastDate(currentYear, currentMonth, day);
 
       days.push(
         <div
           key={day}
           className={`calendar-day ${hasSchedule || hasTickets ? "has-schedule" : ""} ${
-            isToday ? "today" : ""
+            isTodayDate ? "today" : ""
           } ${isPast ? "past" : ""} ${hasTickets ? "has-tickets" : ""}`}
           onClick={() => !isPast && setSelectedDate(day)}
         >
@@ -836,22 +678,12 @@ const SpecialistDashboard = () => {
                 const dayTickets = tickets.filter(ticket => {
                   if (ticket.status !== 'Confirmed') return false;
                   
-                  const ticketDateStr = ticket.when;
-                  if (!ticketDateStr) return false;
+                  const parsedDate = parseTicketDate(ticket.when);
+                  if (!parsedDate) return false;
                   
-                  const dateMatch = ticketDateStr.match(/(\w+)\s+(\d+),\s+(\d+)/);
-                  if (!dateMatch) return false;
-                  
-                  const [, monthName, dayStr, yearStr] = dateMatch;
-                  const monthNames = [
-                    "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"
-                  ];
-                  const ticketMonth = monthNames.indexOf(monthName);
-                  const ticketDay = parseInt(dayStr);
-                  const ticketYear = parseInt(yearStr);
-                  
-                  return ticketYear === currentYear && ticketMonth === currentMonth && ticketDay === selectedDate;
+                  return parsedDate.year === currentYear && 
+                         parsedDate.month === currentMonth && 
+                         parsedDate.day === selectedDate;
                 });
 
                 return dayTickets.map((ticket) => {
@@ -901,19 +733,11 @@ const SpecialistDashboard = () => {
               {!schedules[formatDateKey(currentYear, currentMonth, selectedDate)]?.length && 
                !tickets.some(ticket => {
                  if (ticket.status !== 'Confirmed') return false;
-                 const ticketDateStr = ticket.when;
-                 if (!ticketDateStr) return false;
-                 const dateMatch = ticketDateStr.match(/(\w+)\s+(\d+),\s+(\d+)/);
-                 if (!dateMatch) return false;
-                 const [, monthName, dayStr, yearStr] = dateMatch;
-                 const monthNames = [
-                   "January", "February", "March", "April", "May", "June",
-                   "July", "August", "September", "October", "November", "December"
-                 ];
-                 const ticketMonth = monthNames.indexOf(monthName);
-                 const ticketDay = parseInt(dayStr);
-                 const ticketYear = parseInt(yearStr);
-                 return ticketYear === currentYear && ticketMonth === currentMonth && ticketDay === selectedDate;
+                 const parsedDate = parseTicketDate(ticket.when);
+                 if (!parsedDate) return false;
+                 return parsedDate.year === currentYear && 
+                        parsedDate.month === currentMonth && 
+                        parsedDate.day === selectedDate;
                }) && (
                 <p>No schedules or appointments for this day</p>
               )}
@@ -1044,7 +868,7 @@ const SpecialistDashboard = () => {
                             <ol className="rx-list">
                               {(encounter.medicines || []).map((m, idx) => (
                                 <li key={idx} className="prescription-item">
-                                  <div className="rx-item-title">{(m.brand || m.generic)}{m.dosage?` ${m.dosage}`:''}{m.form?`/ ${m.form}`:''}{m.quantity?` (Qty: ${m.quantity})`:''}</div>
+                                  <div className="rx-item-title">{formatMedicineDisplay(m)}</div>
                                   <div className="rx-sig">Sig: {m.instructions}</div>
                                   <div style={{ display:'flex', justifyContent:'flex-end' }}>
                                     <button className="edit-btn" onClick={() => removeMedicine(idx)}>Remove</button>
@@ -1077,7 +901,7 @@ const SpecialistDashboard = () => {
                             <ol className="lab-list">
                               {(encounter.labRequests || []).map((l, idx) => (
                                 <li className="prescription-item" key={idx}>
-                                  <div className="rx-item-title">{l.test}</div>
+                                  <div className="rx-item-title">{formatLabRequestDisplay(l)}</div>
                                   <div className="rx-sig">Remarks: {l.remarks || 'N/A'}</div>
                                   <div style={{ display:'flex', justifyContent:'flex-end' }}>
                                     <button className="edit-btn" onClick={() => removeLab(idx)}>Remove</button>
@@ -1279,7 +1103,7 @@ const SpecialistDashboard = () => {
               }
             >
               <option value="">Select sub specialization</option>
-              {(SUB_SPECIALIZATIONS[profileData.specialization] || []).map(
+              {getSubSpecializations(profileData.specialization).map(
                 (subSpec) => (
                   <option key={subSpec} value={subSpec}>
                     {subSpec}

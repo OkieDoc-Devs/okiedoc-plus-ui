@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { sanitizeInput } from '../../Specialists/utils/validationUtils';
 
 // --- Modal component is now defined directly in this file ---
 const Modal = ({ children, title, onClose }) => {

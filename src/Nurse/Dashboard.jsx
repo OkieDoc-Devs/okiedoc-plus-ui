@@ -54,10 +54,13 @@ export default function Dashboard() {
     navigate("/");
   };
 
-  // Tickets from localStorage
   const [tickets, setTickets] = useState(() => {
     try {
-      const raw = localStorage.getItem("nurse.tickets");
+      let raw = localStorage.getItem("nurse.tickets");
+      if (!raw) raw = localStorage.getItem("tickets");
+      if (!raw) raw = localStorage.getItem("appointmentTickets");
+      if (!raw) raw = localStorage.getItem("manageAppointments.tickets");
+
       return raw ? JSON.parse(raw) : [];
     } catch {
       return [];
@@ -65,14 +68,62 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    const onStorage = () => {
+    console.log("Dashboard - Logged in user info:", {
+      "nurse.email": localStorage.getItem("nurse.email"),
+      userEmail: localStorage.getItem("userEmail"),
+      email: localStorage.getItem("email"),
+      "user.email": localStorage.getItem("user.email"),
+      currentUser: localStorage.getItem("currentUser"),
+      authUser: localStorage.getItem("authUser"),
+      "nurse.firstName": localStorage.getItem("nurse.firstName"),
+      "nurse.lastName": localStorage.getItem("nurse.lastName"),
+      allLocalStorageKeys: Object.keys(localStorage),
+    });
+
+    const loadTickets = () => {
       try {
-        const raw = localStorage.getItem("nurse.tickets");
-        setTickets(raw ? JSON.parse(raw) : []);
-      } catch {}
+        let raw = localStorage.getItem("nurse.tickets");
+        let source = "nurse.tickets";
+
+        if (!raw) {
+          raw = localStorage.getItem("tickets");
+          source = "tickets";
+        }
+        if (!raw) {
+          raw = localStorage.getItem("appointmentTickets");
+          source = "appointmentTickets";
+        }
+        if (!raw) {
+          raw = localStorage.getItem("manageAppointments.tickets");
+          source = "manageAppointments.tickets";
+        }
+
+        const tickets = raw ? JSON.parse(raw) : [];
+        console.log(
+          `Dashboard: Loading ${tickets.length} tickets from ${source}:`,
+          tickets
+        );
+        setTickets(tickets);
+      } catch (error) {
+        console.error("Dashboard: Error loading tickets:", error);
+        setTickets([]);
+      }
     };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+
+    loadTickets();
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log("Dashboard: Page became visible, reloading tickets");
+        loadTickets();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
 
   const nurseId = useMemo(() => {
@@ -83,14 +134,6 @@ export default function Dashboard() {
     }
     return id;
   }, []);
-
-  const confirmedTickets = useMemo(
-    () =>
-      tickets.filter(
-        (t) => t.status === "Confirmed" && t.claimedBy === nurseId
-      ),
-    [tickets, nurseId]
-  );
 
   const toCalendarDateRange = (dateStr, timeStr, durationMinutes = 30) => {
     try {
@@ -182,30 +225,95 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Confirmed Tickets for scheduling */}
       <div className="appointments-section">
         <div className="processing-tickets">
-          <h2>Confirmed Tickets ({confirmedTickets.length})</h2>
-          {confirmedTickets.map((ticket) => (
+          <h2>All Tickets ({tickets.length})</h2>
+          {tickets.map((ticket) => (
             <div key={ticket.id} className="ticket-card processing">
               <div className="ticket-header">
                 <h3>{ticket.patientName}</h3>
                 <span
                   className="status-badge"
-                  style={{ backgroundColor: "#4caf50" }}
+                  style={{
+                    backgroundColor:
+                      ticket.status === "Confirmed"
+                        ? "#4caf50"
+                        : ticket.status === "Pending"
+                        ? "#ff9800"
+                        : "#2196f3",
+                  }}
                 >
-                  Confirmed
+                  {ticket.status}
                 </span>
               </div>
+              <div className="ticket-content">
+                <p>
+                  <strong>Email:</strong> {ticket.email}
+                </p>
+                <p>
+                  <strong>Mobile:</strong> {ticket.mobile}
+                </p>
+                <p>
+                  <strong>Chief Complaint:</strong> {ticket.chiefComplaint}
+                </p>
+                <p>
+                  <strong>Preferred Date:</strong> {ticket.preferredDate}
+                </p>
+                <p>
+                  <strong>Preferred Time:</strong> {ticket.preferredTime}
+                </p>
+                <p>
+                  <strong>Specialist:</strong> {ticket.preferredSpecialist}
+                </p>
+              </div>
               <div className="ticket-actions">
-                <a
-                  href={buildGoogleCalendarUrl(ticket)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="action-btn edit"
-                >
-                  Create Schedule (Google Calendar)
-                </a>
+                {ticket.status === "Pending" && (
+                  <button
+                    className="action-btn edit"
+                    style={{
+                      background: "#4caf50",
+                      color: "#fff",
+                    }}
+                    onClick={() => {
+                      setTickets((prev) => {
+                        const updated = prev.map((t) =>
+                          t.id === ticket.id
+                            ? { ...t, status: "Confirmed", claimedBy: nurseId }
+                            : t
+                        );
+                        localStorage.setItem(
+                          "nurse.tickets",
+                          JSON.stringify(updated)
+                        );
+                        localStorage.setItem(
+                          "tickets",
+                          JSON.stringify(updated)
+                        );
+                        localStorage.setItem(
+                          "appointmentTickets",
+                          JSON.stringify(updated)
+                        );
+                        localStorage.setItem(
+                          "manageAppointments.tickets",
+                          JSON.stringify(updated)
+                        );
+                        return updated;
+                      });
+                    }}
+                  >
+                    Confirm Ticket
+                  </button>
+                )}
+                {ticket.status === "Confirmed" && (
+                  <a
+                    href={buildGoogleCalendarUrl(ticket)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="action-btn edit"
+                  >
+                    Create Schedule (Google Calendar)
+                  </a>
+                )}
                 <button
                   className="action-btn remove"
                   style={{
@@ -214,11 +322,19 @@ export default function Dashboard() {
                     color: "#fff",
                   }}
                   onClick={() => {
-                    // Remove ticket from state and localStorage
                     setTickets((prev) => {
                       const updated = prev.filter((t) => t.id !== ticket.id);
                       localStorage.setItem(
                         "nurse.tickets",
+                        JSON.stringify(updated)
+                      );
+                      localStorage.setItem("tickets", JSON.stringify(updated));
+                      localStorage.setItem(
+                        "appointmentTickets",
+                        JSON.stringify(updated)
+                      );
+                      localStorage.setItem(
+                        "manageAppointments.tickets",
                         JSON.stringify(updated)
                       );
                       return updated;
@@ -230,6 +346,11 @@ export default function Dashboard() {
               </div>
             </div>
           ))}
+          {tickets.length === 0 && (
+            <div className="empty-state">
+              <p>No tickets available</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

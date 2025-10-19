@@ -23,49 +23,24 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const currentUser = authService.getCurrentUser();
-    if (currentUser) {
-      const redirectPath = authService.getRedirectPath(currentUser.userType);
-      navigate(redirectPath);
+  const loginWithAPI = async (email, password) => {
+    const response = await fetch("http://localhost:1337/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Login failed");
     }
 
-    // Check if user came from specialist registration link
-    if (location.state?.fromRegistration || 
-        location.search.includes('register=true')) {
-      setIsSpecialistMode(true);
-      setIsSignUp(true);
-    }
-
-    // Check if user came from specialist login link
-    if (location.pathname === '/specialist-login' || 
-        (location.search.includes('specialist=true') && !location.search.includes('register=true'))) {
-      setIsSpecialistMode(true);
-      setIsSignUp(false);
-    }
-  }, [navigate, location]);
-
-  const dummyCredentials = {
-    nurse: {
-      email: "nurse@okiedocplus.com",
-      password: "nurseOkDoc123",
-    },
-    admin: {
-      email: "admin@okiedocplus.com",
-      password: "adminOkDoc123",
-    },
-    patient: {
-      email: "patient@okiedocplus.com",
-      password: "patientOkDoc123",
-    },
-    specialist: {
-      email: "specialists@okiedoc.com",
-      password: "password123",
-    },
+    return data;
   };
 
   const handleInputChange = (e) => {
@@ -89,130 +64,79 @@ export default function Login() {
     setShowPassword(!showPassword);
   };
 
-  const toggleConfirmPasswordVisibility = () => {
-    setShowConfirmPassword(!showConfirmPassword);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    // Check dummy credentials first
-    if (
-      formData.email === dummyCredentials.nurse.email &&
-      formData.password === dummyCredentials.nurse.password
-    ) {
-      setError("");
-      navigate("/nurse-dashboard");
+    try {
+      const result = await loginWithAPI(formData.email, formData.password);
+
+      if (result.success) {
+          localStorage.setItem(
+            "currentUser",
+            JSON.stringify({
+              id: result.user.id,
+              email: result.user.email,
+              userType: result.user.userType,
+              globalId: result.user.globalId || null, // fallback if missing
+            })
+          );
+          navigate(result.user.dashboardRoute);
+          return;
+      }
+    } catch (apiError) {
+      console.warn(
+        "API login failed, trying fallback credentials:",
+        apiError.message
+      );
+
+      if (
+        formData.email === dummyCredentials.nurse.email &&
+        formData.password === dummyCredentials.nurse.password
+      ) {
+        setError("");
+        navigate("/nurse-dashboard");
+        return;
+      } else if (
+        formData.email === dummyCredentials.admin.email &&
+        formData.password === dummyCredentials.admin.password
+      ) {
+        setError("");
+        navigate("/admin/specialist-dashboard");
+        return;
+      } else if (
+        formData.email === dummyCredentials.patient.email &&
+        formData.password === dummyCredentials.patient.password
+      ) {
+        setError("");
+        navigate("/patient-dashboard");
+        return;
+      } else if (
+        formData.email === dummyCredentials.specialist.email &&
+        formData.password === dummyCredentials.specialist.password
+      ) {
+        setError("");
+        navigate("/specialist-dashboard");
+        return;
+      }
+
+      const registeredUsers = JSON.parse(
+        localStorage.getItem("registeredUsers") || "[]"
+      );
+      const user = registeredUsers.find(
+        (u) => u.email === formData.email && u.password === formData.password
+      );
+
+      if (user) {
+        setError("");
+        navigate("/dashboard");
+        return;
+      }
+
+      setError("Invalid email or password. Please try again.");
+    } finally {
       setIsLoading(false);
-      return;
-    } else if (
-      formData.email === dummyCredentials.admin.email &&
-      formData.password === dummyCredentials.admin.password
-    ) {
-      setError("");
-      navigate("/admin/specialist-dashboard");
-      setIsLoading(false);
-      return;
-    } else if (
-      formData.email === dummyCredentials.patient.email &&
-      formData.password === dummyCredentials.patient.password
-    ) {
-      setError("");
-      navigate("/patient-dashboard");
-      setIsLoading(false);
-      return;
-    }
-
-    // Use authentication service for registered users
-    const result = authService.loginUser(formData.email, formData.password);
-    
-    if (result.success) {
-      setError("");
-      const redirectPath = authService.getRedirectPath(result.userType);
-      navigate(redirectPath);
-    } else {
-      setError(result.error);
-    }
-    
-    setIsLoading(false);
-  };
-
-  const handleSpecialistLogin = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setErrors({});
-    setError("");
-
-    const { email, password } = formData;
-
-    if (!email.trim() || !password) {
-      setErrors({ general: "Please fill in all fields." });
-      setIsLoading(false);
-      return;
-    }
-
-    const result = authService.loginSpecialist(email.trim(), password);
-    
-    if (result.success) {
-      alert(`Welcome, Dr. ${result.user.firstName} ${result.user.lastName} 👋`);
-      navigate("/specialist-dashboard");
-    } else {
-      setErrors({ general: result.error });
-    }
-    
-    setIsLoading(false);
-  };
-
-  const handleSpecialistSignUp = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setErrors({});
-      setError("");
-
-    // Validate form data
-    const validation = authService.validateSpecialistData(formData);
-    
-    if (!validation.isValid) {
-      setErrors(validation.errors);
-      setIsLoading(false);
-      return;
-    }
-
-    // Prepare specialist data
-    const specialistData = {
-      firstName: formData.firstName.trim(),
-      lastName: formData.lastName.trim(),
-      email: formData.email.trim().toLowerCase(),
-      password: formData.password,
-      specialty: formData.specialty.trim(),
-      licenseNumber: formData.licenseNumber.trim(),
-      experience: parseInt(formData.experience),
-      phone: formData.phone.trim() || '',
-    };
-
-    // Register specialist
-    const result = authService.registerSpecialist(specialistData);
-    
-    if (result.success) {
-      alert("Account created successfully! Please login with your new credentials 🎉");
-      // Switch to login mode for specialist
-      setIsSignUp(false);
-      // Clear form data
-      setFormData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-        specialty: "",
-        licenseNumber: "",
-        experience: "",
-        phone: "",
-      });
-    } else {
-      setErrors({ general: result.error });
     }
     
     setIsLoading(false);
@@ -259,6 +183,7 @@ export default function Login() {
             value={formData.email}
             onChange={handleInputChange}
             required
+            disabled={isLoading}
           />
           <label className="login-label">Password</label>
           <div className="login-password">
@@ -270,10 +195,11 @@ export default function Login() {
               value={formData.password}
               onChange={handleInputChange}
               required
+              disabled={isLoading}
             />
           </div>
-              <button className="login-btn" type="submit" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign in"}
+          <button className="login-btn" type="submit" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Sign in"}
           </button>
           <p className="login-text">
             Don't have an Okie-Doc+ account?{" "}

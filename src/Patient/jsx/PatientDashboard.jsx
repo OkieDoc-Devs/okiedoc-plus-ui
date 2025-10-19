@@ -9,7 +9,6 @@ import Billing from './Billing';
 import MyAccount from './MyAccount';
 import ConsultationHistory from './ConsultationHistory';
 import appointmentService from '../services/appointmentService';
-import apiService from '../services/apiService';
 import { 
   FaHome, 
   FaCalendarAlt, 
@@ -62,14 +61,14 @@ const PatientDashboard = () => {
   const [showAppointmentDetails, setShowAppointmentDetails] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [profileData, setProfileData] = useState({
-    firstName: 'Loading...',
-    lastName: '',
-    email: 'Loading...',
-    phone: '',
-    dateOfBirth: '',
-    address: '',
-    emergencyContact: '',
-    emergencyPhone: ''
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'patient@okiedoc.com',
+    phone: '+1 (555) 123-4567',
+    dateOfBirth: '1990-01-15',
+    address: '123 Main Street, City, State 12345',
+    emergencyContact: 'Jane Doe',
+    emergencyPhone: '+1 (555) 987-6543'
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -85,66 +84,11 @@ const PatientDashboard = () => {
   
   // State for mobile detection
   const [isMobile, setIsMobile] = useState(false);
-  
-  // State for API data
-  const [apiData, setApiData] = useState({
-    appointments: [],
-    labResults: [],
-    medications: []
-  });
-  const [isLoadingApi, setIsLoadingApi] = useState(false);
 
-  // Load API data and patient profile on component mount
+  // Load appointments from localStorage on component mount
   useEffect(() => {
-    // Clear localStorage appointments to avoid confusion
-    console.log('🗑️ Clearing old localStorage appointments...');
-    appointmentService.clearAllAppointments();
-    
-    loadApiData(); // Load data from API only
-    loadPatientProfile(); // Load patient profile from backend
+    loadHomeAppointments();
   }, []);
-
-  // Load patient profile from backend
-  const loadPatientProfile = async () => {
-    try {
-      const patientId = localStorage.getItem('patientId');
-      if (!patientId) {
-        console.error('No patient ID found in session');
-        navigate('/login'); // Redirect to login if no session
-        return;
-      }
-      
-      console.log('Loading patient profile from backend for:', patientId);
-      const patient = await apiService.getPatientProfile(patientId);
-      
-      if (patient) {
-        setProfileData({
-          firstName: patient.first_name || 'Patient',
-          lastName: patient.last_name || '',
-          email: patient.email || '',
-          phone: patient.phone || '',
-          dateOfBirth: patient.date_of_birth || '',
-          address: patient.address || 'Not provided',
-          emergencyContact: patient.emergency_contact_name || 'Not provided',
-          emergencyPhone: patient.emergency_contact_phone || ''
-        });
-        console.log('Patient profile loaded from backend');
-      }
-    } catch (error) {
-      console.error('Failed to load patient profile:', error);
-      // Set default values on error
-      setProfileData({
-        firstName: 'Patient',
-        lastName: '',
-        email: 'N/A',
-        phone: 'N/A',
-        dateOfBirth: '',
-        address: 'Not provided',
-        emergencyContact: 'Not provided',
-        emergencyPhone: 'N/A'
-      });
-    }
-  };
 
   // Detect mobile device
   useEffect(() => {
@@ -164,58 +108,19 @@ const PatientDashboard = () => {
     console.log('homeAppointments length:', homeAppointments.length);
   }, [homeAppointments]);
 
-  // Debug: Monitor apiData changes
-  useEffect(() => {
-    console.log('🔄 apiData state changed:', apiData);
-    console.log('🔄 apiData.appointments length:', apiData.appointments.length);
-  }, [apiData]);
-
   const loadHomeAppointments = () => {
-    // This function is kept for backward compatibility with other appointment features
-    // but we're not using it for the main dashboard anymore
+    // Initialize dummy tickets if none exist, but don't clear existing ones
+    appointmentService.initializeDummyTickets();
     const savedAppointments = appointmentService.getAllAppointments();
-    console.log('Home appointments loaded (fallback only):', savedAppointments);
+    console.log('Home appointments loaded:', savedAppointments);
+    console.log('Total appointments count:', savedAppointments.length);
     setHomeAppointments(savedAppointments);
-  };
-
-  // Load data from API
-  const loadApiData = async () => {
-    setIsLoadingApi(true);
-    try {
-      // Get logged-in patient ID from localStorage
-      const patientId = localStorage.getItem('patientId');
-      console.log('Loading data from API for patient:', patientId);
-      
-      const patientData = await apiService.getPatientData(patientId);
-      console.log('API data received:', patientData);
-      
-      setApiData({
-        appointments: patientData.appointments || [],
-        labResults: patientData.labResults || [],
-        medications: patientData.medications || []
-      });
-      
-      // Show success message
-      console.log('API data loaded successfully!');
-      console.log('Using API appointments:', patientData.appointments.length, 'appointments');
-    } catch (error) {
-      console.error(' Failed to load API data:', error);
-      // Fallback to localStorage data
-      console.log('Using localStorage data as fallback');
-    } finally {
-      setIsLoadingApi(false);
-    }
-  };
-
-  // Get current appointments (API only, with empty fallback)
-  const getCurrentAppointments = () => {
-    return apiData.appointments.length > 0 ? apiData.appointments : [];
   };
 
   // Refresh appointments when new ones are added
   const refreshAppointments = () => {
-    console.log('Refreshing appointments from API...');
-    loadApiData(); // Reload from API instead of localStorage
+    console.log('Refreshing home appointments...');
+    loadHomeAppointments();
   };
 
 
@@ -311,25 +216,8 @@ const PatientDashboard = () => {
   }, []);
 
 
-  const handleLogout = async () => {
-    try {
-      const patientId = localStorage.getItem("patientId");
-      if (patientId) {
-        // Call backend logout API. PLS DO NOT UPDATE API YET ON audit_trailing.last_active
-        await apiService.logoutPatient(patientId);
-      }
-
-      // Clear storage
-      localStorage.removeItem("patientId");
-
-      // Redirect to login
-      navigate("/login");
-    } catch (error) {
-      console.error("Logout Error:", error);
-      // clear storage and force redirect anyway 
-      localStorage.removeItem("patientId");
-      navigate("/login");
-    }
+  const handleLogout = () => {
+    navigate('/login');
   };
 
   // Profile editing functions
@@ -360,48 +248,10 @@ const PatientDashboard = () => {
     }));
   };
 
-  const handleSaveProfile = async () => {
-    try {
-      const patientId = localStorage.getItem('patientId');
-      if (!patientId) {
-        console.error('No patient ID found in session');
-        return;
-      }
-
-      console.log('Saving profile:', profileData);
-      
-      // Prepare profile data for backend
-      const profileUpdateData = {
-        first_name: profileData.firstName,
-        last_name: profileData.lastName,
-        phone: profileData.phone,
-        address: profileData.address,
-        emergency_contact_name: profileData.emergencyContact,
-        emergency_contact_phone: profileData.emergencyPhone,
-        date_of_birth: profileData.dateOfBirth,
-      };
-
-      // Include profile image if it's been uploaded
-      if (profileImage) {
-        profileUpdateData.profile_image_url = profileImage;
-      }
-
-      // Call backend API to update profile
-      const response = await apiService.updatePatientProfile(patientId, profileUpdateData);
-      
-      if (response.success) {
-        console.log('Profile saved successfully');
-        setIsEditingProfile(false);
-        // Optionally show success message
-        alert('Profile updated successfully!');
-      } else {
-        console.error('Failed to save profile:', response.error);
-        alert('Failed to save profile. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      alert('Error saving profile. Please try again.');
-    }
+  const handleSaveProfile = () => {
+    console.log('Saving profile:', profileData);
+    setIsEditingProfile(false);
+    // You can add API call here to save to backend
   };
 
   const handleSavePassword = () => {
@@ -516,9 +366,15 @@ const PatientDashboard = () => {
           <div className="patient-dashboard-content">
             {/* Left Column - Appointment Tickets */}
             <div className="patient-left-column">
+              <div className="patient-desktop-action-buttons">
+                <button className="patient-desktop-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaComments className="patient-desktop-action-icon" />Book a Physical Consultation</button>
+                <button className="patient-desktop-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaVideo className="patient-desktop-action-icon" />Book an Online Consultation</button>
+                <button className="patient-desktop-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaPhone className="patient-desktop-action-icon" />Call a Doctor</button>
+                <button className="patient-desktop-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaPhoneAlt className="patient-desktop-action-icon" />Request Callback</button>
+              </div>
               <div className="patient-home-section">
                 <div className="patient-home-tickets-container">
-                  {getCurrentAppointments().length === 0 ? (
+                  {homeAppointments.length === 0 ? (
                     <div className="patient-empty-state">
                       <FaCalendarAlt className="patient-empty-icon" />
                       <h3 className="patient-empty-title">No Appointments Yet</h3>
@@ -527,7 +383,7 @@ const PatientDashboard = () => {
                       </p>
                     </div>
                   ) : (
-                    getCurrentAppointments().map(appointment => {
+                    homeAppointments.map(appointment => {
                       console.log('Rendering appointment:', appointment.title, appointment.status, 'ID:', appointment.id);
                       return (
                     <div key={appointment.id} className={`patient-home-ticket-card ${getWebStatusColor(appointment.status)}`}>
@@ -590,22 +446,36 @@ const PatientDashboard = () => {
                   <a href="#" className="patient-view-all-link" onClick={() => setActivePage('lab-results')}>View All</a>
                 </div>
                 <div className="patient-lab-results-list">
-                  {(apiData.labResults.length > 0 ? apiData.labResults : [
-                    { id: 1, name: "CBC", status: "Not Available Yet", date: "04/20/2025" },
-                    { id: 2, name: "X-RAY", status: "Available", date: "04/20/2025" },
-                    { id: 3, name: "Urinalysis", status: "Not Available Yet", date: "04/20/2025" },
-                    { id: 4, name: "Fecalysis", status: "Not Available Yet", date: "04/20/2025" },
-                    { id: 5, name: "ECG", status: "Available", date: "04/20/2025" }
-                  ]).map(result => (
-                    <div key={result.id} className="patient-lab-result-item">
-                      <FaFileAlt className="patient-result-icon" />
-                      <span className="patient-result-name">{result.name}</span>
-                      <span className={`patient-result-status ${result.status === 'Available' ? 'patient-available' : 'patient-not-available'}`}>
-                        {result.status === 'Available' ? 'View Result' : result.status}
-                      </span>
-                      <span className="patient-result-date">{result.date}</span>
-                    </div>
-                  ))}
+                  <div className="patient-lab-result-item">
+                    <FaFileAlt className="patient-result-icon" />
+                    <span className="patient-result-name">CBC</span>
+                    <span className="patient-result-status patient-not-available">Not Available Yet</span>
+                    <span className="patient-result-date">04/20/2025</span>
+                  </div>
+                  <div className="patient-lab-result-item">
+                    <FaFileAlt className="patient-result-icon" />
+                    <span className="patient-result-name">X-RAY</span>
+                    <span className="patient-result-status patient-available">View Result</span>
+                    <span className="patient-result-date">04/20/2025</span>
+                  </div>
+                  <div className="patient-lab-result-item">
+                    <FaFileAlt className="patient-result-icon" />
+                    <span className="patient-result-name">Urinalysis</span>
+                    <span className="patient-result-status patient-not-available">Not Available Yet</span>
+                    <span className="patient-result-date">04/20/2025</span>
+                  </div>
+                  <div className="patient-lab-result-item">
+                    <FaFileAlt className="patient-result-icon" />
+                    <span className="patient-result-name">Fecalysis</span>
+                    <span className="patient-result-status patient-not-available">Not Available Yet</span>
+                    <span className="patient-result-date">04/20/2025</span>
+                  </div>
+                  <div className="patient-lab-result-item">
+                    <FaFileAlt className="patient-result-icon" />
+                    <span className="patient-result-name">ECG</span>
+                    <span className="patient-result-status patient-available">View Result</span>
+                    <span className="patient-result-date">04/20/2025</span>
+                  </div>
                 </div>
               </div>
 
@@ -616,20 +486,36 @@ const PatientDashboard = () => {
                   <a href="#" className="patient-view-all-link">View All</a>
                 </div>
                 <div className="patient-medications-list">
-                  {(apiData.medications.length > 0 ? apiData.medications : [
-                    { id: 1, name: "Febuxostat", date: "04/20/2025", dosage: "40 mg, Take 1 tablet once a day" },
-                    { id: 2, name: "Pioglitazone", date: "04/20/2025", dosage: "15 mg, Take 1 tablet once a day" },
-                    { id: 3, name: "Atorvastin", date: "04/20/2025", dosage: "40 mg, Take 1 tablet once a day" },
-                    { id: 4, name: "Transmetil", date: "04/20/2025", dosage: "500 mg, Take 1 tablet 3x a day" },
-                    { id: 5, name: "Metformin", date: "04/20/2025", dosage: "500 mg, Twice daily, oral" }
-                  ]).map(medication => (
-                    <div key={medication.id} className="patient-medication-item">
-                      <FaPills className="patient-medication-icon" />
-                      <span className="patient-medication-name">{medication.name}</span>
-                      <span className="patient-medication-date">{medication.date}</span>
-                      <span className="patient-medication-dosage">{medication.dosage}</span>
-                    </div>
-                  ))}
+                  <div className="patient-medication-item">
+                    <FaPills className="patient-medication-icon" />
+                    <span className="patient-medication-name">Febuxostat</span>
+                    <span className="patient-medication-date">04/20/2025</span>
+                    <span className="patient-medication-dosage">40 mg, Take 1 tablet once a day</span>
+                  </div>
+                  <div className="patient-medication-item">
+                    <FaPills className="patient-medication-icon" />
+                    <span className="patient-medication-name">Pioglitazone</span>
+                    <span className="patient-medication-date">04/20/2025</span>
+                    <span className="patient-medication-dosage">15 mg, Take 1 tablet once a day</span>
+                  </div>
+                  <div className="patient-medication-item">
+                    <FaPills className="patient-medication-icon" />
+                    <span className="patient-medication-name">Atorvastin</span>
+                    <span className="patient-medication-date">04/20/2025</span>
+                    <span className="patient-medication-dosage">40 mg, Take 1 tablet once a day</span>
+                  </div>
+                  <div className="patient-medication-item">
+                    <FaPills className="patient-medication-icon" />
+                    <span className="patient-medication-name">Transmetil</span>
+                    <span className="patient-medication-date">04/20/2025</span>
+                    <span className="patient-medication-dosage">500 mg, Take 1 tablet 3x a day</span>
+                  </div>
+                  <div className="patient-medication-item">
+                    <FaPills className="patient-medication-icon" />
+                    <span className="patient-medication-name">Metformin</span>
+                    <span className="patient-medication-date">04/20/2025</span>
+                    <span className="patient-medication-dosage">500 mg, Twice daily, oral</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -749,22 +635,10 @@ const PatientDashboard = () => {
 
               {/* Action Buttons */}
               <div className="patient-mobile-action-buttons">
-                <button className="patient-mobile-action-btn">
-                  <FaComments className="patient-mobile-action-icon" />
-                  <span>Book a Physical Consultation</span>
-                </button>
-                <button className="patient-mobile-action-btn">
-                  <FaVideo className="patient-mobile-action-icon" />
-                  <span>Book an Online Consultation</span>
-                </button>
-                <button className="patient-mobile-action-btn">
-                  <FaPhone className="patient-mobile-action-icon" />
-                  <span>Call a Doctor</span>
-                </button>
-                <button className="patient-mobile-action-btn">
-                  <FaPhoneAlt className="patient-mobile-action-icon" />
-                  <span>Request Callback</span>
-                </button>
+                <button className="patient-mobile-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaComments className="patient-mobile-action-icon" /><span>Book a Physical Consultation</span></button>
+                <button className="patient-mobile-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaVideo className="patient-mobile-action-icon" /><span>Book an Online Consultation</span></button>
+                <button className="patient-mobile-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaPhone className="patient-mobile-action-icon" /><span>Call a Doctor</span></button>
+                <button className="patient-mobile-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaPhoneAlt className="patient-mobile-action-icon" /><span>Request Callback</span></button>
               </div>
 
               {/* Scrollable Content */}
@@ -772,7 +646,7 @@ const PatientDashboard = () => {
                 {/* Tickets Section */}
                 <div className="patient-mobile-tickets-section">
                   <div className="patient-mobile-tickets-container">
-                    {getCurrentAppointments().length === 0 ? (
+                    {homeAppointments.length === 0 ? (
                       <div className="patient-empty-state">
                         <FaCalendarAlt className="patient-empty-icon" />
                         <h3 className="patient-empty-title">No Appointments Yet</h3>
@@ -781,7 +655,7 @@ const PatientDashboard = () => {
                         </p>
                       </div>
                     ) : (
-                      getCurrentAppointments().map((appointment, index) => (
+                      homeAppointments.map((appointment, index) => (
                       <div key={index} className={`patient-mobile-appointment-card ${getStatusColor(appointment.status)}`}>
                         <div className="patient-mobile-appointment-left">
                           <h3 className="patient-mobile-appointment-title">{appointment.title}</h3>
@@ -987,7 +861,7 @@ const PatientDashboard = () => {
                       </p>
                     </div>
                   ) : (
-                    getCurrentAppointments().map((appointment, index) => (
+                    homeAppointments.map((appointment, index) => (
                     <div key={index} className={`patient-mobile-appointment-card ${getStatusColor(appointment.status)}`}>
                       <div className="patient-mobile-appointment-left">
                         <h3 className="patient-mobile-appointment-title">{appointment.title}</h3>

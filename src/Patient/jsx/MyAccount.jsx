@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { FaUser, FaCamera, FaLock, FaSave, FaTimes } from 'react-icons/fa';
-import apiService from '../services/apiService';
 
 const MyAccount = ({ 
   profileImage, 
@@ -15,8 +14,6 @@ const MyAccount = ({
   setActiveTab 
 }) => {
   const fileInputRef = useRef(null);
-  const [showImageModal, setShowImageModal] = useState(false);
-  const [tempImage, setTempImage] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -48,147 +45,22 @@ const MyAccount = ({
   // Check if password requirements are not met
   const shouldShowRequirements = isTypingPassword && !isPasswordValid(passwordData.newPassword);
 
-  const compressImage = (file, maxWidth = 300, quality = 0.8) => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      
-      img.onload = () => {
-        // Calculate new dimensions
-        let { width, height } = img;
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Draw and compress
-        ctx.drawImage(img, 0, 0, width, height);
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedDataUrl);
-      };
-      
-      img.src = URL.createObjectURL(file);
-    });
-  };
-
-  const handleImageUpload = async (e) => {
+  const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      try {
-        // Compress the image before showing in modal
-        const compressedImage = await compressImage(file);
-        setTempImage(compressedImage);
-        setShowImageModal(true);
-      } catch (error) {
-        console.error('Error compressing image:', error);
-        // Fallback to original method if compression fails
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setTempImage(e.target.result);
-          setShowImageModal(true);
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-  };
-
-  const handleSaveImage = async () => {
-    try {
-      const patientId = localStorage.getItem('patientId');
-      if (!patientId) {
-        console.error('No patient ID found in session');
-        alert('No patient ID found in session');
-        return;
-      }
-
-      console.log('=== SAVING PROFILE IMAGE ===');
-      console.log('Patient ID:', patientId);
-      console.log('Temp Image:', tempImage ? 'Present' : 'Not provided');
-
-      // Prepare profile data for backend
-      const profileUpdateData = {
-        profile_image_url: tempImage,
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfileImage(e.target.result);
       };
-
-      console.log('Sending to backend:', profileUpdateData);
-
-      // Call backend API to update profile
-      const response = await apiService.updatePatientProfile(patientId, profileUpdateData);
-      
-      console.log('Backend response:', response);
-      
-      if (response.success) {
-        console.log('Profile image saved successfully');
-        setProfileImage(tempImage); // Update the actual profile image
-        setTempImage(null); // Clear temp image
-        setShowImageModal(false); // Close modal
-        alert('Profile image updated successfully!');
-      } else {
-        console.error('Failed to save profile image:', response.error);
-        alert('Failed to save profile image. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error saving profile image:', error);
-      alert('Error saving profile image. Please try again.');
+      reader.readAsDataURL(file);
     }
   };
 
-  const handleDiscardImage = () => {
-    setTempImage(null);
-    setShowImageModal(false);
-  };
-
-  const handleSaveProfile = async () => {
-    try {
-      const patientId = localStorage.getItem('patientId');
-      if (!patientId) {
-        console.error('No patient ID found in session');
-        alert('No patient ID found in session');
-        return;
-      }
-
-      console.log('=== SAVING PROFILE ===');
-      console.log('Patient ID:', patientId);
-      console.log('Profile Data:', profileData);
-      console.log('Profile Image:', profileImage ? 'Image present' : 'No image');
-      
-      // Prepare profile data for backend
-      const profileUpdateData = {
-        first_name: profileData.firstName,
-        last_name: profileData.lastName,
-        phone: profileData.phone,
-        address: profileData.address,
-        emergency_contact_name: profileData.emergencyContact,
-        emergency_contact_phone: profileData.emergencyPhone,
-        date_of_birth: profileData.dateOfBirth,
-      };
-
-      // Profile image is handled separately in the image modal
-
-      console.log('Sending to backend:', profileUpdateData);
-
-      // Call backend API to update profile
-      const response = await apiService.updatePatientProfile(patientId, profileUpdateData);
-      
-      console.log('Backend response:', response);
-      
-      if (response.success) {
-        console.log('Profile saved successfully');
-        setIsEditing(false);
-        // Optionally show success message
-        alert('Profile updated successfully!');
-      } else {
-        console.error('Failed to save profile:', response.error);
-        alert('Failed to save profile. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      alert('Error saving profile. Please try again.');
-    }
+  const handleSaveProfile = () => {
+    // Save profile data logic here
+    console.log('Saving profile:', profileData);
+    setIsEditing(false);
+    // You can add API call here to save to backend
   };
 
   const handleSavePassword = () => {
@@ -481,82 +353,6 @@ const MyAccount = ({
           </div>
         )}
       </div>
-
-      {/* Profile Image Upload Modal */}
-      {showImageModal && (
-        <div 
-          className="patient-image-modal-overlay" 
-          onClick={handleDiscardImage}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            zIndex: 999999,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)'
-          }}
-        >
-          <div 
-            className="patient-image-modal" 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: 0,
-              maxWidth: '500px',
-              width: '90%',
-              maxHeight: '80vh',
-              overflow: 'hidden',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
-              position: 'relative',
-              margin: 0
-            }}
-          >
-            <div className="patient-image-modal-header">
-              <h3>Update Profile Picture</h3>
-              <button 
-                className="patient-image-modal-close"
-                onClick={handleDiscardImage}
-              >
-                <FaTimes />
-              </button>
-            </div>
-            
-            <div className="patient-image-modal-content">
-              <div className="patient-image-preview-container">
-                {tempImage ? (
-                  <img src={tempImage} alt="Preview" className="patient-image-preview" />
-                ) : (
-                  <div className="patient-image-preview-placeholder">
-                    <FaUser />
-                  </div>
-                )}
-              </div>
-              
-              <div className="patient-image-modal-actions">
-                <button 
-                  className="patient-image-discard-btn"
-                  onClick={handleDiscardImage}
-                >
-                  <FaTimes />
-                  Discard
-                </button>
-                <button 
-                  className="patient-image-save-btn"
-                  onClick={handleSaveImage}
-                >
-                  <FaSave />
-                  Save Image
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

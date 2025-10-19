@@ -5,7 +5,6 @@ import '../css/AppointmentBooking.css';
 import '../css/PatientDashboard.css';
 import HotlineBooking from './HotlineBooking';
 import appointmentService from '../services/appointmentService';
-import apiService from '../services/apiService';
 
 const Appointments = ({ onAppointmentAdded }) => {
   const navigate = useNavigate();
@@ -74,28 +73,17 @@ const Appointments = ({ onAppointmentAdded }) => {
   const [appointments, setAppointments] = useState([]);
   const [showAppointmentDetails, setShowAppointmentDetails] = useState(false);
 
-  // Load appointments from API on component mount
+  // Load appointments from localStorage on component mount
   useEffect(() => {
     loadAppointments();
   }, []);
 
-  const loadAppointments = async () => {
-    try {
-      console.log('Loading appointments from API...');
-      // Get patient ID from localStorage
-      const patientId = localStorage.getItem('patientId');
-      console.log('Loading appointments for patient:', patientId);
-      
-      const apiData = await apiService.getPatientData(patientId);
-      const apiAppointments = apiData.appointments || [];
-      console.log('API Appointments loaded:', apiAppointments);
-      setAppointments(apiAppointments);
-    } catch (error) {
-      console.error('Failed to load appointments from API:', error);
-      // Fallback to empty array instead of localStorage
-      console.log('Using empty appointments array as fallback');
-      setAppointments([]);
-    }
+  const loadAppointments = () => {
+    // Initialize dummy tickets if none exist
+    appointmentService.initializeDummyTickets();
+    const savedAppointments = appointmentService.getAllAppointments();
+    console.log('Appointments loaded:', savedAppointments);
+    setAppointments(savedAppointments);
   };
 
   const handleViewAppointmentDetails = (appointment) => {
@@ -365,12 +353,16 @@ const Appointments = ({ onAppointmentAdded }) => {
         createdAt: new Date().toISOString()
       };
 
-      // In a real app, you would POST this to your API
-      // For now, we'll just refresh the appointments from API
-      console.log('New appointment would be sent to API:', newAppointment);
+      // Save appointment to localStorage
+      const savedAppointment = appointmentService.addAppointment(newAppointment);
+      console.log('New appointment created:', savedAppointment);
       
-      // Refresh appointments from API to get latest data
-      loadAppointments();
+      // Update local state
+      setAppointments(prev => {
+        const updated = [...prev, savedAppointment];
+        console.log('Updated appointments state:', updated);
+        return updated;
+      });
       
       // Notify parent component to refresh appointments
       if (onAppointmentAdded) {

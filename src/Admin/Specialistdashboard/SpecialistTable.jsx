@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { sanitizeInput } from '../../Specialists/utils/validationUtils';
 
 const Modal = ({ children, title, onClose }) => {
   return (
@@ -45,7 +46,7 @@ const SpecialistTable = ({ specialists = [], onAddSpecialist }) => {
       <div id="list" className="tab-content active">
         <h2>OkieDoc+ Specialists</h2>
         <div className="table-wrapper">
-          <table>
+          <table className="dashboard-table">
             <thead>
               <tr>
                 <th>UID</th>

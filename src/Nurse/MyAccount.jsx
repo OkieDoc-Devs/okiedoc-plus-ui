@@ -2,14 +2,28 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import "../App.css";
 import "./NurseStyles.css";
+import {
+  getNurseProfileImage,
+  saveNurseProfileImage,
+} from "./services/storageService.js";
+import {
+  fetchNurseProfile,
+  updateNurseProfile,
+} from "./services/apiService.js";
+import {
+  transformProfileFromAPI,
+  transformProfileToAPI,
+  getFallbackProfile,
+  validatePasswordChange,
+} from "./services/profileService.js";
 
 export default function MyAccount() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState(null);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -17,11 +31,6 @@ export default function MyAccount() {
   });
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
-
-  const API_BASE_URL =
-    process.env.NODE_ENV === "production"
-      ? "https://your-production-url.com"
-      : "http://localhost:1337";
 
   const [userData, setUserData] = useState({
     firstName: "",
@@ -42,88 +51,18 @@ export default function MyAccount() {
         setLoading(true);
         console.log("Loading nurse profile from API...");
 
-        const response = await fetch(`${API_BASE_URL}/api/nurse/profile`, {
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const nurse = await fetchNurseProfile();
+        const profileData = transformProfileFromAPI(nurse);
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-          const nurse = data.data;
-
-          // Get the real logged-in user email from currentUser
-          let realEmail = nurse.email;
-          try {
-            const currentUser = localStorage.getItem("currentUser");
-            if (currentUser) {
-              const userData = JSON.parse(currentUser);
-              if (userData.email) {
-                realEmail = userData.email;
-                console.log(
-                  "Overriding API email with currentUser email:",
-                  userData.email
-                );
-              }
-            }
-          } catch (e) {
-            console.error("Error parsing currentUser:", e);
-          }
-
-          const profileData = {
-            firstName: nurse.first_name || "",
-            lastName: nurse.last_name || "",
-            email: realEmail, // Use the real email from currentUser
-            phone: nurse.phone || "",
-            specialization: nurse.specialization || "",
-            licenseNumber: nurse.license_number || "",
-            experience: nurse.experience || "",
-            department: nurse.department || "",
-          };
-
-          setUserData(profileData);
-          setFormData(profileData);
-          setError(null);
-          console.log("Profile loaded successfully:", profileData);
-        } else {
-          throw new Error(data.message || "Failed to load profile");
-        }
+        setUserData(profileData);
+        setFormData(profileData);
+        setError(null);
+        console.log("Profile loaded successfully:", profileData);
       } catch (error) {
         console.error("Error loading profile:", error);
         setError(error.message);
 
-        // Try to get user data from localStorage first, then use fallback
-        const storedEmail =
-          localStorage.getItem("nurse.email") ||
-          localStorage.getItem("userEmail");
-        const storedFirstName =
-          localStorage.getItem("nurse.firstName") || "Nurse";
-        const storedLastName = localStorage.getItem("nurse.lastName") || "";
-
-        console.log("Debug - stored values:", {
-          storedEmail,
-          storedFirstName,
-          storedLastName,
-          allLocalStorage: Object.fromEntries(Object.entries(localStorage)),
-        });
-
-        const fallbackData = {
-          firstName: storedFirstName,
-          lastName: storedLastName,
-          email: storedEmail || "nurse@okiedocplus.com", // Use stored email or the actual one you're using
-          phone: "+1 (555) 123-4567",
-          specialization: "Emergency Care",
-          licenseNumber: "RN-12345",
-          experience: "5 years",
-          department: "Emergency Department",
-        };
-
+        const fallbackData = getFallbackProfile();
         console.log("Using fallback data:", fallbackData);
 
         setUserData(fallbackData);
@@ -148,41 +87,14 @@ export default function MyAccount() {
     try {
       console.log("Saving profile data to API...");
 
-      const profileUpdateData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        specialization: formData.specialization,
-        license_number: formData.licenseNumber,
-        experience: formData.experience,
-        department: formData.department,
-      };
+      const profileUpdateData = transformProfileToAPI(formData);
+      await updateNurseProfile(profileUpdateData);
 
-      const response = await fetch(`${API_BASE_URL}/api/nurse/profile`, {
-        method: "PUT",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(profileUpdateData),
-      });
+      setUserData(formData);
+      setIsEditing(false);
+      console.log("Profile updated successfully");
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
-        setUserData(formData);
-        setIsEditing(false);
-        console.log("Profile updated successfully");
-
-        alert("Profile updated successfully!");
-      } else {
-        throw new Error(data.message || "Failed to update profile");
-      }
+      alert("Profile updated successfully!");
     } catch (error) {
       console.error("Error saving profile:", error);
       alert("Failed to save profile: " + error.message);
@@ -190,7 +102,10 @@ export default function MyAccount() {
       setUserData(formData);
       try {
         localStorage.setItem("nurse.firstName", formData.firstName || "Nurse");
-      } catch {}
+      } catch (err) {
+        // Ignore storage error
+        console.error("Error saving to localStorage:", err);
+      }
       setIsEditing(false);
     }
   };
@@ -211,22 +126,10 @@ export default function MyAccount() {
   };
 
   const handlePasswordSubmit = () => {
-    if (
-      !passwordData.currentPassword ||
-      !passwordData.newPassword ||
-      !passwordData.confirmPassword
-    ) {
-      setPasswordError("All fields are required");
-      return;
-    }
+    const validation = validatePasswordChange(passwordData);
 
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError("New passwords do not match");
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      setPasswordError("New password must be at least 6 characters long");
+    if (!validation.valid) {
+      setPasswordError(validation.error);
       return;
     }
 
@@ -254,12 +157,11 @@ export default function MyAccount() {
     setShowPasswordForm(false);
   };
 
-  const [profileImage, setProfileImage] = useState(null);
   const [previewImage, setPreviewImage] = useState("/account.svg");
 
   useEffect(() => {
-    const saved = localStorage.getItem("nurse.profileImageDataUrl");
-    if (saved) {
+    const saved = getNurseProfileImage();
+    if (saved !== "/account.svg") {
       setPreviewImage(saved);
     }
   }, []);
@@ -267,7 +169,6 @@ export default function MyAccount() {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setProfileImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result);
@@ -279,11 +180,10 @@ export default function MyAccount() {
   const handleImageSave = () => {
     if (previewImage) {
       try {
-        localStorage.setItem("nurse.profileImageDataUrl", previewImage);
+        saveNurseProfileImage(previewImage);
         alert("Profile picture updated.");
-        setProfileImage(null);
       } catch (e) {
-        alert("Unable to save profile picture.");
+        alert(e.message || "Unable to save profile picture.");
       }
     }
   };

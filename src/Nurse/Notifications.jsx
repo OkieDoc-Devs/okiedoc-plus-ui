@@ -118,6 +118,12 @@ export default function Notifications() {
             Manage Appointments
           </button>
           <button
+            className="nav-tab"
+            onClick={() => navigate("/nurse-messages")}
+          >
+            Messages
+          </button>
+          <button
             className="nav-tab active"
             onClick={() => handleTabClick("notifications")}
           >

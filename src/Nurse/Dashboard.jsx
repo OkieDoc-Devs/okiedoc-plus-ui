@@ -165,6 +165,12 @@ export default function Dashboard() {
           </button>
           <button
             className={`nav-tab`}
+            onClick={() => navigate("/nurse-messages")}
+          >
+            Messages
+          </button>
+          <button
+            className={`nav-tab`}
             onClick={() => handleTabClick("notifications")}
           >
             Notifications ({notifications.filter((n) => n.unread).length})

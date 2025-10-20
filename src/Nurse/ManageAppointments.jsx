@@ -432,6 +432,12 @@ export default function ManageAppointment() {
           <button className="nav-tab active">Manage Appointments</button>
           <button
             className="nav-tab"
+            onClick={() => navigate("/nurse-messages")}
+          >
+            Messages
+          </button>
+          <button
+            className="nav-tab"
             onClick={() => navigate("/nurse-notifications")}
           >
             Notifications ({notifications.filter((n) => n.unread).length})

@@ -2,12 +2,28 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import "../App.css";
 import "./NurseStyles.css";
+import {
+  getNurseProfileImage,
+  saveNurseProfileImage,
+} from "./services/storageService.js";
+import {
+  fetchNurseProfile,
+  updateNurseProfile,
+} from "./services/apiService.js";
+import {
+  transformProfileFromAPI,
+  transformProfileToAPI,
+  getFallbackProfile,
+  validatePasswordChange,
+} from "./services/profileService.js";
 
 export default function MyAccount() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState(null);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -16,19 +32,48 @@ export default function MyAccount() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
 
-  // Mock user data - in real app this would come from context/API
   const [userData, setUserData] = useState({
-    firstName: "Nurse",
-    lastName: "Smith",
-    email: "nurse.smith@okiedoc.com",
-    phone: "+1 (555) 123-4567",
-    specialization: "General Nursing",
-    licenseNumber: "RN-12345",
-    experience: "5 years",
-    department: "Emergency Department",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    specialization: "",
+    licenseNumber: "",
+    experience: "",
+    department: "",
   });
 
   const [formData, setFormData] = useState({ ...userData });
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        setLoading(true);
+        console.log("Loading nurse profile from API...");
+
+        const nurse = await fetchNurseProfile();
+        const profileData = transformProfileFromAPI(nurse);
+
+        setUserData(profileData);
+        setFormData(profileData);
+        setError(null);
+        console.log("Profile loaded successfully:", profileData);
+      } catch (error) {
+        console.error("Error loading profile:", error);
+        setError(error.message);
+
+        const fallbackData = getFallbackProfile();
+        console.log("Using fallback data:", fallbackData);
+
+        setUserData(fallbackData);
+        setFormData(fallbackData);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -38,12 +83,31 @@ export default function MyAccount() {
     }));
   };
 
-  const handleSave = () => {
-    setUserData(formData);
+  const handleSave = async () => {
     try {
-      localStorage.setItem("nurse.firstName", formData.firstName || "Nurse");
-    } catch {}
-    setIsEditing(false);
+      console.log("Saving profile data to API...");
+
+      const profileUpdateData = transformProfileToAPI(formData);
+      await updateNurseProfile(profileUpdateData);
+
+      setUserData(formData);
+      setIsEditing(false);
+      console.log("Profile updated successfully");
+
+      alert("Profile updated successfully!");
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      alert("Failed to save profile: " + error.message);
+
+      setUserData(formData);
+      try {
+        localStorage.setItem("nurse.firstName", formData.firstName || "Nurse");
+      } catch (err) {
+        // Ignore storage error
+        console.error("Error saving to localStorage:", err);
+      }
+      setIsEditing(false);
+    }
   };
 
   const handleCancel = () => {
@@ -57,33 +121,18 @@ export default function MyAccount() {
       ...prev,
       [name]: value,
     }));
-    // Clear error messages when user types
     setPasswordError("");
     setPasswordSuccess("");
   };
 
   const handlePasswordSubmit = () => {
-    // Basic validation
-    if (
-      !passwordData.currentPassword ||
-      !passwordData.newPassword ||
-      !passwordData.confirmPassword
-    ) {
-      setPasswordError("All fields are required");
+    const validation = validatePasswordChange(passwordData);
+
+    if (!validation.valid) {
+      setPasswordError(validation.error);
       return;
     }
 
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError("New passwords do not match");
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      setPasswordError("New password must be at least 6 characters long");
-      return;
-    }
-
-    // Simulating success
     setPasswordSuccess("Password changed successfully!");
     setPasswordData({
       currentPassword: "",
@@ -92,7 +141,6 @@ export default function MyAccount() {
     });
     setShowPasswordForm(false);
 
-    // Clear success message after 3 seconds
     setTimeout(() => {
       setPasswordSuccess("");
     }, 3000);
@@ -109,13 +157,11 @@ export default function MyAccount() {
     setShowPasswordForm(false);
   };
 
-  // Profile picture state
-  const [profileImage, setProfileImage] = useState(null);
   const [previewImage, setPreviewImage] = useState("/account.svg");
 
   useEffect(() => {
-    const saved = localStorage.getItem("nurse.profileImageDataUrl");
-    if (saved) {
+    const saved = getNurseProfileImage();
+    if (saved !== "/account.svg") {
       setPreviewImage(saved);
     }
   }, []);
@@ -123,7 +169,6 @@ export default function MyAccount() {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setProfileImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result);
@@ -135,11 +180,10 @@ export default function MyAccount() {
   const handleImageSave = () => {
     if (previewImage) {
       try {
-        localStorage.setItem("nurse.profileImageDataUrl", previewImage);
+        saveNurseProfileImage(previewImage);
         alert("Profile picture updated.");
-        setProfileImage(null);
       } catch (e) {
-        alert("Unable to save profile picture.");
+        alert(e.message || "Unable to save profile picture.");
       }
     }
   };

@@ -1,175 +1,69 @@
 import "../App.css";
 import "./NurseStyles.css";
-import "./NurseStyles.css";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import NurseConsultationHistory from "../Patient/jsx/ConsultationHistory";
-
-const LOCAL_STORAGE_KEYS = {
-  tickets: "nurse.tickets",
-  notifications: "nurse.notifications",
-  online: "nurse.online",
-  nurseId: "nurse.id",
-};
-
-function generateId(prefix = "T") {
-  return `${prefix}${Math.random().toString(36).slice(2, 8)}${Date.now()
-    .toString(36)
-    .slice(-4)}`;
-}
-
-function loadFromStorage(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveToStorage(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
-}
+import {
+  LOCAL_STORAGE_KEYS,
+  loadFromStorage,
+  saveToStorage,
+  getNurseId,
+  getNurseFirstName,
+  getNurseProfileImage,
+} from "./services/storageService.js";
+import {
+  createInitialTickets,
+  filterTicketsByStatus,
+  createNewTicket,
+  claimTicket as claimTicketUtil,
+  updateTicketStatus,
+  rescheduleTicket,
+} from "./services/ticketService.js";
+import {
+  getFallbackNotifications,
+  addNotification,
+} from "./services/notificationService.js";
+import {
+  createInitialInvoiceData,
+  initializeInvoice,
+  calculateInvoiceTotal,
+  generateInvoicePDF,
+} from "./services/invoiceService.js";
 
 export default function ManageAppointment() {
   const [showConsultationHistory, setShowConsultationHistory] = useState(false);
   const navigate = useNavigate();
-  const [online, setOnline] = useState(true);
-  const [notifications] = useState([
-    {
-      id: 1,
-      type: "New Ticket",
-      message: "New ticket T005 submitted by Alex Smith",
-      time: "5 mins ago",
-      unread: true,
-    },
-    {
-      id: 2,
-      type: "Payment Confirmation",
-      message: "Payment confirmed for appointment #A123",
-      time: "15 mins ago",
-      unread: true,
-    },
-    {
-      id: 3,
-      type: "Chat Notification",
-      message: "New message from Dr. Smith",
-      time: "30 mins ago",
-      unread: false,
-    },
-    {
-      id: 4,
-      type: "Upload Files",
-      message: "Patient uploaded medical records",
-      time: "1 hour ago",
-      unread: false,
-    },
-    {
-      id: 5,
-      type: "HMO Notification",
-      message: "HMO approval received for patient ID P001",
-      time: "2 hours ago",
-      unread: false,
-    },
-  ]);
-
+  const [online] = useState(true);
   const [tickets, setTickets] = useState(() => {
     const existing = loadFromStorage(LOCAL_STORAGE_KEYS.tickets, []);
     if (existing.length > 0) return existing;
-    return [
-      {
-        id: generateId(),
-        patientName: "John Doe",
-        email: "john.doe@example.com",
-        mobile: "09171234567",
-        chiefComplaint: "Headache",
-        symptoms: "Mild pain",
-        otherSymptoms: "Nausea",
-        preferredDate: "2025-09-01",
-        preferredTime: "09:00",
-        preferredSpecialist: "Dr. Smith",
-        consultationChannel: "Platform",
-        hasHMO: false,
-        hmo: {
-          company: "",
-          memberId: "",
-          expirationDate: "",
-          loaCode: "",
-          eLOAFile: null,
-        },
-        source: "platform",
-        status: "Pending",
-        claimedBy: null,
-      },
-      {
-        id: generateId(),
-        patientName: "Jane Smith",
-        email: "jane.smith@example.com",
-        mobile: "09179876543",
-        chiefComplaint: "Cough",
-        symptoms: "Dry cough",
-        otherSymptoms: "Fever",
-        preferredDate: "2025-09-02",
-        preferredTime: "14:00",
-        preferredSpecialist: "Dr. Lee",
-        consultationChannel: "Platform",
-        hasHMO: true,
-        hmo: {
-          company: "MediCare",
-          memberId: "MC12345",
-          expirationDate: "2026-01-01",
-          loaCode: "LOA9876",
-          eLOAFile: null,
-        },
-        source: "platform",
-        status: "Pending",
-        claimedBy: null,
-      },
-      {
-        id: generateId(),
-        patientName: "Carlos Gomez",
-        email: "carlos.gomez@example.com",
-        mobile: "09175551234",
-        chiefComplaint: "Back pain",
-        symptoms: "Lower back pain",
-        otherSymptoms: "None",
-        preferredDate: "2025-09-03",
-        preferredTime: "11:30",
-        preferredSpecialist: "Dr. Patel",
-        consultationChannel: "Platform",
-        hasHMO: false,
-        hmo: {
-          company: "",
-          memberId: "",
-          expirationDate: "",
-          loaCode: "",
-          eLOAFile: null,
-        },
-        source: "platform",
-        status: "Pending",
-        claimedBy: null,
-      },
-    ];
+    const initialTickets = createInitialTickets();
+    // Save initial tickets to localStorage so other pages can see them
+    saveToStorage(LOCAL_STORAGE_KEYS.tickets, initialTickets);
+    return initialTickets;
   });
+  useEffect(() => {
+    // Load tickets on mount - API integration currently using local storage
+    // To enable API integration, uncomment the code below and import fetchTicketsFromAPI from './services/apiService.js'
+    // const loadTicketsData = async () => {
+    //   try {
+    //     const data = await fetchTicketsFromAPI();
+    //     setTickets(data);
+    //     console.log("Tickets loaded successfully:", data);
+    //   } catch (error) {
+    //     console.error("Error loading tickets:", error);
+    //   }
+    // };
+    // loadTicketsData();
+    // const interval = setInterval(loadTicketsData, 30000);
+    // return () => clearInterval(interval);
+  }, []);
+
+  const [notifications] = useState(getFallbackNotifications());
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceTicket, setInvoiceTicket] = useState(null);
-  const [invoiceData, setInvoiceData] = useState({
-    items: [
-      {
-        name: "Consultation Fee",
-        description: "Medical consultation",
-        quantity: 1,
-        amount: 100,
-      },
-    ],
-    platformFee: 25,
-    eNurseFee: 15,
-    invoiceNumber: "",
-    paymentLink: "",
-  });
+  const [invoiceData, setInvoiceData] = useState(createInitialInvoiceData());
   const [showCreateTicketModal, setShowCreateTicketModal] = useState(false);
   const [newTicketData, setNewTicketData] = useState({
     patientName: "",
@@ -329,15 +223,8 @@ export default function ManageAppointment() {
     immunologic: ["Food allergies", "Seasonal allergies"],
   };
 
-  const nurseName = localStorage.getItem("nurse.firstName") || "Nurse";
-  const nurseId = useMemo(() => {
-    let id = localStorage.getItem(LOCAL_STORAGE_KEYS.nurseId);
-    if (!id) {
-      id = generateId("N");
-      localStorage.setItem(LOCAL_STORAGE_KEYS.nurseId, id);
-    }
-    return id;
-  }, []);
+  const nurseName = getNurseFirstName();
+  const nurseId = getNurseId();
 
   useEffect(() => {}, [online]);
 
@@ -349,37 +236,13 @@ export default function ManageAppointment() {
     navigate("/");
   };
 
-  const addNotification = (type, message) => {
-    const notifications = loadFromStorage(LOCAL_STORAGE_KEYS.notifications, []);
-    const newItem = {
-      id: generateId("NT"),
-      type,
-      message,
-      time: new Date().toISOString(),
-      unread: true,
-    };
-    const updated = [newItem, ...notifications];
-    saveToStorage(LOCAL_STORAGE_KEYS.notifications, updated);
-  };
-
-  const goOnline = () => {};
-  const goOffline = () => {};
-
   const claimTicket = (ticketId) => {
-    setTickets((prev) =>
-      prev.map((t) =>
-        t.id === ticketId && !t.claimedBy
-          ? { ...t, claimedBy: nurseId, status: "Processing" }
-          : t
-      )
-    );
+    setTickets((prev) => claimTicketUtil(prev, ticketId, nurseId));
     addNotification("New Ticket", `Ticket ${ticketId} claimed by ${nurseName}`);
   };
 
   const updateStatus = (ticketId, newStatus) => {
-    setTickets((prev) =>
-      prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
-    );
+    setTickets((prev) => updateTicketStatus(prev, ticketId, newStatus));
     if (newStatus === "For Payment")
       addNotification("Payment", `Invoice generated for ticket ${ticketId}`);
     if (newStatus === "Confirmed")
@@ -389,15 +252,9 @@ export default function ManageAppointment() {
       );
   };
 
-  const openInvoice = (ticket, fromDetailsModal = false) => {
-    const invoiceNumber = generateId("INV");
-    const paymentLink = `${window.location.origin}/pay/${invoiceNumber}`;
-    setInvoiceData((prev) => ({
-      ...prev,
-      items: prev.items,
-      invoiceNumber,
-      paymentLink,
-    }));
+  const openInvoice = (ticket) => {
+    const invoiceInitData = initializeInvoice();
+    setInvoiceData(invoiceInitData);
     setInvoiceTicket(ticket);
     setShowInvoiceModal(true);
   };
@@ -425,17 +282,10 @@ export default function ManageAppointment() {
       ),
     }));
   };
-  const invoiceTotal = useMemo(() => {
-    const itemsTotal = invoiceData.items.reduce(
-      (sum, it) => sum + Number(it.amount || 0) * Number(it.quantity || 0),
-      0
-    );
-    return (
-      itemsTotal +
-      Number(invoiceData.platformFee || 0) +
-      Number(invoiceData.eNurseFee || 0)
-    );
-  }, [invoiceData]);
+  const invoiceTotal = useMemo(
+    () => calculateInvoiceTotal(invoiceData),
+    [invoiceData]
+  );
 
   const sendInvoice = (e) => {
     e.preventDefault();
@@ -452,15 +302,7 @@ export default function ManageAppointment() {
   const handleReschedule = (ticketId) => {
     if (rescheduleDate && rescheduleTime) {
       setTickets((prev) =>
-        prev.map((t) =>
-          t.id === ticketId
-            ? {
-                ...t,
-                preferredDate: rescheduleDate,
-                preferredTime: rescheduleTime,
-              }
-            : t
-        )
+        rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime)
       );
       setRescheduleDate("");
       setRescheduleTime("");
@@ -468,45 +310,6 @@ export default function ManageAppointment() {
     } else {
       alert("Please select both date and time for rescheduling.");
     }
-  };
-
-  const toCalendarDateRange = (dateStr, timeStr, durationMinutes = 30) => {
-    try {
-      const startLocal = new Date(`${dateStr} ${timeStr}`);
-      if (isNaN(startLocal.getTime())) {
-        const fallback = new Date();
-        const endFallback = new Date(
-          fallback.getTime() + durationMinutes * 60000
-        );
-        const fmt = (d) =>
-          d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-        return { start: fmt(fallback), end: fmt(endFallback) };
-      }
-      const endLocal = new Date(startLocal.getTime() + durationMinutes * 60000);
-      const fmt = (d) =>
-        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-      return { start: fmt(startLocal), end: fmt(endLocal) };
-    } catch {
-      const now = new Date();
-      const end = new Date(now.getTime() + durationMinutes * 60000);
-      const fmt = (d) =>
-        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-      return { start: fmt(now), end: fmt(end) };
-    }
-  };
-
-  const buildGoogleCalendarUrl = (ticket) => {
-    const { start, end } = toCalendarDateRange(
-      ticket.preferredDate,
-      ticket.preferredTime,
-      30
-    );
-    const title = encodeURIComponent(`Consultation: ${ticket.patientName}`);
-    const details = encodeURIComponent(
-      `Patient: ${ticket.patientName}\nEmail: ${ticket.email}\nMobile: ${ticket.mobile}\nChief Complaint: ${ticket.chiefComplaint}\nChannel: ${ticket.consultationChannel}\nSpecialist: ${ticket.preferredSpecialist}`
-    );
-    const location = encodeURIComponent("OkieDoc+ Platform");
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${start}%2F${end}`;
   };
 
   const openCreateTicket = (source = "hotline") => {
@@ -555,18 +358,7 @@ export default function ManageAppointment() {
 
   const submitCreateTicket = (e) => {
     e.preventDefault();
-    const id = generateId("TK");
-    const newTicket = {
-      id,
-      ...newTicketData,
-      medicalRecordsPills: textPills.medicalRecords,
-      familyHistoryPills: textPills.familyHistory,
-      allergiesPills: textPills.allergies,
-      hmo: newTicketData.hasHMO ? newTicketData.hmo : null,
-      status: "Pending",
-      createdAt: new Date().toISOString(),
-      claimedBy: null,
-    };
+    const newTicket = createNewTicket(newTicketData, textPills);
     setTickets((prev) => [newTicket, ...prev]);
     setShowCreateTicketModal(false);
     setTextPills({
@@ -581,184 +373,19 @@ export default function ManageAppointment() {
     });
     addNotification(
       "New Ticket",
-      `Ticket ${id} created via ${newTicket.source}`
+      `Ticket ${newTicket.id} created via ${newTicket.source}`
     );
   };
 
-  const pendingTickets = tickets.filter((t) => t.status === "Pending");
-  const processingTickets = tickets.filter(
-    (t) => t.status === "Processing" && t.claimedBy === nurseId
+  const pendingTickets = filterTicketsByStatus(tickets, "Pending");
+  const processingTickets = filterTicketsByStatus(
+    tickets,
+    "Processing",
+    nurseId
   );
-  const confirmedTickets = tickets.filter(
-    (t) => t.status === "Confirmed" && t.claimedBy === nurseId
-  );
-
-  const generateInvoicePDF = async () => {
-    if (!invoiceTicket) return;
-
-    const { default: jsPDF } = await import("jspdf");
-    const pdf = new jsPDF();
-
-    const logoUrl = "/okie-doc-logo.png";
-    try {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      const img = new Image();
-      let displayWidth = 40;
-      let displayHeight = displayWidth / (1839 / 544);
-
-      img.onload = () => {
-        canvas.width = img.width + 12;
-        canvas.height = img.height + 12;
-
-        ctx.shadowColor = "#399eeb";
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 63;
-        ctx.shadowOffsetY = 80;
-
-        ctx.drawImage(img, 0, 0, img.width, img.height);
-
-        const logoBase64 = canvas.toDataURL("image/png");
-
-        pdf.addImage(logoBase64, "PNG", 85, 10, displayWidth, displayHeight);
-
-        generatePDFContent(pdf);
-      };
-
-      img.src = logoUrl;
-    } catch {
-      generatePDFContent(pdf);
-    }
-  };
-
-  const generatePDFContent = (pdf) => {
-    pdf.setFont("helvetica");
-
-    pdf.setFontSize(12);
-    pdf.setFont("helvetica", "bold");
-
-    let yPosition = 35;
-
-    pdf.text(`Date: ${new Date().toLocaleDateString()}`, 150, yPosition);
-    pdf.text(`Invoice No: ${invoiceData.invoiceNumber}`, 20, yPosition);
-
-    yPosition += 6;
-    const formatDate = (dateStr) => {
-      if (!dateStr) return "";
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) {
-        const [y, m, day] = dateStr.split("-");
-        if (y && m && day) {
-          return `${day}/${m}/${y.slice(-2)}`;
-        }
-        return dateStr;
-      }
-      const day = String(d.getDate()).padStart(2, "0");
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const year = String(d.getFullYear()).slice(-2);
-      return `${day}/${month}/${year}`;
-    };
-
-    const formatTime = (timeStr) => {
-      if (!timeStr) return "";
-      let [h, m] = timeStr.split(":");
-      h = Number(h);
-      const ampm = h >= 12 ? "PM" : "AM";
-      h = h % 12 || 12;
-      return `${h}:${m} ${ampm}`;
-    };
-
-    pdf.text(
-      `Date of Consultation: ${formatDate(
-        invoiceTicket.preferredDate
-      )} ${formatTime(invoiceTicket.preferredTime)}`,
-      20,
-      yPosition
-    );
-
-    yPosition += 15;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("PATIENT INFORMATION:", 20, yPosition);
-
-    pdf.setFont("helvetica", "normal");
-    yPosition += 8;
-
-    pdf.text(`Name: ${invoiceTicket.patientName}`, 20, yPosition);
-    yPosition += 6;
-    pdf.text(`Mobile Number: ${invoiceTicket.mobile}`, 20, yPosition);
-    yPosition += 6;
-    pdf.text(`Email Address: ${invoiceTicket.email}`, 20, yPosition);
-
-    yPosition += 20;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("INVOICE ITEMS:", 20, yPosition);
-
-    yPosition += 10;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Item", 20, yPosition);
-    pdf.text("Description", 70, yPosition);
-    pdf.text("Qty", 130, yPosition);
-    pdf.text("Amount", 150, yPosition);
-
-    pdf.line(20, yPosition + 2, 180, yPosition + 2);
-
-    pdf.setFont("helvetica", "normal");
-    yPosition += 8;
-    invoiceData.items.forEach((item) => {
-      pdf.text(item.name, 20, yPosition);
-      pdf.text(item.description, 70, yPosition);
-      pdf.text(item.quantity.toString(), 130, yPosition);
-      pdf.text(`PHP ${item.amount}`, 150, yPosition);
-      yPosition += 8;
-    });
-
-    yPosition += 10;
-    pdf.line(20, yPosition, 180, yPosition);
-    yPosition += 8;
-
-    pdf.text(`Platform Fee:`, 120, yPosition);
-    pdf.text(`PHP ${invoiceData.platformFee}`, 150, yPosition);
-    yPosition += 6;
-
-    pdf.text(`E-Nurse Fee:`, 120, yPosition);
-    pdf.text(`PHP ${invoiceData.eNurseFee}`, 150, yPosition);
-    yPosition += 8;
-
-    pdf.setFont("helvetica", "bold");
-    pdf.text(`TOTAL AMOUNT:`, 110, yPosition);
-    pdf.text(`PHP ${invoiceTotal.toFixed(2)}`, 150, yPosition);
-
-    yPosition += 15;
-    pdf.setFont("helvetica", "normal");
-    pdf.text("Payment Link:", 20, yPosition);
-    yPosition += 6;
-    pdf.setTextColor(0, 0, 255);
-    pdf.text(invoiceData.paymentLink, 20, yPosition);
-    pdf.setTextColor(0, 0, 0);
-
-    yPosition += 20;
-    pdf.line(20, yPosition, 180, yPosition);
-    yPosition += 10;
-    pdf.setFontSize(10);
-    pdf.text("This is a system-generated invoice.", 105, yPosition, {
-      align: "center",
-    });
-
-    yPosition += 8;
-    pdf.text(
-      "For inquiries, please contact support@okiedocplus.com",
-      105,
-      yPosition,
-      {
-        align: "center",
-      }
-    );
-
-    pdf.save(`Invoice_${invoiceData.invoiceNumber || "OkieDoc"}.pdf`);
-  };
 
   const handleDownloadInvoice = () => {
-    generateInvoicePDF();
+    generateInvoicePDF(invoiceData, invoiceTicket);
   };
 
   return (
@@ -774,16 +401,11 @@ export default function ManageAppointment() {
         <h3 className="dashboard-title">Manage Appointments</h3>
         <div className="user-account">
           <img
-            src={
-              localStorage.getItem("nurse.profileImageDataUrl") ||
-              "/account.svg"
-            }
+            src={getNurseProfileImage()}
             alt="Account"
             className="account-icon"
           />
-          <span className="account-name">
-            {localStorage.getItem("nurse.firstName") || "Nurse"}
-          </span>
+          <span className="account-name">{getNurseFirstName()}</span>
           <div className="account-dropdown">
             <button
               className="dropdown-item"
@@ -808,6 +430,12 @@ export default function ManageAppointment() {
             Dashboard
           </button>
           <button className="nav-tab active">Manage Appointments</button>
+          <button
+            className="nav-tab"
+            onClick={() => navigate("/nurse-messages")}
+          >
+            Messages
+          </button>
           <button
             className="nav-tab"
             onClick={() => navigate("/nurse-notifications")}

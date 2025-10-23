@@ -25,6 +25,8 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-left: 2%;
+  max-width: 93%;
   padding: 1rem 2rem;
   background-color: var(--dark-blue);
   color: var(--white);
@@ -54,10 +56,10 @@ header h1 {
     background-color: #399eeb;
 }
 
-/* --- Dashboard Container --- */
 .dashboard-container { 
-  padding: 2rem;
-  max-width: 100%;
+  padding: 3rem;
+  margin-left: 3%;
+  max-width: 95%;
   box-sizing: border-box;
 }
 
@@ -65,7 +67,7 @@ header h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     flex-wrap: wrap;
     gap: 1rem;
     background-color: var(--white);
@@ -76,7 +78,7 @@ header h1 {
 
 .filters { 
   display: flex; 
-  gap: 1rem; 
+  gap: 1rem;
   flex-wrap: wrap; 
   align-items: center; 
 }
@@ -100,6 +102,7 @@ header h1 {
 /* --- Tabs --- */
 .tabs {
     display: flex;
+    flex-wrap: wrap; /* Allow tabs to wrap on small screens */
     border-bottom: 2px solid var(--gray-200);
     margin-bottom: 2rem;
 }
@@ -115,6 +118,7 @@ header h1 {
     position: relative;
     border-bottom: 3px solid transparent;
     transition: color 0.2s, border-color 0.2s;
+    white-space: nowrap; /* Prevent tab text from wrapping */
 }
 
 .tab-link:hover {
@@ -137,6 +141,7 @@ header h1 {
 }
 
 .tab-content { display: none; }
+
 .tab-content.active { 
     display: block; 
     background-color: var(--white);
@@ -144,6 +149,14 @@ header h1 {
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
+
+#chat-consultations-wrapper {
+  background-color: transparent;
+  padding: 0;
+  box-shadow: none;
+  border: none;
+}
+
 
 .tab-content h2 {
   text-align: left;
@@ -437,7 +450,7 @@ input:checked + .slider:before {
   transform: translateX(19px);
 }
 
-/* Rounded sliders */
+
 .slider.round {
   border-radius: 25px;
 }

@@ -1,5 +1,19 @@
 import React, { useState } from 'react';
-import Modal from '../Components/Modal';
+import { sanitizeInput } from '../../Specialists/utils/validationUtils';
+
+// --- Modal component is now defined directly in this file ---
+const Modal = ({ children, title, onClose }) => {
+  return (
+    <div className="modal">
+      <div className="modal-content">
+        <span className="close-btn" onClick={onClose}>&times;</span>
+        <h2>{title}</h2>
+        {children}
+      </div>
+    </div>
+  );
+};
+
 
 const PendingTable = ({ applications = [] }) => {
   const [viewModalApp, setViewModalApp] = useState(null);

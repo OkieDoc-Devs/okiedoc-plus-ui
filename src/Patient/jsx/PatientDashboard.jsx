@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { logoutPatient } from "../services/auth";
 import { useNavigate } from 'react-router';
 import MedicalRecords from './MedicalRecords';
 import Appointments from './Appointments';
@@ -50,6 +51,7 @@ import {
 } from 'react-icons/fa';
 
 const PatientDashboard = () => {
+  const [globalId, setGlobalId] = useState("");
   const [activePage, setActivePage] = useState('home');
   const [profileImage, setProfileImage] = useState(null);
   const [activeTicket, setActiveTicket] = useState(null);
@@ -84,6 +86,12 @@ const PatientDashboard = () => {
   
   // State for mobile detection
   const [isMobile, setIsMobile] = useState(false);
+
+  // Shows Global ID
+  useEffect(() => {
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    if (currentUser.globalId) setGlobalId(currentUser.globalId);
+  }, []);
 
   // Load appointments from localStorage on component mount
   useEffect(() => {
@@ -216,8 +224,14 @@ const PatientDashboard = () => {
   }, []);
 
 
-  const handleLogout = () => {
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logoutPatient();
+      localStorage.removeItem("currentUser");
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   // Profile editing functions
@@ -366,6 +380,12 @@ const PatientDashboard = () => {
           <div className="patient-dashboard-content">
             {/* Left Column - Appointment Tickets */}
             <div className="patient-left-column">
+              <div className="patient-desktop-action-buttons">
+                <button className="patient-desktop-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaComments className="patient-desktop-action-icon" />Book a Physical Consultation</button>
+                <button className="patient-desktop-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaVideo className="patient-desktop-action-icon" />Book an Online Consultation</button>
+                <button className="patient-desktop-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaPhone className="patient-desktop-action-icon" />Call a Doctor</button>
+                <button className="patient-desktop-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaPhoneAlt className="patient-desktop-action-icon" />Request Callback</button>
+              </div>
               <div className="patient-home-section">
                 <div className="patient-home-tickets-container">
                   {homeAppointments.length === 0 ? (
@@ -629,22 +649,10 @@ const PatientDashboard = () => {
 
               {/* Action Buttons */}
               <div className="patient-mobile-action-buttons">
-                <button className="patient-mobile-action-btn">
-                  <FaComments className="patient-mobile-action-icon" />
-                  <span>Book a Physical Consultation</span>
-                </button>
-                <button className="patient-mobile-action-btn">
-                  <FaVideo className="patient-mobile-action-icon" />
-                  <span>Book an Online Consultation</span>
-                </button>
-                <button className="patient-mobile-action-btn">
-                  <FaPhone className="patient-mobile-action-icon" />
-                  <span>Call a Doctor</span>
-                </button>
-                <button className="patient-mobile-action-btn">
-                  <FaPhoneAlt className="patient-mobile-action-icon" />
-                  <span>Request Callback</span>
-                </button>
+                <button className="patient-mobile-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaComments className="patient-mobile-action-icon" /><span>Book a Physical Consultation</span></button>
+                <button className="patient-mobile-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaVideo className="patient-mobile-action-icon" /><span>Book an Online Consultation</span></button>
+                <button className="patient-mobile-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaPhone className="patient-mobile-action-icon" /><span>Call a Doctor</span></button>
+                <button className="patient-mobile-action-btn" onClick={() => alert('Physical consultation booking will be implemented soon!')}><FaPhoneAlt className="patient-mobile-action-icon" /><span>Request Callback</span></button>
               </div>
 
               {/* Scrollable Content */}
@@ -1153,8 +1161,7 @@ const PatientDashboard = () => {
               </button>
               <button 
                 className="patient-mobile-logout-btn"
-                onClick={handleLogout}
-              >
+                onClick={handleLogout}>
                 <FaSignOutAlt className="patient-mobile-logout-icon" />
                 <span>Sign Out</span>
               </button>

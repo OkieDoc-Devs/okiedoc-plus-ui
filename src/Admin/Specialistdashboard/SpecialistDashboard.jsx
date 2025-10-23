@@ -19,6 +19,15 @@ import S2 from "../../assets/S2.png";
 import PRC from "../../assets/PRC_Sample.jpg";
 import PTR from "../../assets/PTR.png";
 import esig from "../../assets/esig.png";
+import OkieDocLogo from "../../assets/okie-doc-logo.png";
+import ConsultationHistory from "../ConsultationHistory/ConsultationHistory";
+import {
+  filterBySearchTerm,
+  filterBySpecialization,
+  filterTransactions,
+  getAllSpecializations,
+  exportTransactionsToCSV
+} from "../../Specialists/utils";
 
 import "./SpecialistDashboard.css";
 import "../ConsultationHistory/ConsultationHistory.css";
@@ -157,44 +166,36 @@ const SpecialistDashboard = () => {
      ].filter(Boolean)),
    ].sort();
 
+  const allSpecializations = getAllSpecializations([
+    ...pendingApplications,
+    ...specialists,
+    ...transactions
+  ], "details.specializations");
 
-  const filteredPending = (pendingApplications || []).filter((app) => {
-    const searchString = `${app.name || ''} ${app.email || ''}`.toLowerCase();
-    const matchesSearch = !searchTerm || searchString.includes(searchTerm.toLowerCase());
-    const matchesFilter = !filterSpecialization || (app.details?.specializations || []).includes(filterSpecialization);
-    return matchesSearch && matchesFilter;
+  const filteredPending = filterBySpecialization(
+    filterBySearchTerm(pendingApplications, searchTerm, ["name", "email"]),
+    filterSpecialization,
+    "details.specializations"
+  );
+
+  const filteredSpecialists = filterBySpecialization(
+    filterBySearchTerm(specialists, searchTerm, ["firstName", "lastName", "email"]),
+    filterSpecialization,
+    "details.specializations"
+  );
+  
+  const filteredTransactions = filterTransactions(transactions, {
+    searchTerm,
+    specialization: filterSpecialization,
+    status: filterStatus,
+    dateFrom: filterDateFrom,
+    dateTo: filterDateTo
   });
 
-  const filteredSpecialists = (specialists || []).filter((spec) => {
-    const searchString = `${spec.firstName || ''} ${spec.lastName || ''} ${spec.email || ''}`.toLowerCase();
-    const matchesSearch = !searchTerm || searchString.includes(searchTerm.toLowerCase());
-    const matchesFilter = !filterSpecialization || (spec.details?.specializations || []).includes(filterSpecialization);
-    return matchesSearch && matchesFilter;
-  });
-
-  const filteredTransactions = (transactions || []).filter(t => {
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    const matchesSearch = !searchTerm ||
-      (t.patientName || '').toLowerCase().includes(lowerSearchTerm) ||
-      (t.specialistName || '').toLowerCase().includes(lowerSearchTerm) ||
-      (t.status || '').toLowerCase().includes(lowerSearchTerm);
-    const matchesSpecialty = !filterSpecialization || t.specialty === filterSpecialization;
-    const matchesStatus = !filterStatus || t.status === filterStatus;
-
-    const transactionDate = t.date ? new Date(t.date) : null;
-    const fromDate = filterDateFrom ? new Date(filterDateFrom) : null;
-    const toDate = filterDateTo ? new Date(filterDateTo) : null;
-    if (fromDate) fromDate.setHours(0, 0, 0, 0);
-    if (toDate) toDate.setHours(23, 59, 59, 999);
-
-    const matchesDate = !fromDate && !toDate ||
-      (transactionDate &&
-      (!fromDate || transactionDate >= fromDate) &&
-      (!toDate || transactionDate <= toDate));
-
-    return matchesSearch && matchesSpecialty && matchesStatus && matchesDate;
-  });
-   const filteredConsultations = consultations || [];
+  // Handler for the export button
+  const handleExport = () => {
+    exportTransactionsToCSV(filteredTransactions, "transaction_history.csv");
+  };
 
   return (
     <>

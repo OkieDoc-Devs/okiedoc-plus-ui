@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Modal from '../Components/Modal';
+import { sanitizeInput } from '../../Specialists/utils/validationUtils';
 
 const SpecialistTable = ({ specialists = [] }) => {
   const [viewModalSpec, setViewModalSpec] = useState(null);

@@ -5399,6 +5399,44 @@
   padding-right: 0.5rem;
 }
 
+.patient-desktop-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+}
+
+.patient-desktop-action-btn {
+  flex: 1;
+  min-width: 200px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.patient-desktop-action-btn:hover {
+  background-color: #0056b3;
+}
+
+.patient-desktop-action-icon {
+  font-size: 18px;
+}
+
+
 /* Ensure desktop layout is not affected by mobile styles */
 @media (min-width: 769px) {
   .patient-desktop-home {
@@ -5953,4 +5991,3 @@
     overflow-y: auto;
     overflow-x: hidden;
   }
-}

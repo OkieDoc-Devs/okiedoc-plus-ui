@@ -1,46 +1,203 @@
+// Helper to generate invoice text
+const generateInvoiceText = () => {
+  if (!selectedTicket) return "";
+  let lines = [];
+  lines.push(`Invoice No.: ${invoiceData.invoiceNumber}`);
+  lines.push(
+    `Date of Consultation: ${selectedTicket.preferredDate} ${selectedTicket.preferredTime}`
+  );
+  lines.push(`Patient Name: ${selectedTicket.patientName}`);
+  lines.push(`Mobile Number: ${selectedTicket.mobile}`);
+  lines.push(`Email Address: ${selectedTicket.email}`);
+  lines.push("");
+  lines.push("Invoice Items:");
+  invoiceData.items.forEach((item, idx) => {
+    lines.push(
+      `  ${idx + 1}. ${item.name} - ${item.description} | Qty: ${
+        item.quantity
+      } | Amount: ₱${item.amount}`
+    );
+  });
+  lines.push(`Platform Fee: ₱${invoiceData.platformFee}`);
+  lines.push(`E-Nurse Fee: ₱${invoiceData.eNurseFee}`);
+  lines.push(`Total Amount: ₱${invoiceTotal.toFixed(2)}`);
+  lines.push("");
+  lines.push(`Payment Link: ${invoiceData.paymentLink}`);
+  lines.push("");
+  lines.push("OkieDoc+ Address: 123 Health St, Wellness City, Country");
+  return lines.join("\n");
+};
+
+// Download invoice as text file
+const handleDownloadInvoice = () => {
+  const text = generateInvoiceText();
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Invoice_${invoiceData.invoiceNumber || "OkieDoc"}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 import "../App.css";
 import "./NurseStyles.css";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import NurseConsultationHistory from "../Patient/jsx/ConsultationHistory";
-import {
-  LOCAL_STORAGE_KEYS,
-  loadFromStorage,
-  saveToStorage,
-  getNurseId,
-  getNurseFirstName,
-  getNurseProfileImage,
-} from "./services/storageService.js";
-import {
-  createInitialTickets,
-  filterTicketsByStatus,
-  createNewTicket,
-  claimTicket as claimTicketUtil,
-  updateTicketStatus,
-  rescheduleTicket,
-} from "./services/ticketService.js";
-import {
-  getFallbackNotifications,
-  addNotification,
-} from "./services/notificationService.js";
-import {
-  createInitialInvoiceData,
-  initializeInvoice,
-  calculateInvoiceTotal,
-  generateInvoicePDF,
-} from "./services/invoiceService.js";
+
+const LOCAL_STORAGE_KEYS = {
+  tickets: "nurse.tickets",
+  notifications: "nurse.notifications",
+  online: "nurse.online",
+  nurseId: "nurse.id",
+};
+
+function generateId(prefix = "T") {
+  return `${prefix}${Math.random().toString(36).slice(2, 8)}${Date.now()
+    .toString(36)
+    .slice(-4)}`;
+}
+
+function loadFromStorage(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveToStorage(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
 
 export default function ManageAppointment() {
-  const [showConsultationHistory, setShowConsultationHistory] = useState(false);
+  // Helper to generate invoice text
+  const generateInvoiceText = () => {
+    if (!selectedTicket) return "";
+    let lines = [];
+    lines.push(`Invoice No.: ${invoiceData.invoiceNumber}`);
+    lines.push(
+      `Date of Consultation: ${selectedTicket.preferredDate} ${selectedTicket.preferredTime}`
+    );
+    lines.push(`Patient Name: ${selectedTicket.patientName}`);
+    lines.push(`Mobile Number: ${selectedTicket.mobile}`);
+    lines.push(`Email Address: ${selectedTicket.email}`);
+    lines.push("");
+    lines.push("Invoice Items:");
+    invoiceData.items.forEach((item, idx) => {
+      lines.push(
+        `  ${idx + 1}. ${item.name} - ${item.description} | Qty: ${
+          item.quantity
+        } | Amount: ₱${item.amount}`
+      );
+    });
+    lines.push(`Platform Fee: ₱${invoiceData.platformFee}`);
+    lines.push(`E-Nurse Fee: ₱${invoiceData.eNurseFee}`);
+    lines.push(`Total Amount: ₱${invoiceTotal.toFixed(2)}`);
+    lines.push("");
+    lines.push(`Payment Link: ${invoiceData.paymentLink}`);
+    lines.push("");
+    lines.push("OkieDoc+ Address: 123 Health St, Wellness City, Country");
+    return lines.join("\n");
+  };
+
+  // Download invoice as text file
+  const handleDownloadInvoice = () => {
+    const text = generateInvoiceText();
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Invoice_${invoiceData.invoiceNumber || "OkieDoc"}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
   const navigate = useNavigate();
   const [online] = useState(true);
   const [tickets, setTickets] = useState(() => {
     const existing = loadFromStorage(LOCAL_STORAGE_KEYS.tickets, []);
     if (existing.length > 0) return existing;
-    const initialTickets = createInitialTickets();
-    // Save initial tickets to localStorage so other pages can see them
-    saveToStorage(LOCAL_STORAGE_KEYS.tickets, initialTickets);
-    return initialTickets;
+    // Add dummy tickets if none exist
+    return [
+      {
+        id: generateId(),
+        patientName: "John Doe",
+        email: "john.doe@example.com",
+        mobile: "09171234567",
+        chiefComplaint: "Headache",
+        symptoms: "Mild pain",
+        otherSymptoms: "Nausea",
+        preferredDate: "2025-09-01",
+        preferredTime: "09:00",
+        preferredSpecialist: "Dr. Smith",
+        consultationChannel: "Platform",
+        hasHMO: false,
+        hmo: {
+          company: "",
+          memberId: "",
+          expirationDate: "",
+          loaCode: "",
+          eLOAFile: null,
+        },
+        source: "platform",
+        status: "Pending",
+        claimedBy: null,
+      },
+      {
+        id: generateId(),
+        patientName: "Jane Smith",
+        email: "jane.smith@example.com",
+        mobile: "09179876543",
+        chiefComplaint: "Cough",
+        symptoms: "Dry cough",
+        otherSymptoms: "Fever",
+        preferredDate: "2025-09-02",
+        preferredTime: "14:00",
+        preferredSpecialist: "Dr. Lee",
+        consultationChannel: "Platform",
+        hasHMO: true,
+        hmo: {
+          company: "MediCare",
+          memberId: "MC12345",
+          expirationDate: "2026-01-01",
+          loaCode: "LOA9876",
+          eLOAFile: null,
+        },
+        source: "platform",
+        status: "Pending",
+        claimedBy: null,
+      },
+      {
+        id: generateId(),
+        patientName: "Carlos Gomez",
+        email: "carlos.gomez@example.com",
+        mobile: "09175551234",
+        chiefComplaint: "Back pain",
+        symptoms: "Lower back pain",
+        otherSymptoms: "None",
+        preferredDate: "2025-09-03",
+        preferredTime: "11:30",
+        preferredSpecialist: "Dr. Patel",
+        consultationChannel: "Platform",
+        hasHMO: false,
+        hmo: {
+          company: "",
+          memberId: "",
+          expirationDate: "",
+          loaCode: "",
+          eLOAFile: null,
+        },
+        source: "platform",
+        status: "Pending",
+        claimedBy: null,
+      },
+    ];
   });
   useEffect(() => {
     // Load tickets on mount - API integration currently using local storage
@@ -62,8 +219,20 @@ export default function ManageAppointment() {
   const [notifications] = useState(getFallbackNotifications());
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [invoiceTicket, setInvoiceTicket] = useState(null);
-  const [invoiceData, setInvoiceData] = useState(createInitialInvoiceData());
+  const [invoiceData, setInvoiceData] = useState({
+    items: [
+      {
+        name: "Consultation Fee",
+        description: "Medical consultation",
+        quantity: 1,
+        amount: 100,
+      },
+    ],
+    platformFee: 25,
+    eNurseFee: 15,
+    invoiceNumber: "",
+    paymentLink: "",
+  });
   const [showCreateTicketModal, setShowCreateTicketModal] = useState(false);
   const [newTicketData, setNewTicketData] = useState({
     patientName: "",
@@ -84,144 +253,13 @@ export default function ManageAppointment() {
       loaCode: "",
       eLOAFile: null,
     },
-    source: "platform",
+    source: "platform", // platform | hotline
   });
   const [specialistAvailable, setSpecialistAvailable] = useState(null);
   const [hmoVerified, setHmoVerified] = useState(null);
   const [assignedSpecialist, setAssignedSpecialist] = useState("");
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
-  const [createTicketTab, setCreateTicketTab] = useState("medical");
-
-  const [textPills, setTextPills] = useState({
-    medicalRecords: [],
-    familyHistory: [],
-    allergies: [],
-  });
-  const [textInput, setTextInput] = useState({
-    medicalRecords: "",
-    familyHistory: "",
-    allergies: "",
-  });
-
-  const addTextPill = (field, text) => {
-    if (!text.trim()) return;
-
-    const trimmedText = text.trim();
-    if (textPills[field].includes(trimmedText)) return;
-
-    setTextPills((prev) => ({
-      ...prev,
-      [field]: [...prev[field], trimmedText],
-    }));
-
-    setTextInput((prev) => ({
-      ...prev,
-      [field]: "",
-    }));
-  };
-
-  const removeTextPill = (field, textToRemove) => {
-    setTextPills((prev) => ({
-      ...prev,
-      [field]: prev[field].filter((text) => text !== textToRemove),
-    }));
-  };
-
-  const handleTextInputKeyPress = (e, field) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addTextPill(field, textInput[field]);
-    }
-  };
-
-  const painMapFields = [
-    "Thymus",
-    "Lung and diaphragm",
-    "Spleen",
-    "Heart",
-    "Stomach",
-    "Pancreas",
-    "Small intestine",
-    "Ovary",
-    "Colon",
-    "Kidney",
-    "Urinary bladder",
-    "Ureter",
-    "Appendix",
-    "Liver and gall bladder",
-  ];
-  <button
-    className={createTicketTab === "painmap" ? "tab-btn active" : "tab-btn"}
-    onClick={() => setCreateTicketTab("painmap")}
-    type="button"
-  >
-    Pain Map
-  </button>;
-
-  const rosFields = {
-    constitutional: [
-      "Chills",
-      "Fatigue",
-      "Fever",
-      "Weight gain",
-      "Weight loss",
-    ],
-    heent: ["Hearing loss", "Sinus pressure", "Visual changes"],
-    respiratory: ["Cough", "Shortness of breath", "Wheezing"],
-    cardiovascular: [
-      "Chest pain",
-      "Pain while walking (Claudication)",
-      "Edema",
-      "Palpitations",
-    ],
-    gastrointestinal: [
-      "Abdominal pain",
-      "Blood in stool",
-      "Constipation",
-      "Diarrhea",
-      "Heartburn",
-      "Loss of appetite",
-      "Nausea",
-      "Vomiting",
-    ],
-    genitourinary: [
-      "Painful urination (Dysuria)",
-      "Excessive amount of urine (Polyuria)",
-      "Urinary frequency",
-    ],
-    metabolic: [
-      "Cold intolerance",
-      "Heat intolerance",
-      "Excessive thirst (Polydipsia)",
-      "Excessive hunger (Polyphagia)",
-    ],
-    neurological: [
-      "Dizziness",
-      "Extremity numbness",
-      "Extremity weakness",
-      "Headaches",
-      "Seizures",
-      "Tremors",
-    ],
-    psychiatric: ["Anxiety", "Depression"],
-    integumentary: [
-      "Breast discharge",
-      "Breast lump",
-      "Hives",
-      "Mole change(s)",
-      "Rash",
-      "Skin lesion",
-    ],
-    musculoskeletal: ["Back pain", "Joint pain", "Joint swelling", "Neck pain"],
-    hematologic: [
-      "Easily bleeds",
-      "Easily bruises",
-      "Lymphedema",
-      "Issues with blood clots",
-    ],
-    immunologic: ["Food allergies", "Seasonal allergies"],
-  };
 
   const nurseName = getNurseFirstName();
   const nurseId = getNurseId();
@@ -253,9 +291,15 @@ export default function ManageAppointment() {
   };
 
   const openInvoice = (ticket) => {
-    const invoiceInitData = initializeInvoice();
-    setInvoiceData(invoiceInitData);
-    setInvoiceTicket(ticket);
+    const invoiceNumber = generateId("INV");
+    const paymentLink = `${window.location.origin}/pay/${invoiceNumber}`;
+    setInvoiceData((prev) => ({
+      ...prev,
+      items: prev.items,
+      invoiceNumber,
+      paymentLink,
+    }));
+    setSelectedTicket(ticket);
     setShowInvoiceModal(true);
   };
 
@@ -289,88 +333,80 @@ export default function ManageAppointment() {
 
   const sendInvoice = (e) => {
     e.preventDefault();
-    if (!invoiceTicket) return;
-    updateStatus(invoiceTicket.id, "Processing");
+    if (!selectedTicket) return;
+    // Keep ticket in Processing after invoice generation
+    updateStatus(selectedTicket.id, "Processing");
     setShowInvoiceModal(false);
     alert("Invoice sent to patient's email (simulated).");
   };
 
   const simulatePayment = (ticketId) => {
+    // Move ticket to Confirmed after payment
     updateStatus(ticketId, "Confirmed");
   };
 
-  const handleReschedule = (ticketId) => {
-    if (rescheduleDate && rescheduleTime) {
-      setTickets((prev) =>
-        rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime)
-      );
-      setRescheduleDate("");
-      setRescheduleTime("");
-      alert("Appointment rescheduled successfully!");
-    } else {
-      alert("Please select both date and time for rescheduling.");
+  const toCalendarDateRange = (dateStr, timeStr, durationMinutes = 30) => {
+    try {
+      const startLocal = new Date(`${dateStr} ${timeStr}`);
+      if (isNaN(startLocal.getTime())) {
+        const fallback = new Date();
+        const endFallback = new Date(
+          fallback.getTime() + durationMinutes * 60000
+        );
+        const fmt = (d) =>
+          d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+        return { start: fmt(fallback), end: fmt(endFallback) };
+      }
+      const endLocal = new Date(startLocal.getTime() + durationMinutes * 60000);
+      const fmt = (d) =>
+        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+      return { start: fmt(startLocal), end: fmt(endLocal) };
+    } catch {
+      const now = new Date();
+      const end = new Date(now.getTime() + durationMinutes * 60000);
+      const fmt = (d) =>
+        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+      return { start: fmt(now), end: fmt(end) };
     }
   };
 
+  const buildGoogleCalendarUrl = (ticket) => {
+    const { start, end } = toCalendarDateRange(
+      ticket.preferredDate,
+      ticket.preferredTime,
+      30
+    );
+    const title = encodeURIComponent(`Consultation: ${ticket.patientName}`);
+    const details = encodeURIComponent(
+      `Patient: ${ticket.patientName}\nEmail: ${ticket.email}\nMobile: ${ticket.mobile}\nChief Complaint: ${ticket.chiefComplaint}\nChannel: ${ticket.consultationChannel}\nSpecialist: ${ticket.preferredSpecialist}`
+    );
+    const location = encodeURIComponent("OkieDoc+ Platform");
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${start}%2F${end}`;
+  };
+
   const openCreateTicket = (source = "hotline") => {
-    setNewTicketData({
-      patientName: "",
-      email: "",
-      mobile: "",
-      chiefComplaint: "",
-      symptoms: "",
-      otherSymptoms: "",
-      preferredDate: "",
-      preferredTime: "",
-      preferredSpecialist: "",
-      consultationChannel:
-        source === "hotline" ? "Mobile Call" : "Platform Chat",
-      hasHMO: false,
-      hmo: {
-        company: "",
-        memberId: "",
-        expirationDate: "",
-        loaCode: "",
-        eLOAFile: null,
-      },
+    setNewTicketData((prev) => ({
+      ...prev,
       source,
-      ros: {},
-      painMap: [],
-      actualChiefComplaint: "",
-      medicalRecords: "",
-      familyHistory: "",
-      allergies: "",
-      smoking: "",
-      drinking: "",
-    });
-    setTextPills({
-      medicalRecords: [],
-      familyHistory: [],
-      allergies: [],
-    });
-    setTextInput({
-      medicalRecords: "",
-      familyHistory: "",
-      allergies: "",
-    });
+      consultationChannel:
+        source === "hotline" ? "Mobile Call" : prev.consultationChannel,
+    }));
     setShowCreateTicketModal(true);
   };
 
   const submitCreateTicket = (e) => {
     e.preventDefault();
-    const newTicket = createNewTicket(newTicketData, textPills);
+    const id = generateId("TK");
+    const newTicket = {
+      id,
+      ...newTicketData,
+      hmo: newTicketData.hasHMO ? newTicketData.hmo : null,
+      status: "Pending",
+      createdAt: new Date().toISOString(),
+      claimedBy: null,
+    };
     setTickets((prev) => [newTicket, ...prev]);
     setShowCreateTicketModal(false);
-    setTextPills({
-      medicalRecords: [],
-      familyHistory: [],
-      allergies: [],
-    });
-    setTextInput({
-      medicalRecords: "",
-      familyHistory: "",
-      allergies: "",
-    });
     addNotification(
       "New Ticket",
       `Ticket ${newTicket.id} created via ${newTicket.source}`
@@ -383,10 +419,9 @@ export default function ManageAppointment() {
     "Processing",
     nurseId
   );
-
-  const handleDownloadInvoice = () => {
-    generateInvoicePDF(invoiceData, invoiceTicket);
-  };
+  const confirmedTickets = tickets.filter(
+    (t) => t.status === "Confirmed" && t.claimedBy === nurseId
+  );
 
   return (
     <div className="dashboard">
@@ -440,7 +475,7 @@ export default function ManageAppointment() {
             className="nav-tab"
             onClick={() => navigate("/nurse-notifications")}
           >
-            Notifications ({notifications.filter((n) => n.unread).length})
+            Notifications
           </button>
         </div>
       </div>
@@ -477,10 +512,8 @@ export default function ManageAppointment() {
                     {ticket.status}
                   </span>
                 </div>
-                <div
-                  className="ticket-actions"
-                  style={{ display: "flex", gap: 8 }}
-                >
+                <div className="ticket-actions">
+                  {/* If ticket is claimed, show Generate Invoice, else show Manage */}
                   {ticket.claimedBy ? (
                     <button
                       className="action-btn edit"
@@ -501,13 +534,6 @@ export default function ManageAppointment() {
                     onClick={() => simulatePayment(ticket.id)}
                   >
                     Simulate Payment
-                  </button>
-                  <button
-                    className="action-btn"
-                    style={{ marginLeft: "auto" }}
-                    onClick={() => setShowConsultationHistory(true)}
-                  >
-                    View Consultation History
                   </button>
                 </div>
               </div>
@@ -543,10 +569,7 @@ export default function ManageAppointment() {
                     {ticket.hasHMO ? "Yes" : ticket.hmo ? "Yes" : "No"}
                   </p>
                 </div>
-                <div
-                  className="ticket-actions"
-                  style={{ display: "flex", gap: 8 }}
-                >
+                <div className="ticket-actions">
                   <button
                     className="action-btn view"
                     onClick={() => setSelectedTicket(ticket)}
@@ -560,39 +583,16 @@ export default function ManageAppointment() {
                   >
                     Claim Ticket
                   </button>
-                  <button
-                    className="action-btn"
-                    style={{ marginLeft: "auto" }}
-                    onClick={() => setShowConsultationHistory(true)}
-                  >
-                    View Consultation History
-                  </button>
                 </div>
               </div>
             ))}
           </div>
 
-          {showConsultationHistory && (
-            <div className="modal-overlay">
-              <div className="ticket-modal">
-                <div className="modal-header">
-                  <h2>Consultation History</h2>
-                  <button
-                    onClick={() => setShowConsultationHistory(false)}
-                    className="close-btn"
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="modal-body">
-                  <NurseConsultationHistory />
-                </div>
-              </div>
-            </div>
-          )}
+          {false && <div className="processing-tickets"></div>}
         </div>
       </div>
 
+      {/* Ticket Detail Modal */}
       {selectedTicket && (
         <div className="modal-overlay">
           <div className="ticket-modal">
@@ -605,7 +605,7 @@ export default function ManageAppointment() {
                 ×
               </button>
             </div>
-            <div className="modal-body">
+            <div className="modal-content" style={{ padding: 24 }}>
               <div className="patient-info">
                 <h3>Patient Information</h3>
                 <div className="info-grid">
@@ -638,73 +638,6 @@ export default function ManageAppointment() {
                   <div className="info-item">
                     <label>Other Symptoms:</label>
                     <span>{selectedTicket.otherSymptoms || "None"}</span>
-                  </div>
-                  <div className="info-item">
-                    <label>Actual Chief Complaint (Nurse):</label>
-                    <span>{selectedTicket.actualChiefComplaint || ""}</span>
-                  </div>
-                  <div className="info-item">
-                    <label>Medical Records:</label>
-                    <div className="view-pills-container">
-                      {selectedTicket.medicalRecordsPills &&
-                      selectedTicket.medicalRecordsPills.length > 0 ? (
-                        <div className="view-pills">
-                          {selectedTicket.medicalRecordsPills.map(
-                            (text, index) => (
-                              <div key={index} className="view-pill">
-                                <span>{text}</span>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      ) : (
-                        <span>No data</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="info-item">
-                    <label>Family History:</label>
-                    <div className="view-pills-container">
-                      {selectedTicket.familyHistoryPills &&
-                      selectedTicket.familyHistoryPills.length > 0 ? (
-                        <div className="view-pills">
-                          {selectedTicket.familyHistoryPills.map(
-                            (text, index) => (
-                              <div key={index} className="view-pill">
-                                <span>{text}</span>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      ) : (
-                        <span>No data</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="info-item">
-                    <label>Allergies:</label>
-                    <div className="view-pills-container">
-                      {selectedTicket.allergiesPills &&
-                      selectedTicket.allergiesPills.length > 0 ? (
-                        <div className="view-pills">
-                          {selectedTicket.allergiesPills.map((text, index) => (
-                            <div key={index} className="view-pill">
-                              <span>{text}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span>No data</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="info-item">
-                    <label>Smoking:</label>
-                    <span>{selectedTicket.smoking || ""}</span>
-                  </div>
-                  <div className="info-item">
-                    <label>Drinking:</label>
-                    <span>{selectedTicket.drinking || ""}</span>
                   </div>
                 </div>
               </div>
@@ -761,14 +694,7 @@ export default function ManageAppointment() {
 
               <div className="specialist-verification">
                 <h3>Specialist & HMO Verification</h3>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 16,
-                    marginBottom: 12,
-                    justifyContent: "center",
-                  }}
-                >
+                <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
                   <button
                     className="action-btn confirm"
                     style={{ background: "#4caf50", color: "#fff" }}
@@ -785,14 +711,7 @@ export default function ManageAppointment() {
                   </button>
                 </div>
                 {selectedTicket.hasHMO && (
-                  <div
-                    style={{
-                      marginBottom: 12,
-                      display: "flex",
-                      gap: 16,
-                      justifyContent: "center",
-                    }}
-                  >
+                  <div style={{ marginBottom: 12 }}>
                     <button
                       className="action-btn confirm"
                       style={{ background: "#2196f3", color: "#fff" }}
@@ -863,14 +782,7 @@ export default function ManageAppointment() {
                 style={{ marginTop: 16, marginBottom: 0 }}
               >
                 <h3 style={{ marginBottom: 8 }}>Reschedule</h3>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    justifyContent: "center",
-                  }}
-                >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <label htmlFor="reschedule-date" style={{ marginRight: 4 }}>
                     Date:
                   </label>
@@ -914,61 +826,8 @@ export default function ManageAppointment() {
                 </div>
               </div>
 
-              <div className="ros-info" style={{ marginTop: 24 }}>
-                <h3>Review of Systems</h3>
-                <div className="info-grid">
-                  {selectedTicket.ros &&
-                  Object.values(selectedTicket.ros).flat().length > 0 ? (
-                    Object.values(selectedTicket.ros)
-                      .flat()
-                      .map((item, idx) => (
-                        <div key={idx} className="info-item">
-                          <span>{item}</span>
-                        </div>
-                      ))
-                  ) : (
-                    <div className="info-item">No ROS data provided.</div>
-                  )}
-                </div>
-              </div>
-
-              <div className="painmap-info" style={{ marginTop: 24 }}>
-                <h3>Pain Map</h3>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 16,
-                  }}
-                >
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/1506_Referred_Pain_Chart.jpg/1280px-1506_Referred_Pain_Chart.jpg"
-                    alt="Pain Map"
-                    style={{
-                      height: 180,
-                      borderRadius: 8,
-                      border: "1px solid #ccc",
-                      background: "#fff",
-                      marginBottom: 12,
-                    }}
-                  />
-                  <div style={{ textAlign: "center" }}>
-                    {selectedTicket.painMap &&
-                    selectedTicket.painMap.length > 0 ? (
-                      selectedTicket.painMap.map((area, idx) => (
-                        <div key={idx} className="info-item">
-                          <span>{area}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="info-item">No pain areas selected.</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
               <div className="ticket-actions" style={{ marginTop: 12 }}>
+                {/* Only show Generate Invoice if ticket is not claimed and not Pending */}
                 {!selectedTicket.claimedBy &&
                   selectedTicket.status !== "Pending" && (
                     <button
@@ -1007,23 +866,24 @@ export default function ManageAppointment() {
                 ×
               </button>
             </div>
-            <div className="modal-body" style={{ padding: 20, opacity: 1 }}>
+            <div className="modal-content" style={{ padding: 20, opacity: 1 }}>
               <div className="invoice-info">
                 <p>
                   <strong>Invoice No.:</strong> {invoiceData.invoiceNumber}
                 </p>
                 <p>
                   <strong>Date of Consultation:</strong>{" "}
-                  {invoiceTicket?.preferredDate} {invoiceTicket?.preferredTime}
+                  {selectedTicket?.preferredDate}{" "}
+                  {selectedTicket?.preferredTime}
                 </p>
                 <p>
-                  <strong>Patient Name:</strong> {invoiceTicket?.patientName}
+                  <strong>Patient Name:</strong> {selectedTicket?.patientName}
                 </p>
                 <p>
-                  <strong>Mobile Number:</strong> {invoiceTicket?.mobile}
+                  <strong>Mobile Number:</strong> {selectedTicket?.mobile}
                 </p>
                 <p>
-                  <strong>Email Address:</strong> {invoiceTicket?.email}
+                  <strong>Email Address:</strong> {selectedTicket?.email}
                 </p>
               </div>
               <form onSubmit={sendInvoice} className="invoice-form">
@@ -1161,7 +1021,7 @@ export default function ManageAppointment() {
                     className="submit-btn"
                     style={{ marginLeft: 8 }}
                   >
-                    Download PDF
+                    Download Invoice
                   </button>
                   <button
                     type="button"
@@ -1189,722 +1049,314 @@ export default function ManageAppointment() {
                 ×
               </button>
             </div>
-            <div className="modal-body">
-              <div style={{ marginBottom: 24, display: "flex", gap: 16 }}>
-                <button
-                  className={
-                    createTicketTab === "medical" ? "tab-btn active" : "tab-btn"
-                  }
-                  type="button"
-                  onClick={() => setCreateTicketTab("medical")}
-                >
-                  Medical Info
-                </button>
-                <button
-                  className={
-                    createTicketTab === "ros" ? "tab-btn active" : "tab-btn"
-                  }
-                  type="button"
-                  onClick={() => setCreateTicketTab("ros")}
-                >
-                  Review of Systems (ROS)
-                </button>
-                <button
-                  className={
-                    createTicketTab === "painmap" ? "tab-btn active" : "tab-btn"
-                  }
-                  type="button"
-                  onClick={() => setCreateTicketTab("painmap")}
-                >
-                  Pain Map
-                </button>
+            <form
+              onSubmit={submitCreateTicket}
+              className="create-appointment-form"
+            >
+              <div className="form-section">
+                <h3>Patient Information</h3>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="patientName">Patient Name *</label>
+                    <input
+                      id="patientName"
+                      name="patientName"
+                      value={newTicketData.patientName}
+                      onChange={(e) =>
+                        setNewTicketData({
+                          ...newTicketData,
+                          patientName: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="mobile">Mobile Number *</label>
+                    <input
+                      id="mobile"
+                      name="mobile"
+                      value={newTicketData.mobile}
+                      onChange={(e) =>
+                        setNewTicketData({
+                          ...newTicketData,
+                          mobile: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="email">Email Address</label>
+                  <input
+                    id="email"
+                    name="email"
+                    value={newTicketData.email}
+                    onChange={(e) =>
+                      setNewTicketData({
+                        ...newTicketData,
+                        email: e.target.value,
+                      })
+                    }
+                  />
+                </div>
               </div>
-              {createTicketTab === "medical" && (
-                <form
-                  onSubmit={submitCreateTicket}
-                  className="create-appointment-form"
-                >
-                  <div className="form-section">
-                    <h3>Patient Information</h3>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="patientName">Patient Name *</label>
-                        <input
-                          id="patientName"
-                          name="patientName"
-                          value={newTicketData.patientName}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              patientName: e.target.value,
-                            })
-                          }
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="mobile">Mobile Number *</label>
-                        <input
-                          id="mobile"
-                          name="mobile"
-                          value={newTicketData.mobile}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              mobile: e.target.value,
-                            })
-                          }
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="email">Email Address</label>
-                      <input
-                        id="email"
-                        name="email"
-                        value={newTicketData.email}
-                        onChange={(e) =>
-                          setNewTicketData({
-                            ...newTicketData,
-                            email: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
 
-                  <div className="form-section">
-                    <h3>Medical Information</h3>
-                    <div className="form-group">
-                      <label htmlFor="chiefComplaint">Chief Complaint *</label>
-                      <textarea
-                        id="chiefComplaint"
-                        name="chiefComplaint"
-                        rows="3"
-                        value={newTicketData.chiefComplaint}
-                        onChange={(e) =>
-                          setNewTicketData({
-                            ...newTicketData,
-                            chiefComplaint: e.target.value,
-                          })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="symptoms">Symptoms</label>
-                        <textarea
-                          id="symptoms"
-                          name="symptoms"
-                          rows="2"
-                          value={newTicketData.symptoms}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              symptoms: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="otherSymptoms">Other Symptoms</label>
-                        <textarea
-                          id="otherSymptoms"
-                          name="otherSymptoms"
-                          rows="2"
-                          value={newTicketData.otherSymptoms}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              otherSymptoms: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="actualChiefComplaint">
-                          Actual Chief Complaint (Nurse)
-                        </label>
-                        <textarea
-                          id="actualChiefComplaint"
-                          name="actualChiefComplaint"
-                          rows="2"
-                          value={newTicketData.actualChiefComplaint || ""}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              actualChiefComplaint: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="medicalRecords">Medical Records</label>
-                        <div className="text-input-container">
-                          {textPills.medicalRecords.length > 0 && (
-                            <div className="text-pills">
-                              {textPills.medicalRecords.map((text, index) => (
-                                <div key={index} className="text-pill">
-                                  <span>{text}</span>
-                                  <button
-                                    type="button"
-                                    className="remove-pill"
-                                    onClick={() =>
-                                      removeTextPill("medicalRecords", text)
-                                    }
-                                    aria-label="Remove text"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <input
-                            type="text"
-                            id="medicalRecords"
-                            name="medicalRecords"
-                            placeholder="Type and press Enter to add"
-                            value={textInput.medicalRecords}
-                            onChange={(e) =>
-                              setTextInput((prev) => ({
-                                ...prev,
-                                medicalRecords: e.target.value,
-                              }))
-                            }
-                            onKeyPress={(e) =>
-                              handleTextInputKeyPress(e, "medicalRecords")
-                            }
-                            onBlur={() => {
-                              if (textInput.medicalRecords.trim()) {
-                                addTextPill(
-                                  "medicalRecords",
-                                  textInput.medicalRecords
-                                );
-                              }
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="familyHistory">Family History</label>
-                        <div className="text-input-container">
-                          {textPills.familyHistory.length > 0 && (
-                            <div className="text-pills">
-                              {textPills.familyHistory.map((text, index) => (
-                                <div key={index} className="text-pill">
-                                  <span>{text}</span>
-                                  <button
-                                    type="button"
-                                    className="remove-pill"
-                                    onClick={() =>
-                                      removeTextPill("familyHistory", text)
-                                    }
-                                    aria-label="Remove text"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <input
-                            type="text"
-                            id="familyHistory"
-                            name="familyHistory"
-                            placeholder="Type and press Enter to add"
-                            value={textInput.familyHistory}
-                            onChange={(e) =>
-                              setTextInput((prev) => ({
-                                ...prev,
-                                familyHistory: e.target.value,
-                              }))
-                            }
-                            onKeyPress={(e) =>
-                              handleTextInputKeyPress(e, "familyHistory")
-                            }
-                            onBlur={() => {
-                              if (textInput.familyHistory.trim()) {
-                                addTextPill(
-                                  "familyHistory",
-                                  textInput.familyHistory
-                                );
-                              }
-                            }}
-                          />
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="allergies">Allergies</label>
-                        <div className="text-input-container">
-                          {textPills.allergies.length > 0 && (
-                            <div className="text-pills">
-                              {textPills.allergies.map((text, index) => (
-                                <div key={index} className="text-pill">
-                                  <span>{text}</span>
-                                  <button
-                                    type="button"
-                                    className="remove-pill"
-                                    onClick={() =>
-                                      removeTextPill("allergies", text)
-                                    }
-                                    aria-label="Remove text"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <input
-                            type="text"
-                            id="allergies"
-                            name="allergies"
-                            placeholder="Type and press Enter to add"
-                            value={textInput.allergies}
-                            onChange={(e) =>
-                              setTextInput((prev) => ({
-                                ...prev,
-                                allergies: e.target.value,
-                              }))
-                            }
-                            onKeyPress={(e) =>
-                              handleTextInputKeyPress(e, "allergies")
-                            }
-                            onBlur={() => {
-                              if (textInput.allergies.trim()) {
-                                addTextPill("allergies", textInput.allergies);
-                              }
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label>Smoking</label>
-                        <div className="checkbox-group">
-                          <label className="checkbox-item">
-                            <input
-                              type="checkbox"
-                              name="smoking"
-                              value="yes"
-                              checked={newTicketData.smoking === "yes"}
-                              onChange={(e) =>
-                                setNewTicketData({
-                                  ...newTicketData,
-                                  smoking: e.target.checked ? "yes" : "",
-                                })
-                              }
-                            />
-                            <span className="checkmark"></span>
-                            Yes
-                          </label>
-                          <label className="checkbox-item">
-                            <input
-                              type="checkbox"
-                              name="smoking"
-                              value="no"
-                              checked={newTicketData.smoking === "no"}
-                              onChange={(e) =>
-                                setNewTicketData({
-                                  ...newTicketData,
-                                  smoking: e.target.checked ? "no" : "",
-                                })
-                              }
-                            />
-                            <span className="checkmark"></span>
-                            No
-                          </label>
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Drinking</label>
-                        <div className="checkbox-group">
-                          <label className="checkbox-item">
-                            <input
-                              type="checkbox"
-                              name="drinking"
-                              value="yes"
-                              checked={newTicketData.drinking === "yes"}
-                              onChange={(e) =>
-                                setNewTicketData({
-                                  ...newTicketData,
-                                  drinking: e.target.checked ? "yes" : "",
-                                })
-                              }
-                            />
-                            <span className="checkmark"></span>
-                            Yes
-                          </label>
-                          <label className="checkbox-item">
-                            <input
-                              type="checkbox"
-                              name="drinking"
-                              value="no"
-                              checked={newTicketData.drinking === "no"}
-                              onChange={(e) =>
-                                setNewTicketData({
-                                  ...newTicketData,
-                                  drinking: e.target.checked ? "no" : "",
-                                })
-                              }
-                            />
-                            <span className="checkmark"></span>
-                            No
-                          </label>
-                        </div>
-                      </div>
-                    </div>
+              <div className="form-section">
+                <h3>Medical Information</h3>
+                <div className="form-group">
+                  <label htmlFor="chiefComplaint">Chief Complaint *</label>
+                  <textarea
+                    id="chiefComplaint"
+                    name="chiefComplaint"
+                    rows="3"
+                    value={newTicketData.chiefComplaint}
+                    onChange={(e) =>
+                      setNewTicketData({
+                        ...newTicketData,
+                        chiefComplaint: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="symptoms">Symptoms</label>
+                    <textarea
+                      id="symptoms"
+                      name="symptoms"
+                      rows="2"
+                      value={newTicketData.symptoms}
+                      onChange={(e) =>
+                        setNewTicketData({
+                          ...newTicketData,
+                          symptoms: e.target.value,
+                        })
+                      }
+                    />
                   </div>
-                  <div className="form-section">
-                    <h3>Appointment Details</h3>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="preferredDate">Preferred Date</label>
-                        <input
-                          type="date"
-                          id="preferredDate"
-                          name="preferredDate"
-                          value={newTicketData.preferredDate}
-                          min={new Date().toISOString().split("T")[0]}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              preferredDate: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="preferredTime">Preferred Time</label>
-                        <input
-                          type="time"
-                          id="preferredTime"
-                          name="preferredTime"
-                          value={newTicketData.preferredTime}
-                          min={
-                            newTicketData.preferredDate ===
-                            new Date().toISOString().split("T")[0]
-                              ? new Date().toTimeString().slice(0, 5)
-                              : undefined
-                          }
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              preferredTime: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="preferredSpecialist">
-                          Preferred Specialist
-                        </label>
-                        <select
-                          id="preferredSpecialist"
-                          name="preferredSpecialist"
-                          value={newTicketData.preferredSpecialist}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              preferredSpecialist: e.target.value,
-                            })
-                          }
-                          required
-                        >
-                          <option value="">Select Doctor</option>
-                          <option value="Dr. Smith">Dr. Smith</option>
-                          <option value="Dr. Lee">Dr. Lee</option>
-                          <option value="Dr. Patel">Dr. Patel</option>
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="consultationChannel">
-                          Consultation Channel
-                        </label>
-                        <select
-                          id="consultationChannel"
-                          name="consultationChannel"
-                          value={newTicketData.consultationChannel}
-                          onChange={(e) =>
-                            setNewTicketData({
-                              ...newTicketData,
-                              consultationChannel: e.target.value,
-                            })
-                          }
-                        >
-                          <option value="Mobile Call">Mobile Call</option>
-                          <option value="Platform Chat">Platform Chat</option>
-                          <option value="Viber (Audio Call)">
-                            Viber (Audio Call)
-                          </option>
-                          <option value="Viber (Video Call)">
-                            Viber (Video Call)
-                          </option>
-                          <option value="Platform Video Call">
-                            Platform Video Call
-                          </option>
-                        </select>
-                      </div>
-                    </div>
+                  <div className="form-group">
+                    <label htmlFor="otherSymptoms">Other Symptoms</label>
+                    <textarea
+                      id="otherSymptoms"
+                      name="otherSymptoms"
+                      rows="2"
+                      value={newTicketData.otherSymptoms}
+                      onChange={(e) =>
+                        setNewTicketData({
+                          ...newTicketData,
+                          otherSymptoms: e.target.value,
+                        })
+                      }
+                    />
                   </div>
+                </div>
+              </div>
 
-                  <div className="form-section">
-                    <h3>HMO Information</h3>
-                    <div className="form-group">
-                      <label className="checkbox-label">
+              <div className="form-section">
+                <h3>Appointment Details</h3>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="preferredDate">Preferred Date</label>
+                    <input
+                      type="date"
+                      id="preferredDate"
+                      name="preferredDate"
+                      value={newTicketData.preferredDate}
+                      onChange={(e) =>
+                        setNewTicketData({
+                          ...newTicketData,
+                          preferredDate: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="preferredTime">Preferred Time</label>
+                    <input
+                      type="time"
+                      id="preferredTime"
+                      name="preferredTime"
+                      value={newTicketData.preferredTime}
+                      onChange={(e) =>
+                        setNewTicketData({
+                          ...newTicketData,
+                          preferredTime: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="preferredSpecialist">
+                      Preferred Specialist
+                    </label>
+                    <select
+                      id="preferredSpecialist"
+                      name="preferredSpecialist"
+                      value={newTicketData.preferredSpecialist}
+                      onChange={(e) =>
+                        setNewTicketData({
+                          ...newTicketData,
+                          preferredSpecialist: e.target.value,
+                        })
+                      }
+                      required
+                    >
+                      <option value="">Select Doctor</option>
+                      <option value="Dr. Smith">Dr. Smith</option>
+                      <option value="Dr. Lee">Dr. Lee</option>
+                      <option value="Dr. Patel">Dr. Patel</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="consultationChannel">
+                      Consultation Channel
+                    </label>
+                    <select
+                      id="consultationChannel"
+                      name="consultationChannel"
+                      value={newTicketData.consultationChannel}
+                      onChange={(e) =>
+                        setNewTicketData({
+                          ...newTicketData,
+                          consultationChannel: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="Mobile Call">Mobile Call</option>
+                      <option value="Platform Chat">Platform Chat</option>
+                      <option value="Viber (Audio Call)">
+                        Viber (Audio Call)
+                      </option>
+                      <option value="Viber (Video Call)">
+                        Viber (Video Call)
+                      </option>
+                      <option value="Platform Video Call">
+                        Platform Video Call
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-section">
+                <h3>HMO Information</h3>
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={newTicketData.hasHMO}
+                      onChange={(e) =>
+                        setNewTicketData((prev) => ({
+                          ...prev,
+                          hasHMO: e.target.checked,
+                          hmo: e.target.checked ? prev.hmo : null,
+                        }))
+                      }
+                    />{" "}
+                    Patient has HMO coverage
+                  </label>
+                </div>
+                {newTicketData.hasHMO && (
+                  <div className="hmo-fields">
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="hmoCompany">HMO Company</label>
                         <input
-                          type="checkbox"
-                          checked={newTicketData.hasHMO}
+                          id="hmoCompany"
+                          value={newTicketData.hmo.company}
                           onChange={(e) =>
                             setNewTicketData((prev) => ({
                               ...prev,
-                              hasHMO: e.target.checked,
-                              hmo: e.target.checked
-                                ? prev.hmo || {
-                                    company: "",
-                                    memberId: "",
-                                    expirationDate: "",
-                                    loaCode: "",
-                                    eLOAFile: null,
-                                  }
-                                : {
-                                    company: "",
-                                    memberId: "",
-                                    expirationDate: "",
-                                    loaCode: "",
-                                    eLOAFile: null,
-                                  },
+                              hmo: { ...prev.hmo, company: e.target.value },
                             }))
                           }
-                        />{" "}
-                        Patient has HMO coverage
-                      </label>
-                    </div>
-                    {newTicketData.hasHMO && (
-                      <div className="hmo-fields">
-                        <div className="form-row">
-                          <div className="form-group">
-                            <label htmlFor="hmoCompany">HMO Company</label>
-                            <input
-                              id="hmoCompany"
-                              value={newTicketData.hmo.company}
-                              onChange={(e) =>
-                                setNewTicketData((prev) => ({
-                                  ...prev,
-                                  hmo: { ...prev.hmo, company: e.target.value },
-                                }))
-                              }
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label htmlFor="hmoMemberId">Member ID</label>
-                            <input
-                              id="hmoMemberId"
-                              value={newTicketData.hmo.memberId}
-                              onChange={(e) =>
-                                setNewTicketData((prev) => ({
-                                  ...prev,
-                                  hmo: {
-                                    ...prev.hmo,
-                                    memberId: e.target.value,
-                                  },
-                                }))
-                              }
-                            />
-                          </div>
-                        </div>
-                        <div className="form-row">
-                          <div className="form-group">
-                            <label htmlFor="hmoExpiration">
-                              Expiration Date
-                            </label>
-                            <input
-                              type="date"
-                              id="hmoExpiration"
-                              value={newTicketData.hmo.expirationDate}
-                              onChange={(e) =>
-                                setNewTicketData((prev) => ({
-                                  ...prev,
-                                  hmo: {
-                                    ...prev.hmo,
-                                    expirationDate: e.target.value,
-                                  },
-                                }))
-                              }
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label htmlFor="hmoLoaCode">LOA Code</label>
-                            <input
-                              id="hmoLoaCode"
-                              value={newTicketData.hmo.loaCode}
-                              onChange={(e) =>
-                                setNewTicketData((prev) => ({
-                                  ...prev,
-                                  hmo: { ...prev.hmo, loaCode: e.target.value },
-                                }))
-                              }
-                            />
-                          </div>
-                        </div>
-                        <div className="form-group">
-                          <label htmlFor="hmoFile">eLOA File</label>
-                          <input
-                            type="file"
-                            id="hmoFile"
-                            accept=".pdf,.jpg,.jpeg"
-                            onChange={(e) =>
-                              setNewTicketData((prev) => ({
-                                ...prev,
-                                hmo: {
-                                  ...prev.hmo,
-                                  eLOAFile: e.target.files?.[0]?.name || null,
-                                },
-                              }))
-                            }
-                          />
-                        </div>
+                        />
                       </div>
-                    )}
-                  </div>
-
-                  <div className="modal-actions">
-                    <button type="submit" className="submit-btn">
-                      Create Ticket
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateTicketModal(false)}
-                      className="cancel-btn"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              )}
-              {createTicketTab === "painmap" && (
-                <div className="painmap-section">
-                  <h3>Pain Map</h3>
-                  <div style={{ textAlign: "center", marginBottom: 24 }}>
-                    <img
-                      src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/1506_Referred_Pain_Chart.jpg/1280px-1506_Referred_Pain_Chart.jpg"
-                      alt="Pain Map"
-                      style={{
-                        maxWidth: "100%",
-                        height: "auto",
-                        borderRadius: 12,
-                        boxShadow: "0 2px 8px rgba(11,83,136,0.07)",
-                      }}
-                    />
-                  </div>
-                  <div className="painmap-checklist">
-                    <strong
-                      style={{
-                        display: "block",
-                        marginBottom: 10,
-                        color: "#2a4d6c",
-                      }}
-                    >
-                      Select pain locations:
-                    </strong>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "16px 24px",
-                      }}
-                    >
-                      {painMapFields.map((part) => (
-                        <label key={part} className="painmap-item-label">
-                          <input
-                            type="checkbox"
-                            checked={
-                              newTicketData.painMap &&
-                              newTicketData.painMap.includes(part)
-                            }
-                            onChange={(e) => {
-                              let painMap = newTicketData.painMap || [];
-                              if (e.target.checked) {
-                                painMap = [...painMap, part];
-                              } else {
-                                painMap = painMap.filter((p) => p !== part);
-                              }
-                              setNewTicketData({ ...newTicketData, painMap });
-                            }}
-                          />
-                          {part}
-                        </label>
-                      ))}
+                      <div className="form-group">
+                        <label htmlFor="hmoMemberId">Member ID</label>
+                        <input
+                          id="hmoMemberId"
+                          value={newTicketData.hmo.memberId}
+                          onChange={(e) =>
+                            setNewTicketData((prev) => ({
+                              ...prev,
+                              hmo: { ...prev.hmo, memberId: e.target.value },
+                            }))
+                          }
+                        />
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
-              {createTicketTab === "ros" && (
-                <div className="ros-section">
-                  <h3>Review of Systems</h3>
-                  <div style={{ marginBottom: 18 }}>
-                    <label className="ros-item-label">
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="hmoExpiration">Expiration Date</label>
+                        <input
+                          type="date"
+                          id="hmoExpiration"
+                          value={newTicketData.hmo.expirationDate}
+                          onChange={(e) =>
+                            setNewTicketData((prev) => ({
+                              ...prev,
+                              hmo: {
+                                ...prev.hmo,
+                                expirationDate: e.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="hmoLoaCode">LOA Code</label>
+                        <input
+                          id="hmoLoaCode"
+                          value={newTicketData.hmo.loaCode}
+                          onChange={(e) =>
+                            setNewTicketData((prev) => ({
+                              ...prev,
+                              hmo: { ...prev.hmo, loaCode: e.target.value },
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="hmoFile">eLOA File</label>
                       <input
-                        type="checkbox"
-                        checked={newTicketData.rosNone || false}
+                        type="file"
+                        id="hmoFile"
+                        accept=".pdf,.jpg,.jpeg"
                         onChange={(e) =>
-                          setNewTicketData({
-                            ...newTicketData,
-                            rosNone: e.target.checked,
-                          })
+                          setNewTicketData((prev) => ({
+                            ...prev,
+                            hmo: {
+                              ...prev.hmo,
+                              eLOAFile: e.target.files?.[0]?.name || null,
+                            },
+                          }))
                         }
                       />
-                      None apply
-                    </label>
-                  </div>
-                  {Object.entries(rosFields).map(([group, items]) => (
-                    <div key={group} className="ros-group">
-                      <span className="ros-group-title">
-                        {group.charAt(0).toUpperCase() +
-                          group.slice(1).replace(/([A-Z])/g, " $1")}
-                      </span>
-                      <div className="ros-items">
-                        {items.map((item) => (
-                          <label key={item} className="ros-item-label">
-                            <input
-                              type="checkbox"
-                              checked={
-                                newTicketData.ros && newTicketData.ros[group]
-                                  ? newTicketData.ros[group].includes(item)
-                                  : false
-                              }
-                              onChange={(e) => {
-                                const ros = { ...(newTicketData.ros || {}) };
-                                ros[group] = ros[group] || [];
-                                if (e.target.checked) {
-                                  ros[group] = [...ros[group], item];
-                                } else {
-                                  ros[group] = ros[group].filter(
-                                    (i) => i !== item
-                                  );
-                                }
-                                setNewTicketData({ ...newTicketData, ros });
-                              }}
-                            />
-                            {item}
-                          </label>
-                        ))}
-                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-actions">
+                <button type="submit" className="submit-btn">
+                  Create Ticket
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateTicketModal(false)}
+                  className="cancel-btn"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

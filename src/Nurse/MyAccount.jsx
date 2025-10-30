@@ -232,7 +232,17 @@ export default function MyAccount() {
 
         <div className="profile-row">
           <label>Email:</label>
-          <span>{userData.email}</span>
+          {isEditing ? (
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.email}</span>
+          )}
         </div>
 
         <div className="profile-row">

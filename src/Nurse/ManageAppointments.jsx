@@ -119,7 +119,7 @@ export default function ManageAppointment() {
     URL.revokeObjectURL(url);
   };
   const navigate = useNavigate();
-  const [online, setOnline] = useState(true);
+  const [online] = useState(true);
   const [tickets, setTickets] = useState(() => {
     const existing = loadFromStorage(LOCAL_STORAGE_KEYS.tickets, []);
     if (existing.length > 0) return existing;
@@ -199,129 +199,24 @@ export default function ManageAppointment() {
       },
     ];
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const API_BASE_URL =
-    process.env.NODE_ENV === "production"
-      ? "https://your-production-url.com"
-      : "http://localhost:1337";
-
   useEffect(() => {
-    const loadTickets = async () => {
-      try {
-        setLoading(true);
-        console.log("Loading tickets from API...");
-
-        const response = await fetch(`${API_BASE_URL}/api/nurse/tickets`, {
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-          setTickets(data.data || []);
-          setError(null);
-          console.log("Tickets loaded successfully:", data.data);
-        } else {
-          throw new Error(data.message || "Failed to load tickets");
-        }
-      } catch (error) {
-        console.error("Error loading tickets:", error);
-        setError(error.message);
-
-        const fallbackTickets = [
-          {
-            id: "T001",
-            patientName: "John Doe",
-            email: "john.doe@email.com",
-            mobile: "+1-555-0100",
-            chiefComplaint: "Chest pain and shortness of breath",
-            symptoms: "Sharp pain in chest, difficulty breathing",
-            preferredDate: "2025-10-10",
-            preferredTime: "14:00",
-            preferredSpecialist: "Dr. Smith",
-            consultationChannel: "Platform",
-            hasHmo: false,
-            status: "Pending",
-            claimedBy: null,
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: "T002",
-            patientName: "Jane Smith",
-            email: "jane.smith@email.com",
-            mobile: "+1-555-0101",
-            chiefComplaint: "Severe headache and nausea",
-            symptoms: "Persistent headache, feeling nauseous",
-            preferredDate: "2025-10-11",
-            preferredTime: "10:30",
-            preferredSpecialist: "Dr. Lee",
-            consultationChannel: "Mobile Call",
-            hasHmo: true,
-            status: "Confirmed",
-            claimedBy: "N001",
-            createdAt: new Date().toISOString(),
-          },
-        ];
-
-        setTickets(fallbackTickets);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadTickets();
-
-    const interval = setInterval(loadTickets, 30000);
-
-    return () => clearInterval(interval);
+    // Load tickets on mount - API integration currently using local storage
+    // To enable API integration, uncomment the code below and import fetchTicketsFromAPI from './services/apiService.js'
+    // const loadTicketsData = async () => {
+    //   try {
+    //     const data = await fetchTicketsFromAPI();
+    //     setTickets(data);
+    //     console.log("Tickets loaded successfully:", data);
+    //   } catch (error) {
+    //     console.error("Error loading tickets:", error);
+    //   }
+    // };
+    // loadTicketsData();
+    // const interval = setInterval(loadTicketsData, 30000);
+    // return () => clearInterval(interval);
   }, []);
 
-  const [notifications] = useState([
-    {
-      id: 1,
-      type: "New Ticket",
-      message: "New ticket T005 submitted by Alex Smith",
-      time: "5 mins ago",
-      unread: true,
-    },
-    {
-      id: 2,
-      type: "Payment Confirmation",
-      message: "Payment confirmed for appointment #A123",
-      time: "15 mins ago",
-      unread: true,
-    },
-    {
-      id: 3,
-      type: "Chat Notification",
-      message: "New message from Dr. Smith",
-      time: "30 mins ago",
-      unread: false,
-    },
-    {
-      id: 4,
-      type: "Upload Files",
-      message: "Patient uploaded medical records",
-      time: "1 hour ago",
-      unread: false,
-    },
-    {
-      id: 5,
-      type: "HMO Notification",
-      message: "HMO approval received for patient ID P001",
-      time: "2 hours ago",
-      unread: false,
-    },
-  ]);
+  const [notifications] = useState(getFallbackNotifications());
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceData, setInvoiceData] = useState({
@@ -366,15 +261,8 @@ export default function ManageAppointment() {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
 
-  const nurseName = localStorage.getItem("nurse.firstName") || "Nurse";
-  const nurseId = useMemo(() => {
-    let id = localStorage.getItem(LOCAL_STORAGE_KEYS.nurseId);
-    if (!id) {
-      id = generateId("N");
-      localStorage.setItem(LOCAL_STORAGE_KEYS.nurseId, id);
-    }
-    return id;
-  }, []);
+  const nurseName = getNurseFirstName();
+  const nurseId = getNurseId();
 
   useEffect(() => {}, [online]);
 
@@ -386,37 +274,13 @@ export default function ManageAppointment() {
     navigate("/");
   };
 
-  const addNotification = (type, message) => {
-    const notifications = loadFromStorage(LOCAL_STORAGE_KEYS.notifications, []);
-    const newItem = {
-      id: generateId("NT"),
-      type,
-      message,
-      time: new Date().toISOString(),
-      unread: true,
-    };
-    const updated = [newItem, ...notifications];
-    saveToStorage(LOCAL_STORAGE_KEYS.notifications, updated);
-  };
-
-  const goOnline = () => {};
-  const goOffline = () => {};
-
   const claimTicket = (ticketId) => {
-    setTickets((prev) =>
-      prev.map((t) =>
-        t.id === ticketId && !t.claimedBy
-          ? { ...t, claimedBy: nurseId, status: "Processing" }
-          : t
-      )
-    );
+    setTickets((prev) => claimTicketUtil(prev, ticketId, nurseId));
     addNotification("New Ticket", `Ticket ${ticketId} claimed by ${nurseName}`);
   };
 
   const updateStatus = (ticketId, newStatus) => {
-    setTickets((prev) =>
-      prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
-    );
+    setTickets((prev) => updateTicketStatus(prev, ticketId, newStatus));
     if (newStatus === "For Payment")
       addNotification("Payment", `Invoice generated for ticket ${ticketId}`);
     if (newStatus === "Confirmed")
@@ -462,17 +326,10 @@ export default function ManageAppointment() {
       ),
     }));
   };
-  const invoiceTotal = useMemo(() => {
-    const itemsTotal = invoiceData.items.reduce(
-      (sum, it) => sum + Number(it.amount || 0) * Number(it.quantity || 0),
-      0
-    );
-    return (
-      itemsTotal +
-      Number(invoiceData.platformFee || 0) +
-      Number(invoiceData.eNurseFee || 0)
-    );
-  }, [invoiceData]);
+  const invoiceTotal = useMemo(
+    () => calculateInvoiceTotal(invoiceData),
+    [invoiceData]
+  );
 
   const sendInvoice = (e) => {
     e.preventDefault();
@@ -552,13 +409,15 @@ export default function ManageAppointment() {
     setShowCreateTicketModal(false);
     addNotification(
       "New Ticket",
-      `Ticket ${id} created via ${newTicket.source}`
+      `Ticket ${newTicket.id} created via ${newTicket.source}`
     );
   };
 
-  const pendingTickets = tickets.filter((t) => t.status === "Pending");
-  const processingTickets = tickets.filter(
-    (t) => t.status === "Processing" && t.claimedBy === nurseId
+  const pendingTickets = filterTicketsByStatus(tickets, "Pending");
+  const processingTickets = filterTicketsByStatus(
+    tickets,
+    "Processing",
+    nurseId
   );
   const confirmedTickets = tickets.filter(
     (t) => t.status === "Confirmed" && t.claimedBy === nurseId
@@ -577,16 +436,11 @@ export default function ManageAppointment() {
         <h3 className="dashboard-title">Manage Appointments</h3>
         <div className="user-account">
           <img
-            src={
-              localStorage.getItem("nurse.profileImageDataUrl") ||
-              "/account.svg"
-            }
+            src={getNurseProfileImage()}
             alt="Account"
             className="account-icon"
           />
-          <span className="account-name">
-            {localStorage.getItem("nurse.firstName") || "Nurse"}
-          </span>
+          <span className="account-name">{getNurseFirstName()}</span>
           <div className="account-dropdown">
             <button
               className="dropdown-item"
@@ -611,6 +465,12 @@ export default function ManageAppointment() {
             Dashboard
           </button>
           <button className="nav-tab active">Manage Appointments</button>
+          <button
+            className="nav-tab"
+            onClick={() => navigate("/nurse-messages")}
+          >
+            Messages
+          </button>
           <button
             className="nav-tab"
             onClick={() => navigate("/nurse-notifications")}

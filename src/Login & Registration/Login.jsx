@@ -1,6 +1,7 @@
 import "./auth.css";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom"; // Use react-router-dom
 import { useState } from "react";
+import { loginAdmin } from "../api/Admin/api.js";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -10,14 +11,11 @@ export default function Login() {
   });
   const [error, setError] = useState("");
 
+  // Keep dummy credentials for fallback/local testing
   const dummyCredentials = {
     nurse: {
       email: "nurse@okiedocplus.com",
       password: "nurseOkDoc123",
-    },
-    admin: {
-      email: "admin@okiedocplus.com",
-      password: "adminOkDoc123",
     },
     patient: {
       email: "patient@okiedocplus.com",
@@ -27,6 +25,7 @@ export default function Login() {
       email: "specialist@okiedocplus.com",
       password: "specialistOkDoc123",
     },
+    // No dummy admin needed if using API
   };
 
   const handleInputChange = (e) => {
@@ -35,41 +34,54 @@ export default function Login() {
       ...prev,
       [id]: value,
     }));
+    setError(""); // Clear error on input change
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
+    // Admin login attempt using API
+    if (formData.email === "admin@okiedocplus.com") {
+      try {
+        await loginAdmin(formData.email, formData.password);
+        sessionStorage.setItem("isAdminLoggedIn", "true");
+        navigate("/admin/specialist-dashboard");
+        return;
+      } catch (err) {
+        setError(err.message || "Invalid admin credentials. Please try again.");
+        return;
+      }
+    }
+
+    // Fallback to dummy credentials for other roles (adjust or remove as needed)
     if (
       formData.email === dummyCredentials.nurse.email &&
       formData.password === dummyCredentials.nurse.password
     ) {
-      setError("");
+      // Set some indicator for nurse login if needed
+      localStorage.setItem("userRole", "nurse"); // Example
       navigate("/nurse-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.admin.email &&
-      formData.password === dummyCredentials.admin.password
-    ) {
-      setError("");
-      navigate("/admin/specialist-dashboard");
       return;
     } else if (
       formData.email === dummyCredentials.patient.email &&
       formData.password === dummyCredentials.patient.password
     ) {
-      setError("");
+      // Set some indicator for patient login if needed
+      localStorage.setItem("userRole", "patient"); // Example
       navigate("/patient-dashboard");
       return;
     } else if (
       formData.email === dummyCredentials.specialist.email &&
       formData.password === dummyCredentials.specialist.password
     ) {
-      setError("");
-      navigate("/specialist-dashboard");
+       // Set some indicator for specialist login if needed
+       localStorage.setItem("userRole", "specialist"); // Example
+       navigate("/specialist-dashboard"); // Navigate to the correct specialist dashboard
       return;
     }
-    
+
+    // Check localStorage for registered users (if applicable)
     const registeredUsers = JSON.parse(
       localStorage.getItem("registeredUsers") || "[]"
     );
@@ -78,8 +90,8 @@ export default function Login() {
     );
 
     if (user) {
-      setError("");
-      navigate("/dashboard");
+      localStorage.setItem("userRole", "patient");
+      navigate("/patient-dashboard");
     } else {
       setError("Invalid email or password. Please try again.");
     }
@@ -100,7 +112,7 @@ export default function Login() {
             alt="OkieDoc+"
             className="logo-image"
           />
-          <div style={{ width: "2.5rem" }}></div>
+          <div style={{ width: "2.5rem" }}></div> {/* Spacer */}
         </div>
         <h2 className="login-title">Sign in</h2>
         <form className="login-form" onSubmit={handleSubmit}>

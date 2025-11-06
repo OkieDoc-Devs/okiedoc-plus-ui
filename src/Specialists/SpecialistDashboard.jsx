@@ -215,7 +215,7 @@ const SpecialistDashboard = () => {
     const currentUser = authService.getCurrentUser();
     
     if (!currentUser || currentUser.userType !== 'specialist') {
-      navigate("/login?specialist=true");
+      navigate("/specialist-login");
       return;
     }
 

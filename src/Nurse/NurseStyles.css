@@ -353,7 +353,6 @@ html, body {
   }
 }
 
-/* MyAccount Component Styles */
 .myaccount-container {
   max-width: 800px;
   margin: 0 auto;
@@ -428,7 +427,6 @@ html, body {
   min-height: 400px;
 }
 
-/* Profile Section */
 .profile-section {
   padding: 20px 0;
 }
@@ -520,7 +518,6 @@ html, body {
   background-color: #45a049;
 }
 
-/* Light blue variant for image update button */
 .image-save-btn {
   background-color: #4aa7ed;
 }
@@ -543,7 +540,6 @@ html, body {
   background-color: #da190b;
 }
 
-/* Security Section */
 .security-section {
   padding: 20px 0;
 }
@@ -591,7 +587,6 @@ html, body {
   background-color: #083d63;
 }
 
-/* Preferences Section */
 .preferences-section {
   padding: 20px 0;
 }
@@ -651,7 +646,6 @@ html, body {
   box-shadow: 0 0 0 2px rgba(11, 83, 136, 0.1);
 }
 
-/* Password Form Styles */
 .password-form {
   margin-top: 20px;
   padding: 20px;
@@ -714,7 +708,6 @@ html, body {
   font-size: 0.9rem;
 }
 
-/* Manage Appointments Styles */
 .appointments-section {
   padding: 20px;
   max-width: 1200px;
@@ -722,7 +715,6 @@ html, body {
   color: #000000;
 }
 
-/* Create Appointment CTA */
 .create-appointment-btn {
   background: linear-gradient(135deg, #0aadef, #0b5388);
   color: #ffffff;
@@ -811,7 +803,6 @@ html, body {
   gap: 20px;
 }
 
-/* Make ticket section headings and containers readable */
 .tickets-container,
 .tickets-list,
 .processing-tickets {
@@ -822,7 +813,6 @@ html, body {
   color: #0b5388;
 }
 
-/* Pending vs Processing ticket colors */
 .tickets-list .ticket-card {
   border-left: 4px solid #ff9800;
   background: linear-gradient(0deg, rgba(255, 152, 0, 0.06), rgba(255, 255, 255, 1));
@@ -953,7 +943,6 @@ html, body {
   box-shadow: 0 0 0 2px rgba(11, 83, 136, 0.1);
 }
 
-/* Modal Styles */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -967,7 +956,6 @@ html, body {
   z-index: 1000;
 }
 
-/* Generic modal content */
 .modal-content,
 .create-appointment-modal,
 .ticket-modal,
@@ -1059,7 +1047,6 @@ html, body {
   border-top: 1px solid #eee;
 }
 
-/* Create Appointment form layout */
 .create-appointment-form .form-section {
   padding: 16px 20px 0 20px;
 }
@@ -1094,7 +1081,6 @@ html, body {
   opacity: 1 !important;
 }
 
-/* Increase visibility of date/time picker icons on the right side */
 .create-appointment-form input[type="date"]::-webkit-calendar-picker-indicator,
 .create-appointment-form input[type="time"]::-webkit-calendar-picker-indicator {
   opacity: 1 !important;
@@ -1102,7 +1088,6 @@ html, body {
   cursor: pointer;
 }
 
-/* Firefox (uses a different indicator pseudo-element) */
 .create-appointment-form input[type="date"]::-moz-calendar-picker-indicator,
 .create-appointment-form input[type="time"]::-moz-calendar-picker-indicator {
   opacity: 1 !important;
@@ -1150,7 +1135,6 @@ html, body {
   background-color: #da190b;
 }
 
-/* Ticket modal content sections */
 .ticket-modal .modal-content,
 .ticket-modal {
   padding-bottom: 8px;
@@ -1175,7 +1159,6 @@ html, body {
   font-size: 0.85rem;
 }
 
-/* Invoice modal grid */
 .invoice-form .invoice-items {
   padding: 0 20px 10px 20px;
 }
@@ -1187,7 +1170,6 @@ html, body {
   margin-bottom: 10px;
 }
 
-/* Ensure invoice inputs are readable */
 .invoice-form input,
 .invoice-form textarea,
 .invoice-form select {
@@ -1238,7 +1220,6 @@ html, body {
   color: #0b5388;
 }
 
-/* Improve overall colors for appointment page */
 .appointments-section .search-input,
 .appointments-section .status-select,
 .appointments-section .filter-btn,
@@ -1266,7 +1247,6 @@ html, body {
   }
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .search-filter-container {
     flex-direction: column;

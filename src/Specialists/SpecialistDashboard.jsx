@@ -13,6 +13,8 @@ import {
 } from "react-icons/fa";
 import "./SpecialistDashboard.css";
 import authService from "./authService";
+import FloatingChat from "./FloatingChat";
+import SpecialistCall from "./SpecialistCall";
 import {
   formatDateLabel,
   getDaysInMonth,
@@ -143,6 +145,13 @@ const SpecialistDashboard = () => {
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [editingService, setEditingService] = useState({ name: "", fee: 0 });
   const [isLoading, setIsLoading] = useState(true);
+
+  // Call state
+  const [callState, setCallState] = useState({
+    isOpen: false,
+    callType: 'audio', // 'audio' or 'video'
+    patient: null
+  });
 
   // SOAP Notes and Encounter Management
   const [selectedTicketId, setSelectedTicketId] = useState(null);
@@ -289,6 +298,38 @@ const SpecialistDashboard = () => {
       authService.logout();
       navigate("/");
     }
+  };
+
+  const handleStartCall = (conversation) => {
+    setCallState({
+      isOpen: true,
+      callType: 'audio',
+      patient: {
+        name: conversation.name,
+        avatar: conversation.avatar,
+        id: conversation.id
+      }
+    });
+  };
+
+  const handleStartVideoCall = (conversation) => {
+    setCallState({
+      isOpen: true,
+      callType: 'video',
+      patient: {
+        name: conversation.name,
+        avatar: conversation.avatar,
+        id: conversation.id
+      }
+    });
+  };
+
+  const handleCloseCall = () => {
+    setCallState({
+      isOpen: false,
+      callType: 'audio',
+      patient: null
+    });
   };
 
   const handleProfileChange = (field, value) => {
@@ -1673,6 +1714,23 @@ const SpecialistDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Floating Chat Widget */}
+      <FloatingChat 
+        tickets={tickets} 
+        currentUser={currentUser}
+        onStartCall={handleStartCall}
+        onStartVideoCall={handleStartVideoCall}
+      />
+
+      {/* Call/Video Call Component */}
+      <SpecialistCall
+        isOpen={callState.isOpen}
+        onClose={handleCloseCall}
+        callType={callState.callType}
+        patient={callState.patient}
+        currentUser={currentUser}
+      />
     </div>
   );
 };

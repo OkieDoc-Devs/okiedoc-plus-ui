@@ -13,7 +13,6 @@ import {
 import {
   transformProfileFromAPI,
   transformProfileToAPI,
-  getFallbackProfile,
   validatePasswordChange,
 } from "./services/profileService.js";
 
@@ -59,14 +58,8 @@ export default function MyAccount() {
         setError(null);
         console.log("Profile loaded successfully:", profileData);
       } catch (error) {
-        console.error("Error loading profile:", error);
+        console.error("Error loading profile from API:", error);
         setError(error.message);
-
-        const fallbackData = getFallbackProfile();
-        console.log("Using fallback data:", fallbackData);
-
-        setUserData(fallbackData);
-        setFormData(fallbackData);
       } finally {
         setLoading(false);
       }
@@ -103,7 +96,6 @@ export default function MyAccount() {
       try {
         localStorage.setItem("nurse.firstName", formData.firstName || "Nurse");
       } catch (err) {
-        // Ignore storage error
         console.error("Error saving to localStorage:", err);
       }
       setIsEditing(false);

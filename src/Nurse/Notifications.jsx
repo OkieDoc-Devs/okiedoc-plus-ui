@@ -10,7 +10,6 @@ import {
   fetchNotificationsFromAPI,
   markNotificationAsRead,
 } from "./services/apiService.js";
-import { getFallbackNotifications } from "./services/notificationService.js";
 
 export default function Notifications() {
   const navigate = useNavigate();
@@ -22,16 +21,31 @@ export default function Notifications() {
     const loadNotifications = async () => {
       try {
         setLoading(true);
-        console.log("Loading notifications from API...");
+        console.log(
+          "Notifications: Loading notifications from API for logged-in nurse..."
+        );
 
         const notificationsArray = await fetchNotificationsFromAPI();
-        setNotifications(notificationsArray);
+        setNotifications(notificationsArray || []);
         setError(null);
-        console.log("Notifications loaded successfully:", notificationsArray);
+        console.log(
+          "Notifications: Loaded successfully:",
+          notificationsArray?.length || 0,
+          "notifications"
+        );
+        console.log("Notifications: Full data received:", notificationsArray);
+        console.log(
+          "Notifications: Notification IDs:",
+          notificationsArray?.map((n) => n.id) || []
+        );
+        console.log(
+          "Notifications: Unread count:",
+          notificationsArray?.filter((n) => n.unread).length || 0
+        );
       } catch (error) {
-        console.error("Error loading notifications:", error);
+        console.error("Notifications: Error loading from API:", error);
         setError(error.message);
-        setNotifications(getFallbackNotifications());
+        setNotifications([]);
       } finally {
         setLoading(false);
       }

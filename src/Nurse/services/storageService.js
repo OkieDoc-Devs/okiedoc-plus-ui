@@ -50,7 +50,29 @@ export function saveToStorage(key, value) {
  * @returns {string|null} Nurse ID or null
  */
 export function getNurseId() {
-  return localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_ID);
+  // Try nurse-specific key first
+  let nurseId = localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_ID);
+
+  // Fallback: Get from currentUser if nurse-specific key doesn't exist
+  if (!nurseId) {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+      if (currentUser && currentUser.userType === "nurse") {
+        nurseId = currentUser.id;
+        // Cache it in nurse-specific key for next time
+        localStorage.setItem(LOCAL_STORAGE_KEYS.NURSE_ID, nurseId);
+        console.log(
+          "getNurseId: Retrieved from currentUser and cached:",
+          nurseId
+        );
+      }
+    } catch (error) {
+      console.error("getNurseId: Error parsing currentUser:", error);
+    }
+  }
+
+  console.log("getNurseId: Returning nurse ID:", nurseId);
+  return nurseId;
 }
 
 /**
@@ -58,7 +80,23 @@ export function getNurseId() {
  * @returns {string|null} Nurse email or null
  */
 export function getNurseEmail() {
-  return localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_EMAIL);
+  // Try nurse-specific key first
+  let email = localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_EMAIL);
+
+  // Fallback: Get from currentUser
+  if (!email) {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+      if (currentUser && currentUser.userType === "nurse") {
+        email = currentUser.email;
+        localStorage.setItem(LOCAL_STORAGE_KEYS.NURSE_EMAIL, email);
+      }
+    } catch (error) {
+      console.error("getNurseEmail: Error parsing currentUser:", error);
+    }
+  }
+
+  return email;
 }
 
 /**
@@ -66,7 +104,26 @@ export function getNurseEmail() {
  * @returns {string} Nurse first name or "Nurse"
  */
 export function getNurseFirstName() {
-  return localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_FIRST_NAME) || "Nurse";
+  let firstName = localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_FIRST_NAME);
+
+  // Fallback: Get from currentUser
+  if (!firstName) {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+      if (
+        currentUser &&
+        currentUser.userType === "nurse" &&
+        currentUser.firstName
+      ) {
+        firstName = currentUser.firstName;
+        localStorage.setItem(LOCAL_STORAGE_KEYS.NURSE_FIRST_NAME, firstName);
+      }
+    } catch (error) {
+      console.error("getNurseFirstName: Error parsing currentUser:", error);
+    }
+  }
+
+  return firstName || "Nurse";
 }
 
 /**
@@ -79,10 +136,14 @@ export function getNurseLastName() {
 
 /**
  * Get the current nurse's profile image from localStorage
- * @returns {string|null} Profile image URL or null
+ * @returns {string} Profile image URL or default account icon
  */
 export function getNurseProfileImage() {
-  return localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_PROFILE_IMAGE);
+  const profileImage = localStorage.getItem(
+    LOCAL_STORAGE_KEYS.NURSE_PROFILE_IMAGE
+  );
+  // Return stored image or fallback to default account icon
+  return profileImage || "/account.svg";
 }
 
 /**

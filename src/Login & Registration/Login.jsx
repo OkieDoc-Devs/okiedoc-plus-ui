@@ -53,9 +53,9 @@ export default function Login() {
 
     // Clear error when user starts typing
     if (errors[fieldName]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [fieldName]: ""
+        [fieldName]: "",
       }));
     }
   };
@@ -73,17 +73,36 @@ export default function Login() {
       const result = await loginWithAPI(formData.email, formData.password);
 
       if (result.success) {
+        // Store general user data
+        localStorage.setItem(
+          "currentUser",
+          JSON.stringify({
+            id: result.user.id,
+            email: result.user.email,
+            userType: result.user.userType,
+            globalId: result.user.globalId || null,
+          })
+        );
+
+        // If nurse, store nurse-specific data for the nurse module
+        if (result.user.userType === "nurse") {
+          localStorage.setItem("nurse.id", result.user.id);
+          localStorage.setItem("nurse.email", result.user.email);
           localStorage.setItem(
-            "currentUser",
-            JSON.stringify({
-              id: result.user.id,
-              email: result.user.email,
-              userType: result.user.userType,
-              globalId: result.user.globalId || null, // fallback if missing
-            })
+            "nurse.firstName",
+            result.user.firstName || "Nurse"
           );
-          navigate(result.user.dashboardRoute);
-          return;
+          localStorage.setItem("nurse.lastName", result.user.lastName || "");
+          console.log("Nurse data stored in localStorage:", {
+            id: result.user.id,
+            email: result.user.email,
+            firstName: result.user.firstName,
+            lastName: result.user.lastName,
+          });
+        }
+
+        navigate(result.user.dashboardRoute);
+        return;
       }
     } catch (apiError) {
       console.warn(
@@ -138,7 +157,7 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
-    
+
     setIsLoading(false);
   };
 
@@ -167,60 +186,68 @@ export default function Login() {
         {!isSpecialistMode ? (
           // Regular Patient/Nurse Login
           <>
-        <h2 className="login-title">Sign in</h2>
-        <form className="login-form" onSubmit={handleSubmit}>
-          {error && (
-            <p style={{ color: "red", marginBottom: "10px" }}>{error}</p>
-          )}
-          <label className="login-label" htmlFor="email">
-            Email address
-          </label>
-          <input
-            className="login-input"
-            id="email"
-            type="email"
-            placeholder="Enter your email address"
-            value={formData.email}
-            onChange={handleInputChange}
-            required
-            disabled={isLoading}
-          />
-          <label className="login-label">Password</label>
-          <div className="login-password">
-            <input
-              className="login-input"
-              id="password"
-              type="password"
-              placeholder="Enter your password"
-              value={formData.password}
-              onChange={handleInputChange}
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <button className="login-btn" type="submit" disabled={isLoading}>
-            {isLoading ? "Signing in..." : "Sign in"}
-          </button>
-          <p className="login-text">
-            Don't have an Okie-Doc+ account?{" "}
-            <a href="/registration">Register</a>
-          </p>
-          <p className="specialist-text">
+            <h2 className="login-title">Sign in</h2>
+            <form className="login-form" onSubmit={handleSubmit}>
+              {error && (
+                <p style={{ color: "red", marginBottom: "10px" }}>{error}</p>
+              )}
+              <label className="login-label" htmlFor="email">
+                Email address
+              </label>
+              <input
+                className="login-input"
+                id="email"
+                type="email"
+                placeholder="Enter your email address"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                disabled={isLoading}
+              />
+              <label className="login-label">Password</label>
+              <div className="login-password">
+                <input
+                  className="login-input"
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <button className="login-btn" type="submit" disabled={isLoading}>
+                {isLoading ? "Signing in..." : "Sign in"}
+              </button>
+              <p className="login-text">
+                Don't have an Okie-Doc+ account?{" "}
+                <a href="/registration">Register</a>
+              </p>
+              <p className="specialist-text">
                 Are you a specialist?{" "}
-                <a href="#" className="specialist-link" onClick={(e) => {
-                  e.preventDefault();
-                  setIsSpecialistMode(true);
-                }}>
+                <a
+                  href="#"
+                  className="specialist-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsSpecialistMode(true);
+                  }}
+                >
                   Login Here
                 </a>
               </p>
               <p className="specialist-text">
                 Need to register as a specialist?{" "}
-                <a href="#" className="specialist-register-link" onClick={(e) => {
-                  e.preventDefault();
-                  setIsSpecialistMode(true);
-                  setIsSignUp(true);
-                }}>
+                <a
+                  href="#"
+                  className="specialist-register-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsSpecialistMode(true);
+                    setIsSignUp(true);
+                  }}
+                >
                   Register as Specialist
                 </a>
               </p>
@@ -232,16 +259,23 @@ export default function Login() {
             <h2 className="login-title">Specialist Sign in</h2>
             <form className="login-form" onSubmit={handleSpecialistLogin}>
               {errors.general && (
-                <div className="error-message" style={{ color: 'red', marginBottom: '10px', textAlign: 'center' }}>
+                <div
+                  className="error-message"
+                  style={{
+                    color: "red",
+                    marginBottom: "10px",
+                    textAlign: "center",
+                  }}
+                >
                   {errors.general}
                 </div>
               )}
-              
+
               <label className="login-label" htmlFor="email">
                 Email address
               </label>
               <input
-                className={`login-input ${errors.email ? 'error' : ''}`}
+                className={`login-input ${errors.email ? "error" : ""}`}
                 id="email"
                 type="email"
                 name="email"
@@ -250,14 +284,16 @@ export default function Login() {
                 onChange={handleInputChange}
                 required
               />
-              {errors.email && <span className="error-message">{errors.email}</span>}
-              
+              {errors.email && (
+                <span className="error-message">{errors.email}</span>
+              )}
+
               <label className="login-label" htmlFor="password">
                 Password
               </label>
               <div className="login-password">
                 <input
-                  className={`login-input ${errors.password ? 'error' : ''}`}
+                  className={`login-input ${errors.password ? "error" : ""}`}
                   id="password"
                   type={showPassword ? "text" : "password"}
                   name="password"
@@ -268,33 +304,45 @@ export default function Login() {
                 />
                 <button
                   type="button"
-                  className={`password-toggle ${showPassword ? 'visible' : 'hidden'}`}
+                  className={`password-toggle ${
+                    showPassword ? "visible" : "hidden"
+                  }`}
                   onClick={togglePasswordVisibility}
                 >
                   {showPassword ? <FaEye /> : <FaEyeSlash />}
                 </button>
               </div>
-              {errors.password && <span className="error-message">{errors.password}</span>}
-              
+              {errors.password && (
+                <span className="error-message">{errors.password}</span>
+              )}
+
               <button className="login-btn" type="submit" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign in"}
               </button>
-              
+
               <p className="login-text">
                 Don't have a specialist account?{" "}
-                <a href="#" className="specialist-link" onClick={(e) => {
-                  e.preventDefault();
-                  setIsSignUp(true);
-                }}>
+                <a
+                  href="#"
+                  className="specialist-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsSignUp(true);
+                  }}
+                >
                   Register
                 </a>
               </p>
               <p className="specialist-text">
                 Patient or Nurse?{" "}
-                <a href="#" className="specialist-link" onClick={(e) => {
-                  e.preventDefault();
-                  setIsSpecialistMode(false);
-                }}>
+                <a
+                  href="#"
+                  className="specialist-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsSpecialistMode(false);
+                  }}
+                >
                   Login Here
                 </a>
               </p>
@@ -306,18 +354,25 @@ export default function Login() {
             <h2 className="login-title">Register as Specialist</h2>
             <form className="login-form" onSubmit={handleSpecialistSignUp}>
               {errors.general && (
-                <div className="error-message" style={{ color: 'red', marginBottom: '10px', textAlign: 'center' }}>
+                <div
+                  className="error-message"
+                  style={{
+                    color: "red",
+                    marginBottom: "10px",
+                    textAlign: "center",
+                  }}
+                >
                   {errors.general}
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: "flex", gap: "10px" }}>
                 <div style={{ flex: 1 }}>
                   <label className="login-label" htmlFor="firstName">
                     First Name
                   </label>
                   <input
-                    className={`login-input ${errors.firstName ? 'error' : ''}`}
+                    className={`login-input ${errors.firstName ? "error" : ""}`}
                     id="firstName"
                     type="text"
                     name="firstName"
@@ -326,14 +381,16 @@ export default function Login() {
                     onChange={handleInputChange}
                     required
                   />
-                  {errors.firstName && <span className="error-message">{errors.firstName}</span>}
+                  {errors.firstName && (
+                    <span className="error-message">{errors.firstName}</span>
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <label className="login-label" htmlFor="lastName">
                     Last Name
                   </label>
                   <input
-                    className={`login-input ${errors.lastName ? 'error' : ''}`}
+                    className={`login-input ${errors.lastName ? "error" : ""}`}
                     id="lastName"
                     type="text"
                     name="lastName"
@@ -342,7 +399,9 @@ export default function Login() {
                     onChange={handleInputChange}
                     required
                   />
-                  {errors.lastName && <span className="error-message">{errors.lastName}</span>}
+                  {errors.lastName && (
+                    <span className="error-message">{errors.lastName}</span>
+                  )}
                 </div>
               </div>
 
@@ -350,7 +409,7 @@ export default function Login() {
                 Email address
               </label>
               <input
-                className={`login-input ${errors.email ? 'error' : ''}`}
+                className={`login-input ${errors.email ? "error" : ""}`}
                 id="email"
                 type="email"
                 name="email"
@@ -359,13 +418,15 @@ export default function Login() {
                 onChange={handleInputChange}
                 required
               />
-              {errors.email && <span className="error-message">{errors.email}</span>}
+              {errors.email && (
+                <span className="error-message">{errors.email}</span>
+              )}
 
               <label className="login-label" htmlFor="specialty">
                 Medical Specialty
               </label>
               <select
-                className={`login-input ${errors.specialty ? 'error' : ''}`}
+                className={`login-input ${errors.specialty ? "error" : ""}`}
                 id="specialty"
                 name="specialty"
                 value={formData.specialty}
@@ -385,15 +446,19 @@ export default function Login() {
                 <option value="ENT">ENT (Ear, Nose, Throat)</option>
                 <option value="Other">Other</option>
               </select>
-              {errors.specialty && <span className="error-message">{errors.specialty}</span>}
+              {errors.specialty && (
+                <span className="error-message">{errors.specialty}</span>
+              )}
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: "flex", gap: "10px" }}>
                 <div style={{ flex: 1 }}>
                   <label className="login-label" htmlFor="licenseNumber">
                     License Number
                   </label>
                   <input
-                    className={`login-input ${errors.licenseNumber ? 'error' : ''}`}
+                    className={`login-input ${
+                      errors.licenseNumber ? "error" : ""
+                    }`}
                     id="licenseNumber"
                     type="text"
                     name="licenseNumber"
@@ -402,14 +467,20 @@ export default function Login() {
                     onChange={handleInputChange}
                     required
                   />
-                  {errors.licenseNumber && <span className="error-message">{errors.licenseNumber}</span>}
+                  {errors.licenseNumber && (
+                    <span className="error-message">
+                      {errors.licenseNumber}
+                    </span>
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <label className="login-label" htmlFor="experience">
                     Years of Experience
                   </label>
                   <input
-                    className={`login-input ${errors.experience ? 'error' : ''}`}
+                    className={`login-input ${
+                      errors.experience ? "error" : ""
+                    }`}
                     id="experience"
                     type="number"
                     name="experience"
@@ -420,7 +491,9 @@ export default function Login() {
                     onChange={handleInputChange}
                     required
                   />
-                  {errors.experience && <span className="error-message">{errors.experience}</span>}
+                  {errors.experience && (
+                    <span className="error-message">{errors.experience}</span>
+                  )}
                 </div>
               </div>
 
@@ -428,7 +501,7 @@ export default function Login() {
                 Phone Number (Optional)
               </label>
               <input
-                className={`login-input ${errors.phone ? 'error' : ''}`}
+                className={`login-input ${errors.phone ? "error" : ""}`}
                 id="phone"
                 type="tel"
                 name="phone"
@@ -436,14 +509,16 @@ export default function Login() {
                 value={formData.phone}
                 onChange={handleInputChange}
               />
-              {errors.phone && <span className="error-message">{errors.phone}</span>}
+              {errors.phone && (
+                <span className="error-message">{errors.phone}</span>
+              )}
 
               <label className="login-label" htmlFor="password">
                 Password
               </label>
               <div className="login-password">
                 <input
-                  className={`login-input ${errors.password ? 'error' : ''}`}
+                  className={`login-input ${errors.password ? "error" : ""}`}
                   id="password"
                   type={showPassword ? "text" : "password"}
                   name="password"
@@ -454,20 +529,26 @@ export default function Login() {
                 />
                 <button
                   type="button"
-                  className={`password-toggle ${showPassword ? 'visible' : 'hidden'}`}
+                  className={`password-toggle ${
+                    showPassword ? "visible" : "hidden"
+                  }`}
                   onClick={togglePasswordVisibility}
                 >
                   {showPassword ? <FaEye /> : <FaEyeSlash />}
                 </button>
               </div>
-              {errors.password && <span className="error-message">{errors.password}</span>}
+              {errors.password && (
+                <span className="error-message">{errors.password}</span>
+              )}
 
               <label className="login-label" htmlFor="confirmPassword">
                 Confirm Password
               </label>
               <div className="login-password">
                 <input
-                  className={`login-input ${errors.confirmPassword ? 'error' : ''}`}
+                  className={`login-input ${
+                    errors.confirmPassword ? "error" : ""
+                  }`}
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
@@ -478,37 +559,49 @@ export default function Login() {
                 />
                 <button
                   type="button"
-                  className={`password-toggle ${showConfirmPassword ? 'visible' : 'hidden'}`}
+                  className={`password-toggle ${
+                    showConfirmPassword ? "visible" : "hidden"
+                  }`}
                   onClick={toggleConfirmPasswordVisibility}
                 >
                   {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
                 </button>
               </div>
-              {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
+              {errors.confirmPassword && (
+                <span className="error-message">{errors.confirmPassword}</span>
+              )}
 
               <button className="login-btn" type="submit" disabled={isLoading}>
                 {isLoading ? "Creating Account..." : "Register as Specialist"}
               </button>
-              
+
               <p className="login-text">
                 Already have a specialist account?{" "}
-                <a href="#" className="specialist-link" onClick={(e) => {
-                  e.preventDefault();
-                  setIsSignUp(false);
-                }}>
+                <a
+                  href="#"
+                  className="specialist-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsSignUp(false);
+                  }}
+                >
                   Login
                 </a>
               </p>
               <p className="specialist-text">
                 Patient or Nurse?{" "}
-                <a href="#" className="specialist-link" onClick={(e) => {
-                  e.preventDefault();
-                  setIsSpecialistMode(false);
-                }}>
+                <a
+                  href="#"
+                  className="specialist-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsSpecialistMode(false);
+                  }}
+                >
                   Login Here
                 </a>
-          </p>
-        </form>
+              </p>
+            </form>
           </>
         )}
       </div>

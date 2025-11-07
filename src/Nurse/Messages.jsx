@@ -13,11 +13,12 @@ import {
   getNurseProfileImage,
 } from "./services/storageService.js";
 import { getFallbackNotifications } from "./services/notificationService.js";
+import { fetchNotificationsFromAPI } from "./services/apiService.js";
 import "./NurseStyles.css";
 
 const Messages = () => {
   const navigate = useNavigate();
-  const [notifications] = useState(getFallbackNotifications());
+  const [notifications, setNotifications] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -31,6 +32,23 @@ const Messages = () => {
   const handleLogout = () => {
     navigate("/");
   };
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const notificationsArray = await fetchNotificationsFromAPI();
+        setNotifications(notificationsArray);
+      } catch (error) {
+        console.error("Messages: Error loading notifications:", error);
+        setNotifications(getFallbackNotifications());
+      }
+    };
+
+    loadNotifications();
+
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const conversations = [
     {
@@ -90,7 +108,6 @@ const Messages = () => {
     },
   ];
 
-  // Dummy data for received messages
   const getDummyMessages = (conversationId) => {
     const messageTemplates = {
       1: [
@@ -281,7 +298,6 @@ const Messages = () => {
     setSearchQuery(e.target.value);
   };
 
-  // Filter conversations based on search query
   const filteredConversations = conversations.filter((conversation) => {
     const query = searchQuery.toLowerCase();
     return (
@@ -389,7 +405,6 @@ const Messages = () => {
             activeChat ? "has-active-chat" : ""
           }`}
         >
-          {/* Conversations List */}
           <div className="nurse-conversations-sidebar">
             <div className="nurse-conversations-header">
               <h2 className="nurse-conversations-title">
@@ -466,7 +481,6 @@ const Messages = () => {
             </div>
           </div>
 
-          {/* Chat Area */}
           {activeChat ? (
             <div className="nurse-chat-area">
               <div className="nurse-chat-header">
@@ -528,7 +542,6 @@ const Messages = () => {
                 ))}
               </div>
 
-              {/* Document Upload Section */}
               <div className="nurse-document-upload">
                 <div className="nurse-upload-header">
                   <h4 className="nurse-upload-title">Upload Documents</h4>

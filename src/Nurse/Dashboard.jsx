@@ -6,11 +6,8 @@ import {
   getNurseId,
   getNurseFirstName,
   getNurseProfileImage,
-  loadTickets,
-  saveTickets,
 } from "./services/storageService.js";
 import { buildGoogleCalendarUrl } from "./services/calendarService.js";
-import { getFallbackTickets } from "./services/ticketService.js";
 import {
   fetchTicketsFromAPI,
   fetchNotificationsFromAPI,
@@ -32,31 +29,47 @@ export default function Dashboard() {
     navigate("/");
   };
 
-  const [tickets, setTickets] = useState(() => {
-    const loadedTickets = loadTickets();
-    // If no tickets in localStorage, use fallback data
-    if (!loadedTickets || loadedTickets.length === 0) {
-      const fallbackTickets = getFallbackTickets();
-      saveTickets(fallbackTickets);
-      return fallbackTickets;
-    }
-    return loadedTickets;
-  });
+  const [tickets, setTickets] = useState([]);
 
   useEffect(() => {
     const loadDashboardData = async () => {
+      console.log(
+        "Dashboard: Starting to load dashboard data for logged-in nurse..."
+      );
       try {
-        // Try to fetch from dashboard API first (includes both tickets and notifications)
+        console.log("Dashboard: Fetching from dashboard API...");
         const dashboardData = await fetchDashboardFromAPI();
+        console.log("Dashboard: Dashboard API response:", dashboardData);
         if (dashboardData) {
-          // Update tickets
-          if (dashboardData.tickets && dashboardData.tickets.length > 0) {
+          if (dashboardData.tickets) {
+            console.log(
+              "Dashboard: Received tickets from dashboard API:",
+              dashboardData.tickets.length,
+              "tickets"
+            );
             setTickets(dashboardData.tickets);
-            saveTickets(dashboardData.tickets);
+          } else {
+            console.log("Dashboard: No tickets in dashboard response");
+            setTickets([]);
           }
-          // Update notifications
           if (dashboardData.notifications) {
+            console.log(
+              "Dashboard: Received notifications from dashboard API:",
+              dashboardData.notifications.length,
+              "notifications"
+            );
+            console.log(
+              "Dashboard: Notification IDs:",
+              dashboardData.notifications.map((n) => n.id)
+            );
+            console.log(
+              "Dashboard: Unread count:",
+              dashboardData.notifications.filter((n) => n.unread).length
+            );
             setNotifications(dashboardData.notifications);
+          } else {
+            console.log("Dashboard: No notifications in dashboard response");
+            setNotifications([]);
           }
           return;
         }
@@ -66,35 +79,57 @@ export default function Dashboard() {
           error.message
         );
 
-        // Fallback to individual API calls
         try {
+          console.log("Dashboard: Fetching tickets from individual API...");
           const apiTickets = await fetchTicketsFromAPI();
+          console.log("Dashboard: Tickets API response:", apiTickets);
           if (apiTickets && apiTickets.length > 0) {
+            console.log(
+              "Dashboard: Received tickets from API:",
+              apiTickets.length,
+              "tickets"
+            );
             setTickets(apiTickets);
-            saveTickets(apiTickets);
+          } else {
+            console.log("Dashboard: No tickets received from API");
+            setTickets([]);
           }
         } catch (ticketError) {
-          console.log("Tickets API not available:", ticketError.message);
+          console.error("Dashboard: Tickets API error:", ticketError.message);
+          setTickets([]);
         }
 
         try {
           const apiNotifications = await fetchNotificationsFromAPI();
+          console.log(
+            "Dashboard: Notifications from individual API:",
+            apiNotifications
+          );
           if (apiNotifications && apiNotifications.length > 0) {
+            console.log(
+              "Dashboard: Notification count from individual API:",
+              apiNotifications.length
+            );
+            console.log(
+              "Dashboard: Notification IDs:",
+              apiNotifications.map((n) => n.id)
+            );
+            console.log(
+              "Dashboard: Unread count:",
+              apiNotifications.filter((n) => n.unread).length
+            );
             setNotifications(apiNotifications);
+          } else {
+            console.log("Dashboard: No notifications from individual API");
+            setNotifications([]);
           }
         } catch (notifError) {
-          console.log("Notifications API not available:", notifError.message);
+          console.error(
+            "Dashboard: Notifications API error:",
+            notifError.message
+          );
+          setNotifications([]);
         }
-      }
-
-      // Final fallback to localStorage or demo data if tickets not loaded
-      if (tickets.length === 0) {
-        let loadedTickets = loadTickets();
-        if (!loadedTickets || loadedTickets.length === 0) {
-          loadedTickets = getFallbackTickets();
-          saveTickets(loadedTickets);
-        }
-        setTickets(loadedTickets);
       }
     };
 
@@ -112,7 +147,6 @@ export default function Dashboard() {
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const nurseId = getNurseId();
@@ -234,7 +268,6 @@ export default function Dashboard() {
                             ? { ...t, status: "Confirmed", claimedBy: nurseId }
                             : t
                         );
-                        saveTickets(updated);
                         return updated;
                       });
                     }}
@@ -262,7 +295,6 @@ export default function Dashboard() {
                   onClick={() => {
                     setTickets((prev) => {
                       const updated = prev.filter((t) => t.id !== ticket.id);
-                      saveTickets(updated);
                       return updated;
                     });
                   }}

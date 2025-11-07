@@ -9,33 +9,64 @@
  * @returns {Object} Transformed profile data
  */
 export function transformProfileFromAPI(apiProfile) {
-  // Try to get the real email from currentUser in localStorage
-  let realEmail = apiProfile.email;
+  console.log("Transforming API profile data:", apiProfile);
+
+  // API now returns camelCase, but also check snake_case and PascalCase for compatibility
+  let firstName =
+    apiProfile.firstName ||
+    apiProfile.first_name ||
+    apiProfile.First_Name ||
+    "";
+  let lastName =
+    apiProfile.lastName || apiProfile.last_name || apiProfile.Last_Name || "";
+  let email = apiProfile.email || apiProfile.Email || "";
+  let licenseNumber =
+    apiProfile.licenseNumber ||
+    apiProfile.license_number ||
+    apiProfile.License_Number ||
+    "";
+
   try {
     const currentUser = localStorage.getItem("currentUser");
     if (currentUser) {
       const userData = JSON.parse(currentUser);
-      if (userData.email) {
-        realEmail = userData.email;
-        console.log(
-          "Overriding API email with currentUser email:",
-          userData.email
-        );
+
+      // Use currentUser data if API fields are empty
+      if (!firstName && userData.firstName) {
+        firstName = userData.firstName;
+        console.log("Using currentUser firstName:", firstName);
       }
+      if (!lastName && userData.lastName) {
+        lastName = userData.lastName;
+        console.log("Using currentUser lastName:", lastName);
+      }
+      if (userData.email) {
+        email = userData.email;
+        console.log("Using currentUser email:", userData.email);
+      }
+    }
+
+    // Also check nurse.firstName/lastName in localStorage as last resort
+    if (!firstName) {
+      firstName = localStorage.getItem("nurse.firstName") || "";
+    }
+    if (!lastName) {
+      lastName = localStorage.getItem("nurse.lastName") || "";
     }
   } catch (e) {
     console.error("Error parsing currentUser:", e);
   }
 
   return {
-    firstName: apiProfile.first_name || "",
-    lastName: apiProfile.last_name || "",
-    email: realEmail,
-    phone: apiProfile.phone || "",
-    specialization: apiProfile.specialization || "",
-    licenseNumber: apiProfile.license_number || "",
-    experience: apiProfile.experience || "",
-    department: apiProfile.department || "",
+    firstName: firstName,
+    lastName: lastName,
+    email: email,
+    phone: apiProfile.phone || apiProfile.Phone || "",
+    specialization:
+      apiProfile.specialization || apiProfile.Specialization || "",
+    licenseNumber: licenseNumber,
+    experience: apiProfile.experience || apiProfile.Experience || "",
+    department: apiProfile.department || apiProfile.Department || "",
   };
 }
 

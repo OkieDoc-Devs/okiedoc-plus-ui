@@ -56,7 +56,16 @@ export default function MyAccount() {
         setUserData(profileData);
         setFormData(profileData);
         setError(null);
+
+        if (profileData.firstName) {
+          localStorage.setItem("nurse.firstName", profileData.firstName);
+        }
+        if (profileData.lastName) {
+          localStorage.setItem("nurse.lastName", profileData.lastName);
+        }
+
         console.log("Profile loaded successfully:", profileData);
+        console.log("Updated localStorage with nurse name");
       } catch (error) {
         console.error("Error loading profile from API:", error);
         setError(error.message);

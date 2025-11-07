@@ -12,12 +12,15 @@ import {
   fetchTicketsFromAPI,
   fetchNotificationsFromAPI,
   fetchDashboardFromAPI,
+  fetchNurseProfile,
 } from "./services/apiService.js";
+import { transformProfileFromAPI } from "./services/profileService.js";
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState([]);
+  const [nurseName, setNurseName] = useState(getNurseFirstName());
 
   const handleTabClick = (tab) => {
     if (tab === "notifications") {
@@ -36,6 +39,27 @@ export default function Dashboard() {
       console.log(
         "Dashboard: Starting to load dashboard data for logged-in nurse..."
       );
+
+      try {
+        console.log("Dashboard: Fetching nurse profile...");
+        const nurse = await fetchNurseProfile();
+        const profileData = transformProfileFromAPI(nurse);
+
+        if (profileData.firstName) {
+          setNurseName(profileData.firstName);
+          localStorage.setItem("nurse.firstName", profileData.firstName);
+          console.log(
+            "Dashboard: Updated nurse name to:",
+            profileData.firstName
+          );
+        }
+      } catch (profileError) {
+        console.log(
+          "Dashboard: Could not fetch nurse profile:",
+          profileError.message
+        );
+      }
+
       try {
         console.log("Dashboard: Fetching from dashboard API...");
         const dashboardData = await fetchDashboardFromAPI();
@@ -168,7 +192,7 @@ export default function Dashboard() {
             alt="Account"
             className="account-icon"
           />
-          <span className="account-name">{getNurseFirstName()}</span>
+          <span className="account-name">{nurseName}</span>
           <div className="account-dropdown">
             <button
               className="dropdown-item"

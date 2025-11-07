@@ -86,18 +86,32 @@ export default function Login() {
 
         // If nurse, store nurse-specific data for the nurse module
         if (result.user.userType === "nurse") {
+          // Check different possible field names for the nurse's name
+          const firstName =
+            result.user.firstName ||
+            result.user.first_name ||
+            result.user.name?.split(" ")[0] ||
+            result.user.fullName?.split(" ")[0] ||
+            "Nurse";
+
+          const lastName =
+            result.user.lastName ||
+            result.user.last_name ||
+            result.user.name?.split(" ")[1] ||
+            result.user.fullName?.split(" ")[1] ||
+            "";
+
           localStorage.setItem("nurse.id", result.user.id);
           localStorage.setItem("nurse.email", result.user.email);
-          localStorage.setItem(
-            "nurse.firstName",
-            result.user.firstName || "Nurse"
-          );
-          localStorage.setItem("nurse.lastName", result.user.lastName || "");
+          localStorage.setItem("nurse.firstName", firstName);
+          localStorage.setItem("nurse.lastName", lastName);
+
           console.log("Nurse data stored in localStorage:", {
             id: result.user.id,
             email: result.user.email,
-            firstName: result.user.firstName,
-            lastName: result.user.lastName,
+            firstName: firstName,
+            lastName: lastName,
+            rawUserObject: result.user, // Log the raw object to see all available fields
           });
         }
 

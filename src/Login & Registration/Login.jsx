@@ -2,6 +2,7 @@ import "./auth.css";
 import { useNavigate } from "react-router-dom"; // Use react-router-dom
 import { useState } from "react";
 import { loginAdmin } from "../api/Admin/api.js";
+import authService from "../Specialists/authService";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -21,11 +22,7 @@ export default function Login() {
       email: "patient@okiedocplus.com",
       password: "patientOkDoc123",
     },
-    specialist: {
-      email: "specialist@okiedocplus.com",
-      password: "specialistOkDoc123",
-    },
-    // No dummy admin needed if using API
+    // Specialists must use specialist-login page
   };
 
   const handleInputChange = (e) => {
@@ -40,6 +37,17 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    // Check if the email belongs to a specialist - redirect them to specialist login
+    const specialists = authService.getAllSpecialists();
+    const isSpecialist = specialists.some(
+      (s) => s.email.toLowerCase() === formData.email.toLowerCase()
+    );
+    
+    if (isSpecialist) {
+      setError("Specialists must use the specialist login page. Please click 'Are you a specialist? Login Here' below.");
+      return;
+    }
 
     // Admin login attempt using API
     if (formData.email === "admin@okiedocplus.com") {
@@ -70,14 +78,6 @@ export default function Login() {
       // Set some indicator for patient login if needed
       localStorage.setItem("userRole", "patient"); // Example
       navigate("/patient-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.specialist.email &&
-      formData.password === dummyCredentials.specialist.password
-    ) {
-       // Set some indicator for specialist login if needed
-       localStorage.setItem("userRole", "specialist"); // Example
-       navigate("/specialist-dashboard"); // Navigate to the correct specialist dashboard
       return;
     }
 

@@ -167,23 +167,17 @@ const Appointments = ({ onAppointmentAdded }) => {
     setUploadedFiles([...uploadedFiles, ...newFiles]);
   };
 
-  const openChat = (appointment) => {
+  const openChat = async (appointment) => {
     setActiveTicket(appointment);
-    // Initialize with sample messages for this appointment
-    setChatMessages([
-      {
-        id: 1,
-        sender: 'nurse',
-        text: `Hello! I'm here to assist you with your ${appointment.title} appointment.`,
-        timestamp: new Date().toLocaleTimeString()
-      },
-      {
-        id: 2,
-        sender: 'nurse',
-        text: 'Please feel free to ask any questions or share any concerns you may have.',
-        timestamp: new Date().toLocaleTimeString()
-      }
-    ]);
+    // Load chat messages from backend
+    try {
+      const patientId = localStorage.getItem('patientId');
+      const response = await apiService.fetchData(`/appointment-messages?patient_id=${patientId}&appointment_id=${appointment.id}`);
+      setChatMessages(response.messages || []);
+    } catch (error) {
+      console.error('Failed to load appointment chat messages:', error);
+      setChatMessages([]);
+    }
   };
 
   const closeChat = () => {

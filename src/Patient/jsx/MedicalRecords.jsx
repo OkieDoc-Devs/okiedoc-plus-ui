@@ -12,8 +12,10 @@ import {
   FaHeart,
   FaExclamationTriangle,
   FaHistory,
-  FaSave
+  FaSave,
+  FaInbox
 } from 'react-icons/fa';
+import apiService from '../services/apiService';
 
 const MedicalRecords = () => {
   const [medicalData, setMedicalData] = useState({
@@ -28,19 +30,50 @@ const MedicalRecords = () => {
 
   const [editingItem, setEditingItem] = useState(null);
   const [editingCategory, setEditingCategory] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load data from localStorage on component mount
+  // Load data from API on component mount
   useEffect(() => {
-    const savedData = localStorage.getItem('patient-medical-records');
-    if (savedData) {
-      setMedicalData(JSON.parse(savedData));
-    }
+    loadMedicalRecords();
   }, []);
 
-  // Save data to localStorage whenever medicalData changes
+  const loadMedicalRecords = async () => {
+    setIsLoading(true);
+    try {
+      const patientId = localStorage.getItem('patientId');
+      const patientData = await apiService.getPatientData(patientId);
+      
+      if (patientData.medicalRecords) {
+        setMedicalData(patientData.medicalRecords);
+      }
+    } catch (error) {
+      console.error('Failed to load medical records:', error);
+      // Keep empty state on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Save data to backend when medicalData changes
   useEffect(() => {
-    localStorage.setItem('patient-medical-records', JSON.stringify(medicalData));
-  }, [medicalData]);
+    const saveMedicalRecords = async () => {
+      if (!isLoading) { // Don't save during initial load
+        try {
+          const patientId = localStorage.getItem('patientId');
+          await apiService.fetchData('/patient-medical-records', {
+            method: 'PUT',
+            body: JSON.stringify({
+              patient_id: patientId,
+              medicalRecords: medicalData
+            })
+          });
+        } catch (error) {
+          console.error('Failed to save medical records:', error);
+        }
+      }
+    };
+    saveMedicalRecords();
+  }, [medicalData, isLoading]);
 
   const categories = [
     { key: 'activeDiseases', label: 'Active Diseases', icon: FaStethoscope, color: '#dc3545' },
@@ -286,13 +319,47 @@ const MedicalRecords = () => {
     );
   };
 
+  // Check if all categories are empty
+  const hasAnyData = Object.values(medicalData).some(arr => arr.length > 0);
+
+  // Empty state component
+  const EmptyState = () => (
+    <div style={{
+      textAlign: 'center',
+      padding: '4rem 2rem',
+      color: '#666'
+    }}>
+      <FaInbox style={{ fontSize: '5rem', color: '#ddd', marginBottom: '1.5rem' }} />
+      <h3 style={{ color: '#999', marginBottom: '0.5rem' }}>No Medical Records Yet</h3>
+      <p style={{ color: '#aaa', fontSize: '0.95rem', maxWidth: '500px', margin: '0 auto 2rem' }}>
+        Start building your medical history by adding information about your conditions, medications, allergies, and more
+      </p>
+      <p style={{ color: '#bbb', fontSize: '0.85rem' }}>
+        Click the <FaPlus style={{ verticalAlign: 'middle', fontSize: '0.9rem' }} /> button in any section below to add your first record
+      </p>
+    </div>
+  );
+
   return (
     <div className="patient-page-content">
       <h2>Medical Records</h2>
       
-      <div className="patient-unified-medical-form">
-        {categories.map(category => renderCategorySection(category.key))}
-      </div>
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>
+          Loading medical records...
+        </div>
+      ) : !hasAnyData ? (
+        <>
+          <EmptyState />
+          <div className="patient-unified-medical-form">
+            {categories.map(category => renderCategorySection(category.key))}
+          </div>
+        </>
+      ) : (
+        <div className="patient-unified-medical-form">
+          {categories.map(category => renderCategorySection(category.key))}
+        </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FaEye,
   FaDownload,
@@ -15,138 +15,99 @@ import {
   FaBell,
   FaCheck,
   FaTimes,
+  FaInbox,
 } from "react-icons/fa";
+import apiService from '../services/apiService';
 
 const ConsultationHistory = () => {
   const [selectedConsultation, setSelectedConsultation] = useState(null);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [consultations, setConsultations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [consultationSummary, setConsultationSummary] = useState(null);
+  const [medicalDocuments, setMedicalDocuments] = useState(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 
-  // Sample consultation data
-  const consultations = [
-    {
-      id: 1,
-      ticketNumber: "CONS-2024-001",
-      date: "2024-01-15",
-      time: "10:30 AM",
-      specialist: "Dr. Sarah Johnson",
-      nurse: "Nurse Emily Davis",
-      status: "Completed",
-      chiefComplaint: "Chest pain and shortness of breath",
-      duration: "45 minutes",
-      rating: 4.5,
-    },
-    {
-      id: 2,
-      ticketNumber: "CONS-2024-002",
-      date: "2024-01-10",
-      time: "2:15 PM",
-      specialist: "Dr. Michael Chen",
-      nurse: "Nurse James Wilson",
-      status: "Incomplete",
-      chiefComplaint: "Fever and body aches",
-      duration: "Cancelled",
-      rating: null,
-    },
-    {
-      id: 3,
-      ticketNumber: "CONS-2024-003",
-      date: "2024-01-05",
-      time: "9:00 AM",
-      specialist: "Dr. Lisa Rodriguez",
-      nurse: "Nurse Maria Garcia",
-      status: "Completed",
-      chiefComplaint: "Headache and dizziness",
-      duration: "30 minutes",
-      rating: 4.8,
-    },
-  ];
+  useEffect(() => {
+    loadConsultationHistory();
+  }, []);
 
-  // Sample EMR data for consultation summary
-  const getConsultationSummary = (consultationId) => {
-    return {
-      medicalTeam: {
-        assignedNurse: "Nurse Emily Davis",
-        assignedSpecialist: "Dr. Sarah Johnson",
-        specialistSpecialty: "Cardiology",
-      },
-      chiefComplaint: "Chest pain and shortness of breath",
-      status: "Completed",
-      medicalRecords: [
-        "Previous ECG from 2023-12-20",
-        "Blood pressure readings (last 3 months)",
-        "Family history of heart disease",
-      ],
-      ros: {
-        subjective:
-          "Patient reports sharp chest pain lasting 2 hours, worsens with deep breathing",
-        objective: "BP: 140/90, HR: 95 bpm, O2 Sat: 98%, No visible distress",
-        assessment: "Possible angina, rule out myocardial infarction",
-        plan: "ECG, cardiac enzymes, chest X-ray, cardiology follow-up",
-      },
-      medications: [
-        { name: "Aspirin 81mg", dosage: "Once daily", duration: "30 days" },
-        { name: "Metoprolol 25mg", dosage: "Twice daily", duration: "14 days" },
-      ],
-      laboratory: [
-        { test: "Complete Blood Count", status: "Completed", result: "Normal" },
-        {
-          test: "Cardiac Enzymes",
-          status: "Pending",
-          result: "Awaiting results",
-        },
-        { test: "ECG", status: "Completed", result: "Normal sinus rhythm" },
-      ],
-      treatmentPlan: [
-        "Continue current medications as prescribed",
-        "Follow up in 2 weeks",
-        "Lifestyle modifications: low-sodium diet, regular exercise",
-        "Return if symptoms worsen",
-      ],
-    };
+  const loadConsultationHistory = async () => {
+    setIsLoading(true);
+    try {
+      const patientId = localStorage.getItem('patientId');
+      const patientData = await apiService.getPatientData(patientId);
+      setConsultations(patientData.consultations || []);
+    } catch (error) {
+      console.error('Failed to load consultation history:', error);
+      setConsultations([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Sample medical documents
-  const getMedicalDocuments = (consultationId) => {
-    return {
-      provided: [
-        {
-          name: "Prescription - Aspirin",
-          type: "prescription",
-          size: "245 KB",
-        },
-        {
-          name: "Laboratory Request - CBC",
-          type: "lab_request",
-          size: "180 KB",
-        },
-        {
-          name: "Treatment Plan - Cardiology",
-          type: "treatment_plan",
-          size: "320 KB",
-        },
-      ],
-      requested: [
-        {
-          name: "Medical Certificate",
-          type: "medical_certificate",
-          price: "$25.00",
-          status: "available",
-        },
-        {
-          name: "Medical Clearance",
-          type: "medical_clearance",
-          price: "$35.00",
-          status: "available",
-        },
-      ],
-    };
+  // Fetch EMR data for consultation summary from backend
+  const getConsultationSummary = async (consultationId) => {
+    try {
+      const patientId = localStorage.getItem('patientId');
+      const response = await apiService.fetchData(`/consultation-summary?patient_id=${patientId}&consultation_id=${consultationId}`);
+      return response.summary || {
+        medicalTeam: {},
+        chiefComplaint: "N/A",
+        status: "N/A",
+        medicalRecords: [],
+        ros: {},
+        medications: [],
+        laboratory: [],
+        treatmentPlan: []
+      };
+    } catch (error) {
+      console.error('Failed to load consultation summary:', error);
+      return {
+        medicalTeam: {},
+        chiefComplaint: "N/A",
+        status: "N/A",
+        medicalRecords: [],
+        ros: {},
+        medications: [],
+        laboratory: [],
+        treatmentPlan: []
+      };
+    }
   };
 
-  const handleViewSummary = (consultation) => {
+  // Fetch medical documents from backend
+  const getMedicalDocuments = async (consultationId) => {
+    try {
+      const patientId = localStorage.getItem('patientId');
+      const response = await apiService.fetchData(`/consultation-documents?patient_id=${patientId}&consultation_id=${consultationId}`);
+      return response.documents || {
+        provided: [],
+        requested: []
+      };
+    } catch (error) {
+      console.error('Failed to load medical documents:', error);
+      return {
+        provided: [],
+        requested: []
+      };
+    }
+  };
+
+  const handleViewSummary = async (consultation) => {
     setSelectedConsultation(consultation);
     setShowSummaryModal(true);
+    setIsLoadingSummary(true);
+    
+    // Load consultation summary and documents from backend
+    const summary = await getConsultationSummary(consultation.id);
+    const documents = await getMedicalDocuments(consultation.id);
+    
+    setConsultationSummary(summary);
+    setMedicalDocuments(documents);
+    setIsLoadingSummary(false);
   };
 
   const handleDownloadDocument = (document) => {
@@ -245,8 +206,25 @@ const ConsultationHistory = () => {
       )}
 
       {/* Consultations List */}
-      <div className="patient-consultations-list">
-        {consultations.map((consultation) => (
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>
+          Loading consultation history...
+        </div>
+      ) : consultations.length === 0 ? (
+        <div style={{
+          textAlign: 'center',
+          padding: '4rem 1rem',
+          color: '#666'
+        }}>
+          <FaInbox style={{ fontSize: '5rem', color: '#ddd', marginBottom: '1.5rem' }} />
+          <h3 style={{ color: '#999', marginBottom: '0.5rem' }}>No Consultation History</h3>
+          <p style={{ color: '#aaa', fontSize: '0.95rem', maxWidth: '400px', margin: '0 auto' }}>
+            Your past consultations and medical records will appear here
+          </p>
+        </div>
+      ) : (
+        <div className="patient-consultations-list">
+          {consultations.map((consultation) => (
           <div key={consultation.id} className="patient-consultation-card">
             <div className="patient-consultation-header">
               <div className="patient-consultation-info">
@@ -326,7 +304,8 @@ const ConsultationHistory = () => {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Consultation Summary Modal */}
       {showSummaryModal && selectedConsultation && (
@@ -345,168 +324,180 @@ const ConsultationHistory = () => {
             </div>
 
             <div className="patient-modal-body">
-              {(() => {
-                const summary = getConsultationSummary(selectedConsultation.id);
-                return (
-                  <>
-                    {/* Medical Team */}
-                    <div className="patient-summary-section">
-                      <h4 className="patient-section-title">
-                        <FaStethoscope className="patient-section-icon" />
-                        Medical Team
-                      </h4>
-                      <div className="patient-team-details">
-                        <div className="patient-team-member-detail">
-                          <FaUserNurse className="patient-detail-icon" />
-                          <div>
-                            <strong>Assigned Nurse:</strong>{" "}
-                            {summary.medicalTeam.assignedNurse}
-                          </div>
+              {isLoadingSummary ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>
+                  Loading consultation details...
+                </div>
+              ) : consultationSummary ? (
+                <>
+                  {/* Medical Team */}
+                  <div className="patient-summary-section">
+                    <h4 className="patient-section-title">
+                      <FaStethoscope className="patient-section-icon" />
+                      Medical Team
+                    </h4>
+                    <div className="patient-team-details">
+                      <div className="patient-team-member-detail">
+                        <FaUserNurse className="patient-detail-icon" />
+                        <div>
+                          <strong>Assigned Nurse:</strong>{" "}
+                          {consultationSummary.medicalTeam?.assignedNurse || 'N/A'}
                         </div>
-                        <div className="patient-team-member-detail">
-                          <FaUserMd className="patient-detail-icon" />
-                          <div>
-                            <strong>Assigned Specialist:</strong>{" "}
-                            {summary.medicalTeam.assignedSpecialist}
-                            <br />
-                            <small>
-                              Specialty:{" "}
-                              {summary.medicalTeam.specialistSpecialty}
-                            </small>
-                          </div>
+                      </div>
+                      <div className="patient-team-member-detail">
+                        <FaUserMd className="patient-detail-icon" />
+                        <div>
+                          <strong>Assigned Specialist:</strong>{" "}
+                          {consultationSummary.medicalTeam?.assignedSpecialist || 'N/A'}
+                          <br />
+                          <small>
+                            Specialty:{" "}
+                            {consultationSummary.medicalTeam?.specialistSpecialty || 'N/A'}
+                          </small>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Chief Complaint */}
-                    <div className="patient-summary-section">
-                      <h4 className="patient-section-title">Chief Complaint</h4>
-                      <p className="patient-complaint-text">
-                        {summary.chiefComplaint}
-                      </p>
-                    </div>
+                  {/* Chief Complaint */}
+                  <div className="patient-summary-section">
+                    <h4 className="patient-section-title">Chief Complaint</h4>
+                    <p className="patient-complaint-text">
+                      {consultationSummary.chiefComplaint}
+                    </p>
+                  </div>
 
-                    {/* Status */}
-                    <div className="patient-summary-section">
-                      <h4 className="patient-section-title">
-                        Consultation Status
-                      </h4>
-                      <span
-                        className={`patient-status-badge ${getStatusClass(
-                          summary.status
-                        )}`}
-                      >
-                        {summary.status}
-                      </span>
-                    </div>
+                  {/* Status */}
+                  <div className="patient-summary-section">
+                    <h4 className="patient-section-title">
+                      Consultation Status
+                    </h4>
+                    <span
+                      className={`patient-status-badge ${getStatusClass(
+                        consultationSummary.status
+                      )}`}
+                    >
+                      {consultationSummary.status}
+                    </span>
+                  </div>
 
-                    {/* Medical Records */}
-                    <div className="patient-summary-section">
-                      <h4 className="patient-section-title">Medical Records</h4>
-                      <ul className="patient-records-list">
-                        {summary.medicalRecords.map((record, index) => (
-                          <li key={index} className="patient-record-item">
-                            {record}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                  {/* Medical Records */}
+                  {consultationSummary.medicalRecords && consultationSummary.medicalRecords.length > 0 && (
+                  <div className="patient-summary-section">
+                    <h4 className="patient-section-title">Medical Records</h4>
+                    <ul className="patient-records-list">
+                      {consultationSummary.medicalRecords.map((record, index) => (
+                        <li key={index} className="patient-record-item">
+                          {record}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  )}
 
-                    {/* ROS */}
-                    <div className="patient-summary-section">
-                      <h4 className="patient-section-title">
-                        Review of Systems (ROS)
-                      </h4>
-                      <div className="patient-ros-details">
-                        <div className="patient-ros-item">
-                          <strong>Subjective:</strong> {summary.ros.subjective}
-                        </div>
-                        <div className="patient-ros-item">
-                          <strong>Objective:</strong> {summary.ros.objective}
-                        </div>
-                        <div className="patient-ros-item">
-                          <strong>Assessment:</strong> {summary.ros.assessment}
-                        </div>
-                        <div className="patient-ros-item">
-                          <strong>Plan:</strong> {summary.ros.plan}
-                        </div>
+                  {/* ROS */}
+                  {consultationSummary.ros && (
+                  <div className="patient-summary-section">
+                    <h4 className="patient-section-title">
+                      Review of Systems (ROS)
+                    </h4>
+                    <div className="patient-ros-details">
+                      <div className="patient-ros-item">
+                        <strong>Subjective:</strong> {consultationSummary.ros.subjective}
+                      </div>
+                      <div className="patient-ros-item">
+                        <strong>Objective:</strong> {consultationSummary.ros.objective}
+                      </div>
+                      <div className="patient-ros-item">
+                        <strong>Assessment:</strong> {consultationSummary.ros.assessment}
+                      </div>
+                      <div className="patient-ros-item">
+                        <strong>Plan:</strong> {consultationSummary.ros.plan}
                       </div>
                     </div>
+                  </div>
+                  )}
 
-                    {/* Medications */}
-                    <div className="patient-summary-section">
-                      <h4 className="patient-section-title">
-                        <FaPills className="patient-section-icon" />
-                        Medications
-                      </h4>
-                      <div className="patient-medications-list">
-                        {summary.medications.map((med, index) => (
-                          <div key={index} className="patient-medication-item">
-                            <div className="patient-medication-name">
-                              {med.name}
-                            </div>
-                            <div className="patient-medication-details">
-                              <span>Dosage: {med.dosage}</span>
-                              <span>Duration: {med.duration}</span>
-                            </div>
+                  {/* Medications */}
+                  {consultationSummary.medications && consultationSummary.medications.length > 0 && (
+                  <div className="patient-summary-section">
+                    <h4 className="patient-section-title">
+                      <FaPills className="patient-section-icon" />
+                      Medications
+                    </h4>
+                    <div className="patient-medications-list">
+                      {consultationSummary.medications.map((med, index) => (
+                        <div key={index} className="patient-medication-item">
+                          <div className="patient-medication-name">
+                            {med.name}
                           </div>
-                        ))}
-                      </div>
+                          <div className="patient-medication-details">
+                            <span>Dosage: {med.dosage}</span>
+                            <span>Duration: {med.duration}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
+                  </div>
+                  )}
 
-                    {/* Laboratory */}
-                    <div className="patient-summary-section">
-                      <h4 className="patient-section-title">
-                        <FaFlask className="patient-section-icon" />
-                        Laboratory
-                      </h4>
-                      <div className="patient-lab-list">
-                        {summary.laboratory.map((test, index) => (
-                          <div key={index} className="patient-lab-item">
-                            <div className="patient-lab-test">{test.test}</div>
-                            <div className="patient-lab-status">
-                              <span
-                                className={`patient-lab-status-badge ${test.status.toLowerCase()}`}
-                              >
-                                {test.status}
+                  {/* Laboratory */}
+                  {consultationSummary.laboratory && consultationSummary.laboratory.length > 0 && (
+                  <div className="patient-summary-section">
+                    <h4 className="patient-section-title">
+                      <FaFlask className="patient-section-icon" />
+                      Laboratory
+                    </h4>
+                    <div className="patient-lab-list">
+                      {consultationSummary.laboratory.map((test, index) => (
+                        <div key={index} className="patient-lab-item">
+                          <div className="patient-lab-test">{test.test}</div>
+                          <div className="patient-lab-status">
+                            <span
+                              className={`patient-lab-status-badge ${test.status.toLowerCase()}`}
+                            >
+                              {test.status}
+                            </span>
+                            {test.result && (
+                              <span className="patient-lab-result">
+                                {test.result}
                               </span>
-                              {test.result && (
-                                <span className="patient-lab-result">
-                                  {test.result}
-                                </span>
-                              )}
-                            </div>
+                            )}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
+                  </div>
+                  )}
 
-                    {/* Treatment Plan */}
-                    <div className="patient-summary-section">
-                      <h4 className="patient-section-title">
-                        <FaClipboardList className="patient-section-icon" />
-                        Treatment Plan
-                      </h4>
-                      <ul className="patient-treatment-list">
-                        {summary.treatmentPlan.map((item, index) => (
-                          <li key={index} className="patient-treatment-item">
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                  {/* Treatment Plan */}
+                  {consultationSummary.treatmentPlan && consultationSummary.treatmentPlan.length > 0 && (
+                  <div className="patient-summary-section">
+                    <h4 className="patient-section-title">
+                      <FaClipboardList className="patient-section-icon" />
+                      Treatment Plan
+                    </h4>
+                    <ul className="patient-treatment-list">
+                      {consultationSummary.treatmentPlan.map((item, index) => (
+                        <li key={index} className="patient-treatment-item">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  )}
 
-                    {/* Medical Documents */}
-                    <div className="patient-summary-section">
+                  {/* Medical Documents */}
+                  {medicalDocuments && (
+                  <div className="patient-summary-section">
                       <h4 className="patient-section-title">
                         Medical Documents
                       </h4>
                       <div className="patient-documents-section">
                         <h5>Provided Documents</h5>
                         <div className="patient-documents-list">
-                          {getMedicalDocuments(
-                            selectedConsultation.id
-                          ).provided.map((doc, index) => (
+                          {medicalDocuments.provided && medicalDocuments.provided.length > 0 ? (
+                            medicalDocuments.provided.map((doc, index) => (
                             <div key={index} className="patient-document-item">
                               <FaFilePdf className="patient-document-icon" />
                               <div className="patient-document-info">
@@ -525,14 +516,16 @@ const ConsultationHistory = () => {
                                 Download
                               </button>
                             </div>
-                          ))}
+                          ))
+                          ) : (
+                            <p style={{ color: '#999', fontStyle: 'italic' }}>No documents provided</p>
+                          )}
                         </div>
 
                         <h5>Requested Documents</h5>
                         <div className="patient-documents-list">
-                          {getMedicalDocuments(
-                            selectedConsultation.id
-                          ).requested.map((doc, index) => (
+                          {medicalDocuments.requested && medicalDocuments.requested.length > 0 ? (
+                            medicalDocuments.requested.map((doc, index) => (
                             <div
                               key={index}
                               className="patient-document-item patient-requested-document"
@@ -553,13 +546,20 @@ const ConsultationHistory = () => {
                                 Request & Pay
                               </button>
                             </div>
-                          ))}
+                          ))
+                          ) : (
+                            <p style={{ color: '#999', fontStyle: 'italic' }}>No documents available for request</p>
+                          )}
                         </div>
                       </div>
                     </div>
-                  </>
-                );
-              })()}
+                  )}
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>
+                  Unable to load consultation details
+                </div>
+              )}
             </div>
 
             {/* Add close button at the bottom */}

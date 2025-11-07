@@ -1,8 +1,14 @@
 /* CSS Reset and Isolation for Patient Dashboard */
 /* This ensures patient dashboard is completely isolated from global styles */
 
-/* Reset body and html */
-body, html {
+/* Reset body and html - only when patient dashboard is active */
+body.patient-dashboard-active {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+html:has(body.patient-dashboard-active) {
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden !important;
@@ -5837,9 +5843,9 @@ body, html {
     margin-bottom: 0 !important;
   }
   
-  /* Ensure body and html have no bottom spacing */
-  body,
-  html {
+  /* Ensure body and html have no bottom spacing - only when patient dashboard is active */
+  body.patient-dashboard-active,
+  html:has(body.patient-dashboard-active) {
     padding-bottom: 0 !important;
     margin-bottom: 0 !important;
   }

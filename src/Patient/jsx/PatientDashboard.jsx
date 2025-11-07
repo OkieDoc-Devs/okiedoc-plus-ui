@@ -47,7 +47,8 @@ import {
   FaEllipsisH,
   FaPhone,
   FaVideo,
-  FaPhoneAlt
+  FaPhoneAlt,
+  FaInbox
 } from 'react-icons/fa';
 
 const PatientDashboard = () => {
@@ -230,25 +231,17 @@ const PatientDashboard = () => {
 
 
   // Chat functions
-  const openChat = (appointment) => {
+  const openChat = async (appointment) => {
     setActiveTicket(appointment);
-    // Initialize with sample messages for this appointment
-    setChatMessages([
-      {
-        id: 1,
-        sender: 'nurse',
-        message: `Hello! I'm here to assist you with your ${appointment.title} appointment.`,
-        timestamp: new Date().toLocaleTimeString(),
-        type: 'text'
-      },
-      {
-        id: 2,
-        sender: 'nurse',
-        message: 'Please feel free to ask any questions or share any concerns you may have.',
-        timestamp: new Date().toLocaleTimeString(),
-        type: 'text'
-      }
-    ]);
+    // Load chat messages from backend
+    try {
+      const patientId = localStorage.getItem('patientId');
+      const response = await apiService.fetchData(`/appointment-messages?patient_id=${patientId}&appointment_id=${appointment.id}`);
+      setChatMessages(response.messages || []);
+    } catch (error) {
+      console.error('Failed to load chat messages:', error);
+      setChatMessages([]);
+    }
   };
 
   const closeChat = () => {
@@ -600,22 +593,23 @@ const PatientDashboard = () => {
                   <a href="#" className="patient-view-all-link" onClick={() => setActivePage('lab-results')}>View All</a>
                 </div>
                 <div className="patient-lab-results-list">
-                  {(apiData.labResults.length > 0 ? apiData.labResults : [
-                    { id: 1, name: "CBC", status: "Not Available Yet", date: "04/20/2025" },
-                    { id: 2, name: "X-RAY", status: "Available", date: "04/20/2025" },
-                    { id: 3, name: "Urinalysis", status: "Not Available Yet", date: "04/20/2025" },
-                    { id: 4, name: "Fecalysis", status: "Not Available Yet", date: "04/20/2025" },
-                    { id: 5, name: "ECG", status: "Available", date: "04/20/2025" }
-                  ]).map(result => (
-                    <div key={result.id} className="patient-lab-result-item">
-                      <FaFileAlt className="patient-result-icon" />
-                      <span className="patient-result-name">{result.name}</span>
-                      <span className={`patient-result-status ${result.status === 'Available' ? 'patient-available' : 'patient-not-available'}`}>
-                        {result.status === 'Available' ? 'View Result' : result.status}
-                      </span>
-                      <span className="patient-result-date">{result.date}</span>
+                  {apiData.labResults.length > 0 ? (
+                    apiData.labResults.map(result => (
+                      <div key={result.id} className="patient-lab-result-item">
+                        <FaFileAlt className="patient-result-icon" />
+                        <span className="patient-result-name">{result.name}</span>
+                        <span className={`patient-result-status ${result.status === 'Available' ? 'patient-available' : 'patient-not-available'}`}>
+                          {result.status === 'Available' ? 'View Result' : result.status}
+                        </span>
+                        <span className="patient-result-date">{result.date}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#999' }}>
+                      <FaInbox style={{ fontSize: '2.5rem', color: '#ddd', marginBottom: '0.5rem' }} />
+                      <p style={{ margin: 0, fontSize: '0.9rem' }}>No lab results yet</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
@@ -626,20 +620,21 @@ const PatientDashboard = () => {
                   <a href="#" className="patient-view-all-link">View All</a>
                 </div>
                 <div className="patient-medications-list">
-                  {(apiData.medications.length > 0 ? apiData.medications : [
-                    { id: 1, name: "Febuxostat", date: "04/20/2025", dosage: "40 mg, Take 1 tablet once a day" },
-                    { id: 2, name: "Pioglitazone", date: "04/20/2025", dosage: "15 mg, Take 1 tablet once a day" },
-                    { id: 3, name: "Atorvastin", date: "04/20/2025", dosage: "40 mg, Take 1 tablet once a day" },
-                    { id: 4, name: "Transmetil", date: "04/20/2025", dosage: "500 mg, Take 1 tablet 3x a day" },
-                    { id: 5, name: "Metformin", date: "04/20/2025", dosage: "500 mg, Twice daily, oral" }
-                  ]).map(medication => (
-                    <div key={medication.id} className="patient-medication-item">
-                      <FaPills className="patient-medication-icon" />
-                      <span className="patient-medication-name">{medication.name}</span>
-                      <span className="patient-medication-date">{medication.date}</span>
-                      <span className="patient-medication-dosage">{medication.dosage}</span>
+                  {apiData.medications.length > 0 ? (
+                    apiData.medications.map(medication => (
+                      <div key={medication.id} className="patient-medication-item">
+                        <FaPills className="patient-medication-icon" />
+                        <span className="patient-medication-name">{medication.name}</span>
+                        <span className="patient-medication-date">{medication.date}</span>
+                        <span className="patient-medication-dosage">{medication.dosage}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#999' }}>
+                      <FaInbox style={{ fontSize: '2.5rem', color: '#ddd', marginBottom: '0.5rem' }} />
+                      <p style={{ margin: 0, fontSize: '0.9rem' }}>No medications yet</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>

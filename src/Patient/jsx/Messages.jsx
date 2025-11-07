@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaUserMd, FaUserNurse, FaComments, FaTimes, FaUpload, FaFileAlt, FaUser, FaCamera } from 'react-icons/fa';
+import { FaUserMd, FaUserNurse, FaComments, FaTimes, FaUpload, FaFileAlt, FaUser, FaCamera, FaInbox } from 'react-icons/fa';
+import apiService from '../services/apiService';
 
 const Messages = () => {
   const [activeChat, setActiveChat] = useState(null);
@@ -7,234 +8,46 @@ const Messages = () => {
   const [newMessage, setNewMessage] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [conversations, setConversations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const chatMessagesRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const CHARACTER_LIMIT = 500;
 
-  // Sample conversations data
-  const conversations = [
-    {
-      id: 1,
-      name: "Dr. Christina Wung",
-      role: "Specialist - Cardiology",
-      avatar: null,
-      lastMessage: "I will ask some supporting details",
-      timestamp: "08-20-2022 13:12 PM",
-      unreadCount: 0,
-      isOnline: true,
-      status: "online"
-    },
-    {
-      id: 2,
-      name: "Nurse Tyler",
-      role: "General Medicine",
-      avatar: null,
-      lastMessage: "Alright, I'll transfer to you to our Doctor",
-      timestamp: "08-20-2022 13:12 PM",
-      unreadCount: 0,
-      isOnline: true,
-      status: "online"
-    },
-    {
-      id: 3,
-      name: "Dr. Maria Santos",
-      role: "Cardiologist",
-      avatar: null,
-      lastMessage: "Your lab results are ready for review. Please schedule a follow-up appointment when convenient.",
-      timestamp: "08-20-2022 14:30 PM",
-      unreadCount: 3,
-      isOnline: true,
-      status: "online"
-    },
-    {
-      id: 4,
-      name: "Nurse Sarah Johnson",
-      role: "General Medicine",
-      avatar: null,
-      lastMessage: "Reminder: Your appointment is tomorrow at 10 AM. Please arrive 15 minutes early.",
-      timestamp: "08-19-2022 16:45 PM",
-      unreadCount: 0,
-      isOnline: false,
-      status: "offline"
-    },
-    {
-      id: 5,
-      name: "Dr. Michael Brown",
-      role: "Radiology",
-      avatar: null,
-      lastMessage: "The X-ray images look good. I'll send you the detailed report shortly.",
-      timestamp: "08-18-2022 11:20 AM",
-      unreadCount: 1,
-      isOnline: true,
-      status: "online"
+  useEffect(() => {
+    loadMessages();
+  }, []);
+
+  const loadMessages = async () => {
+    setIsLoading(true);
+    try {
+      const patientId = localStorage.getItem('patientId');
+      const patientData = await apiService.getPatientData(patientId);
+      setConversations(patientData.messages || []);
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+      setConversations([]);
+    } finally {
+      setIsLoading(false);
     }
-  ];
-
-  // Dummy data for received messages - matching the reference image
-  const getDummyMessages = (conversationId) => {
-    const messageTemplates = {
-      1: [
-        {
-          id: 1,
-          sender: "nurse",
-          text: "Hi, there! Just want to confirm the level of pain",
-          timestamp: "08-20-2022 13:12 PM",
-          avatar: "nurse-tyler"
-        },
-        {
-          id: 2,
-          sender: "patient",
-          text: "Hi, there! I'm in deep pain. Let's say 8/10!",
-          timestamp: "08-20-2022 13:12 PM",
-          avatar: "patient"
-        },
-        {
-          id: 3,
-          sender: "nurse",
-          text: "Alright, I'll transfer to you to our Doctor",
-          timestamp: "08-20-2022 13:12 PM",
-          avatar: "nurse-tyler"
-        },
-        {
-          id: 4,
-          sender: "system",
-          text: "Nurse Tyler transferred you to Dr. Christina Please wait 5-10 mins Dr. Christina is in the chat now",
-          timestamp: "08-20-2022 13:12 PM"
-        },
-        {
-          id: 5,
-          sender: "specialist",
-          text: "Hi, there! This is Dr. Christina",
-          timestamp: "08-20-2022 13:12 PM",
-          avatar: "dr-christina"
-        },
-        {
-          id: 6,
-          sender: "patient",
-          text: "Hi, there! I'm in deep pain right now.",
-          timestamp: "08-20-2022 13:12 PM",
-          avatar: "patient"
-        },
-        {
-          id: 7,
-          sender: "specialist",
-          text: "I will ask some supporting details",
-          timestamp: "08-20-2022 13:12 PM",
-          avatar: "dr-christina"
-        },
-      ],
-      2: [
-        {
-          id: 1,
-          sender: "nurse",
-          text: "Hi, there! Just want to confirm the level of pain",
-          timestamp: "08-20-2022 13:12 PM",
-          avatar: "nurse-tyler"
-        },
-        {
-          id: 2,
-          sender: "patient",
-          text: "Hi, there! I'm in deep pain. Let's say 8/10!",
-          timestamp: "08-20-2022 13:12 PM",
-          avatar: "patient"
-        },
-        {
-          id: 3,
-          sender: "nurse",
-          text: "Alright, I'll transfer to you to our Doctor",
-          timestamp: "08-20-2022 13:12 PM",
-          avatar: "nurse-tyler"
-        },
-      ],
-      3: [
-        {
-          id: 1,
-          sender: "specialist",
-          text: "Hello! I'm Dr. Maria Santos, your cardiologist. How are you feeling today?",
-          timestamp: "08-20-2022 14:25 PM",
-          avatar: "dr-maria"
-        },
-        {
-          id: 2,
-          sender: "patient",
-          text: "Hi Dr. Santos, I'm feeling much better. The chest pain has reduced significantly.",
-          timestamp: "08-20-2022 14:26 PM",
-          avatar: "patient"
-        },
-        {
-          id: 3,
-          sender: "specialist",
-          text: "That's great to hear! Your lab results are ready for review. Please schedule a follow-up appointment when convenient.",
-          timestamp: "08-20-2022 14:30 PM",
-          avatar: "dr-maria"
-        },
-      ],
-      4: [
-        {
-          id: 1,
-          sender: "nurse",
-          text: "Hello! This is Nurse Sarah from General Medicine. How can I help you today?",
-          timestamp: "08-19-2022 16:40 PM",
-          avatar: "nurse-sarah"
-        },
-        {
-          id: 2,
-          sender: "patient",
-          text: "Hi Nurse Sarah, I have a question about my upcoming appointment.",
-          timestamp: "08-19-2022 16:42 PM",
-          avatar: "patient"
-        },
-        {
-          id: 3,
-          sender: "nurse",
-          text: "Reminder: Your appointment is tomorrow at 10 AM. Please arrive 15 minutes early.",
-          timestamp: "08-19-2022 16:45 PM",
-          avatar: "nurse-sarah"
-        },
-      ],
-      5: [
-        {
-          id: 1,
-          sender: "specialist",
-          text: "Good morning! I've reviewed your X-ray images and they look good.",
-          timestamp: "08-18-2022 11:15 AM",
-          avatar: "dr-michael"
-        },
-        {
-          id: 2,
-          sender: "patient",
-          text: "That's a relief! When will I get the detailed report?",
-          timestamp: "08-18-2022 11:18 AM",
-          avatar: "patient"
-        },
-        {
-          id: 3,
-          sender: "specialist",
-          text: "I'll send you the detailed report shortly. You should receive it within the next hour.",
-          timestamp: "08-18-2022 11:20 AM",
-          avatar: "dr-michael"
-        },
-      ],
-    };
-
-    return (
-      messageTemplates[conversationId] || [
-        {
-          id: 1,
-          sender: "specialist",
-          text: `Hello! This is your conversation with ${
-            conversations.find((c) => c.id === conversationId)?.name
-          }`,
-          timestamp: new Date().toLocaleString(),
-        },
-      ]
-    );
   };
 
-  const openChat = (conversation) => {
+  // Get messages for a conversation from backend
+  const getMessagesForConversation = async (conversationId) => {
+    try {
+      const patientId = localStorage.getItem('patientId');
+      const response = await apiService.fetchData(`/patient-messages?patient_id=${patientId}&conversation_id=${conversationId}`);
+      return response.messages || [];
+    } catch (error) {
+      console.error('Failed to load conversation messages:', error);
+      return [];
+    }
+  };
+
+  const openChat = async (conversation) => {
     setActiveChat(conversation);
-    const messages = getDummyMessages(conversation.id);
+    const messages = await getMessagesForConversation(conversation.id);
     setChatMessages(messages);
     setUploadedFiles([]);
   };
@@ -360,7 +173,27 @@ const Messages = () => {
           </div>
           
           <div className="patient-conversations-list">
-            {filteredConversations.length > 0 ? (
+            {isLoading ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#999' }}>
+                Loading conversations...
+              </div>
+            ) : conversations.length === 0 && searchQuery === '' ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '3rem 1rem',
+                color: '#666'
+              }}>
+                <FaInbox style={{ fontSize: '3rem', color: '#ddd', marginBottom: '1rem' }} />
+                <h3 style={{ color: '#999', marginBottom: '0.5rem' }}>No Messages Yet</h3>
+                <p style={{ color: '#aaa', fontSize: '0.9rem' }}>
+                  Your messages with healthcare providers will appear here
+                </p>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#999' }}>
+                No conversations found matching "{searchQuery}"
+              </div>
+            ) : filteredConversations.length > 0 ? (
               filteredConversations.map(conversation => (
               <div 
                 key={conversation.id} 
@@ -395,12 +228,7 @@ const Messages = () => {
                 </div>
               </div>
               ))
-            ) : (
-              <div className="patient-no-results">
-                <p>No conversations found</p>
-                <span>Try searching for a different name or keyword</span>
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
 

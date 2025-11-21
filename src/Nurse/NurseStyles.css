@@ -1795,6 +1795,37 @@ body {
   color: white;
 }
 
+.nurse-chat-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nurse-call-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nurse-call-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.nurse-call-btn.video-btn:hover {
+  background: rgba(76, 175, 80, 0.3);
+}
+
 .nurse-chat-close-btn {
   background: rgba(255, 255, 255, 0.1);
   border: none;

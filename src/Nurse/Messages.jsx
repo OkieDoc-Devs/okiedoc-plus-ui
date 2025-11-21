@@ -6,6 +6,8 @@ import {
   FaFileAlt,
   FaUpload,
   FaCamera,
+  FaPhone,
+  FaVideo,
 } from "react-icons/fa";
 import { useNavigate } from "react-router";
 import {
@@ -14,6 +16,7 @@ import {
 } from "./services/storageService.js";
 import { getFallbackNotifications } from "./services/notificationService.js";
 import { fetchNotificationsFromAPI } from "./services/apiService.js";
+import VideoCall from "./VideoCall.jsx";
 import "./NurseStyles.css";
 
 const Messages = () => {
@@ -24,6 +27,8 @@ const Messages = () => {
   const [newMessage, setNewMessage] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showVideoCall, setShowVideoCall] = useState(false);
+  const [isVideoCall, setIsVideoCall] = useState(true);
   const chatMessagesRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -336,6 +341,20 @@ const Messages = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  const handleVoiceCall = () => {
+    setIsVideoCall(false);
+    setShowVideoCall(true);
+  };
+
+  const handleVideoCallClick = () => {
+    setIsVideoCall(true);
+    setShowVideoCall(true);
+  };
+
+  const handleCloseVideoCall = () => {
+    setShowVideoCall(false);
+  };
+
   useEffect(() => {
     if (chatMessagesRef.current) {
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
@@ -502,13 +521,29 @@ const Messages = () => {
                     <p className="nurse-chat-user-role">{activeChat.role}</p>
                   </div>
                 </div>
-                <button
-                  className="nurse-chat-close-btn"
-                  onClick={closeChat}
-                  title="Back to Messages"
-                >
-                  <FaTimes />
-                </button>
+                <div className="nurse-chat-actions">
+                  <button
+                    className="nurse-call-btn"
+                    onClick={handleVoiceCall}
+                    title="Voice Call"
+                  >
+                    <FaPhone />
+                  </button>
+                  <button
+                    className="nurse-call-btn video-btn"
+                    onClick={handleVideoCallClick}
+                    title="Video Call"
+                  >
+                    <FaVideo />
+                  </button>
+                  <button
+                    className="nurse-chat-close-btn"
+                    onClick={closeChat}
+                    title="Back to Messages"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
               </div>
 
               <div className="nurse-chat-messages" ref={chatMessagesRef}>
@@ -651,6 +686,15 @@ const Messages = () => {
           )}
         </div>
       </div>
+
+      {/* Video Call Component */}
+      {showVideoCall && activeChat && (
+        <VideoCall
+          activeUser={activeChat}
+          onClose={handleCloseVideoCall}
+          isVideoCall={isVideoCall}
+        />
+      )}
     </div>
   );
 };

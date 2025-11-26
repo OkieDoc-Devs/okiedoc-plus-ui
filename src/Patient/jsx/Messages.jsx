@@ -1,151 +1,255 @@
-import React, { useState } from 'react';
-import { FaUserMd, FaUserNurse, FaComments, FaTimes, FaUpload, FaFileAlt, FaUser } from 'react-icons/fa';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  FaUserMd,
+  FaUserNurse,
+  FaComments,
+  FaTimes,
+  FaUpload,
+  FaFileAlt,
+  FaUser,
+  FaPlus,
+  FaSearch,
+  FaSpinner,
+  FaPaperclip,
+} from "react-icons/fa";
+import { useChat } from "../services/chatService";
+import {
+  isAllowedFileType,
+  getMaxFileSize,
+  formatFileSize,
+  getUserTypeLabel,
+} from "../services/chatService";
 
 const Messages = () => {
-  const [activeChat, setActiveChat] = useState(null);
-  const [chatMessages, setChatMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userSearchResults, setUserSearchResults] = useState([]);
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+  const chatMessagesRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  // Sample conversations data
-  const conversations = [
-    {
-      id: 1,
-      name: "Dr. Maria Santos",
-      role: "Cardiologist",
-      avatar: null,
-      lastMessage: "Your lab results are ready for review. Please schedule a follow-up appointment when convenient.",
-      timestamp: "2:30 PM",
-      unreadCount: 3,
-      isOnline: true,
-      status: "online"
-    },
-    {
-      id: 2,
-      name: "Nurse Sarah Johnson",
-      role: "General Medicine",
-      avatar: null,
-      lastMessage: "Reminder: Your appointment is tomorrow at 10 AM. Please arrive 15 minutes early.",
-      timestamp: "Yesterday",
-      unreadCount: 0,
-      isOnline: false,
-      status: "offline"
-    },
-    {
-      id: 3,
-      name: "Dr. Michael Brown",
-      role: "Radiology",
-      avatar: null,
-      lastMessage: "The X-ray images look good. I'll send you the detailed report shortly.",
-      timestamp: "2 days ago",
-      unreadCount: 1,
-      isOnline: true,
-      status: "online"
-    },
-    {
-      id: 4,
-      name: "Dr. Lisa Garcia",
-      role: "Hematology",
-      avatar: null,
-      lastMessage: "Your blood test results are within normal range. Continue with your current medication.",
-      timestamp: "3 days ago",
-      unreadCount: 0,
-      isOnline: false,
-      status: "offline"
-    },
-    {
-      id: 5,
-      name: "Dr. John Smith",
-      role: "Emergency Medicine",
-      avatar: null,
-      lastMessage: "Thank you for the quick response. Your symptoms should improve within 24-48 hours.",
-      timestamp: "1 week ago",
-      unreadCount: 0,
-      isOnline: false,
-      status: "offline"
+  const getCurrentUserId = () => {
+    try {
+      const currentUser = localStorage.getItem("currentUser");
+      if (currentUser) {
+        const user = JSON.parse(currentUser);
+        if (user.id) {
+          console.log("Chat: Using currentUser.id:", user.id);
+          return user.id;
+        }
+      }
+    } catch (error) {
+      console.error("Error getting current user:", error);
     }
-  ];
+    console.warn("Chat: Could not determine current user ID");
+    return null;
+  };
+
+  const currentUserId = getCurrentUserId();
+
+  const {
+    conversations,
+    activeConversation,
+    messages: chatMessages,
+    loading: chatLoading,
+    error: chatError,
+    typingUsers,
+    openConversation,
+    closeConversation,
+    sendMessage: sendChatMessage,
+    uploadFile: uploadChatFile,
+    handleTyping,
+    startConversation,
+    searchUsers,
+    getAllUsers,
+    loadConversations,
+  } = useChat({ currentUserId, currentUserType: "p" });
+
+  const handleUserSearch = useCallback(
+    async (query) => {
+      setIsSearchingUsers(true);
+      try {
+        if (!query.trim()) {
+          const results = await getAllUsers();
+          setUserSearchResults(results);
+        } else {
+          const results = await searchUsers(query);
+          setUserSearchResults(results);
+        }
+      } catch (error) {
+        console.error("Error searching users:", error);
+        setUserSearchResults([]);
+      } finally {
+        setIsSearchingUsers(false);
+      }
+    },
+    [searchUsers, getAllUsers]
+  );
+
+  useEffect(() => {
+    if (showNewChatModal) {
+      handleUserSearch("");
+    }
+  }, [showNewChatModal]);
+
+  useEffect(() => {
+    if (!showNewChatModal) return;
+    const timer = setTimeout(() => {
+      handleUserSearch(userSearchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [userSearchQuery, handleUserSearch, showNewChatModal]);
+
+  const handleStartNewChat = async (userId) => {
+    try {
+      await startConversation("direct", userId);
+      setShowNewChatModal(false);
+      setUserSearchQuery("");
+      setUserSearchResults([]);
+    } catch (error) {
+      console.error("Error starting new chat:", error);
+    }
+  };
 
   const openChat = (conversation) => {
-    setActiveChat(conversation);
-    // Initialize with sample messages for this conversation
-    setChatMessages([
-      {
-        id: 1,
-        sender: 'specialist',
-        text: `Hello! I'm ${conversation.name}, your ${conversation.role.toLowerCase()}. How can I help you today?`,
-        timestamp: new Date().toLocaleTimeString()
-      },
-      {
-        id: 2,
-        sender: 'specialist',
-        text: conversation.lastMessage,
-        timestamp: conversation.timestamp
-      }
-    ]);
+    openConversation(conversation);
+    setUploadedFiles([]);
   };
 
   const closeChat = () => {
-    setActiveChat(null);
-    setChatMessages([]);
-    setNewMessage('');
+    closeConversation();
+    setNewMessage("");
+    setUploadedFiles([]);
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (newMessage.trim() && activeChat) {
-      const message = {
-        id: Date.now(),
-        sender: 'patient',
-        text: newMessage.trim(),
-        timestamp: new Date().toLocaleTimeString()
-      };
-      setChatMessages(prev => [...prev, message]);
-      setNewMessage('');
+    if (activeConversation && (newMessage.trim() || uploadedFiles.length > 0)) {
+      const trimmedMessage = newMessage.trim();
+
+      if (trimmedMessage) {
+        await sendChatMessage(trimmedMessage);
+      }
+
+      if (uploadedFiles.length > 0) {
+        for (const fileData of uploadedFiles) {
+          if (!isAllowedFileType(fileData.type)) {
+            console.error("File type not allowed:", fileData.type);
+            continue;
+          }
+          const maxSize = getMaxFileSize(fileData.type);
+          if (fileData.size > maxSize) {
+            console.error("File too large:", fileData.name);
+            continue;
+          }
+          await uploadChatFile(fileData.file);
+        }
+      }
+
+      setNewMessage("");
+      setUploadedFiles([]);
+    }
+  };
+
+  const handleMessageChange = (e) => {
+    setNewMessage(e.target.value);
+    if (e.target.value.length > 0) {
+      handleTyping(true);
     }
   };
 
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
-    const newFiles = files.map(file => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      file: file
-    }));
-    setUploadedFiles(prev => [...prev, ...newFiles]);
+    const newFiles = files
+      .filter((file) => {
+        if (!isAllowedFileType(file.type)) {
+          console.error("File type not allowed:", file.type);
+          return false;
+        }
+        const maxSize = getMaxFileSize(file.type);
+        if (file.size > maxSize) {
+          console.error(
+            "File too large:",
+            file.name,
+            "Max:",
+            formatFileSize(maxSize)
+          );
+          return false;
+        }
+        return true;
+      })
+      .map((file) => ({
+        id: Date.now() + Math.random(),
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        file: file,
+      }));
+    setUploadedFiles((prev) => [...prev, ...newFiles]);
   };
 
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
   };
+
+  const handleRemoveFile = (fileId) => {
+    setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId));
+  };
+
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
 
   return (
     <div className="patient-page-content">
-      <div className={`patient-messenger-container ${activeChat ? 'has-active-chat' : ''}`}>
-        {/* Conversations List */}
+      {chatLoading && conversations.length === 0 && (
+        <div className="patient-loading-state">
+          <FaSpinner className="patient-spinner" />
+          <p>Loading conversations...</p>
+        </div>
+      )}
+      {chatError && (
+        <div className="patient-error-state">
+          <p>Error loading conversations: {chatError}</p>
+          <button onClick={loadConversations}>Retry</button>
+        </div>
+      )}
+
+      <div
+        className={`patient-messenger-container ${
+          activeConversation ? "has-active-chat" : ""
+        }`}
+      >
         <div className="patient-conversations-sidebar">
           <div className="patient-conversations-header">
             <h2 className="patient-conversations-title">Messages</h2>
             <div className="patient-conversations-search">
-              <input 
-                type="text" 
-                placeholder="Search conversations..." 
+              <input
+                type="text"
+                placeholder="Search conversations..."
                 className="patient-search-input"
               />
             </div>
+            <button
+              className="patient-new-chat-btn"
+              onClick={() => setShowNewChatModal(true)}
+              title="Start new conversation"
+            >
+              <FaPlus />
+            </button>
           </div>
-          
+
           <div className="patient-conversations-list">
-            {conversations.map(conversation => (
-              <div 
-                key={conversation.id} 
-                className={`patient-conversation-item ${activeChat?.id === conversation.id ? 'active' : ''}`}
+            {conversations.map((conversation) => (
+              <div
+                key={conversation.id}
+                className={`patient-conversation-item ${
+                  activeConversation?.id === conversation.id ? "active" : ""
+                } ${conversation.unreadCount > 0 ? "has-unread" : ""}`}
                 onClick={() => openChat(conversation)}
               >
                 <div className="patient-conversation-avatar">
@@ -154,116 +258,261 @@ const Messages = () => {
                   ) : (
                     <FaUser className="patient-avatar-icon" />
                   )}
-                  <div className={`patient-online-indicator ${conversation.isOnline ? 'online' : 'offline'}`}></div>
+                  <div
+                    className={`patient-online-indicator ${
+                      conversation.isOnline ? "online" : "offline"
+                    }`}
+                  ></div>
                 </div>
-                
+
                 <div className="patient-conversation-content">
                   <div className="patient-conversation-header">
-                    <h4 className="patient-conversation-name">{conversation.name}</h4>
-                    <span className="patient-conversation-time">{conversation.timestamp}</span>
+                    <h4 className="patient-conversation-name">
+                      {conversation.name}
+                    </h4>
+                    <span className="patient-conversation-time">
+                      {conversation.timestamp}
+                    </span>
                   </div>
                   <div className="patient-conversation-preview">
-                    <p className="patient-conversation-message">{conversation.lastMessage}</p>
+                    <p className="patient-conversation-message">
+                      {conversation.lastMessage}
+                    </p>
                     {conversation.unreadCount > 0 && (
                       <div className="patient-unread-badge">
                         {conversation.unreadCount}
                       </div>
                     )}
                   </div>
-                  <div className="patient-conversation-role">{conversation.role}</div>
+                  <div className="patient-conversation-role">
+                    {conversation.role ||
+                      getUserTypeLabel(conversation.otherUserType)}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Chat Area */}
-        {activeChat ? (
+        {activeConversation ? (
           <div className="patient-chat-area">
             <div className="patient-chat-header">
               <div className="patient-chat-user-info">
                 <div className="patient-chat-avatar">
-                  {activeChat.avatar ? (
-                    <img src={activeChat.avatar} alt={activeChat.name} />
+                  {activeConversation.avatar ? (
+                    <img
+                      src={activeConversation.avatar}
+                      alt={activeConversation.name}
+                    />
                   ) : (
                     <FaUser className="patient-avatar-icon" />
                   )}
-                  <div className={`patient-online-indicator ${activeChat.isOnline ? 'online' : 'offline'}`}></div>
+                  <div
+                    className={`patient-online-indicator ${
+                      activeConversation.isOnline ? "online" : "offline"
+                    }`}
+                  ></div>
                 </div>
                 <div className="patient-chat-user-details">
-                  <h3 className="patient-chat-user-name">{activeChat.name}</h3>
-                  <p className="patient-chat-user-role">{activeChat.role}</p>
+                  <h3 className="patient-chat-user-name">
+                    {activeConversation.name}
+                  </h3>
+                  <p className="patient-chat-user-role">
+                    {activeConversation.role ||
+                      getUserTypeLabel(activeConversation.otherUserType)}
+                  </p>
+                  {typingUsers.length > 0 && (
+                    <div className="patient-typing-indicator">
+                      <div className="patient-typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-              <button className="patient-chat-close-btn" onClick={closeChat} title="Back to Messages">
+              <button
+                className="patient-chat-close-btn"
+                onClick={closeChat}
+                title="Back to Messages"
+              >
                 <FaTimes />
               </button>
             </div>
 
-            <div className="patient-chat-messages">
+            <div className="patient-chat-messages" ref={chatMessagesRef}>
               {chatMessages.map((message) => (
-                <div key={message.id} className={`patient-message ${message.sender === 'patient' ? 'patient-message-patient' : 'patient-message-specialist'}`}>
-                  <div className="patient-message-content">
-                    <p className="patient-message-text">{message.text}</p>
-                    <span className="patient-message-time">{message.timestamp}</span>
-                  </div>
+                <div
+                  key={message.id}
+                  className={`patient-message ${
+                    message.isSent
+                      ? "patient-message-sent"
+                      : "patient-message-received"
+                  } patient-message-type-${message.sender}`}
+                >
+                  {message.sender === "system" ? (
+                    <div className="patient-system-message">
+                      <p className="patient-message-text">{message.text}</p>
+                      {message.subtext && (
+                        <p className="patient-message-subtext">
+                          {message.subtext}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {!message.isSent && (
+                        <div className="patient-message-avatar">
+                          {message.avatar ? (
+                            <img
+                              src={message.avatar}
+                              alt={message.senderName || "User"}
+                            />
+                          ) : (
+                            <FaUser className="patient-avatar-icon-small" />
+                          )}
+                        </div>
+                      )}
+                      <div className="patient-message-bubble-wrapper">
+                        <div
+                          className={`patient-message-content patient-message-content-${message.sender}`}
+                        >
+                          {message.messageType === "file" ||
+                          message.messageType === "image" ? (
+                            <div className="patient-message-file">
+                              {message.messageType === "image" ? (
+                                <img
+                                  src={message.fileUrl}
+                                  alt={message.fileName}
+                                  className="patient-message-image"
+                                />
+                              ) : (
+                                <a
+                                  href={message.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="patient-file-link"
+                                >
+                                  <FaFileAlt /> {message.fileName} (
+                                  {formatFileSize(message.fileSize)})
+                                </a>
+                              )}
+                              {message.text && (
+                                <p className="patient-message-text">
+                                  {message.text}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="patient-message-text">
+                              {message.text}
+                            </p>
+                          )}
+                        </div>
+                        <span className="patient-message-time">
+                          {message.timestamp}
+                        </span>
+                      </div>
+                      {message.isSent && (
+                        <div className="patient-message-avatar">
+                          {message.avatar ? (
+                            <img
+                              src={message.avatar}
+                              alt={message.senderName || "You"}
+                            />
+                          ) : (
+                            <FaUser className="patient-avatar-icon-small" />
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               ))}
-            </div>
 
-            <div className="patient-document-upload">
-              <div className="patient-upload-header">
-                <h4 className="patient-upload-title">Upload Documents</h4>
-                <p className="patient-upload-subtitle">Share files with your specialist</p>
-              </div>
-              
-              <div className="patient-file-upload-area">
-                <input
-                  type="file"
-                  id="file-upload"
-                  multiple
-                  onChange={handleFileUpload}
-                  style={{ display: 'none' }}
-                />
-                <label htmlFor="file-upload" className="patient-file-label">
-                  <FaUpload className="patient-upload-icon" />
-                  <span className="patient-upload-text">Choose files to upload</span>
-                  <span className="patient-upload-hint">PDF, DOC, JPG, PNG up to 10MB</span>
-                </label>
-              </div>
-
-              {uploadedFiles.length > 0 && (
-                <div className="patient-uploaded-files">
-                  <h5 className="patient-files-title">Uploaded Files:</h5>
-                  {uploadedFiles.map((file) => (
-                    <div key={file.id} className="patient-file-item">
-                      <FaFileAlt className="patient-file-icon" />
-                      <div className="patient-file-info">
-                        <span className="patient-file-name">{file.name}</span>
-                        <span className="patient-file-size">{formatFileSize(file.size)}</span>
+              {typingUsers.length > 0 && (
+                <div className="patient-message patient-message-received patient-typing-bubble">
+                  <div className="patient-message-avatar">
+                    <FaUser className="patient-avatar-icon-small" />
+                  </div>
+                  <div className="patient-message-bubble-wrapper">
+                    <div className="patient-message-content patient-typing-content">
+                      <div className="patient-typing-dots-chat">
+                        <span></span>
+                        <span></span>
+                        <span></span>
                       </div>
-                      <button 
-                        className="patient-file-remove"
-                        onClick={() => setUploadedFiles(prev => prev.filter(f => f.id !== file.id))}
-                      >
-                        <FaTimes />
-                      </button>
                     </div>
-                  ))}
+                  </div>
                 </div>
               )}
             </div>
 
-            <form className="patient-chat-input-form" onSubmit={handleSendMessage}>
+            <input
+              type="file"
+              ref={fileInputRef}
+              multiple
+              onChange={handleFileUpload}
+              style={{ display: "none" }}
+              accept="image/*,.pdf,.doc,.docx"
+            />
+
+            {uploadedFiles.length > 0 && (
+              <div className="patient-attached-files">
+                {uploadedFiles.map((file) => (
+                  <div key={file.id} className="patient-attached-file">
+                    {file.type.startsWith("image/") ? (
+                      <img
+                        src={URL.createObjectURL(file.file)}
+                        alt={file.name}
+                        className="patient-attached-preview"
+                      />
+                    ) : (
+                      <div className="patient-attached-file-icon">
+                        <FaFileAlt />
+                      </div>
+                    )}
+                    <span className="patient-attached-file-name">
+                      {file.name}
+                    </span>
+                    <button
+                      className="patient-attached-file-remove"
+                      onClick={() => handleRemoveFile(file.id)}
+                      type="button"
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <form
+              className="patient-chat-input-form"
+              onSubmit={handleSendMessage}
+            >
               <div className="patient-chat-input-container">
+                <button
+                  type="button"
+                  className="patient-attach-btn"
+                  onClick={handleAttachClick}
+                  title="Attach file"
+                >
+                  <FaPaperclip />
+                </button>
                 <input
                   type="text"
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={handleMessageChange}
                   placeholder="Type your message..."
                   className="patient-chat-input"
                 />
-                <button type="submit" className="patient-chat-send-btn">
+                <button
+                  type="submit"
+                  className="patient-chat-send-btn"
+                  disabled={!newMessage.trim() && uploadedFiles.length === 0}
+                >
                   Send
                 </button>
               </div>
@@ -277,6 +526,73 @@ const Messages = () => {
           </div>
         )}
       </div>
+
+      {showNewChatModal && (
+        <div
+          className="patient-modal-overlay"
+          onClick={() => setShowNewChatModal(false)}
+        >
+          <div className="patient-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="patient-modal-header">
+              <h3>Start New Conversation</h3>
+              <button
+                className="patient-modal-close"
+                onClick={() => setShowNewChatModal(false)}
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="patient-modal-body">
+              <div className="patient-user-search">
+                <FaSearch className="patient-search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search doctors or nurses..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className="patient-user-search-input"
+                />
+              </div>
+              <div className="patient-user-results">
+                {isSearchingUsers ? (
+                  <div className="patient-searching">
+                    <FaSpinner className="patient-spinner" />
+                    <span>Searching...</span>
+                  </div>
+                ) : userSearchResults.length > 0 ? (
+                  userSearchResults.map((user) => (
+                    <div
+                      key={user.Id || user.id}
+                      className="patient-user-result-item"
+                      onClick={() => handleStartNewChat(user.Id || user.id)}
+                    >
+                      <div className="patient-user-avatar">
+                        <FaUser />
+                      </div>
+                      <div className="patient-user-info">
+                        <span className="patient-user-name">
+                          {user.Display_Name || user.name}
+                        </span>
+                        <span className="patient-user-type">
+                          {user.User_Type || user.type}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : userSearchQuery ? (
+                  <div className="patient-no-users">
+                    <p>No users found</p>
+                  </div>
+                ) : (
+                  <div className="patient-search-hint">
+                    <p>Type a name to search for doctors or nurses</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

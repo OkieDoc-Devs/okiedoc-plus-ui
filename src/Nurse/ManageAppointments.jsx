@@ -27,6 +27,7 @@ import {
   createTicket,
   updateTicket,
   fetchNotificationsFromAPI,
+  logoutFromAPI,
 } from "./services/apiService.js";
 
 const USE_API = true;
@@ -320,7 +321,12 @@ export default function ManageAppointment() {
 
   useEffect(() => {}, [online]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logoutFromAPI();
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
     navigate("/");
   };
 

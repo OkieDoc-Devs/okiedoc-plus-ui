@@ -26,6 +26,20 @@
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OkieDoc+</title>
+    <script src="http://localhost:1337/socket/sails.io.js"></script>
+    <script>
+      if (typeof io !== "undefined" && io.sails) {
+        io.sails.url = "http://localhost:1337";
+        io.sails.transports = ["websocket", "polling"];
+        io.sails.useCORSRouteToGetCookie = true;
+        io.sails.environment = "development";
+        console.log("Sails.io.js loaded and configured for:", io.sails.url);
+      } else {
+        console.warn(
+          "Sails.io.js failed to load - check if backend is running and serving /socket/sails.io.js"
+        );
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -3,16 +3,15 @@ import "./NurseStyles.css";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import {
-  getNurseId,
   getNurseFirstName,
   getNurseProfileImage,
 } from "./services/storageService.js";
-import { buildGoogleCalendarUrl } from "./services/calendarService.js";
 import {
   fetchTicketsFromAPI,
   fetchNotificationsFromAPI,
   fetchDashboardFromAPI,
   fetchNurseProfile,
+  logoutFromAPI,
 } from "./services/apiService.js";
 import { transformProfileFromAPI } from "./services/profileService.js";
 
@@ -28,7 +27,12 @@ export default function Dashboard() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logoutFromAPI();
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
     navigate("/");
   };
 
@@ -65,7 +69,7 @@ export default function Dashboard() {
         const dashboardData = await fetchDashboardFromAPI();
         console.log("Dashboard: Dashboard API response:", dashboardData);
         if (dashboardData) {
-          if (dashboardData.tickets) {
+          if (dashboardData.tickets && Array.isArray(dashboardData.tickets)) {
             console.log(
               "Dashboard: Received tickets from dashboard API:",
               dashboardData.tickets.length,
@@ -76,7 +80,11 @@ export default function Dashboard() {
             console.log("Dashboard: No tickets in dashboard response");
             setTickets([]);
           }
-          if (dashboardData.notifications) {
+          if (
+            dashboardData.notifications &&
+            Array.isArray(dashboardData.notifications) &&
+            dashboardData.notifications.length > 0
+          ) {
             console.log(
               "Dashboard: Received notifications from dashboard API:",
               dashboardData.notifications.length,
@@ -92,9 +100,17 @@ export default function Dashboard() {
             );
             setNotifications(dashboardData.notifications);
           } else {
-            console.log("Dashboard: No notifications in dashboard response");
+            console.log(
+              "Dashboard: No notifications in dashboard response, setting to empty"
+            );
             setNotifications([]);
           }
+          return;
+        } else {
+          // Dashboard data is empty/null, set defaults
+          console.log("Dashboard: Empty dashboard response, setting defaults");
+          setTickets([]);
+          setNotifications([]);
           return;
         }
       } catch (error) {
@@ -129,7 +145,11 @@ export default function Dashboard() {
             "Dashboard: Notifications from individual API:",
             apiNotifications
           );
-          if (apiNotifications && apiNotifications.length > 0) {
+          if (
+            apiNotifications &&
+            Array.isArray(apiNotifications) &&
+            apiNotifications.length > 0
+          ) {
             console.log(
               "Dashboard: Notification count from individual API:",
               apiNotifications.length
@@ -144,7 +164,9 @@ export default function Dashboard() {
             );
             setNotifications(apiNotifications);
           } else {
-            console.log("Dashboard: No notifications from individual API");
+            console.log(
+              "Dashboard: No notifications from individual API, setting to empty"
+            );
             setNotifications([]);
           }
         } catch (notifError) {
@@ -172,8 +194,6 @@ export default function Dashboard() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
-
-  const nurseId = getNurseId();
 
   return (
     <div className="dashboard">
@@ -240,91 +260,79 @@ export default function Dashboard() {
         <div className="processing-tickets">
           <h2>All Tickets ({tickets.length})</h2>
           {tickets.map((ticket) => (
-            <div key={ticket.id} className="ticket-card processing">
-              <div className="ticket-header">
-                <h3>{ticket.patientName}</h3>
-                <span
-                  className="status-badge"
-                  style={{
-                    backgroundColor:
-                      ticket.status === "Confirmed"
-                        ? "#4caf50"
-                        : ticket.status === "Pending"
-                        ? "#ff9800"
-                        : "#2196f3",
-                  }}
-                >
-                  {ticket.status}
-                </span>
+            <div key={ticket.id} className="ticket-card-new">
+              <div className="ticket-card-header">
+                <span className="ticket-number">TICKET #{ticket.id}</span>
               </div>
-              <div className="ticket-content">
-                <p>
-                  <strong>Email:</strong> {ticket.email}
-                </p>
-                <p>
-                  <strong>Mobile:</strong> {ticket.mobile}
-                </p>
-                <p>
-                  <strong>Chief Complaint:</strong> {ticket.chiefComplaint}
-                </p>
-                <p>
-                  <strong>Preferred Date:</strong> {ticket.preferredDate}
-                </p>
-                <p>
-                  <strong>Preferred Time:</strong> {ticket.preferredTime}
-                </p>
-                <p>
-                  <strong>Specialist:</strong> {ticket.preferredSpecialist}
-                </p>
-              </div>
-              <div className="ticket-actions">
-                {ticket.status === "Pending" && (
+
+              <div className="ticket-card-body">
+                <div className="ticket-left-section">
+                  <div className="ticket-patient-details">
+                    <h4 className="ticket-section-title">PATIENT DETAILS</h4>
+                    <div className="ticket-details-grid">
+                      <div className="ticket-details-col">
+                        <p>
+                          <strong>Name:</strong> {ticket.patientName}
+                        </p>
+                        <p>
+                          <strong>Age:</strong> {ticket.age}
+                        </p>
+                        <p>
+                          <strong>Birthdate:</strong> {ticket.birthdate}
+                        </p>
+                      </div>
+                      <div className="ticket-details-col">
+                        <p>
+                          <strong>Email:</strong> {ticket.email}
+                        </p>
+                        <p>
+                          <strong>Mobile:</strong> {ticket.mobile}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="ticket-assignments">
+                    <p>
+                      <strong>Assigned Nurse:</strong>{" "}
+                      {ticket.assignedNurse || nurseName}
+                    </p>
+                    <p>
+                      <strong>Assigned Specialist:</strong>{" "}
+                      {ticket.preferredSpecialist}
+                    </p>
+                    <p>
+                      <strong>Consultation Type:</strong>{" "}
+                      {ticket.consultationType || ticket.chiefComplaint}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="ticket-right-section">
+                  <div className="ticket-meta">
+                    <p>
+                      <strong>Date Created:</strong>{" "}
+                      {ticket.dateCreated || ticket.preferredDate}
+                    </p>
+                    <p>
+                      <strong>Status:</strong>{" "}
+                      <span
+                        className={`ticket-status-text ${ticket.status?.toLowerCase()}`}
+                      >
+                        {ticket.status}
+                      </span>
+                    </p>
+                  </div>
+
                   <button
-                    className="action-btn edit"
-                    style={{
-                      background: "#4caf50",
-                      color: "#fff",
-                    }}
-                    onClick={() => {
-                      setTickets((prev) => {
-                        const updated = prev.map((t) =>
-                          t.id === ticket.id
-                            ? { ...t, status: "Confirmed", claimedBy: nurseId }
-                            : t
-                        );
-                        return updated;
-                      });
-                    }}
+                    className="ticket-history-btn"
+                    onClick={() =>
+                      navigate(`/consultation-history/${ticket.id}`)
+                    }
                   >
-                    Confirm Ticket
+                    Consultation Histories
                   </button>
-                )}
-                {ticket.status === "Confirmed" && (
-                  <a
-                    href={buildGoogleCalendarUrl(ticket)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="action-btn edit"
-                  >
-                    Create Schedule (Google Calendar)
-                  </a>
-                )}
-                <button
-                  className="action-btn remove"
-                  style={{
-                    marginLeft: 8,
-                    background: "#f44336",
-                    color: "#fff",
-                  }}
-                  onClick={() => {
-                    setTickets((prev) => {
-                      const updated = prev.filter((t) => t.id !== ticket.id);
-                      return updated;
-                    });
-                  }}
-                >
-                  Remove
-                </button>
+                </div>
               </div>
             </div>
           ))}

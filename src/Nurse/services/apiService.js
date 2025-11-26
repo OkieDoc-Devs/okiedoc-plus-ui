@@ -3,6 +3,8 @@
  * Handles all API communication for the Nurse module
  */
 
+import { resetSocketAuth } from "./chatService.js";
+
 const API_BASE_URL =
   import.meta.env.MODE === "production"
     ? "https://your-production-url.com"
@@ -261,6 +263,50 @@ export async function updateTicket(ticketId, updates) {
     }
   } catch (error) {
     console.error("Error updating ticket:", error);
+    throw error;
+  }
+}
+
+/**
+ * Logout user from API
+ * Clears session on backend and resets socket auth
+ * @returns {Promise<Object>} Logout response
+ */
+export async function logoutFromAPI() {
+  try {
+    // Reset socket authentication state
+    resetSocketAuth();
+
+    const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      // Clear localStorage
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("nurse.id");
+      localStorage.removeItem("nurse.email");
+      localStorage.removeItem("nurse.firstName");
+      localStorage.removeItem("nurse.lastName");
+
+      console.log("Logout successful:", data.message);
+      return data;
+    } else {
+      console.warn("Logout response:", data);
+      // Still clear local storage even if API fails
+      localStorage.removeItem("currentUser");
+      return data;
+    }
+  } catch (error) {
+    console.error("Error during logout:", error);
+    // Still clear local storage even if API fails
+    localStorage.removeItem("currentUser");
     throw error;
   }
 }

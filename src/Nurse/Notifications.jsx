@@ -9,6 +9,7 @@ import {
 import {
   fetchNotificationsFromAPI,
   markNotificationAsRead,
+  logoutFromAPI,
 } from "./services/apiService.js";
 
 export default function Notifications() {
@@ -86,7 +87,12 @@ export default function Notifications() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logoutFromAPI();
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
     navigate("/");
   };
 

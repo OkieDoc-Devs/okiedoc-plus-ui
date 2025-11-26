@@ -14,12 +14,14 @@ import Messages from "./Nurse/Messages.jsx";
 import SpecialistDashboard from "./Admin/Specialistdashboard/SpecialistDashboard.jsx";
 import PatientDashboard from "./Patient/jsx/PatientDashboard.jsx";
 import SpecialistDashboard2 from "./Specialists/SpecialistDashboard.jsx";
+import CommercialPage from "./CommercialPage.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<App />} />
+        <Route path="/" element={<CommercialPage />} />
+        <Route path="/loading" element={<App />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registration" element={<Registration />} />
         <Route path="/nurse-dashboard" element={<Dashboard />} />

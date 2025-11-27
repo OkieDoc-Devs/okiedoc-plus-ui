@@ -196,6 +196,110 @@ export async function updateNurseProfile(profileData) {
 }
 
 /**
+ * Upload nurse avatar image via API
+ * @param {File} file - Image file to upload
+ * @returns {Promise<Object>} Upload response with avatar URL
+ * @throws {Error} If API request fails or file exceeds size limit
+ */
+export async function uploadNurseAvatar(file) {
+  const MAX_SIZE = 2 * 1024 * 1024;
+  if (file.size > MAX_SIZE) {
+    throw new Error(
+      "File size exceeds 2MB limit. Please choose a smaller image."
+    );
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    const response = await fetch(`${API_BASE_URL}/api/nurse/avatar`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      return data.data;
+    } else {
+      throw new Error(data.message || "Failed to upload avatar");
+    }
+  } catch (error) {
+    console.error("Error uploading nurse avatar:", error);
+    throw error;
+  }
+}
+
+/**
+ * Delete nurse avatar image via API
+ * @returns {Promise<boolean>} Success status
+ * @throws {Error} If API request fails
+ */
+export async function deleteNurseAvatar() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/nurse/avatar`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      return true;
+    } else {
+      throw new Error(data.message || "Failed to delete avatar");
+    }
+  } catch (error) {
+    console.error("Error deleting nurse avatar:", error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch doctors/specialists from API
+ * @returns {Promise<Array>} Array of doctors
+ * @throws {Error} If API request fails
+ */
+export async function fetchDoctorsFromAPI() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/nurse/doctors`, {
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      return data.data || [];
+    } else {
+      throw new Error(data.message || "Failed to load doctors");
+    }
+  } catch (error) {
+    console.error("Error fetching doctors from API:", error);
+    throw error;
+  }
+}
+
+/**
  * Create a new ticket via API
  * @param {Object} ticketData - Ticket data to create
  * @returns {Promise<Object>} Created ticket data
@@ -274,7 +378,6 @@ export async function updateTicket(ticketId, updates) {
  */
 export async function logoutFromAPI() {
   try {
-    // Reset socket authentication state
     resetSocketAuth();
 
     const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
@@ -288,7 +391,6 @@ export async function logoutFromAPI() {
     const data = await response.json();
 
     if (response.ok && data.success) {
-      // Clear localStorage
       localStorage.removeItem("currentUser");
       localStorage.removeItem("nurse.id");
       localStorage.removeItem("nurse.email");
@@ -299,13 +401,11 @@ export async function logoutFromAPI() {
       return data;
     } else {
       console.warn("Logout response:", data);
-      // Still clear local storage even if API fails
       localStorage.removeItem("currentUser");
       return data;
     }
   } catch (error) {
     console.error("Error during logout:", error);
-    // Still clear local storage even if API fails
     localStorage.removeItem("currentUser");
     throw error;
   }

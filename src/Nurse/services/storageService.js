@@ -50,17 +50,14 @@ export function saveToStorage(key, value) {
  * @returns {string|null} Nurse ID or null
  */
 export function getNurseId() {
-  // Try nurse-specific key first
   let nurseId = localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_ID);
 
-  // Fallback: Get from currentUser if nurse-specific key doesn't exist
   if (!nurseId) {
     try {
       const currentUser = JSON.parse(localStorage.getItem("currentUser"));
       if (currentUser && currentUser.userType === "nurse") {
         nurseId = currentUser.id;
-        // Cache it in nurse-specific key for next time
-        localStorage.setItem(LOCAL_STORAGE_KEYS.NURSE_ID, nurseId);
+        localStorage.setItem(LOCAL_STORAGE_KEYS.NURSE_ID, String(nurseId));
         console.log(
           "getNurseId: Retrieved from currentUser and cached:",
           nurseId
@@ -71,8 +68,16 @@ export function getNurseId() {
     }
   }
 
-  console.log("getNurseId: Returning nurse ID:", nurseId);
-  return nurseId;
+  if (nurseId) {
+    const parsed = parseInt(nurseId, 10);
+    if (!isNaN(parsed)) {
+      console.log("getNurseId: Returning nurse ID (parsed):", parsed);
+      return parsed;
+    }
+  }
+
+  console.log("getNurseId: Returning nurse ID:", null);
+  return null;
 }
 
 /**
@@ -80,10 +85,8 @@ export function getNurseId() {
  * @returns {string|null} Nurse email or null
  */
 export function getNurseEmail() {
-  // Try nurse-specific key first
   let email = localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_EMAIL);
 
-  // Fallback: Get from currentUser
   if (!email) {
     try {
       const currentUser = JSON.parse(localStorage.getItem("currentUser"));
@@ -106,7 +109,6 @@ export function getNurseEmail() {
 export function getNurseFirstName() {
   let firstName = localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_FIRST_NAME);
 
-  // Fallback: Get from currentUser
   if (!firstName) {
     try {
       const currentUser = JSON.parse(localStorage.getItem("currentUser"));
@@ -135,6 +137,16 @@ export function getNurseLastName() {
 }
 
 /**
+ * Get the API base URL for constructing full image URLs
+ * @returns {string} API base URL
+ */
+function getAPIBaseURL() {
+  return import.meta.env.MODE === "production"
+    ? "https://your-production-url.com"
+    : "http://localhost:1337";
+}
+
+/**
  * Get the current nurse's profile image from localStorage
  * @returns {string} Profile image URL or default account icon
  */
@@ -142,8 +154,16 @@ export function getNurseProfileImage() {
   const profileImage = localStorage.getItem(
     LOCAL_STORAGE_KEYS.NURSE_PROFILE_IMAGE
   );
-  // Return stored image or fallback to default account icon
-  return profileImage || "/account.svg";
+
+  if (!profileImage) {
+    return "/account.svg";
+  }
+
+  if (profileImage.startsWith("/uploads")) {
+    return `${getAPIBaseURL()}${profileImage}`;
+  }
+
+  return profileImage;
 }
 
 /**

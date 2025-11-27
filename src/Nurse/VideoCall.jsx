@@ -11,7 +11,7 @@ import {
 } from "react-icons/fa";
 import "./VideoCall.css";
 
-const VideoCall = ({ activeUser, onClose, isVideoCall = true }) => {
+const VideoCall = ({ activeUser, onClose, onCallEnd, isVideoCall = true }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -156,9 +156,14 @@ const VideoCall = ({ activeUser, onClose, isVideoCall = true }) => {
       }
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state !== "closed"
+      ) {
+        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
       }
     };
   }, []);
@@ -219,9 +224,20 @@ const VideoCall = ({ activeUser, onClose, isVideoCall = true }) => {
 
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
+    if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+
+    if (onCallEnd && callStartTime.current) {
+      const duration = Math.floor((Date.now() - callStartTime.current) / 1000);
+      onCallEnd({
+        type: isVideoCall ? "video" : "voice",
+        duration: duration,
+        formattedDuration: formatDuration(duration),
+      });
     }
 
     onClose();
@@ -253,8 +269,21 @@ const VideoCall = ({ activeUser, onClose, isVideoCall = true }) => {
       <div className="video-call-container">
         <div className="video-call-header">
           <div className="video-call-user-info">
-            <h3>{activeUser.name}</h3>
-            <span className="video-call-role">{activeUser.role}</span>
+            {activeUser.avatar ? (
+              <img
+                src={activeUser.avatar}
+                alt={activeUser.name}
+                className="video-call-header-avatar"
+              />
+            ) : (
+              <div className="video-call-header-avatar-placeholder">
+                {activeUser.name.charAt(0)}
+              </div>
+            )}
+            <div className="video-call-user-details">
+              <h3>{activeUser.name}</h3>
+              <span className="video-call-role">{activeUser.role}</span>
+            </div>
           </div>
           <div className="video-call-status">
             {isConnecting && (
@@ -282,7 +311,7 @@ const VideoCall = ({ activeUser, onClose, isVideoCall = true }) => {
               <div className="permission-request-overlay">
                 <div className="permission-request-content">
                   <div className="permission-spinner"></div>
-                  <h3>🎥 Permission Required</h3>
+                  <h3>Permission Required</h3>
                   <p>Please allow access to your camera and microphone</p>
                   <p className="permission-hint">
                     Look for the popup at the TOP of your browser window
@@ -316,9 +345,17 @@ const VideoCall = ({ activeUser, onClose, isVideoCall = true }) => {
 
           <div className="remote-video">
             <div className="remote-user-placeholder">
-              <div className="remote-user-avatar">
-                {activeUser.name.charAt(0)}
-              </div>
+              {activeUser.avatar ? (
+                <img
+                  src={activeUser.avatar}
+                  alt={activeUser.name}
+                  className="remote-user-avatar-img"
+                />
+              ) : (
+                <div className="remote-user-avatar">
+                  {activeUser.name.charAt(0)}
+                </div>
+              )}
               <h2>{activeUser.name}</h2>
               <p className="remote-status">Waiting to connect...</p>
             </div>

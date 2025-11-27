@@ -83,7 +83,6 @@ export default function Notifications() {
 
   const handleTabClick = (tab) => {
     if (tab === "notifications") {
-      // Already on notifications page
     }
   };
 

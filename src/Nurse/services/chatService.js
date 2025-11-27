@@ -108,9 +108,19 @@ export async function authenticateSocket(userId = null) {
 }
 
 export function resetSocketAuth() {
+  console.log("[Chat] Resetting socket auth state and reconnecting...");
   socketAuthPromise = null;
   socketAuthUserId = null;
   authRetryCount = 0;
+
+  if (typeof window !== "undefined" && window.io && window.io.socket) {
+    window.io.socket.disconnect();
+    setTimeout(() => {
+      if (window.io && window.io.socket) {
+        window.io.socket.reconnect();
+      }
+    }, 100);
+  }
 }
 
 export async function createConversation(conversationData) {
@@ -395,6 +405,7 @@ export function setupChatSocketListeners(handlers) {
     onParticipantAdded,
     onParticipantRemoved,
     onMessageDeleted,
+    onNewConversation,
   } = handlers;
 
   const processedMessageIds = new Set();
@@ -424,7 +435,11 @@ export function setupChatSocketListeners(handlers) {
     socket.on("chat:newMessage", wrappedOnMessage);
     console.log("[Chat] Listening for chat:message and chat:newMessage events");
   }
-  if (onTyping) socket.on("chat:typing", onTyping);
+  if (onTyping) {
+    socket.on("chat:typing", onTyping);
+    socket.on("chat:userTyping", onTyping);
+    console.log("[Chat] Listening for chat:typing and chat:userTyping events");
+  }
   if (onRead) {
     socket.on("chat:read", onRead);
     socket.on("chat:messageRead", onRead);
@@ -441,6 +456,11 @@ export function setupChatSocketListeners(handlers) {
     socket.on("chat:message-deleted", onMessageDeleted);
     socket.on("chat:messageDeleted", onMessageDeleted);
   }
+  if (onNewConversation) {
+    socket.on("chat:newConversation", onNewConversation);
+    socket.on("chat:conversation-created", onNewConversation);
+    console.log("[Chat] Listening for chat:newConversation events");
+  }
 
   return () => {
     console.log("[Chat] Cleaning up socket listeners");
@@ -448,7 +468,10 @@ export function setupChatSocketListeners(handlers) {
       socket.off("chat:message", wrappedOnMessage);
       socket.off("chat:newMessage", wrappedOnMessage);
     }
-    if (onTyping) socket.off("chat:typing", onTyping);
+    if (onTyping) {
+      socket.off("chat:typing", onTyping);
+      socket.off("chat:userTyping", onTyping);
+    }
     if (onRead) {
       socket.off("chat:read", onRead);
       socket.off("chat:messageRead", onRead);
@@ -464,6 +487,10 @@ export function setupChatSocketListeners(handlers) {
     if (onMessageDeleted) {
       socket.off("chat:message-deleted", onMessageDeleted);
       socket.off("chat:messageDeleted", onMessageDeleted);
+    }
+    if (onNewConversation) {
+      socket.off("chat:newConversation", onNewConversation);
+      socket.off("chat:conversation-created", onNewConversation);
     }
   };
 }
@@ -564,7 +591,7 @@ export function formatFileSize(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 }
 
-export function isAllowedFileType(file) {
+export function isAllowedFileType(fileOrType) {
   const allowedTypes = [
     "image/jpeg",
     "image/png",
@@ -577,7 +604,10 @@ export function isAllowedFileType(file) {
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "text/plain",
   ];
-  return allowedTypes.includes(file.type);
+
+  const typeToCheck = fileOrType.type ? fileOrType.type : fileOrType;
+
+  return allowedTypes.includes(typeToCheck);
 }
 
 export function getMaxFileSize() {
@@ -604,6 +634,35 @@ export function transformConversationForUI(conversation, currentUserId) {
     typeof lastMsg === "object"
       ? lastMsg?.Message_Content || lastMsg?.content
       : lastMsg;
+
+  const lastMessageSenderId =
+    conversation.Last_Message_Sender_Id ||
+    conversation.lastMessageSenderId ||
+    (typeof lastMsg === "object"
+      ? lastMsg?.Sender_ID || lastMsg?.Sender_Id || lastMsg?.senderId
+      : null);
+  const lastMessageSentByMe =
+    lastMessageSenderId !== null &&
+    Number(lastMessageSenderId) === Number(currentUserId);
+
+  let lastMessageSenderName = null;
+  if (typeof lastMsg === "object" && lastMsg) {
+    lastMessageSenderName =
+      lastMsg.Sender_Name ||
+      lastMsg.senderName ||
+      lastMsg.sender?.Display_Name ||
+      lastMsg.sender?.displayName ||
+      lastMsg.sender?.name ||
+      null;
+  }
+  if (
+    !lastMessageSenderName &&
+    lastMessageSenderId &&
+    !lastMessageSentByMe &&
+    lastMessageContent
+  ) {
+    lastMessageSenderName = displayName?.split(" ")[0] || displayName;
+  }
 
   const conversationId =
     conversation.Conversation_ID || conversation.Id || conversation.id;
@@ -636,6 +695,8 @@ export function transformConversationForUI(conversation, currentUserId) {
       conversation.type ||
       "direct",
     lastMessage: lastMessageContent || "No messages yet",
+    lastMessageSentByMe: lastMessageSentByMe,
+    lastMessageSenderName: lastMessageSenderName,
     timestamp: formatMessageTime(
       conversation.Updated_At ||
         conversation.updatedAt ||
@@ -643,13 +704,27 @@ export function transformConversationForUI(conversation, currentUserId) {
     ),
     unreadCount: conversation.unreadCount || 0,
     otherUserType: otherUserType,
-    participants: participants.map((p) => ({
-      id: p.User_ID || p.User_Id || p.userId || p.id,
-      name: p.Display_Name || p.displayName || p.name || p.Email || "Unknown",
-      type: p.User_Type_Code || p.User_Type || p.userType || "p",
-      avatar: p.avatar || null,
-    })),
-    avatar: otherParticipant?.avatar || null,
+    participants: participants.map((p) => {
+      const pAvatar = p.avatar || p.Avatar || null;
+      return {
+        id: p.User_ID || p.User_Id || p.userId || p.id,
+        name: p.Display_Name || p.displayName || p.name || p.Email || "Unknown",
+        type: p.User_Type_Code || p.User_Type || p.userType || "p",
+        avatar: pAvatar
+          ? pAvatar.startsWith("http") || pAvatar.startsWith("blob:")
+            ? pAvatar
+            : `${API_BASE_URL}${pAvatar.startsWith("/") ? "" : "/"}${pAvatar}`
+          : null,
+      };
+    }),
+    avatar: otherParticipant?.avatar
+      ? otherParticipant.avatar.startsWith("http") ||
+        otherParticipant.avatar.startsWith("blob:")
+        ? otherParticipant.avatar
+        : `${API_BASE_URL}${
+            otherParticipant.avatar.startsWith("/") ? "" : "/"
+          }${otherParticipant.avatar}`
+      : null,
     raw: conversation,
   };
 }
@@ -661,15 +736,6 @@ export function transformMessageForUI(message, currentUserId, currentUserType) {
     message.senderId ||
     message.sender?.id;
   const isSent = Number(senderId) === Number(currentUserId);
-
-  console.log("📨 Raw message from API:", {
-    raw: message,
-    senderId,
-    currentUserId,
-    isSent,
-    senderIdType: typeof senderId,
-    currentUserIdType: typeof currentUserId,
-  });
 
   const senderType =
     message.sender?.User_Type_Code ||
@@ -691,6 +757,28 @@ export function transformMessageForUI(message, currentUserId, currentUserType) {
       ? "a"
       : "p";
 
+  const getFullUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith("http") || url.startsWith("blob:")) return url;
+    return `${API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
+  const senderAvatar = getFullUrl(
+    message.Sender_Avatar ||
+      message.sender_avatar ||
+      message.sender?.avatar ||
+      message.sender?.Avatar ||
+      message.sender?.Profile_Image ||
+      null
+  );
+  const senderName =
+    message.sender?.Display_Name ||
+    message.Sender_Name ||
+    message.sender?.displayName ||
+    message.sender?.name ||
+    message.senderName ||
+    "Unknown";
+
   return {
     id: message.Message_ID || message.Id || message.id,
     text: message.Message_Content || message.content || "",
@@ -699,21 +787,19 @@ export function transformMessageForUI(message, currentUserId, currentUserType) {
     isSent,
     sender: normalizedSenderType,
     senderId: senderId,
+    senderName: senderName,
+    avatar: senderAvatar,
     senderInfo: {
       id: senderId,
-      name:
-        message.sender?.Display_Name ||
-        message.Sender_Name ||
-        message.sender?.displayName ||
-        message.sender?.name ||
-        message.senderName ||
-        "Unknown",
+      name: senderName,
       type: normalizedSenderType,
-      avatar: message.sender?.avatar || null,
+      avatar: senderAvatar,
     },
     messageType: message.Message_Type || message.type || "text",
-    fileUrl: message.File_URL || message.File_Url || message.fileUrl || null,
-    fileName: message.File_Name || message.fileName || null,
+    fileUrl: getFullUrl(
+      message.File_URL || message.File_Url || message.fileUrl
+    ),
+    fileName: message.File_Name || message.fileName || "Attached File",
     fileSize: message.File_Size || message.fileSize || null,
     replyTo: message.Reply_To_ID || message.replyToId || null,
     isDeleted: message.Is_Deleted || message.isDeleted || false,

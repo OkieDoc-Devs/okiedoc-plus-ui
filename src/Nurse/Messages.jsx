@@ -178,7 +178,15 @@ const Messages = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (activeConversation && (newMessage.trim() || uploadedFiles.length > 0)) {
+
+    if (
+      !activeConversation ||
+      (!newMessage.trim() && uploadedFiles.length === 0)
+    ) {
+      return;
+    }
+
+    try {
       const trimmedMessage = newMessage.trim();
 
       if (trimmedMessage) {
@@ -187,21 +195,31 @@ const Messages = () => {
 
       if (uploadedFiles.length > 0) {
         for (const fileData of uploadedFiles) {
-          if (!isAllowedFileType(fileData.type)) {
-            console.error("File type not allowed:", fileData.type);
+          if (!isAllowedFileType(fileData.file)) {
+            console.warn("Skipping invalid file type:", fileData.type);
             continue;
           }
+
           const maxSize = getMaxFileSize(fileData.type);
           if (fileData.size > maxSize) {
-            console.error("File too large:", fileData.name);
+            console.warn("Skipping file too large:", fileData.name);
             continue;
           }
+
           await uploadChatFile(fileData.file);
         }
       }
 
       setNewMessage("");
       setUploadedFiles([]);
+
+      if (chatMessagesRef.current) {
+        chatMessagesRef.current.scrollTop =
+          chatMessagesRef.current.scrollHeight;
+      }
+    } catch (error) {
+      console.error("Error sending message or uploading file:", error);
+      alert("Failed to send message. Please try again.");
     }
   };
 
@@ -232,18 +250,14 @@ const Messages = () => {
     const files = Array.from(e.target.files);
     const newFiles = files
       .filter((file) => {
-        if (!isAllowedFileType(file.type)) {
+        if (!isAllowedFileType(file)) {
           console.error("File type not allowed:", file.type);
           return false;
         }
+
         const maxSize = getMaxFileSize(file.type);
         if (file.size > maxSize) {
-          console.error(
-            "File too large:",
-            file.name,
-            "Max:",
-            formatFileSize(maxSize)
-          );
+          console.error("File too large:", file.name);
           return false;
         }
         return true;
@@ -279,6 +293,18 @@ const Messages = () => {
 
   const handleCloseVideoCall = () => {
     setShowVideoCall(false);
+  };
+
+  const handleCallEnd = async (callInfo) => {
+    if (activeConversation && callInfo.duration > 0) {
+      const callType = callInfo.type === "video" ? "Video call" : "Voice call";
+      const callMessage = `${callType} ended - ${callInfo.formattedDuration}`;
+      try {
+        await sendChatMessage(callMessage);
+      } catch (error) {
+        console.error("Error sending call message:", error);
+      }
+    }
   };
 
   useEffect(() => {
@@ -423,6 +449,14 @@ const Messages = () => {
                       </div>
                       <div className="nurse-conversation-preview">
                         <p className="nurse-conversation-message">
+                          {conversation.lastMessage &&
+                          conversation.lastMessage !== "No messages yet"
+                            ? conversation.lastMessageSentByMe
+                              ? "You: "
+                              : conversation.lastMessageSenderName
+                              ? `${conversation.lastMessageSenderName}: `
+                              : ""
+                            : ""}
                           {conversation.lastMessage}
                         </p>
                         {conversation.unreadCount > 0 && (
@@ -542,32 +576,52 @@ const Messages = () => {
                             )}
                           </div>
                         )}
+
                         <div className="nurse-message-bubble-wrapper">
                           <div
                             className={`nurse-message-content nurse-message-content-${message.sender}`}
                           >
                             {message.messageType === "file" ||
                             message.messageType === "image" ? (
-                              <div className="nurse-message-file">
+                              <div className="nurse-message-media-wrapper">
                                 {message.messageType === "image" ? (
-                                  <img
-                                    src={message.fileUrl}
-                                    alt={message.fileName}
-                                    className="nurse-message-image"
-                                  />
+                                  <div className="nurse-image-container">
+                                    <img
+                                      src={message.fileUrl}
+                                      alt={message.fileName}
+                                      className="nurse-message-image"
+                                      onClick={() =>
+                                        window.open(message.fileUrl, "_blank")
+                                      }
+                                      style={{ cursor: "pointer" }}
+                                    />
+                                  </div>
                                 ) : (
-                                  <a
-                                    href={message.fileUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="nurse-file-link"
-                                  >
-                                    <FaFileAlt /> {message.fileName} (
-                                    {formatFileSize(message.fileSize)})
-                                  </a>
+                                  <div className="nurse-file-attachment">
+                                    <a
+                                      href={message.fileUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="nurse-file-link"
+                                      download
+                                    >
+                                      <div className="nurse-file-icon">
+                                        <FaFileAlt />
+                                      </div>
+                                      <div className="nurse-file-info">
+                                        <span className="nurse-file-name">
+                                          {message.fileName}
+                                        </span>
+                                        <span className="nurse-file-size">
+                                          {formatFileSize(message.fileSize)}
+                                        </span>
+                                      </div>
+                                    </a>
+                                  </div>
                                 )}
+
                                 {message.text && (
-                                  <p className="nurse-message-text">
+                                  <p className="nurse-message-text nurse-caption">
                                     {message.text}
                                   </p>
                                 )}
@@ -582,6 +636,7 @@ const Messages = () => {
                             {message.timestamp}
                           </span>
                         </div>
+
                         {message.isSent && (
                           <div className="nurse-message-avatar">
                             {message.avatar ? (
@@ -602,7 +657,14 @@ const Messages = () => {
                 {typingUsers.length > 0 && (
                   <div className="nurse-message nurse-message-received nurse-typing-bubble">
                     <div className="nurse-message-avatar">
-                      <FaUser className="nurse-avatar-icon-small" />
+                      {activeConversation.avatar ? (
+                        <img
+                          src={activeConversation.avatar}
+                          alt={activeConversation.name}
+                        />
+                      ) : (
+                        <FaUser className="nurse-avatar-icon-small" />
+                      )}
                     </div>
                     <div className="nurse-message-bubble-wrapper">
                       <div className="nurse-message-content nurse-typing-content">
@@ -774,6 +836,7 @@ const Messages = () => {
         <VideoCall
           activeUser={activeConversation}
           onClose={handleCloseVideoCall}
+          onCallEnd={handleCallEnd}
           isVideoCall={isVideoCall}
         />
       )}

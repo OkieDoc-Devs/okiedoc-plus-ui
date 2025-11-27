@@ -11,7 +11,6 @@
 export function transformProfileFromAPI(apiProfile) {
   console.log("Transforming API profile data:", apiProfile);
 
-  // API now returns camelCase, but also check snake_case and PascalCase for compatibility
   let firstName =
     apiProfile.firstName ||
     apiProfile.first_name ||
@@ -31,7 +30,6 @@ export function transformProfileFromAPI(apiProfile) {
     if (currentUser) {
       const userData = JSON.parse(currentUser);
 
-      // Use currentUser data if API fields are empty
       if (!firstName && userData.firstName) {
         firstName = userData.firstName;
         console.log("Using currentUser firstName:", firstName);
@@ -46,7 +44,6 @@ export function transformProfileFromAPI(apiProfile) {
       }
     }
 
-    // Also check nurse.firstName/lastName in localStorage as last resort
     if (!firstName) {
       firstName = localStorage.getItem("nurse.firstName") || "";
     }
@@ -67,6 +64,11 @@ export function transformProfileFromAPI(apiProfile) {
     licenseNumber: licenseNumber,
     experience: apiProfile.experience || apiProfile.Experience || "",
     department: apiProfile.department || apiProfile.Department || "",
+    profileImage:
+      apiProfile.profileImage ||
+      apiProfile.profile_image ||
+      apiProfile.Profile_Image_Data_URL ||
+      null,
   };
 }
 

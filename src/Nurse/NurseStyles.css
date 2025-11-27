@@ -1,3 +1,94 @@
+/* --- Image Styling --- */
+.nurse-image-container {
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  margin-bottom: 5px;
+}
+
+.nurse-message-image {
+  display: block;
+  max-width: 100%; /* Limits width to the bubble size */
+  max-height: 300px; /* Prevents extremely tall images */
+  width: auto;
+  height: auto;
+  object-fit: cover; /* Keeps aspect ratio nice */
+  border-radius: 8px;
+}
+
+/* --- File Attachment Styling --- */
+.nurse-file-attachment {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 5px;
+}
+
+.nurse-message-content-sent .nurse-file-attachment {
+  background-color: rgba(255, 255, 255, 0.2); /* Lighter bg for sent messages */
+}
+
+.nurse-file-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  gap: 10px;
+}
+
+.nurse-file-icon {
+  font-size: 24px;
+  opacity: 0.7;
+}
+
+.nurse-file-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.nurse-file-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Adds ... if filename is too long */
+  max-width: 200px;
+}
+
+.nurse-file-size {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.nurse-caption {
+  margin-top: 8px;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 600px) {
+  .nurse-message-image {
+    max-height: 180px;
+    border-radius: 6px;
+  }
+  .nurse-image-container {
+    border-radius: 6px;
+    margin-bottom: 3px;
+  }
+  .nurse-file-attachment {
+    padding: 7px;
+    border-radius: 6px;
+    margin-bottom: 3px;
+  }
+  .nurse-file-name {
+    font-size: 0.8rem;
+    max-width: 120px;
+  }
+  .nurse-caption {
+    font-size: 0.85rem;
+    margin-top: 5px;
+  }
+}
 html,
 body {
   font-family: "Inter", Arial, sans-serif;
@@ -196,15 +287,24 @@ body {
 }
 
 .account-icon {
-  width: 32px;
-  height: 32px;
-  margin-right: 8px;
-  filter: hue-rotate(45deg);
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  box-shadow: none;
+  filter: none;
+  display: block;
 }
 
 .account-name {
-  font-weight: 500;
   color: #0b5388;
+  font-weight: bold;
+  padding-left: 12px;
+  font-size: 1rem;
+  vertical-align: middle;
+  display: inline-block;
 }
 
 .account-dropdown {
@@ -1236,6 +1336,7 @@ body {
 .modal-content,
 .create-appointment-modal,
 .ticket-modal,
+.ticket-detail-modal,
 .invoice-modal {
   background-color: white;
   border-radius: 8px;
@@ -1244,6 +1345,12 @@ body {
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.ticket-detail-modal {
+  max-width: 900px;
+  width: 90%;
 }
 
 .modal-header {
@@ -1252,6 +1359,9 @@ body {
   align-items: center;
   padding: 20px;
   border-bottom: 1px solid #eee;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .modal-header h3 {
@@ -1365,12 +1475,10 @@ body {
     hue-rotate(181deg) brightness(92%) contrast(95%);
   cursor: pointer;
 }
-
 .create-appointment-form input[type="date"]::-moz-calendar-picker-indicator,
 .create-appointment-form input[type="time"]::-moz-calendar-picker-indicator {
   opacity: 1 !important;
 }
-
 .create-appointment-form input:focus,
 .create-appointment-form select:focus,
 .create-appointment-form textarea:focus {
@@ -1378,7 +1486,6 @@ body {
   border-color: #4aa7ed;
   box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.18);
 }
-
 .create-appointment-form .modal-actions {
   position: sticky;
   bottom: 0;

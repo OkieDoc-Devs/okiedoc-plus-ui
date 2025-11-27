@@ -136,12 +136,13 @@ export function createInitialTickets() {
  */
 export function filterTicketsByStatus(tickets, status, nurseId = null) {
   if (status === "Pending") {
-    return tickets.filter((t) => t.status === "Pending");
+    return tickets.filter((t) => t.status === "Pending" && !t.claimedBy);
   }
   if (status === "Processing" && nurseId) {
-    // Only show tickets claimed by THIS specific nurse
     return tickets.filter(
-      (t) => t.status === "Processing" && t.claimedBy === nurseId
+      (t) =>
+        (t.status === "Processing" && t.claimedBy === nurseId) ||
+        (t.claimedBy === nurseId && t.status === "Pending")
     );
   }
   if (status === "Confirmed" && nurseId) {

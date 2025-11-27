@@ -27,6 +27,7 @@ import {
   createTicket,
   updateTicket,
   fetchNotificationsFromAPI,
+  fetchDoctorsFromAPI,
   logoutFromAPI,
 } from "./services/apiService.js";
 
@@ -142,6 +143,7 @@ export default function ManageAppointment() {
     patientName: "",
     email: "",
     mobile: "",
+    patientBirthdate: "",
     chiefComplaint: "",
     symptoms: "",
     otherSymptoms: "",
@@ -166,6 +168,9 @@ export default function ManageAppointment() {
   const [rescheduleTime, setRescheduleTime] = useState("");
   const [createTicketTab, setCreateTicketTab] = useState("medical");
   const [emailError, setEmailError] = useState("");
+  const [doctors, setDoctors] = useState([]);
+  const [showTicketDetailModal, setShowTicketDetailModal] = useState(false);
+  const [ticketDetailTab, setTicketDetailTab] = useState("assessment");
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -184,6 +189,21 @@ export default function ManageAppointment() {
     } catch {
       return dateString;
     }
+  };
+
+  const calculateAge = (birthdate) => {
+    if (!birthdate) return null;
+    const today = new Date();
+    const birth = new Date(birthdate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birth.getDate())
+    ) {
+      age--;
+    }
+    return age;
   };
 
   const [textPills, setTextPills] = useState({
@@ -317,7 +337,71 @@ export default function ManageAppointment() {
   };
 
   const nurseName = getNurseFirstName();
-  const nurseId = getNurseId();
+  const [nurseId, setNurseId] = useState(null);
+
+  // Fetch nurse profile to get the correct nurse ID (from nurses table, not users table)
+  useEffect(() => {
+    const loadNurseProfile = async () => {
+      if (!USE_API) return;
+
+      try {
+        const response = await fetch(
+          `${
+            import.meta.env.MODE === "production"
+              ? "https://your-production-url.com"
+              : "http://localhost:1337"
+          }/api/nurse/profile`,
+          {
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data && data.data.id) {
+            // Store the nurse's Id (from nurses table) in localStorage
+            localStorage.setItem("nurse.id", String(data.data.id));
+            setNurseId(data.data.id);
+            console.log(
+              "ManageAppointments: Loaded nurse ID from profile:",
+              data.data.id
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error loading nurse profile:", error);
+        // Fallback to getNurseId() if API fails
+        const fallbackId = getNurseId();
+        if (fallbackId !== null) {
+          setNurseId(fallbackId);
+        }
+      }
+    };
+
+    loadNurseProfile();
+  }, []);
+
+  // Fetch doctors on mount
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        const doctorsData = await fetchDoctorsFromAPI();
+        setDoctors(doctorsData || []);
+      } catch (error) {
+        console.error("Error loading doctors:", error);
+        // Fallback to default doctors
+        setDoctors([
+          { id: 1, name: "Dr. Smith", specialization: "General Medicine" },
+          { id: 2, name: "Dr. Lee", specialization: "Cardiology" },
+          { id: 3, name: "Dr. Patel", specialization: "Neurology" },
+        ]);
+      }
+    };
+    loadDoctors();
+  }, []);
 
   useEffect(() => {}, [online]);
 
@@ -550,6 +634,7 @@ export default function ManageAppointment() {
       patientName: "",
       email: "",
       mobile: "",
+      patientBirthdate: "",
       chiefComplaint: "",
       symptoms: "",
       otherSymptoms: "",
@@ -778,48 +863,118 @@ export default function ManageAppointment() {
           <div className="processing-tickets">
             <h2>Processing Tickets ({processingTickets.length})</h2>
             {processingTickets.map((ticket) => (
-              <div key={ticket.id} className="ticket-card processing">
-                <div className="ticket-header">
-                  <h3>{ticket.patientName}</h3>
-                  <span
-                    className="status-badge"
-                    style={{ backgroundColor: "#2196f3" }}
-                  >
-                    {ticket.status}
-                  </span>
+              <div
+                key={ticket.id}
+                className="ticket-card-new"
+                onClick={() => {
+                  setSelectedTicket(ticket);
+                  setShowTicketDetailModal(true);
+                  setTicketDetailTab("assessment");
+                }}
+                style={{ cursor: "pointer", borderLeftColor: "#2196f3" }}
+              >
+                <div className="ticket-card-header">
+                  <span className="ticket-number">TICKET #{ticket.id}</span>
                 </div>
-                <div
-                  className="ticket-actions"
-                  style={{ display: "flex", gap: 8 }}
-                >
-                  {ticket.claimedBy ? (
-                    <button
-                      className="action-btn edit"
-                      onClick={() => openInvoice(ticket)}
+
+                <div className="ticket-card-body">
+                  <div className="ticket-left-section">
+                    <div className="ticket-patient-details">
+                      <h4 className="ticket-section-title">PATIENT DETAILS</h4>
+                      <div className="ticket-details-grid">
+                        <div className="ticket-details-col">
+                          <p>
+                            <strong>Name:</strong> {ticket.patientName}
+                          </p>
+                          <p>
+                            <strong>Age:</strong>{" "}
+                            {ticket.age ||
+                              calculateAge(ticket.patientBirthdate) ||
+                              "N/A"}
+                          </p>
+                          <p>
+                            <strong>Birthdate:</strong>{" "}
+                            {formatDate(ticket.patientBirthdate) || "N/A"}
+                          </p>
+                        </div>
+                        <div className="ticket-details-col">
+                          <p>
+                            <strong>Email:</strong> {ticket.email}
+                          </p>
+                          <p>
+                            <strong>Mobile:</strong> {ticket.mobile}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="ticket-assignments">
+                      <p>
+                        <strong>Assigned Nurse:</strong>{" "}
+                        {ticket.assignedNurse || nurseName}
+                      </p>
+                      <p>
+                        <strong>Assigned Specialist:</strong>{" "}
+                        {ticket.assignedSpecialist ||
+                          ticket.preferredSpecialist ||
+                          "Not specified"}
+                      </p>
+                      <p>
+                        <strong>Consultation Type:</strong>{" "}
+                        {ticket.consultationType || ticket.chiefComplaint}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="ticket-right-section">
+                    <div className="ticket-meta">
+                      <p>
+                        <strong>Date Created:</strong>{" "}
+                        {formatDate(ticket.createdAt) || ticket.dateCreated}
+                      </p>
+                      <p>
+                        <strong>Status:</strong>{" "}
+                        <span
+                          className="ticket-status-text processing"
+                          style={{ color: "#2196f3" }}
+                        >
+                          {ticket.status}
+                        </span>
+                      </p>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      Generate Invoice
-                    </button>
-                  ) : (
-                    <button
-                      className="action-btn view"
-                      onClick={() => setSelectedTicket(ticket)}
-                    >
-                      Manage
-                    </button>
-                  )}
-                  <button
-                    className="action-btn"
-                    onClick={() => simulatePayment(ticket.id)}
-                  >
-                    Simulate Payment
-                  </button>
-                  <button
-                    className="action-btn"
-                    style={{ marginLeft: "auto" }}
-                    onClick={() => setShowConsultationHistory(true)}
-                  >
-                    View Consultation History
-                  </button>
+                      {ticket.claimedBy ? (
+                        <button
+                          className="ticket-history-btn"
+                          onClick={() => openInvoice(ticket)}
+                        >
+                          Generate Invoice
+                        </button>
+                      ) : (
+                        <button
+                          className="ticket-history-btn"
+                          onClick={() => setSelectedTicket(ticket)}
+                        >
+                          Manage
+                        </button>
+                      )}
+                      <button
+                        className="ticket-history-btn"
+                        style={{ background: "#4caf50" }}
+                        onClick={() => simulatePayment(ticket.id)}
+                      >
+                        Simulate Payment
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -828,60 +983,124 @@ export default function ManageAppointment() {
           <div className="tickets-list">
             <h2>Pending Tickets ({pendingTickets.length})</h2>
             {pendingTickets.map((ticket) => (
-              <div key={ticket.id} className="ticket-card">
-                <div className="ticket-header">
-                  <h3>{ticket.patientName || "Unnamed"}</h3>
-                  <span className="ticket-time">
-                    {new Date(ticket.createdAt).toLocaleString()}
-                  </span>
+              <div
+                key={ticket.id}
+                className="ticket-card-new"
+                onClick={() => {
+                  setSelectedTicket(ticket);
+                  setShowTicketDetailModal(true);
+                  setTicketDetailTab("assessment");
+                }}
+                style={{ cursor: "pointer", borderLeftColor: "#ff9800" }}
+              >
+                <div className="ticket-card-header">
+                  <span className="ticket-number">TICKET #{ticket.id}</span>
                 </div>
-                <div className="ticket-details">
-                  <p>
-                    <strong>Chief Complaint:</strong> {ticket.chiefComplaint}
-                  </p>
-                  <p>
-                    <strong>Preferred:</strong>{" "}
-                    {formatDate(ticket.preferredDate)} at {ticket.preferredTime}
-                  </p>
-                  <p>
-                    <strong>Specialist:</strong> {ticket.preferredSpecialist}
-                  </p>
-                  <p>
-                    <strong>Channel:</strong> {ticket.consultationChannel}
-                  </p>
-                  <p>
-                    <strong>HMO:</strong>{" "}
-                    {ticket.hasHMO ? "Yes" : ticket.hmo ? "Yes" : "No"}
-                  </p>
-                </div>
-                <div
-                  className="ticket-actions"
-                  style={{ display: "flex", gap: 8 }}
-                >
-                  <button
-                    className="action-btn view"
-                    onClick={() => setSelectedTicket(ticket)}
-                  >
-                    View Details
-                  </button>
-                  <button
-                    className="action-btn edit"
-                    onClick={() => claimTicket(ticket.id)}
-                    disabled={ticket.claimedBy === nurseId}
-                  >
-                    {ticket.claimedBy === nurseId
-                      ? "Already Claimed"
-                      : ticket.claimedBy
-                      ? "Re-Claim Ticket"
-                      : "Claim Ticket"}
-                  </button>
-                  <button
-                    className="action-btn"
-                    style={{ marginLeft: "auto" }}
-                    onClick={() => setShowConsultationHistory(true)}
-                  >
-                    View Consultation History
-                  </button>
+
+                <div className="ticket-card-body">
+                  <div className="ticket-left-section">
+                    <div className="ticket-patient-details">
+                      <h4 className="ticket-section-title">PATIENT DETAILS</h4>
+                      <div className="ticket-details-grid">
+                        <div className="ticket-details-col">
+                          <p>
+                            <strong>Name:</strong>{" "}
+                            {ticket.patientName || "Unnamed"}
+                          </p>
+                          <p>
+                            <strong>Age:</strong>{" "}
+                            {ticket.age ||
+                              calculateAge(ticket.patientBirthdate) ||
+                              "N/A"}
+                          </p>
+                          <p>
+                            <strong>Birthdate:</strong>{" "}
+                            {formatDate(ticket.patientBirthdate) || "N/A"}
+                          </p>
+                        </div>
+                        <div className="ticket-details-col">
+                          <p>
+                            <strong>Email:</strong> {ticket.email}
+                          </p>
+                          <p>
+                            <strong>Mobile:</strong> {ticket.mobile}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="ticket-assignments">
+                      <p>
+                        <strong>Assigned Nurse:</strong>{" "}
+                        {ticket.assignedNurse || nurseName}
+                      </p>
+                      <p>
+                        <strong>Assigned Specialist:</strong>{" "}
+                        {ticket.assignedSpecialist ||
+                          ticket.preferredSpecialist ||
+                          "Not specified"}
+                      </p>
+                      <p>
+                        <strong>Chief Complaint:</strong>{" "}
+                        {ticket.chiefComplaint}
+                      </p>
+                      <p>
+                        <strong>Channel:</strong> {ticket.consultationChannel}
+                      </p>
+                      <p>
+                        <strong>HMO:</strong>{" "}
+                        {ticket.hasHMO ? "Yes" : ticket.hmo ? "Yes" : "No"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="ticket-right-section">
+                    <div className="ticket-meta">
+                      <p>
+                        <strong>Date Created:</strong>{" "}
+                        {new Date(ticket.createdAt).toLocaleString()}
+                      </p>
+                      <p>
+                        <strong>Preferred:</strong>{" "}
+                        {formatDate(ticket.preferredDate)} at{" "}
+                        {ticket.preferredTime}
+                      </p>
+                      <p>
+                        <strong>Status:</strong>{" "}
+                        <span className="ticket-status-text pending">
+                          {ticket.status}
+                        </span>
+                      </p>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        className="ticket-history-btn"
+                        onClick={() => setSelectedTicket(ticket)}
+                      >
+                        Manage
+                      </button>
+                      <button
+                        className="ticket-history-btn"
+                        style={{ background: "#4caf50" }}
+                        onClick={() => claimTicket(ticket.id)}
+                        disabled={ticket.claimedBy === nurseId}
+                      >
+                        {ticket.claimedBy === nurseId
+                          ? "Already Claimed"
+                          : ticket.claimedBy
+                          ? "Re-Claim Ticket"
+                          : "Claim Ticket"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -908,7 +1127,7 @@ export default function ManageAppointment() {
         </div>
       </div>
 
-      {selectedTicket && (
+      {selectedTicket && !showTicketDetailModal && (
         <div className="modal-overlay">
           <div className="ticket-modal">
             <div className="modal-header">
@@ -1168,9 +1387,11 @@ export default function ManageAppointment() {
                   onChange={(e) => setAssignedSpecialist(e.target.value)}
                 >
                   <option value="">Select Specialist</option>
-                  <option value="Dr. Smith">Dr. Smith</option>
-                  <option value="Dr. Lee">Dr. Lee</option>
-                  <option value="Dr. Patel">Dr. Patel</option>
+                  {doctors.map((doctor) => (
+                    <option key={doctor.id} value={doctor.name}>
+                      {doctor.name} - {doctor.specialization}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div
@@ -1574,49 +1795,87 @@ export default function ManageAppointment() {
                         />
                       </div>
                     </div>
-                    <div className="form-group">
-                      <label htmlFor="email">Email Address *</label>
-                      <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={newTicketData.email}
-                        onChange={(e) => {
-                          const email = e.target.value;
-                          setNewTicketData({
-                            ...newTicketData,
-                            email: email,
-                          });
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="patientBirthdate">
+                          Date of Birth *
+                        </label>
+                        <input
+                          id="patientBirthdate"
+                          name="patientBirthdate"
+                          type="date"
+                          value={newTicketData.patientBirthdate}
+                          max={new Date().toISOString().split("T")[0]}
+                          onChange={(e) =>
+                            setNewTicketData({
+                              ...newTicketData,
+                              patientBirthdate: e.target.value,
+                            })
+                          }
+                          required
+                        />
+                        {newTicketData.patientBirthdate && (
+                          <span
+                            style={{
+                              fontSize: "0.875rem",
+                              color: "#666",
+                              marginTop: 4,
+                              display: "block",
+                            }}
+                          >
+                            Age: {calculateAge(newTicketData.patientBirthdate)}{" "}
+                            years old
+                          </span>
+                        )}
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="email">Email Address *</label>
+                        <input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={newTicketData.email}
+                          onChange={(e) => {
+                            const email = e.target.value;
+                            setNewTicketData({
+                              ...newTicketData,
+                              email: email,
+                            });
 
-                          if (email && !validateEmail(email)) {
-                            setEmailError("Please enter a valid email address");
-                          } else {
-                            setEmailError("");
-                          }
-                        }}
-                        onBlur={(e) => {
-                          const email = e.target.value;
-                          if (email && !validateEmail(email)) {
-                            setEmailError("Please enter a valid email address");
-                          }
-                        }}
-                        required
-                        style={{
-                          borderColor: emailError ? "red" : "",
-                        }}
-                      />
-                      {emailError && (
-                        <span
-                          style={{
-                            color: "red",
-                            fontSize: "0.875rem",
-                            marginTop: "4px",
-                            display: "block",
+                            if (email && !validateEmail(email)) {
+                              setEmailError(
+                                "Please enter a valid email address"
+                              );
+                            } else {
+                              setEmailError("");
+                            }
                           }}
-                        >
-                          {emailError}
-                        </span>
-                      )}
+                          onBlur={(e) => {
+                            const email = e.target.value;
+                            if (email && !validateEmail(email)) {
+                              setEmailError(
+                                "Please enter a valid email address"
+                              );
+                            }
+                          }}
+                          required
+                          style={{
+                            borderColor: emailError ? "red" : "",
+                          }}
+                        />
+                        {emailError && (
+                          <span
+                            style={{
+                              color: "red",
+                              fontSize: "0.875rem",
+                              marginTop: "4px",
+                              display: "block",
+                            }}
+                          >
+                            {emailError}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1968,9 +2227,11 @@ export default function ManageAppointment() {
                           required
                         >
                           <option value="">Select Doctor</option>
-                          <option value="Dr. Smith">Dr. Smith</option>
-                          <option value="Dr. Lee">Dr. Lee</option>
-                          <option value="Dr. Patel">Dr. Patel</option>
+                          {doctors.map((doctor) => (
+                            <option key={doctor.id} value={doctor.name}>
+                              {doctor.name} - {doctor.specialization}
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div className="form-group">
@@ -2248,6 +2509,290 @@ export default function ManageAppointment() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket Detail Modal with 4 Tabs */}
+      {showTicketDetailModal && selectedTicket && (
+        <div className="modal-overlay">
+          <div
+            className="ticket-detail-modal"
+            style={{ maxWidth: 900, width: "90%" }}
+          >
+            <div
+              className="modal-header"
+              style={{ borderBottom: "1px solid #e0e0e0", paddingBottom: 16 }}
+            >
+              <div>
+                <h2 style={{ margin: 0, color: "#0b5388" }}>
+                  TICKET #{selectedTicket.id}
+                </h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowTicketDetailModal(false);
+                  setSelectedTicket(null);
+                }}
+                className="close-btn"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Patient Info Summary */}
+            <div
+              style={{
+                padding: "16px 24px",
+                background: "#f8f9fa",
+                borderBottom: "1px solid #e0e0e0",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 16,
+                }}
+              >
+                <div>
+                  <p
+                    style={{
+                      margin: "0 0 4px",
+                      fontSize: 12,
+                      color: "#666",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Patient Details
+                  </p>
+                  <p style={{ margin: "0 0 4px" }}>
+                    <strong>Name:</strong> {selectedTicket.patientName}
+                  </p>
+                  <p style={{ margin: "0 0 4px" }}>
+                    <strong>Email:</strong> {selectedTicket.email}
+                  </p>
+                  <p style={{ margin: "0 0 4px" }}>
+                    <strong>Age:</strong>{" "}
+                    {selectedTicket.age ||
+                      calculateAge(selectedTicket.patientBirthdate) ||
+                      "N/A"}
+                  </p>
+                  <p style={{ margin: "0 0 4px" }}>
+                    <strong>Mobile:</strong> {selectedTicket.mobile}
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    <strong>Birthdate:</strong>{" "}
+                    {formatDate(selectedTicket.patientBirthdate) || "N/A"}
+                  </p>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <p style={{ margin: "0 0 4px", color: "#0b5388" }}>
+                    <strong>Date Created:</strong>{" "}
+                    {formatDate(selectedTicket.createdAt)}
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    <strong>Status:</strong>{" "}
+                    <span
+                      style={{
+                        color:
+                          selectedTicket.status === "Confirmed"
+                            ? "#4caf50"
+                            : selectedTicket.status === "Processing"
+                            ? "#2196f3"
+                            : "#ff9800",
+                      }}
+                    >
+                      {selectedTicket.status}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <div
+                style={{
+                  marginTop: 16,
+                  paddingTop: 16,
+                  borderTop: "1px solid #e0e0e0",
+                }}
+              >
+                <p style={{ margin: "0 0 4px" }}>
+                  <strong>Assigned Nurse:</strong>{" "}
+                  {selectedTicket.assignedNurse || nurseName || "N/A"}
+                </p>
+                <p style={{ margin: "0 0 4px" }}>
+                  <strong>Assigned Specialist:</strong>{" "}
+                  {selectedTicket.assignedSpecialist || "Not specified"}
+                </p>
+                <p style={{ margin: 0 }}>
+                  <strong>Consultation Type:</strong>{" "}
+                  {selectedTicket.consultationChannel ||
+                    selectedTicket.chiefComplaint}
+                </p>
+              </div>
+              <div style={{ marginTop: 16, textAlign: "right" }}>
+                <button
+                  className="action-btn"
+                  style={{
+                    background: "#0b5388",
+                    color: "#fff",
+                    padding: "8px 20px",
+                    borderRadius: 20,
+                  }}
+                  onClick={() => alert("Feature in progress")}
+                >
+                  Consultation Histories
+                </button>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div
+              style={{
+                display: "flex",
+                borderBottom: "2px solid #e0e0e0",
+                background: "#fff",
+              }}
+            >
+              {[
+                "assessment",
+                "medicalHistory",
+                "laboratoryRequest",
+                "prescription",
+              ].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setTicketDetailTab(tab)}
+                  style={{
+                    flex: 1,
+                    padding: "12px 16px",
+                    border: "none",
+                    background:
+                      ticketDetailTab === tab ? "#e3f2fd" : "transparent",
+                    color: ticketDetailTab === tab ? "#0b5388" : "#666",
+                    fontWeight: ticketDetailTab === tab ? 600 : 400,
+                    cursor: "pointer",
+                    borderBottom:
+                      ticketDetailTab === tab
+                        ? "2px solid #0b5388"
+                        : "2px solid transparent",
+                    marginBottom: "-2px",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {tab === "assessment" && "Assessment"}
+                  {tab === "medicalHistory" && "Medical History"}
+                  {tab === "laboratoryRequest" && "Laboratory Request"}
+                  {tab === "prescription" && "Prescription"}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content */}
+            <div
+              className="modal-body"
+              style={{
+                padding: 24,
+                maxHeight: 400,
+                overflowY: "auto",
+                background: "#e8f4fc",
+              }}
+            >
+              {ticketDetailTab === "assessment" && (
+                <div>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    "Sed ut perspiciatis unde omnis iste natus error sit
+                    voluptatem accusantium doloremque laudantium, totam rem
+                    aperiam, eaque ipsa quae ab illo inventore veritatis et
+                    quasi architecto beatae vitae dicta sunt explicabo. Nemo
+                    enim ipsam
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    voluptatem quia voluptas sit aspernatur aut odit aut fugit,
+                    sed quia consequuntur magni dolores eos qui ratione
+                    voluptatem sequi nesciunt. Neque porro quisquam est, qui
+                    dolorem ipsum quia dolor sit amet, consectetur, adipisci
+                    velit, sed quia non numquam eius modi tempora incidunt ut
+                    labore et dolore magnam aliquam quaerat voluptatem.
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Ut enim ad minima veniam, quis nostrum exercitationem ullam
+                    corporis suscipit laboriosam, nisi ut aliquid ex ea commodi
+                    consequatur? Quis autem vel eum iure reprehenderit qui in ea
+                    voluptate velit esse quam nihil molestiae consequatur, vel
+                    illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+                  </p>
+                </div>
+              )}
+
+              {ticketDetailTab === "medicalHistory" && (
+                <div>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+                    sed do eiusmod tempor incididunt ut labore et dolore magna
+                    aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Duis aute irure dolor in reprehenderit in voluptate velit
+                    esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
+                    occaecat cupidatat non proident, sunt in culpa qui officia
+                    deserunt mollit anim id est laborum."
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Sed ut perspiciatis unde omnis iste natus error sit
+                    voluptatem accusantium doloremque laudantium, totam rem
+                    aperiam, eaque ipsa quae ab illo inventore veritatis et
+                    quasi architecto beatae vitae dicta sunt explicabo.
+                  </p>
+                </div>
+              )}
+
+              {ticketDetailTab === "laboratoryRequest" && (
+                <div>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    "At vero eos et accusamus et iusto odio dignissimos ducimus
+                    qui blanditiis praesentium voluptatum deleniti atque
+                    corrupti quos dolores et quas molestias excepturi sint
+                    occaecati cupiditate non provident.
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Similique sunt in culpa qui officia deserunt mollitia animi,
+                    id est laborum et dolorum fuga. Et harum quidem rerum
+                    facilis est et expedita distinctio."
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Nam libero tempore, cum soluta nobis est eligendi optio
+                    cumque nihil impedit quo minus id quod maxime placeat facere
+                    possimus, omnis voluptas assumenda est, omnis dolor
+                    repellendus.
+                  </p>
+                </div>
+              )}
+
+              {ticketDetailTab === "prescription" && (
+                <div>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    "Temporibus autem quibusdam et aut officiis debitis aut
+                    rerum necessitatibus saepe eveniet ut et voluptates
+                    repudiandae sint et molestiae non recusandae. Itaque earum
+                    rerum hic tenetur a sapiente delectus.
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Ut aut reiciendis voluptatibus maiores alias consequatur aut
+                    perferendis doloribus asperiores repellat. Nam libero
+                    tempore, cum soluta nobis est eligendi optio cumque nihil
+                    impedit quo minus id quod maxime placeat facere possimus."
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Omnis voluptas assumenda est, omnis dolor repellendus.
+                    Temporibus autem quibusdam et aut officiis debitis aut rerum
+                    necessitatibus saepe eveniet ut et voluptates repudiandae
+                    sint et molestiae non recusandae.
+                  </p>
                 </div>
               )}
             </div>

@@ -20,12 +20,15 @@
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-      integrity="sha512-dymI+4Z1Z8bGQn4j8mQmBz0dKXv1PpJkz7y8o5o0s8p4tSgqkI8vXQJtYb5k1s2G3k3xP0Q4yq1b0rj2Q5hYkg=="
-      crossorigin="anonymous"
       referrerpolicy="no-referrer"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OkieDoc+</title>
+    <script>
+      window.io = window.io || {};
+      window.io.sails = window.io.sails || {};
+      window.io.sails.autoConnect = false;
+    </script>
     <script src="http://localhost:1337/socket/sails.io.js"></script>
     <script>
       if (typeof io !== "undefined" && io.sails) {
@@ -33,7 +36,9 @@
         io.sails.transports = ["websocket", "polling"];
         io.sails.useCORSRouteToGetCookie = true;
         io.sails.environment = "development";
-        console.log("Sails.io.js loaded and configured for:", io.sails.url);
+        console.log("Sails.io.js configured for:", io.sails.url);
+        io.socket = io.sails.connect();
+        console.log("Sails.io.js socket connecting to:", io.sails.url);
       } else {
         console.warn(
           "Sails.io.js failed to load - check if backend is running and serving /socket/sails.io.js"

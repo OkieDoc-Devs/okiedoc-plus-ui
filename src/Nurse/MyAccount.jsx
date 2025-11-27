@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
+import ReactCrop from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 import "../App.css";
 import "./NurseStyles.css";
 import {
@@ -9,6 +11,8 @@ import {
 import {
   fetchNurseProfile,
   updateNurseProfile,
+  uploadNurseAvatar,
+  deleteNurseAvatar,
 } from "./services/apiService.js";
 import {
   transformProfileFromAPI,
@@ -159,6 +163,18 @@ export default function MyAccount() {
   };
 
   const [previewImage, setPreviewImage] = useState("/account.svg");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadError, setUploadError] = useState("");
+  const [uploadLoading, setUploadLoading] = useState(false);
+
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState(null);
+  const [crop, setCrop] = useState(undefined);
+  const [completedCrop, setCompletedCrop] = useState(null);
+  const imgRef = useRef(null);
+
+  const MAX_FILE_SIZE = 2 * 1024 * 1024;
+  const CROP_SIZE = 500;
 
   useEffect(() => {
     const saved = getNurseProfileImage();
@@ -167,25 +183,171 @@ export default function MyAccount() {
     }
   }, []);
 
+  const getCroppedImage = useCallback(() => {
+    if (!imgRef.current || !completedCrop) return null;
+
+    const image = imgRef.current;
+    const canvas = document.createElement("canvas");
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+
+    canvas.width = CROP_SIZE;
+    canvas.height = CROP_SIZE;
+    const ctx = canvas.getContext("2d");
+
+    ctx.drawImage(
+      image,
+      completedCrop.x * scaleX,
+      completedCrop.y * scaleY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0,
+      0,
+      CROP_SIZE,
+      CROP_SIZE
+    );
+
+    return canvas.toDataURL("image/jpeg", 0.9);
+  }, [completedCrop]);
+
+  const dataURLtoFile = (dataUrl, filename) => {
+    const arr = dataUrl.split(",");
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
+    setUploadError("");
+
     if (file) {
+      if (file.size > MAX_FILE_SIZE) {
+        setUploadError(
+          "File size exceeds 2MB limit. Please choose a smaller image."
+        );
+        e.target.value = "";
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        setUploadError("Please select a valid image file.");
+        e.target.value = "";
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewImage(reader.result);
+        setImageToCrop(reader.result);
+        setShowCropModal(true);
+        setCrop(undefined);
+        setCompletedCrop(null);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleImageSave = () => {
-    if (previewImage) {
-      try {
+  const handleCropComplete = () => {
+    const croppedImageData = getCroppedImage();
+    if (croppedImageData) {
+      setPreviewImage(croppedImageData);
+      const croppedFile = dataURLtoFile(croppedImageData, "avatar.jpg");
+      setSelectedFile(croppedFile);
+    }
+    setShowCropModal(false);
+    setImageToCrop(null);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setImageToCrop(null);
+    setCompletedCrop(null);
+    const fileInput = document.getElementById("nurseProfileImage");
+    if (fileInput) fileInput.value = "";
+  };
+
+  const onImageLoad = useCallback((e) => {
+    const { width, height } = e.currentTarget;
+    const cropSize = Math.min(width, height) * 0.9;
+    const x = (width - cropSize) / 2;
+    const y = (height - cropSize) / 2;
+
+    const newCrop = {
+      unit: "px",
+      width: cropSize,
+      height: cropSize,
+      x,
+      y,
+    };
+
+    setCrop(newCrop);
+    setCompletedCrop(newCrop);
+  }, []);
+
+  const handleImageSave = async () => {
+    if (!selectedFile) {
+      alert("Please select an image first.");
+      return;
+    }
+
+    setUploadLoading(true);
+    setUploadError("");
+
+    try {
+      const response = await uploadNurseAvatar(selectedFile);
+
+      if (response && response.avatarUrl) {
+        saveNurseProfileImage(response.avatarUrl);
+        setPreviewImage(response.avatarUrl);
+      } else {
         saveNurseProfileImage(previewImage);
-        alert("Profile picture updated.");
-      } catch (e) {
-        alert(e.message || "Unable to save profile picture.");
       }
+
+      setSelectedFile(null);
+      alert("Profile picture updated successfully!");
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      setUploadError(
+        error.message || "Failed to upload avatar. Please try again."
+      );
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  const handleImageDelete = async () => {
+    if (previewImage === "/account.svg") {
+      alert("No profile picture to delete.");
+      return;
+    }
+
+    if (
+      !window.confirm("Are you sure you want to delete your profile picture?")
+    ) {
+      return;
+    }
+
+    setUploadLoading(true);
+    setUploadError("");
+
+    try {
+      await deleteNurseAvatar();
+      saveNurseProfileImage("/account.svg");
+      setPreviewImage("/account.svg");
+      setSelectedFile(null);
+      alert("Profile picture deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting avatar:", error);
+      setUploadError(
+        error.message || "Failed to delete avatar. Please try again."
+      );
+    } finally {
+      setUploadLoading(false);
     }
   };
 
@@ -308,6 +470,10 @@ export default function MyAccount() {
   const renderPictureTab = () => (
     <div className="image-section">
       <h3>Profile Picture</h3>
+      <p style={{ color: "#666", marginBottom: "16px", fontSize: "14px" }}>
+        Upload an image (max 2MB). Supported formats: JPG, PNG, GIF. Image will
+        be cropped to 500x500.
+      </p>
       <div
         className="image-upload-container"
         style={{
@@ -319,6 +485,24 @@ export default function MyAccount() {
         <div className="current-image" style={{ textAlign: "center" }}>
           <img src={previewImage} alt="Profile" />
         </div>
+
+        {uploadError && (
+          <div
+            className="error-message"
+            style={{
+              color: "#dc3545",
+              marginBottom: "12px",
+              textAlign: "center",
+              padding: "8px",
+              backgroundColor: "#f8d7da",
+              borderRadius: "4px",
+              width: "100%",
+              maxWidth: "300px",
+            }}
+          >
+            {uploadError}
+          </div>
+        )}
 
         <div
           className="upload-controls"
@@ -336,16 +520,128 @@ export default function MyAccount() {
             onChange={handleImageUpload}
             className="file-input"
             style={{ alignSelf: "center" }}
+            disabled={uploadLoading}
           />
-          <button
-            onClick={handleImageSave}
-            className="save-btn image-save-btn"
-            disabled={!previewImage}
-          >
-            Update Image
-          </button>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              onClick={handleImageSave}
+              className="save-btn image-save-btn"
+              disabled={!selectedFile || uploadLoading}
+            >
+              {uploadLoading ? "Uploading..." : "Upload Image"}
+            </button>
+            {previewImage !== "/account.svg" && (
+              <button
+                onClick={handleImageDelete}
+                className="cancel-btn"
+                disabled={uploadLoading}
+                style={{ backgroundColor: "#dc3545", color: "white" }}
+              >
+                {uploadLoading ? "Deleting..." : "Delete Image"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      {showCropModal && imageToCrop && (
+        <div
+          className="crop-modal-overlay"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            className="crop-modal"
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              padding: "24px",
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              overflow: "auto",
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+            }}
+          >
+            <h3
+              style={{
+                marginTop: 0,
+                marginBottom: "16px",
+                textAlign: "center",
+              }}
+            >
+              Crop Your Image
+            </h3>
+            <p
+              style={{
+                color: "#666",
+                fontSize: "14px",
+                textAlign: "center",
+                marginBottom: "16px",
+              }}
+            >
+              Drag to adjust the crop area. The image will be resized to 500x500
+              pixels.
+            </p>
+            <div
+              style={{
+                maxWidth: "500px",
+                maxHeight: "500px",
+                margin: "0 auto",
+              }}
+            >
+              <ReactCrop
+                crop={crop}
+                onChange={(c) => setCrop(c)}
+                onComplete={(c) => setCompletedCrop(c)}
+                aspect={1}
+                circularCrop={false}
+              >
+                <img
+                  ref={imgRef}
+                  src={imageToCrop}
+                  alt="Crop preview"
+                  onLoad={onImageLoad}
+                  style={{ maxWidth: "100%", maxHeight: "60vh" }}
+                />
+              </ReactCrop>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: "12px",
+                marginTop: "20px",
+              }}
+            >
+              <button
+                onClick={handleCropComplete}
+                className="save-btn"
+                disabled={!completedCrop}
+                style={{ padding: "10px 24px" }}
+              >
+                Apply Crop
+              </button>
+              <button
+                onClick={handleCropCancel}
+                className="cancel-btn"
+                style={{ padding: "10px 24px" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 

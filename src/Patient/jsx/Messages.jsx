@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaUserMd, FaUserNurse, FaComments, FaTimes, FaUpload, FaFileAlt, FaUser, FaCamera, FaInbox } from 'react-icons/fa';
+import { FaUserMd, FaUserNurse, FaComments, FaTimes, FaFileAlt, FaUser, FaCamera, FaInbox, FaPhone, FaVideo } from 'react-icons/fa';
 import apiService from '../services/apiService';
+import PatientVideoCall from './PatientVideoCall';
 
 const Messages = () => {
   const [activeChat, setActiveChat] = useState(null);
@@ -10,6 +11,8 @@ const Messages = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [patient_showVideoCall, setPatient_showVideoCall] = useState(false);
+  const [patient_isVideoCall, setPatient_isVideoCall] = useState(true);
   const chatMessagesRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -136,6 +139,38 @@ const Messages = () => {
     fileInputRef.current?.click();
   };
 
+  const patient_handleVoiceCall = () => {
+    setPatient_isVideoCall(false);
+    setPatient_showVideoCall(true);
+  };
+
+  const patient_handleVideoCallClick = () => {
+    setPatient_isVideoCall(true);
+    setPatient_showVideoCall(true);
+  };
+
+  const patient_handleCloseVideoCall = () => {
+    setPatient_showVideoCall(false);
+  };
+
+  const patient_handleCallEnd = async (callInfo) => {
+    if (activeChat && callInfo.duration > 0) {
+      const callType = callInfo.type === "video" ? "Video call" : "Voice call";
+      const callMessage = `${callType} ended - ${callInfo.formattedDuration}`;
+      try {
+        const message = {
+          id: Date.now(),
+          sender: "patient",
+          text: callMessage,
+          timestamp: new Date().toLocaleString(),
+        };
+        setChatMessages((prev) => [...prev, message]);
+      } catch (error) {
+        console.error("Error sending call message:", error);
+      }
+    }
+  };
+
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -251,14 +286,30 @@ const Messages = () => {
                     <p className="patient-chat-user-role">{activeChat.role}</p>
                   </div>
                 </div>
-                {/* Mobile close button */}
-                <button 
-                  className="patient-chat-close-btn-mobile"
-                  onClick={closeChat}
-                  aria-label="Close chat"
-                >
-                  <FaTimes />
-                </button>
+                <div className="patient-chat-actions">
+                  <button
+                    className="patient-call-btn"
+                    onClick={patient_handleVoiceCall}
+                    title="Voice Call"
+                  >
+                    <FaPhone />
+                  </button>
+                  <button
+                    className="patient-call-btn patient-video-btn"
+                    onClick={patient_handleVideoCallClick}
+                    title="Video Call"
+                  >
+                    <FaVideo />
+                  </button>
+                  {/* Mobile close button */}
+                  <button 
+                    className="patient-chat-close-btn-mobile"
+                    onClick={closeChat}
+                    aria-label="Close chat"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
               </div>
 
             <div className="patient-chat-messages" ref={chatMessagesRef}>
@@ -294,72 +345,47 @@ const Messages = () => {
               ))}
             </div>
 
-            <div className="patient-document-upload">
-              <div className="patient-upload-header">
-                <h4 className="patient-upload-title">Upload Documents</h4>
-                <p className="patient-upload-subtitle">
-                  Share files and images with specialists
-                </p>
-              </div>
-
-              <div className="patient-file-upload-area">
-                <input
-                  type="file"
-                  id="patient-file-upload"
-                  ref={fileInputRef}
-                  multiple
-                  accept="image/*,.pdf,.doc,.docx,.txt"
-                  onChange={handleFileUpload}
-                  style={{ display: "none" }}
-                />
-                <label
-                  htmlFor="patient-file-upload"
-                  className="patient-file-label"
-                >
-                  <FaUpload className="patient-upload-icon" />
-                  <span className="patient-upload-text">
-                    Choose files to upload
-                  </span>
-                  <span className="patient-upload-hint">
-                    Images, PDF, DOC, TXT up to 10MB
-                  </span>
-                </label>
-              </div>
-
-              {uploadedFiles.length > 0 && (
-                <div className="patient-uploaded-files">
-                  <h5 className="patient-files-title">Attached Files:</h5>
-                  {uploadedFiles.map((file) => (
-                    <div key={file.id} className="patient-file-item">
-                      {file.type.startsWith("image/") ? (
-                        <img
-                          src={file.url}
-                          alt={file.name}
-                          className="patient-file-preview"
-                        />
-                      ) : (
-                        <FaFileAlt className="patient-file-icon" />
-                      )}
-                      <div className="patient-file-info">
-                        <span className="patient-file-name">{file.name}</span>
-                        <span className="patient-file-size">
-                          {formatFileSize(file.size)}
-                        </span>
-                      </div>
-                      <button
-                        className="patient-file-remove"
-                        onClick={() => handleRemoveFile(file.id)}
-                        type="button"
-                      >
-                        <FaTimes />
-                      </button>
+            {uploadedFiles.length > 0 && (
+              <div className="patient-uploaded-files">
+                {uploadedFiles.map((file) => (
+                  <div key={file.id} className="patient-file-item">
+                    {file.type.startsWith("image/") ? (
+                      <img
+                        src={file.url}
+                        alt={file.name}
+                        className="patient-file-preview"
+                      />
+                    ) : (
+                      <FaFileAlt className="patient-file-icon" />
+                    )}
+                    <div className="patient-file-info">
+                      <span className="patient-file-name">{file.name}</span>
+                      <span className="patient-file-size">
+                        {formatFileSize(file.size)}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <button
+                      className="patient-file-remove"
+                      onClick={() => handleRemoveFile(file.id)}
+                      type="button"
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <form className="patient-chat-input-form" onSubmit={handleSendMessage}>
+              <input
+                type="file"
+                id="patient-file-upload"
+                ref={fileInputRef}
+                multiple
+                accept="image/*,.pdf,.doc,.docx,.txt"
+                onChange={handleFileUpload}
+                style={{ display: "none" }}
+              />
               <div className="patient-chat-input-container">
                 <button
                   type="button"
@@ -400,6 +426,15 @@ const Messages = () => {
           )}
         </div>
       </div>
+
+      {patient_showVideoCall && activeChat && (
+        <PatientVideoCall
+          activeUser={activeChat}
+          onClose={patient_handleCloseVideoCall}
+          onCallEnd={patient_handleCallEnd}
+          isVideoCall={patient_isVideoCall}
+        />
+      )}
     </div>
   );
 };

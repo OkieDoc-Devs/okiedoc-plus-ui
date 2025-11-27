@@ -136,14 +136,25 @@ export function createInitialTickets() {
  */
 export function filterTicketsByStatus(tickets, status, nurseId = null) {
   if (status === "Pending") {
+    // Show tickets that are Pending and not claimed by anyone (nurse or specialist)
     return tickets.filter((t) => t.status === "Pending" && !t.claimedBy);
   }
-  if (status === "Processing" && nurseId) {
-    return tickets.filter(
-      (t) =>
-        (t.status === "Processing" && t.claimedBy === nurseId) ||
-        (t.claimedBy === nurseId && t.status === "Pending")
-    );
+  if (status === "Processing") {
+    if (nurseId) {
+      // Show tickets that are Processing and:
+      // - Claimed by this nurse, OR
+      // - Passed back to nurse (passedBackToNurse = true), OR
+      // - Pending but claimed by this nurse
+      return tickets.filter(
+        (t) =>
+          (t.status === "Processing" && t.claimedBy === nurseId) ||
+          (t.status === "Processing" && t.passedBackToNurse === true) ||
+          (t.claimedBy === nurseId && t.status === "Pending")
+      );
+    } else {
+      // If no nurseId, show all Processing tickets (including those assigned to specialists)
+      return tickets.filter((t) => t.status === "Processing");
+    }
   }
   if (status === "Confirmed" && nurseId) {
     return tickets.filter(

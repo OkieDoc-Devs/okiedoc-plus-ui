@@ -1514,6 +1514,18 @@ export default function ManageAppointment() {
                       Generate Invoice
                     </button>
                   )}
+                {selectedTicket.status === "Processing" && (
+                  <button
+                    className="action-btn edit"
+                    onClick={() => {
+                      updateStatus(selectedTicket.id, "Completed");
+                      setShowTicketDetails(false);
+                    }}
+                    style={{ backgroundColor: "#28a745" }}
+                  >
+                    Mark Completed
+                  </button>
+                )}
                 <button
                   className="action-btn"
                   onClick={() => updateStatus(selectedTicket.id, "Incomplete")}
@@ -2227,11 +2239,17 @@ export default function ManageAppointment() {
                           required
                         >
                           <option value="">Select Doctor</option>
-                          {doctors.map((doctor) => (
-                            <option key={doctor.id} value={doctor.name}>
-                              {doctor.name} - {doctor.specialization}
+                          {doctors && doctors.length > 0 ? (
+                            doctors.map((doctor) => (
+                              <option key={doctor.id} value={doctor.name}>
+                                {doctor.name} - {doctor.specialization}
+                              </option>
+                            ))
+                          ) : (
+                            <option value="" disabled>
+                              Loading specialists...
                             </option>
-                          ))}
+                          )}
                         </select>
                       </div>
                       <div className="form-group">

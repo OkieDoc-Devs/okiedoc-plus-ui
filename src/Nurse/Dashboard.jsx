@@ -13,6 +13,7 @@ import {
   fetchDashboardFromAPI,
   fetchNurseProfile,
   logoutFromAPI,
+  updateTicket,
 } from "./services/apiService.js";
 import { transformProfileFromAPI } from "./services/profileService.js";
 
@@ -94,7 +95,6 @@ export default function Dashboard() {
           );
         }
 
-        // Update profile image if available from API
         if (profileData.profileImage) {
           saveNurseProfileImage(profileData.profileImage);
           setNurseProfileImage(getNurseProfileImage());
@@ -119,7 +119,6 @@ export default function Dashboard() {
         const dashboardData = await fetchDashboardFromAPI();
         console.log("Dashboard: Dashboard API response:", dashboardData);
         if (dashboardData) {
-          // Update nurse profile from dashboard data if available
           if (dashboardData.nurse) {
             const nurseData = dashboardData.nurse;
             if (nurseData.First_Name) {
@@ -180,7 +179,6 @@ export default function Dashboard() {
           }
           return;
         } else {
-          // Dashboard data is empty/null, set defaults
           console.log("Dashboard: Empty dashboard response, setting defaults");
           setTickets([]);
           setNotifications([]);
@@ -433,7 +431,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Ticket Detail Modal with 4 Tabs */}
       {showTicketDetailModal && selectedTicket && (
         <div className="modal-overlay">
           <div
@@ -460,7 +457,6 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* Patient Info Summary */}
             <div
               style={{
                 padding: "16px 24px",
@@ -571,7 +567,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Tabs */}
             <div
               style={{
                 display: "flex",
@@ -613,7 +608,6 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* Tab Content */}
             <div
               className="modal-body"
               style={{
@@ -625,98 +619,278 @@ export default function Dashboard() {
             >
               {ticketDetailTab === "assessment" && (
                 <div>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
-                    "Sed ut perspiciatis unde omnis iste natus error sit
-                    voluptatem accusantium doloremque laudantium, totam rem
-                    aperiam, eaque ipsa quae ab illo inventore veritatis et
-                    quasi architecto beatae vitae dicta sunt explicabo. Nemo
-                    enim ipsam
-                  </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
-                    voluptatem quia voluptas sit aspernatur aut odit aut fugit,
-                    sed quia consequuntur magni dolores eos qui ratione
-                    voluptatem sequi nesciunt. Neque porro quisquam est, qui
-                    dolorem ipsum quia dolor sit amet, consectetur, adipisci
-                    velit, sed quia non numquam eius modi tempora incidunt ut
-                    labore et dolore magnam aliquam quaerat voluptatem.
-                  </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
-                    Ut enim ad minima veniam, quis nostrum exercitationem ullam
-                    corporis suscipit laboriosam, nisi ut aliquid ex ea commodi
-                    consequatur? Quis autem vel eum iure reprehenderit qui in ea
-                    voluptate velit esse quam nihil molestiae consequatur, vel
-                    illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
-                  </p>
+                  {selectedTicket?.assessment ? (
+                    <p
+                      style={{
+                        lineHeight: 1.8,
+                        color: "#333",
+                        whiteSpace: "pre-wrap",
+                      }}
+                    >
+                      {selectedTicket.assessment}
+                    </p>
+                  ) : (
+                    <p
+                      style={{
+                        lineHeight: 1.8,
+                        color: "#999",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      No assessment has been added yet. The specialist will add
+                      an assessment during the consultation.
+                    </p>
+                  )}
                 </div>
               )}
 
               {ticketDetailTab === "medicalHistory" && (
                 <div>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
-                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-                    sed do eiusmod tempor incididunt ut labore et dolore magna
-                    aliqua. Ut enim ad minim veniam, quis nostrud exercitation
-                    ullamco laboris nisi ut aliquip ex ea commodo consequat.
-                  </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
-                    Duis aute irure dolor in reprehenderit in voluptate velit
-                    esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
-                    occaecat cupidatat non proident, sunt in culpa qui officia
-                    deserunt mollit anim id est laborum."
-                  </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
-                    Sed ut perspiciatis unde omnis iste natus error sit
-                    voluptatem accusantium doloremque laudantium, totam rem
-                    aperiam, eaque ipsa quae ab illo inventore veritatis et
-                    quasi architecto beatae vitae dicta sunt explicabo.
-                  </p>
+                  {selectedTicket?.medicalHistory ? (
+                    <p
+                      style={{
+                        lineHeight: 1.8,
+                        color: "#333",
+                        whiteSpace: "pre-wrap",
+                      }}
+                    >
+                      {selectedTicket.medicalHistory}
+                    </p>
+                  ) : (
+                    <p
+                      style={{
+                        lineHeight: 1.8,
+                        color: "#999",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      No medical history has been recorded for this patient.
+                    </p>
+                  )}
                 </div>
               )}
 
               {ticketDetailTab === "laboratoryRequest" && (
                 <div>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
-                    "At vero eos et accusamus et iusto odio dignissimos ducimus
-                    qui blanditiis praesentium voluptatum deleniti atque
-                    corrupti quos dolores et quas molestias excepturi sint
-                    occaecati cupiditate non provident.
-                  </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
-                    Similique sunt in culpa qui officia deserunt mollitia animi,
-                    id est laborum et dolorum fuga. Et harum quidem rerum
-                    facilis est et expedita distinctio."
-                  </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
-                    Nam libero tempore, cum soluta nobis est eligendi optio
-                    cumque nihil impedit quo minus id quod maxime placeat facere
-                    possimus, omnis voluptas assumenda est, omnis dolor
-                    repellendus.
-                  </p>
+                  {selectedTicket?.laboratoryRequest ? (
+                    (() => {
+                      try {
+                        const labRequests = JSON.parse(
+                          selectedTicket.laboratoryRequest
+                        );
+                        if (
+                          Array.isArray(labRequests) &&
+                          labRequests.length > 0
+                        ) {
+                          return (
+                            <ol style={{ paddingLeft: 20 }}>
+                              {labRequests.map((lab, idx) => (
+                                <li
+                                  key={idx}
+                                  style={{ marginBottom: 12, lineHeight: 1.6 }}
+                                >
+                                  <strong>{lab.testName || lab.name}</strong>
+                                  {lab.notes && <span> - {lab.notes}</span>}
+                                </li>
+                              ))}
+                            </ol>
+                          );
+                        }
+                        return (
+                          <p
+                            style={{
+                              lineHeight: 1.8,
+                              color: "#333",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            {selectedTicket.laboratoryRequest}
+                          </p>
+                        );
+                      } catch {
+                        return (
+                          <p
+                            style={{
+                              lineHeight: 1.8,
+                              color: "#333",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            {selectedTicket.laboratoryRequest}
+                          </p>
+                        );
+                      }
+                    })()
+                  ) : (
+                    <p
+                      style={{
+                        lineHeight: 1.8,
+                        color: "#999",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      No laboratory requests have been added yet.
+                    </p>
+                  )}
                 </div>
               )}
 
               {ticketDetailTab === "prescription" && (
                 <div>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
-                    "Temporibus autem quibusdam et aut officiis debitis aut
-                    rerum necessitatibus saepe eveniet ut et voluptates
-                    repudiandae sint et molestiae non recusandae. Itaque earum
-                    rerum hic tenetur a sapiente delectus.
-                  </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
-                    Ut aut reiciendis voluptatibus maiores alias consequatur aut
-                    perferendis doloribus asperiores repellat. Nam libero
-                    tempore, cum soluta nobis est eligendi optio cumque nihil
-                    impedit quo minus id quod maxime placeat facere possimus."
-                  </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
-                    Omnis voluptas assumenda est, omnis dolor repellendus.
-                    Temporibus autem quibusdam et aut officiis debitis aut rerum
-                    necessitatibus saepe eveniet ut et voluptates repudiandae
-                    sint et molestiae non recusandae.
-                  </p>
+                  {selectedTicket?.prescription ? (
+                    (() => {
+                      try {
+                        const medicines = JSON.parse(
+                          selectedTicket.prescription
+                        );
+                        if (Array.isArray(medicines) && medicines.length > 0) {
+                          return (
+                            <ol style={{ paddingLeft: 20 }}>
+                              {medicines.map((med, idx) => (
+                                <li
+                                  key={idx}
+                                  style={{ marginBottom: 12, lineHeight: 1.6 }}
+                                >
+                                  <strong>
+                                    {med.name || med.medicineName}
+                                  </strong>
+                                  {med.dosage && <span> - {med.dosage}</span>}
+                                  {med.frequency && (
+                                    <span>, {med.frequency}</span>
+                                  )}
+                                  {med.duration && (
+                                    <span> for {med.duration}</span>
+                                  )}
+                                  {med.sig && (
+                                    <div
+                                      style={{
+                                        fontSize: "0.9em",
+                                        color: "#666",
+                                      }}
+                                    >
+                                      Sig: {med.sig}
+                                    </div>
+                                  )}
+                                </li>
+                              ))}
+                            </ol>
+                          );
+                        }
+                        return (
+                          <p
+                            style={{
+                              lineHeight: 1.8,
+                              color: "#333",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            {selectedTicket.prescription}
+                          </p>
+                        );
+                      } catch {
+                        return (
+                          <p
+                            style={{
+                              lineHeight: 1.8,
+                              color: "#333",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            {selectedTicket.prescription}
+                          </p>
+                        );
+                      }
+                    })()
+                  ) : (
+                    <p
+                      style={{
+                        lineHeight: 1.8,
+                        color: "#999",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      No prescription has been added yet.
+                    </p>
+                  )}
                 </div>
               )}
+            </div>
+
+            <div
+              style={{
+                padding: "16px 24px",
+                borderTop: "1px solid #e0e0e0",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 12,
+                background: "#fff",
+              }}
+            >
+              {(selectedTicket.status === "Confirmed" ||
+                selectedTicket.status === "Processing") && (
+                <button
+                  onClick={async () => {
+                    if (
+                      window.confirm(
+                        "Are you sure you want to mark this ticket as completed?"
+                      )
+                    ) {
+                      try {
+                        await updateTicket(selectedTicket.id, {
+                          status: "Completed",
+                        });
+                        alert("Ticket marked as completed!");
+                        setShowTicketDetailModal(false);
+                        setSelectedTicket(null);
+                        const dashboardData = await fetchDashboardFromAPI();
+                        if (dashboardData.success) {
+                          setNurseName(
+                            dashboardData.data?.nurse?.firstName || nurseName
+                          );
+                        }
+                        const ticketsData = await fetchTicketsFromAPI();
+                        if (ticketsData.success) {
+                          window.location.reload();
+                        }
+                      } catch (error) {
+                        console.error("Error completing ticket:", error);
+                        alert(
+                          error.message ||
+                            "Failed to complete ticket. Please try again."
+                        );
+                      }
+                    }
+                  }}
+                  style={{
+                    background: "#4caf50",
+                    color: "#fff",
+                    padding: "10px 24px",
+                    borderRadius: 20,
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: 500,
+                  }}
+                >
+                  Mark as Completed
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setShowTicketDetailModal(false);
+                  setSelectedTicket(null);
+                }}
+                style={{
+                  background: "#e0e0e0",
+                  color: "#333",
+                  padding: "10px 24px",
+                  borderRadius: 20,
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: 500,
+                }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

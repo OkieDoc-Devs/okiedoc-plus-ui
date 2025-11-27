@@ -14,6 +14,8 @@ import Messages from "./Nurse/Messages.jsx";
 import SpecialistDashboard from "./Admin/Specialistdashboard/SpecialistDashboard.jsx";
 import PatientDashboard from "./Patient/jsx/PatientDashboard.jsx";
 import SpecialistDashboard2 from "./Specialists/SpecialistDashboard.jsx";
+import SpecialistLogin from "./Login & Registration/SpecialistLogin.jsx";
+import SpecialistRegistration from "./Login & Registration/SpecialistRegistration.jsx";
 import CommercialPage from "./CommercialPage.jsx";
 
 createRoot(document.getElementById("root")).render(
@@ -24,6 +26,11 @@ createRoot(document.getElementById("root")).render(
         <Route path="/loading" element={<App />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registration" element={<Registration />} />
+        <Route path="/specialist-login" element={<SpecialistLogin />} />
+        <Route
+          path="/specialist-registration"
+          element={<SpecialistRegistration />}
+        />
         <Route path="/nurse-dashboard" element={<Dashboard />} />
         <Route path="/nurse-notifications" element={<Notifications />} />
         <Route path="/nurse-myaccount" element={<MyAccount />} />

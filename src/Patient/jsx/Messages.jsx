@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FaUserMd, FaUserNurse, FaComments, FaTimes, FaFileAlt, FaUser, FaCamera, FaInbox, FaPhone, FaVideo } from 'react-icons/fa';
 import apiService from '../services/apiService';
+import socket from '../utils/realtime';
 import PatientVideoCall from './PatientVideoCall';
 
 const Messages = () => {
@@ -51,9 +52,40 @@ const Messages = () => {
   const openChat = async (conversation) => {
     setActiveChat(conversation);
     const messages = await getMessagesForConversation(conversation.id);
+    socket.emit('join', conversation.id || conversation.conversation_id);
     setChatMessages(messages);
     setUploadedFiles([]);
   };
+
+  useEffect(() => {
+  const handleNewMessage = (payload) => {
+    // payload: { conversation_id, sender_type, message_text, created_at }
+    // Only push if it matches the active chat
+    const activeId = activeChat?.id || activeChat?.conversation_id;
+    if (!activeId) return;
+    if (payload.conversation_id === activeId) {
+      setChatMessages(prev => [...prev, {
+        id: payload.message_id || Date.now(),
+        sender: payload.sender_type === 'patient' ? 'patient' : 'other',
+        text: payload.message_text,
+        timestamp: new Date(payload.created_at).toLocaleString()
+      }]);
+    }
+  };
+
+    socket.on('new_message', handleNewMessage);
+
+    // signaling messages if you want to catch them here
+    socket.on('signal', (data) => {
+      // forward to PatientVideoCall via props/state or a shared handler
+      window.dispatchEvent(new CustomEvent('webrtc-signal', { detail: data }));
+    });
+
+    return () => {
+      socket.off('new_message', handleNewMessage);
+      socket.off('signal');
+    };
+  }, [activeChat]);
 
   const closeChat = () => {
     setActiveChat(null);
@@ -62,38 +94,32 @@ const Messages = () => {
     setUploadedFiles([]);
   };
 
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (activeChat && (newMessage.trim() || uploadedFiles.length > 0)) {
-      const trimmedMessage = newMessage.trim();
-      if (trimmedMessage) {
-        const message = {
-          id: Date.now(),
-          sender: "patient",
-          text: trimmedMessage,
-          timestamp: new Date().toLocaleString(),
-        };
-        setChatMessages((prev) => [...prev, message]);
-      }
-
-      if (uploadedFiles.length > 0) {
-        uploadedFiles.forEach((file, index) => {
-          const fileMessage = {
-            id: Date.now() + index + 1,
-            sender: "patient",
-            text: file.type.startsWith("image/")
-              ? "📷 Image attachment"
-              : `📎 ${file.name}`,
-            timestamp: new Date().toLocaleString(),
-            file: file,
-            isFileAttachment: true,
-          };
-          setChatMessages((prev) => [...prev, fileMessage]);
-        });
-      }
-
-      setNewMessage('');
-      setUploadedFiles([]);
+  const handleSendMessage = async (e) => {
+    e?.preventDefault?.();
+    if (!activeChat) return;
+    const payload = {
+      conversation_id: activeChat.id || activeChat.conversation_id,
+      sender_type: 'patient',
+      message_text: newMessage.trim(),
+      metadata: null
+    };
+    // optimistic UI
+    setChatMessages(prev => [...prev, {
+      id: Date.now(),
+      sender: 'patient',
+      text: payload.message_text,
+      timestamp: new Date().toLocaleTimeString()
+    }]);
+    setNewMessage('');
+    try {
+      await apiService.fetchData('/send-message', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      // consumer will emit new_message to sockets; UI will receive it
+    } catch (err) {
+      console.error('Failed to send message', err);
+      // show error or rollback if you want
     }
   };
 
@@ -109,13 +135,39 @@ const Messages = () => {
   };
 
   // Filter conversations based on search query
-  const filteredConversations = conversations.filter((conversation) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      conversation.name.toLowerCase().includes(query) ||
-      conversation.role.toLowerCase().includes(query) ||
-      conversation.lastMessage.toLowerCase().includes(query)
-    );
+  const filteredConversations = (conversations || []).filter((conversation) => {
+    if (!conversation) return false;
+
+    const query = (searchQuery || "").toLowerCase().trim();
+
+    // try several likely name fields and fall back to empty string
+    const name =
+      (conversation.name ||
+      conversation.doctor_name ||
+      conversation.specialist_name ||
+      conversation.contact_name ||
+      ""
+      ).toString().toLowerCase();
+
+    const role =
+      (conversation.role ||
+      conversation.user_role ||
+      conversation.type ||
+      ""
+      ).toString().toLowerCase();
+
+    const lastMsg =
+      (conversation.lastMessage ||
+      conversation.last_message ||
+      conversation.preview ||
+      conversation.last_message_text ||
+      ""
+      ).toString().toLowerCase();
+
+    // if there's no query, keep all conversations
+    if (!query) return true;
+
+    return name.includes(query) || role.includes(query) || lastMsg.includes(query);
   });
 
   const handleFileUpload = (e) => {

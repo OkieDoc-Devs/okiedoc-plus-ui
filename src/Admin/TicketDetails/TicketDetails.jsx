@@ -19,12 +19,10 @@ const getMockTicketData = (id) => ({
     phone: '+63 917 123 4567',
     avatar: null 
   },
-  // NEW: Staff Handling History [Requirement 4]
   staffHistory: [
     { role: 'Nurse', name: 'Nurse Emily', action: 'Triaged', time: '14:00' },
     { role: 'Specialist', name: 'Dr. Sarah Johnson', action: 'Consulted', time: '14:15' }
   ],
-  // NEW: Video Consultation Logs [Requirement 7C]
   videoCalls: [
     { id: 1, time: '14:20', duration: '15 mins', participants: ['Dr. Sarah Johnson', 'John Doe'] }
   ],

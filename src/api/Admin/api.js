@@ -104,3 +104,48 @@ export const getConsultations = async () => {
         throw error;
     }
 };
+
+/**
+ * Fetches the list of all patient and nurse users.
+ */
+export const getPatientAndNurseUsers = async () => {
+  try {
+    const response = await apiClient.get('/api/v1/admin/users');
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch users:', error);
+    return [
+      { id: 'p1', userType: 'Patient', firstName: 'John', lastName: 'Doe', email: 'patient@gmail.com', mobileNumber: '98765485', subscription: 'Paid' },
+      { id: 'n1', userType: 'Nurse', firstName: 'Leslie', lastName: 'Rowland', email: 'les@row@gmail.com', mobileNumber: '97685334', subscription: 'Free' }
+    ];
+  }
+};
+
+/**
+ * Updates a user's information.
+ * @param {string} userId - The ID of the user to update.
+ * @param {object} userData - The data to update.
+ */
+export const updateUser = async (userId, userData) => {
+  try {
+    const response = await apiClient.put(`/api/v1/admin/users/${userId}`, userData);
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to update user ${userId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Deletes a user.
+ * @param {string} userId - The ID of the user to delete.
+ */
+export const deleteUser = async (userId) => {
+  try {
+    const response = await apiClient.delete(`/api/v1/admin/users/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to delete user ${userId}:`, error);
+    throw error;
+  }
+};

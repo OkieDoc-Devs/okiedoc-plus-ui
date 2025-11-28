@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { sanitizeInput } from '../../Specialists/utils/validationUtils';
+import EmptyState from '../Components/EmptyState';
 
 // --- Modal component is now defined directly in this file ---
 const Modal = ({ children, title, onClose }) => {
@@ -13,7 +14,6 @@ const Modal = ({ children, title, onClose }) => {
     </div>
   );
 };
-
 
 const PendingTable = ({ applications = [] }) => {
   const [viewModalApp, setViewModalApp] = useState(null);
@@ -77,8 +77,12 @@ const PendingTable = ({ applications = [] }) => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" style={{ textAlign: 'center' }}>
-                    No pending applications found or matching current filters.
+                  <td colSpan="4" style={{ padding: 0, border: 'none' }}>
+                    <EmptyState 
+                      type="specialists" 
+                      message="No Pending Applications" 
+                      subMessage="Great job! There are no specialist applications waiting for review at this time."
+                    />
                   </td>
                 </tr>
               )}
@@ -125,7 +129,7 @@ const PendingTable = ({ applications = [] }) => {
                 <img
                 src={viewModalApp.details.eSig}
                 alt="E-Signature"
-                style={{ maxWidth: '200px', border: '1px solid #ddd', padding: '5px', marginTop: '5px', display: 'block' }} // Added display block
+                style={{ maxWidth: '200px', border: '1px solid #ddd', padding: '5px', marginTop: '5px', display: 'block' }}
                 />
             </>
             )}
@@ -150,7 +154,7 @@ const PendingTable = ({ applications = [] }) => {
             placeholder="Provide a reason..."
             value={denyReason}
             onChange={(e) => setDenyReason(e.target.value)}
-            rows={5} // Give more space for reason
+            rows={5} 
             style={{ width: '100%', padding: '10px', boxSizing: 'border-box' }}
           ></textarea>
           <div className="modal-actions">

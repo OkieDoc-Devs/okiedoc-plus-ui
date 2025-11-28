@@ -1,0 +1,52 @@
+.user-table-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.user-table .action-btn {
+  padding: 6px 12px;
+  font-size: 0.875rem;
+}
+
+.user-table .btn-view {
+  background-color: var(--primary-blue, #4AA7ED);
+  color: white;
+}
+.user-table .btn-edit {
+  background-color: var(--warning, #ffc107);
+  color: #212529;
+}
+.user-table .btn-delete {
+  background-color: var(--danger, #dc3545);
+  color: white;
+}
+.user-table .btn-save {
+  background-color: var(--success, #198754);
+  color: white;
+}
+.user-table .btn-cancel {
+  background-color: var(--gray-700, #495057);
+  color: white;
+}
+
+
+.editable-row td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  vertical-align: top;
+}
+
+.editable-row input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--gray-500, #adb5bd);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.editable-row input:focus {
+  outline: none;
+  border-color: var(--primary-blue, #4AA7ED);
+  box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.2);
+}

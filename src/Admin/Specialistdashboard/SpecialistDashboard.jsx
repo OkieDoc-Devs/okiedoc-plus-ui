@@ -6,6 +6,8 @@ import SpecialistTable from "./SpecialistTable";
 import ConsultationHistory from "../ConsultationHistory/ConsultationHistory";
 import Header from "../Components/Header";
 import Modal from "../Components/Modal";
+import UserTable from "../UserManagement/UserTable.jsx";
+import '../UserManagement/UserTable.css';
 
 import ChatOversight from "../ChatOversight/ChatOversight.jsx";
 import { handleExport } from "../utils/exportUtils";
@@ -19,6 +21,9 @@ import {
   getPendingApplications,
   getTransactions,
   getConsultations,
+  getPatientAndNurseUsers,
+  updateUser,
+  deleteUser,
 } from "../../api/Admin/api.js";
 
 import FemaleAvatar from "../../assets/Female_Avatar.png";
@@ -41,6 +46,11 @@ const SpecialistDashboard = () => {
   const [pendingApplications, setPendingApplications] = useState([]);
   const [specialists, setSpecialists] = useState([]);
   const [consultations, setConsultations] = useState([]);
+  const [users, setUsers] = useState([]);
+
+  // State for Modals
+  const [viewingUser, setViewingUser] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(null);
 
   const [systemFees, setSystemFees] = useState({
     doctorsFee: { isActive: true, name: "Doctor's Fee" },
@@ -63,11 +73,13 @@ const SpecialistDashboard = () => {
           pendingData,
           transactionsData,
           consultationsData,
+          usersData,
         ] = await Promise.all([
           getSpecialists(),
           getPendingApplications(),
           getTransactions(),
           getConsultations(),
+          getPatientAndNurseUsers(),
         ]);
 
         const processedSpecialists = (specialistsData || []).map((spec, index) => {
@@ -108,10 +120,16 @@ const SpecialistDashboard = () => {
         setPendingApplications(processedPending);
         setTransactions(transactionsData || []);
         setConsultations(consultationsData || []);
+        setUsers(usersData || []); // Set the new users state
 
       } catch (error) {
         console.error("Failed to fetch dashboard data from backend:", error);
-        alert("Could not load dashboard data. Please make sure the backend server is running.");
+        if (!users || users.length === 0) {
+           setUsers([
+             { id: 'p1', userType: 'Patient', firstName: 'John', lastName: 'Doe', email: 'patient@gmail.com', mobileNumber: '98765485', subscription: 'Paid' },
+             { id: 'n1', userType: 'Nurse', firstName: 'Leslie', lastName: 'Rowland', email: 'les@row@gmail.com', mobileNumber: '97685334', subscription: 'Free' }
+           ]);
+        }
       }
     };
 
@@ -122,18 +140,15 @@ const SpecialistDashboard = () => {
   const handleDiscountToggle = () => setDiscount((prev) => ({ ...prev, isActive: !prev.isActive }));
   const handleNotesToggle = () => setNotes((prev) => ({ ...prev, isActive: !prev.isActive }));
 
-  // **FIX:** Removed the redeclared variable. This is the only 'allSpecializations' constant.
-   const allSpecializations = [
+  const allSpecializations = [
      ...new Set([
        ...(pendingApplications || []).flatMap((app) => app.details?.specializations || []),
        ...(specialists || []).flatMap((spec) => spec.details?.specializations || []),
-       ...(transactions || []).map(t => t.specialty) // Include specialties from transactions
-     ].filter(Boolean)), // Filter out any null/undefined values
-   ].sort(); // Sort alphabetically
+       ...(transactions || []).map(t => t.specialty)
+     ].filter(Boolean)),
+   ].sort();
 
 
-  // --- Filtering Logic ---
-   /** Filters pending applications based on search term and selected specialization. */
   const filteredPending = (pendingApplications || []).filter((app) => {
     const searchString = `${app.name || ''} ${app.email || ''}`.toLowerCase();
     const matchesSearch = !searchTerm || searchString.includes(searchTerm.toLowerCase());
@@ -141,7 +156,6 @@ const SpecialistDashboard = () => {
     return matchesSearch && matchesFilter;
   });
 
-   /** Filters active specialists based on search term and selected specialization. */
   const filteredSpecialists = (specialists || []).filter((spec) => {
     const searchString = `${spec.firstName || ''} ${spec.lastName || ''} ${spec.email || ''}`.toLowerCase();
     const matchesSearch = !searchTerm || searchString.includes(searchTerm.toLowerCase());
@@ -149,70 +163,102 @@ const SpecialistDashboard = () => {
     return matchesSearch && matchesFilter;
   });
 
-   /** Filters transactions based on search term, specialization, status, and date range. */
   const filteredTransactions = (transactions || []).filter(t => {
     const lowerSearchTerm = searchTerm.toLowerCase();
-    // Check search term against patient name, specialist name, and status
     const matchesSearch = !searchTerm ||
       (t.patientName || '').toLowerCase().includes(lowerSearchTerm) ||
       (t.specialistName || '').toLowerCase().includes(lowerSearchTerm) ||
       (t.status || '').toLowerCase().includes(lowerSearchTerm);
 
-    // Check against selected specialty filter
     const matchesSpecialty = !filterSpecialization || t.specialty === filterSpecialization;
-
-    // Check against selected status filter
     const matchesStatus = !filterStatus || t.status === filterStatus;
-
-     // Date filtering logic
     const transactionDate = t.date ? new Date(t.date) : null;
     const fromDate = filterDateFrom ? new Date(filterDateFrom) : null;
     const toDate = filterDateTo ? new Date(filterDateTo) : null;
 
-    // Set time components for accurate range comparison
-    if (fromDate) fromDate.setHours(0, 0, 0, 0); // Start of the day
-    if (toDate) toDate.setHours(23, 59, 59, 999); // End of the day
+    if (fromDate) fromDate.setHours(0, 0, 0, 0);
+    if (toDate) toDate.setHours(23, 59, 59, 999);
 
-    // If transactionDate is null, matchesDate should be false unless no date filters are set
-    const matchesDate = !fromDate && !toDate || // No date filters applied
-                        (transactionDate && // Ensure transaction date exists
+    const matchesDate = !fromDate && !toDate ||
+                        (transactionDate &&
                         (!fromDate || transactionDate >= fromDate) &&
                         (!toDate || transactionDate <= toDate));
 
-    // Return true only if all conditions match
     return matchesSearch && matchesSpecialty && matchesStatus && matchesDate;
   });
-  // --- End Filtering Logic ---
 
-  // Filter consultations (example - adjust based on ConsultationHistory component needs)
+  const filteredUsers = (users || []).filter(user => {
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    const searchString = `${user.firstName || ''} ${user.lastName || ''} ${user.email || ''} ${user.mobileNumber || ''}`.toLowerCase();
+    const matchesSearch = !searchTerm || searchString.includes(lowerSearchTerm);
+    return matchesSearch;
+  });
+
   const filteredConsultations = consultations || [];
+
+
+  const handleUpdateUser = async (updatedUser) => {
+    // Simulate API call
+    try {
+      console.log("Simulating update for user:", updatedUser);
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === updatedUser.id ? updatedUser : user
+        )
+      );
+      alert("User updated successfully! (Simulated)");
+    } catch (error) {
+      alert("Failed to update user. (Simulated)");
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+    
+    try {
+      console.log("Simulating delete for user:", deletingUser);
+      setUsers(prevUsers => 
+        prevUsers.filter(user => user.id !== deletingUser.id)
+      );
+      alert("User deleted successfully! (Simulated)");
+      setDeletingUser(null); // Close confirmation modal
+    } catch (error) {
+      alert("Failed to delete user. (Simulated)");
+    }
+  };
+  
 
   return (
     <>
-      <Header /> {/* Use the imported Header component */}
+      <Header />
       <main className="dashboard-container">
-        {/* Toolbar: Hide if on settings or chats tab */}
-        {activeTab !== "settings" && activeTab !== "chats" && (
+        
+        {/* FIX: Hide main toolbar if on settings, chats, OR consultations tab */}
+        {activeTab !== "settings" && activeTab !== "chats" && activeTab !== "consultations" && (
           <div className="toolbar">
             <div className="filters">
               <input
                 type="text"
-                placeholder="Search..." // Generalized placeholder
+                placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <select
-                value={filterSpecialization}
-                onChange={(e) => setFilterSpecialization(e.target.value)}
-                disabled={allSpecializations.length === 0}
-              >
-                <option value="">Filter by Specialization</option>
-                {allSpecializations.map((spec) => (
-                  <option key={spec} value={spec}>
-                    {spec}
-                  </option>
-                ))}
-              </select>
+              {/* Specialization filter (only show on specialist/pending tabs) */}
+              {(activeTab === "pending" || activeTab === "list" || activeTab === "transactions") && (
+                <select
+                  value={filterSpecialization}
+                  onChange={(e) => setFilterSpecialization(e.target.value)}
+                  disabled={allSpecializations.length === 0}
+                >
+                  <option value="">Filter by Specialization</option>
+                  {allSpecializations.map((spec) => (
+                    <option key={spec} value={spec}>
+                      {spec}
+                    </option>
+                  ))}
+                </select>
+              )}
+              
               {/* Transaction-specific filters */}
               {activeTab === "transactions" && (
                 <>
@@ -250,10 +296,12 @@ const SpecialistDashboard = () => {
           <button className={`tab-link ${activeTab === "list" ? "active" : ""}`} onClick={() => setActiveTab("list")}>
             OkieDoc+ Specialists
           </button>
+          <button className={`tab-link ${activeTab === "users" ? "active" : ""}`} onClick={() => setActiveTab("users")}>
+            User Management
+          </button>
           <button className={`tab-link ${activeTab === "transactions" ? "active" : ""}`} onClick={() => setActiveTab("transactions")}>
             Transaction History
           </button>
-          {/* New Chat Consultations Tab */}
           <button className={`tab-link ${activeTab === "chats" ? "active" : ""}`} onClick={() => setActiveTab("chats")}>
             Chat Consultations
           </button>
@@ -269,6 +317,16 @@ const SpecialistDashboard = () => {
 
         {activeTab === "pending" && <PendingTable applications={filteredPending} />}
         {activeTab === "list" && <SpecialistTable specialists={filteredSpecialists} />}
+
+        {/* NEW TAB CONTENT FOR USER MANAGEMENT */}
+        {activeTab === "users" && (
+          <UserTable
+            users={filteredUsers}
+            onView={setViewingUser}
+            onUpdate={handleUpdateUser}
+            onDelete={setDeletingUser}
+          />
+        )}
 
         {activeTab === 'transactions' && (
           <div id="transactions" className="tab-content active">
@@ -292,9 +350,8 @@ const SpecialistDashboard = () => {
           </div>
         )}
 
-        {/* Render New Chat Component */}
         {activeTab === "chats" && (
-          <div className="tab-content active" id="chat-consultations-wrapper"> {/* Wrapper div */}
+          <div className="tab-content active" id="chat-consultations-wrapper">
             <ChatOversight />
           </div>
         )}
@@ -344,6 +401,48 @@ const SpecialistDashboard = () => {
           </div>
         )}
       </main>
+
+      {/* View User Modal */}
+      {viewingUser && (
+        <Modal title="User Details" onClose={() => setViewingUser(null)}>
+          <div id="modal-body">
+            <p><strong>User Type:</strong> {viewingUser.userType}</p>
+            <p><strong>First Name:</strong> {viewingUser.firstName}</p>
+            <p><strong>Last Name:</strong> {viewingUser.lastName}</p>
+            <p><strong>Email:</strong> {viewingUser.email}</p>
+            <p><strong>Mobile:</strong> {viewingUser.mobileNumber}</p>
+            <p><strong>Subscription:</strong> {viewingUser.subscription}</p>
+          </div>
+          <div className="modal-actions">
+            <button className="action-btn btn-primary" onClick={() => setViewingUser(null)}>
+              Close
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {deletingUser && (
+        <Modal title="Confirm Deletion" onClose={() => setDeletingUser(null)}>
+          <div id="modal-body">
+            <p>
+              Are you sure you want to delete this user?
+            </p>
+            <p>
+              <strong>{deletingUser.firstName} {deletingUser.lastName} ({deletingUser.email})</strong>
+            </p>
+            <p>This action cannot be undone.</p>
+          </div>
+          <div className="modal-actions">
+            <button className="action-btn btn-primary" onClick={() => setDeletingUser(null)}>
+              Cancel
+            </button>
+            <button className="action-btn btn-danger" onClick={handleDeleteUser}>
+              Delete User
+            </button>
+          </div>
+        </Modal>
+      )}
     </>
   );
 };

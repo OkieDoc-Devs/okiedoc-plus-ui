@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { FaUser, FaClock, FaFileMedical, FaComments, FaPrint, FaDownload, FaArrowLeft } from 'react-icons/fa';
+import { FaUser, FaClock, FaFileMedical, FaComments, FaPrint, FaDownload, FaVideo, FaUserNurse, FaStethoscope, FaArrowRight } from 'react-icons/fa';
 import './TicketDetails.css';
 
-// Mock data generator
+// Mock data generator (Updated with Video & Staff History)
 const getMockTicketData = (id) => ({
   id: id,
   status: 'Completed',
@@ -17,8 +17,17 @@ const getMockTicketData = (id) => ({
     gender: 'Male',
     email: 'john.doe@example.com',
     phone: '+63 917 123 4567',
-    avatar: null // Use default if null
+    avatar: null 
   },
+  // NEW: Staff Handling History [Requirement 4]
+  staffHistory: [
+    { role: 'Nurse', name: 'Nurse Emily', action: 'Triaged', time: '14:00' },
+    { role: 'Specialist', name: 'Dr. Sarah Johnson', action: 'Consulted', time: '14:15' }
+  ],
+  // NEW: Video Consultation Logs [Requirement 7C]
+  videoCalls: [
+    { id: 1, time: '14:20', duration: '15 mins', participants: ['Dr. Sarah Johnson', 'John Doe'] }
+  ],
   assessment: {
     chiefComplaint: 'Persistent chest pain and shortness of breath.',
     subjective: 'Patient reports sharp pain in the center of chest lasting for 2 days. Worsens with physical activity.',
@@ -44,8 +53,6 @@ const TicketDetails = () => {
   const [ticket, setTicket] = useState(null);
 
   useEffect(() => {
-    // In a real app, fetch data from API using `id`
-    // const data = await api.getTicket(id);
     const data = getMockTicketData(id || 'TKT-000');
     setTicket(data);
   }, [id]);
@@ -67,7 +74,7 @@ const TicketDetails = () => {
       </header>
 
       <div className="td-grid-layout">
-        {/* LEFT COLUMN: Patient & Info */}
+        {/* LEFT COLUMN: Patient, Info & Staff History */}
         <aside className="td-sidebar">
             <div className="td-card patient-card">
                 <div className="td-avatar-large">
@@ -75,9 +82,7 @@ const TicketDetails = () => {
                 </div>
                 <h3>{ticket.patient.name}</h3>
                 <p className="td-subtext">{ticket.patient.age} yrs • {ticket.patient.gender}</p>
-                
                 <div className="td-divider"></div>
-                
                 <div className="td-info-row">
                     <label>Email</label>
                     <span>{ticket.patient.email}</span>
@@ -88,15 +93,33 @@ const TicketDetails = () => {
                 </div>
             </div>
 
+            {/* NEW SECTION: Staff Handling History */}
+            <div className="td-card info-card">
+                <h4><FaUserNurse /> Staff Handling</h4>
+                <div className="staff-chain">
+                    {ticket.staffHistory.map((staff, idx) => (
+                        <div key={idx} className="staff-node">
+                            <div className="staff-icon">
+                                {staff.role === 'Nurse' ? <FaUserNurse /> : <FaStethoscope />}
+                            </div>
+                            <div className="staff-details">
+                                <span className="staff-role">{staff.role}</span>
+                                <span className="staff-name">{staff.name}</span>
+                                <span className="staff-time">{staff.action} @ {staff.time}</span>
+                            </div>
+                            {idx < ticket.staffHistory.length - 1 && (
+                                <div className="staff-arrow"><FaArrowRight /></div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             <div className="td-card info-card">
                 <h4><FaClock /> Consultation Info</h4>
                 <div className="td-info-row">
                     <label>Date</label>
                     <span>{ticket.date}</span>
-                </div>
-                <div className="td-info-row">
-                    <label>Specialist</label>
-                    <span>{ticket.specialist}</span>
                 </div>
                 <div className="td-info-row">
                     <label>Department</label>
@@ -162,8 +185,30 @@ const TicketDetails = () => {
             </div>
         </main>
 
-        {/* RIGHT COLUMN: Chat History */}
+        {/* RIGHT COLUMN: Video Logs & Chat */}
         <aside className="td-chat-panel">
+            {/* NEW SECTION: Video Consultation Logs */}
+            {ticket.videoCalls && ticket.videoCalls.length > 0 && (
+                <div className="td-card video-log-card">
+                    <div className="card-header">
+                        <h4><FaVideo /> Video Consultation</h4>
+                    </div>
+                    <div className="video-logs">
+                        {ticket.videoCalls.map(call => (
+                            <div key={call.id} className="video-log-item">
+                                <div className="video-log-header">
+                                    <span className="video-time">{call.time}</span>
+                                    <span className="video-duration">{call.duration}</span>
+                                </div>
+                                <p className="video-participants">
+                                    <strong>Participants:</strong> {call.participants.join(', ')}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="td-card chat-card">
                 <div className="card-header">
                     <h4><FaComments /> Consultation Chat</h4>

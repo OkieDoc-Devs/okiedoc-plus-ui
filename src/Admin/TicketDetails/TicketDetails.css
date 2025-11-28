@@ -16,7 +16,6 @@
     color: var(--td-text);
 }
 
-/* Header */
 .td-header {
     display: flex;
     justify-content: space-between;
@@ -73,15 +72,13 @@
 .td-btn-primary:hover { background: #083d63; }
 .td-btn-secondary:hover { background: #f8f9fa; }
 
-/* Grid Layout */
 .td-grid-layout {
     display: grid;
     grid-template-columns: 300px 1fr 320px;
     gap: 24px;
-    height: calc(100vh - 140px);
+    height: calc(100vh - 140px); /* Fill remaining height */
 }
 
-/* Cards */
 .td-card {
     background: var(--td-white);
     border-radius: 12px;
@@ -102,8 +99,8 @@
     padding-bottom: 12px;
 }
 
-/* Sidebar (Patient Info) */
 .patient-card { text-align: center; }
+
 .td-avatar-large {
     width: 80px;
     height: 80px;
@@ -116,6 +113,7 @@
     font-size: 2.5rem;
     margin: 0 auto 12px;
 }
+
 .td-subtext { color: var(--td-gray); font-size: 0.9rem; margin-bottom: 16px; }
 .td-divider { height: 1px; background: var(--td-border); margin: 16px 0; }
 
@@ -128,8 +126,74 @@
 .td-info-row label { color: var(--td-gray); }
 .td-info-row span { font-weight: 600; color: var(--td-text); }
 
-/* Main Content (SOAP) */
-.td-main-content { overflow-y: auto; padding-right: 4px; }
+.staff-chain {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.staff-node {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    position: relative;
+}
+
+.staff-icon {
+    width: 32px;
+    height: 32px;
+    background: white;
+    border: 1px solid var(--td-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--td-primary);
+    font-size: 0.9rem;
+}
+
+.staff-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.staff-role {
+    font-size: 0.7rem;
+    color: var(--td-gray);
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.staff-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--td-text);
+}
+
+.staff-time {
+    font-size: 0.75rem;
+    color: var(--td-accent);
+}
+
+.staff-arrow {
+    position: absolute;
+    bottom: -14px;
+    left: 16px;
+    color: var(--td-gray);
+    font-size: 0.8rem;
+    transform: rotate(90deg);
+    z-index: 1;
+}
+
+
+.td-main-content { 
+    overflow-y: auto; 
+    padding-right: 4px; 
+}
+
 .soap-section { margin-bottom: 20px; }
 .soap-label { font-size: 0.85rem; font-weight: 700; color: var(--td-gray); text-transform: uppercase; }
 .soap-content.highlight { font-size: 1.1rem; font-weight: 500; color: var(--td-primary); margin-top: 4px; }
@@ -140,12 +204,14 @@
     gap: 16px;
     margin-bottom: 24px;
 }
+
 .soap-box {
     background: #f8f9fa;
     padding: 16px;
     border-radius: 8px;
     border-left: 3px solid var(--td-accent);
 }
+
 .soap-tag {
     display: block;
     font-size: 0.75rem;
@@ -154,6 +220,7 @@
     margin-bottom: 8px;
     text-transform: uppercase;
 }
+
 .soap-box p { margin: 0; font-size: 0.95rem; line-height: 1.5; }
 
 /* Prescription Table */
@@ -162,10 +229,67 @@
 .td-table th { text-align: left; background: #f1f3f5; padding: 8px; color: var(--td-gray); font-weight: 600; }
 .td-table td { border-bottom: 1px solid var(--td-border); padding: 8px; }
 
-/* Chat Panel */
-.td-chat-panel { height: 100%; display: flex; flex-direction: column; }
-.chat-card { flex: 1; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+
+.td-chat-panel { 
+    height: 100%; 
+    display: flex; 
+    flex-direction: column; 
+}
+
+/* Video Log Styles */
+.video-log-card {
+    flex: 0 0 auto !important;
+    margin-bottom: 24px;
+}
+
+.video-logs {
+    padding: 0 8px;
+}
+
+.video-log-item {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+.video-log-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--td-primary);
+}
+
+.video-duration {
+    background: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: var(--td-text);
+}
+
+.video-participants {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--td-text);
+    line-height: 1.4;
+}
+
+/* Chat Card */
+.chat-card { 
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    padding: 0; 
+    overflow: hidden; 
+    min-height: 300px;
+}
+
 .chat-card .card-header { padding: 16px; margin: 0; background: #fff; z-index: 10; }
+
 .chat-feed {
     flex: 1;
     overflow-y: auto;
@@ -266,32 +390,27 @@
         margin-bottom: 0;
     }
 
-    /* 4. Fix the Clinical Assessment (CRITICAL FIX) */
     .td-main-content {
         width: 100%;
         height: auto !important;
-        overflow: visible !important; /* This allows content to spill onto the paper */
+        overflow: visible !important;
         padding: 0;
         margin-bottom: 20px;
         display: block;
     }
 
-    /* 5. Fix Chat Panel (Optional: Hide or Show) */
-    /* Uncomment below line to HIDE chat in print */
-    /* .td-chat-panel { display: none; } */
-
+    /* 5. Fix Chat Panel */
     .td-chat-panel {
         width: 100%;
         height: auto !important;
         overflow: visible !important;
-        page-break-before: always; /* Force chat to new page if long */
+        page-break-before: always;
     }
     .chat-card, .chat-feed {
         overflow: visible !important;
         height: auto !important;
     }
 
-    /* 6. General Resets */
     .td-card {
         box-shadow: none;
         border: 1px solid #ccc;
@@ -300,7 +419,6 @@
         page-break-inside: avoid;
     }
 
-    /* Force background colors to print */
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;

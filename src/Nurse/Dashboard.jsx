@@ -514,6 +514,8 @@ export default function Dashboard() {
                       style={{
                         color:
                           selectedTicket.status === "Confirmed"
+                            ? "#2196f3"
+                            : selectedTicket.status === "Completed"
                             ? "#4caf50"
                             : selectedTicket.status === "Processing"
                             ? "#2196f3"
@@ -689,8 +691,11 @@ export default function Dashboard() {
                                   key={idx}
                                   style={{ marginBottom: 12, lineHeight: 1.6 }}
                                 >
-                                  <strong>{lab.testName || lab.name}</strong>
+                                  <strong>
+                                    {lab.testName || lab.test || lab.name}
+                                  </strong>
                                   {lab.notes && <span> - {lab.notes}</span>}
+                                  {lab.remarks && <span> - {lab.remarks}</span>}
                                 </li>
                               ))}
                             </ol>
@@ -752,23 +757,27 @@ export default function Dashboard() {
                                   style={{ marginBottom: 12, lineHeight: 1.6 }}
                                 >
                                   <strong>
-                                    {med.name || med.medicineName}
+                                    {med.name ||
+                                      med.medicineName ||
+                                      med.generic ||
+                                      med.brand}
                                   </strong>
                                   {med.dosage && <span> - {med.dosage}</span>}
+                                  {med.form && <span> ({med.form})</span>}
                                   {med.frequency && (
                                     <span>, {med.frequency}</span>
                                   )}
                                   {med.duration && (
                                     <span> for {med.duration}</span>
                                   )}
-                                  {med.sig && (
+                                  {med.instructions && (
                                     <div
                                       style={{
                                         fontSize: "0.9em",
                                         color: "#666",
                                       }}
                                     >
-                                      Sig: {med.sig}
+                                      Instructions: {med.instructions}
                                     </div>
                                   )}
                                 </li>

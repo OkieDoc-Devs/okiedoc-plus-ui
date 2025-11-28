@@ -3643,6 +3643,41 @@
   transform: scale(1.05);
 }
 
+.patient-chat-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.patient-call-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.patient-call-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.patient-call-btn.video-btn {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.patient-call-btn.video-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 .patient-chat-messages {
   flex: 1;
   padding: 1rem;

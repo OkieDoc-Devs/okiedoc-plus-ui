@@ -11,6 +11,8 @@ import {
   FaSearch,
   FaSpinner,
   FaPaperclip,
+  FaPhone,
+  FaVideo,
 } from "react-icons/fa";
 import { useChat } from "../services/chatService";
 import {
@@ -19,6 +21,7 @@ import {
   formatFileSize,
   getUserTypeLabel,
 } from "../services/chatService";
+import VideoCall from "./VideoCall.jsx";
 
 const Messages = () => {
   const [newMessage, setNewMessage] = useState("");
@@ -27,6 +30,8 @@ const Messages = () => {
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+  const [showVideoCall, setShowVideoCall] = useState(false);
+  const [isVideoCall, setIsVideoCall] = useState(true);
   const chatMessagesRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -204,6 +209,32 @@ const Messages = () => {
     }
   }, [chatMessages]);
 
+  const handleVoiceCall = () => {
+    setIsVideoCall(false);
+    setShowVideoCall(true);
+  };
+
+  const handleVideoCallClick = () => {
+    setIsVideoCall(true);
+    setShowVideoCall(true);
+  };
+
+  const handleCloseVideoCall = () => {
+    setShowVideoCall(false);
+  };
+
+  const handleCallEnd = async (callInfo) => {
+    if (activeConversation && callInfo.duration > 0) {
+      const callType = callInfo.type === "video" ? "Video call" : "Voice call";
+      const callMessage = `${callType} ended - ${callInfo.formattedDuration}`;
+      try {
+        await sendChatMessage(callMessage);
+      } catch (error) {
+        console.error("Error sending call message:", error);
+      }
+    }
+  };
+
   return (
     <div className="patient-page-content">
       {chatLoading && conversations.length === 0 && (
@@ -332,13 +363,29 @@ const Messages = () => {
                   )}
                 </div>
               </div>
-              <button
-                className="patient-chat-close-btn"
-                onClick={closeChat}
-                title="Back to Messages"
-              >
-                <FaTimes />
-              </button>
+              <div className="patient-chat-actions">
+                <button
+                  className="patient-call-btn"
+                  onClick={handleVoiceCall}
+                  title="Voice Call"
+                >
+                  <FaPhone />
+                </button>
+                <button
+                  className="patient-call-btn video-btn"
+                  onClick={handleVideoCallClick}
+                  title="Video Call"
+                >
+                  <FaVideo />
+                </button>
+                <button
+                  className="patient-chat-close-btn"
+                  onClick={closeChat}
+                  title="Back to Messages"
+                >
+                  <FaTimes />
+                </button>
+              </div>
             </div>
 
             <div className="patient-chat-messages" ref={chatMessagesRef}>
@@ -592,6 +639,15 @@ const Messages = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showVideoCall && activeConversation && (
+        <VideoCall
+          activeUser={activeConversation}
+          onClose={handleCloseVideoCall}
+          onCallEnd={handleCallEnd}
+          isVideoCall={isVideoCall}
+        />
       )}
     </div>
   );

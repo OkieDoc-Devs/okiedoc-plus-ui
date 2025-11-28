@@ -9,7 +9,6 @@ import {
   FaCompress,
 } from "react-icons/fa";
 import "../css/PatientVideoCall.css";
-import socket from '../utils/realtime';
 
 const PatientVideoCall = ({ activeUser, onClose, onCallEnd, isVideoCall = true }) => {
   const [patient_isMuted, setPatient_isMuted] = useState(true);
@@ -31,116 +30,6 @@ const PatientVideoCall = ({ activeUser, onClose, onCallEnd, isVideoCall = true }
   const patient_audioContextRef = useRef(null);
   const patient_analyserRef = useRef(null);
   const patient_animationFrameRef = useRef(null);
-  const pcRef = useRef(null);
-  const conversationId = activeUser?.id || activeUser?.conversation_id;
-
-  const STUN_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
-  async function initPc() {
-    if (pcRef.current) return pcRef.current;
-    const pc = new RTCPeerConnection(STUN_CONFIG);
-    pcRef.current = pc;
-
-    pc.onicecandidate = (e) => {
-      console.log('PC onicecandidate', e && e.candidate);
-      if (e.candidate) {
-        socket.emit('signal', { toConversationId: conversationId, type: 'ice', candidate: e.candidate });
-      }
-    };
-
-    pc.ontrack = (e) => {
-      // set remote video stream element
-      console.log('PC ontrack', e);
-      const remoteEl = document.getElementById('patient-remote-video');
-      if (remoteEl) remoteEl.srcObject = e.streams[0];
-    };
-
-    pc.onconnectionstatechange = () => {
-      console.log('PC connectionState:', pc.connectionState);
-    };
-
-    pc.onsignalingstatechange = () => {
-      console.log('PC signalingState:', pc.signalingState);
-    };
-
-    if (patient_stream) {
-      patient_stream.getTracks().forEach(t => pc.addTrack(t, patient_stream));
-    }
-
-    const handleSignal = async (data) => {
-      if (!data) return;
-      // ensure this signal is for our conversation
-      if (data.toConversationId && data.toConversationId !== conversationId) return;
-      if (data.fromConversationId && data.fromConversationId !== conversationId && !data.toConversationId) {
-        // allow if not explicitly targeted (some flows omit fields)
-      }
-
-      try {
-        if (data.type === 'offer' && data.sdp) {
-          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          socket.emit('signal', { toConversationId: conversationId, type: 'answer', sdp: pc.localDescription });
-        } else if (data.type === 'answer' && data.sdp) {
-          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        } else if (data.type === 'ice' && data.candidate) {
-          try { await pc.addIceCandidate(data.candidate); } catch (e) { console.warn('addIceCandidate error', e); }
-        }
-      } catch (err) {
-        console.error('handleSignal error', err);
-      }
-    };
-
-    // Listen for socket signals (cleaner and reliable)
-    socket.on('signal', handleSignal);
-
-    return pc;
-  }
-
-  const startCall = async () => {
-  // ensure we have permission/local stream
-  if (!patient_stream) {
-    await patient_requestPermissions(); // this sets patient_stream
-  }
-
-  const pc = await initPc();
-
-  // if we have local stream, ensure tracks are added to RTCPeerConnection
-  if (patient_stream) {
-    try {
-      // only add tracks if not already added
-      const senders = pc.getSenders ? pc.getSenders() : [];
-      const existingIds = senders.map(s => s.track && s.track.id).filter(Boolean);
-
-      patient_stream.getTracks().forEach(track => {
-        if (!existingIds.includes(track.id)) {
-          pc.addTrack(track, patient_stream);
-        }
-      });
-    } catch (e) {
-      console.warn('Error adding local tracks', e);
-    }
-  }
-
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  socket.emit('signal', { toConversationId: conversationId, type: 'offer', sdp: pc.localDescription });
-  };
-
-  useEffect(() => {
-    return () => {
-      if (pcRef.current) {
-        pcRef.current.close();
-        pcRef.current = null;
-      }
-      socket.off('signal'); // if you used socket.on directly
-    };
-  }, []);
-
-  useEffect(() => {
-    if (conversationId) socket.emit('join', conversationId);
-  }, [conversationId]);
-
 
   const patient_setupAudioMonitoring = (mediaStream) => {
     try {
@@ -228,10 +117,10 @@ const PatientVideoCall = ({ activeUser, onClose, onCallEnd, isVideoCall = true }
 
       // Disable camera and audio by default
       if (isVideoCall && mediaStream.getVideoTracks().length > 0) {
-        mediaStream.getVideoTracks()[0].enabled = true;
+        mediaStream.getVideoTracks()[0].enabled = false;
       }
       if (mediaStream.getAudioTracks().length > 0) {
-        mediaStream.getAudioTracks()[0].enabled = true;
+        mediaStream.getAudioTracks()[0].enabled = false;
       }
 
       setPatient_stream(mediaStream);
@@ -395,7 +284,7 @@ const PatientVideoCall = ({ activeUser, onClose, onCallEnd, isVideoCall = true }
               />
             ) : (
               <div className="patient-video-call-header-avatar-placeholder">
-                {activeUser?.name ? activeUser.name.charAt(0) : '?'}
+                {activeUser.name.charAt(0)}
               </div>
             )}
             <div className="patient-video-call-user-details">
@@ -456,7 +345,7 @@ const PatientVideoCall = ({ activeUser, onClose, onCallEnd, isVideoCall = true }
                 />
               ) : (
                 <div className="patient-remote-user-avatar">
-                  {activeUser?.name ? activeUser.name.charAt(0) : '?'}
+                  {activeUser.name.charAt(0)}
                 </div>
               )}
               <h2>{activeUser.name}</h2>

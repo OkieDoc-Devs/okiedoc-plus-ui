@@ -63,7 +63,7 @@
 
 /* Specialist Auth Styles - Clean Design */
 .specialist-auth-body {
-  background: #f5f0f0;
+  background: #bfe5f9;
   min-height: 100vh;
   width: 100vw;
   position: fixed;
@@ -79,158 +79,163 @@
 }
 
 .specialist-auth-body .login-container {
-  background: #ffffff;
+  background: var(--white);
   width: 100%;
   max-width: 420px;
   padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  animation: fadeIn 0.6s ease-in-out;
   box-sizing: border-box;
 }
 
-/* Header Styles */
-.header-inside-container {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 2rem;
+.specialist-auth-body .form-title {
+  font-size: 1.9rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1.6rem;
+  color: var(--navy);
 }
 
-.back-btn {
-  background: #4aa7ed;
+.specialist-auth-body .login-input-group {
+  position: relative;
+  margin: 1.5rem 0;
+}
+
+.specialist-auth-body .login-input-group svg {
+  position: absolute;
+  left: 12px;
+  top: 13px;
+  color: var(--accent);
+  font-size: 1.1rem;
+}
+
+.specialist-auth-body .login-input-group input {
+  width: 100%;
+  padding: 12px 12px 12px 42px;
+  border: 1.5px solid #d0dce5;
+  border-radius: 10px;
+  font-size: 15px;
+  background-color: var(--offwhite);
+  font-family: "Poppins", sans-serif;
+  color: var(--dark);
+  box-sizing: border-box;
+}
+
+.specialist-auth-body .btn {
+  width: 100%;
+  padding: 13px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
   border: none;
-  border-radius: 50%;
-  width: 2.5rem;
-  height: 2.5rem;
+  background: linear-gradient(135deg, var(--primary), var(--navy));
+  color: var(--white);
+  cursor: pointer;
+  margin-bottom: 10px;
+  font-family: "Poppins", sans-serif;
+  transition: all 0.3s ease;
+}
+
+.specialist-auth-body .btn:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, var(--navy), var(--primary));
+}
+
+.specialist-auth-body .social-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  margin: 6px 0;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.back-btn:hover {
-  background: #0b5388;
-}
-
-.material-symbols-outlined {
-  color: white;
-  font-size: 1.2rem;
-}
-
-
-/* Form Styles */
-.login-title {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 1.5rem;
-  text-align: left;
-}
-
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.login-label {
-  display: block;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.login-input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 1rem;
+  gap: 10px;
   font-family: "Poppins", sans-serif;
-  color: #333;
-  background-color: #fff;
-  box-sizing: border-box;
-  transition: border-color 0.3s ease;
+  transition: all 0.3s ease;
 }
 
-.login-input:focus {
-  outline: none;
-  border-color: #4aa7ed;
-  box-shadow: 0 0 0 2px rgba(74, 167, 237, 0.1);
+.specialist-auth-body .google-btn {
+  background: #fff;
+  color: #444;
+  border: 1.5px solid #ddd;
 }
 
-.login-input::placeholder {
-  color: #999;
+.specialist-auth-body .google-btn:hover {
+  background: #f8f9fa;
 }
 
-.login-password {
-  position: relative;
+.specialist-auth-body .fb-btn {
+  background: #1877f2;
+  color: #fff;
 }
 
-.login-btn {
-  width: 100%;
-  padding: 0.875rem;
-  background: #4aa7ed;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  font-family: "Poppins", sans-serif;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  margin-top: 0.5rem;
+.specialist-auth-body .fb-btn:hover {
+  background: #166fe5;
 }
 
-.login-btn:hover {
-  background: #0b5388;
-}
-
-.login-text {
+.specialist-auth-body .links {
   text-align: center;
-  color: #666;
-  font-size: 0.9rem;
-  margin: 1rem 0 0.5rem 0;
+  margin-top: 1rem;
+  font-size: 0.95rem;
 }
 
-.login-text button {
+.specialist-auth-body .links button {
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+  font-family: "Poppins", sans-serif;
+}
+
+.specialist-auth-body .links button:hover {
+  text-decoration: underline;
+}
+
+.specialist-auth-body .other-login-link {
+  text-align: center;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.specialist-auth-body .other-login-link p {
+  color: var(--gray);
+  font-size: 14px;
+  margin: 0;
+}
+
+.specialist-auth-body .other-login-link button {
   background: none;
   border: none;
-  color: #4aa7ed;
+  color: var(--primary);
   font-weight: 600;
   cursor: pointer;
-  text-decoration: underline;
   font-family: "Poppins", sans-serif;
-}
-
-.login-text button:hover {
-  color: #0b5388;
-}
-
-.specialist-text {
-  text-align: center;
-  color: #666;
-  font-size: 0.9rem;
-  margin: 0.5rem 0 0 0;
-}
-
-.specialist-text button {
-  background: none;
-  border: none;
-  color: #4aa7ed;
-  font-weight: 600;
-  cursor: pointer;
   text-decoration: underline;
-  font-family: "Poppins", sans-serif;
+  transition: color 0.3s ease;
 }
 
-.specialist-text button:hover {
-  color: #0b5388;
+.specialist-auth-body .other-login-link button:hover {
+  color: var(--navy);
 }
 
-/* Responsive Design */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 768px) {
   .specialist-auth-body {
     padding: 0.5rem;
@@ -239,25 +244,31 @@
   .specialist-auth-body .login-container {
     padding: 1.5rem;
     max-width: 100%;
+    margin: 0 auto;
   }
 
-  .login-title {
+  .specialist-auth-body .form-title {
     font-size: 1.6rem;
     margin-bottom: 1.2rem;
   }
 
-  .login-form {
-    gap: 0.8rem;
+  .specialist-auth-body .login-input-group {
+    margin: 1.2rem 0;
   }
 
-  .login-input {
-    padding: 0.7rem;
+  .specialist-auth-body .login-input-group input {
+    font-size: 14px;
+    padding: 11px 11px 11px 40px;
+  }
+
+  .specialist-auth-body .btn {
+    padding: 12px;
     font-size: 0.95rem;
   }
 
-  .login-btn {
-    padding: 0.8rem;
-    font-size: 0.95rem;
+  .specialist-auth-body .social-btn {
+    padding: 11px;
+    font-size: 0.9rem;
   }
 }
 
@@ -268,30 +279,41 @@
 
   .specialist-auth-body .login-container {
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: 12px;
   }
 
-  .login-title {
+  .specialist-auth-body .form-title {
     font-size: 1.4rem;
     margin-bottom: 1rem;
   }
 
-  .login-form {
-    gap: 0.7rem;
+  .specialist-auth-body .login-input-group {
+    margin: 1rem 0;
   }
 
-  .login-input {
-    padding: 0.65rem;
+  .specialist-auth-body .login-input-group input {
+    font-size: 13px;
+    padding: 10px 10px 10px 38px;
+  }
+
+  .specialist-auth-body .login-input-group svg {
+    left: 10px;
+    top: 11px;
+    font-size: 1rem;
+  }
+
+  .specialist-auth-body .btn {
+    padding: 11px;
     font-size: 0.9rem;
   }
 
-  .login-btn {
-    padding: 0.75rem;
-    font-size: 0.9rem;
-  }
-
-  .login-text,
-  .specialist-text {
+  .specialist-auth-body .social-btn {
+    padding: 10px;
     font-size: 0.85rem;
+  }
+
+  .specialist-auth-body .links,
+  .specialist-auth-body .other-login-link p {
+    font-size: 13px;
   }
 }

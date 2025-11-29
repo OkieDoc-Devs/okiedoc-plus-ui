@@ -71,17 +71,8 @@ export default function Login() {
       localStorage.setItem("userRole", "patient"); // Example
       navigate("/patient-dashboard");
       return;
-    } else if (
-      formData.email === dummyCredentials.specialist.email &&
-      formData.password === dummyCredentials.specialist.password
-    ) {
-       // Set some indicator for specialist login if needed
-       localStorage.setItem("userRole", "specialist"); // Example
-       navigate("/specialist-dashboard"); // Navigate to the correct specialist dashboard
-      return;
     }
 
-    // Check localStorage for registered users (if applicable)
     const registeredUsers = JSON.parse(
       localStorage.getItem("registeredUsers") || "[]"
     );
@@ -107,12 +98,8 @@ export default function Login() {
           >
             <span className="material-symbols-outlined">arrow_back_2</span>
           </button>
-          <img
-            src="/okie-doc-logo.png"
-            alt="OkieDoc+"
-            className="logo-image"
-          />
-          <div style={{ width: "2.5rem" }}></div> {/* Spacer */}
+          <img src="/okie-doc-logo.png" alt="OkieDoc+" className="logo-image" />
+          <div style={{ width: "2.5rem" }}></div>
         </div>
         <h2 className="login-title">Sign in</h2>
         <form className="login-form" onSubmit={handleSubmit}>

@@ -592,14 +592,9 @@ const SpecialistDashboard = () => {
           onClick={() => !isPast && setSelectedDate(day)}
         >
           <span className="day-number">{day}</span>
-          {totalItems > 0 && (
+          {hasSchedule && (
             <div className="schedule-indicator">
-              {totalItems}
-            </div>
-          )}
-          {hasTickets && (
-            <div className="ticket-indicator">
-              T
+              {schedules[dateKey].length}
             </div>
           )}
         </div>
@@ -610,67 +605,62 @@ const SpecialistDashboard = () => {
   };
 
   const renderSchedules = () => (
-    <div className="dashboard-content schedule-page">
+    <div className="dashboard-content">
       <div className="schedule-container">
-        <div className="schedule-layout">
-          <div className="calendar-main">
-            <div className="calendar-header">
-              <button
-                className="calendar-nav"
-                onClick={() => {
-                  if (currentMonth === 0) {
-                    setCurrentMonth(11);
-                    setCurrentYear(currentYear - 1);
-                  } else {
-                    setCurrentMonth(currentMonth - 1);
-                  }
-                }}
-              >
-                ‹
-              </button>
-              <h2>
-                {getMonthName(currentMonth)} {currentYear}
-              </h2>
-              <button
-                className="calendar-nav"
-                onClick={() => {
-                  if (currentMonth === 11) {
-                    setCurrentMonth(0);
-                    setCurrentYear(currentYear + 1);
-                  } else {
-                    setCurrentMonth(currentMonth + 1);
-                  }
-                }}
-              >
-                ›
-              </button>
-            </div>
+        <div className="calendar-header">
+          <button
+            className="calendar-nav"
+            onClick={() => {
+              if (currentMonth === 0) {
+                setCurrentMonth(11);
+                setCurrentYear(currentYear - 1);
+              } else {
+                setCurrentMonth(currentMonth - 1);
+              }
+            }}
+          >
+            ‹
+          </button>
+          <h2>
+            {getMonthName(currentMonth)} {currentYear}
+          </h2>
+          <button
+            className="calendar-nav"
+            onClick={() => {
+              if (currentMonth === 11) {
+                setCurrentMonth(0);
+                setCurrentYear(currentYear + 1);
+              } else {
+                setCurrentMonth(currentMonth + 1);
+              }
+            }}
+          >
+            ›
+          </button>
+        </div>
 
-            <div className="calendar-container">
-              <div className="calendar">
-                <div className="calendar-weekdays">
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                    <div key={day} className="weekday">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                <div className="calendar-days">{renderCalendar()}</div>
+        <div className="calendar">
+          <div className="calendar-weekdays">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+              <div key={day} className="weekday">
+                {day}
               </div>
-            </div>
+            ))}
           </div>
+          <div className="calendar-days">{renderCalendar()}</div>
+        </div>
 
-          {selectedDate && (
-            <div className="selected-date-panel">
-              <h3>
-                {getMonthName(currentMonth)} {selectedDate}, {currentYear}
-              </h3>
-              <button
-                className="btn-primary"
-                onClick={() => setShowScheduleModal(true)}
-              >
-                Add Schedule
-              </button>
+        {selectedDate && (
+          <div className="selected-date-panel">
+            <h3>
+              {getMonthName(currentMonth)} {selectedDate}, {currentYear}
+            </h3>
+            <button
+              className="btn-primary"
+              onClick={() => setShowScheduleModal(true)}
+            >
+              Add Schedule
+            </button>
 
               <div className="day-schedules">
               {/* Show confirmed tickets for this day */}
@@ -743,8 +733,7 @@ const SpecialistDashboard = () => {
               )}
             </div>
           </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
@@ -781,199 +770,32 @@ const SpecialistDashboard = () => {
 
   const renderDashboard = () => (
     <div className="dashboard-content">
-      <div className="chart-layout">
-        <div className="panel">
-          <div className="left-col-header">
-            <div style={{ fontWeight: 700 }}>Tickets</div>
+      <div className="filters">
+        {["All Tickets", "Confirmed", "Pending", "Completed"].map((filter) => (
+          <div
+            key={filter}
+            className={`filter-item ${
+              ticketFilter === (filter === "All Tickets" ? "All" : filter)
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setTicketFilter(filter === "All Tickets" ? "All" : filter)
+            }
+          >
+            {filter}
           </div>
-          <div style={{ padding: '12px 10px' }}>
-            <div className="filters two-col" style={{ marginRight: '0' }}>
-              {['All Tickets','Pending','Confirmed','Completed'].map(label => (
-                <div key={label} className={`filter-item ${ticketFilter === (label === 'All Tickets' ? 'All' : label) ? 'active' : ''}`} onClick={() => setTicketFilter(label === 'All Tickets' ? 'All' : label)}>{label}</div>
         ))}
       </div>
-            {filteredTickets.length === 0 ? (
-              <div style={{ padding: '1rem', color: '#7A7A7A' }}>No tickets found.</div>
-            ) : (
-              filteredTickets.map(t => (
-                <div key={t.id} className={`sidebar-ticket ${selectedTicketId === t.id ? 'active' : ''}`} onClick={() => setSelectedTicketId(t.id)}>
-                  <div className="name">{t.patient}</div>
-                  <div className="meta">{t.id} • {t.service}</div>
-                  <div className="meta">{t.when}</div>
-                  <div style={{ marginTop:8, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                    <span className={`status-badge ${getStatusBadgeClass(t.status)}`}>{t.status}</span>
-                    <button className="edit-btn small" onClick={(e) => { e.stopPropagation(); viewTicket(t.id); }}>Details</button>
+      <div className="ticket-list">
+        <div className="table-header">
+          <div>Patient Name</div>
+          <div>Service Type</div>
+          <div>Date & Time</div>
+          <div>Status</div>
+          <div>Action</div>
         </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="panel-body">
-            {(() => {
-              const t = tickets.find(x => x.id === selectedTicketId);
-              if (!t) return <div style={{ color:'#7A7A7A' }}>Select a ticket to start.</div>;
-              return (
-                <div>
-                  <div style={{ fontWeight:700, fontSize:'18px', marginBottom:'8px' }}>Name: {t.patient}</div>
-                  <div style={{ marginBottom:'6px' }}>Birthday: June 19, 1988</div>
-                  <div style={{ marginBottom:'6px' }}>Mobile Number: 09377413567</div>
-                  <div style={{ marginBottom:'14px' }}>Email Address: johnsantos@gmail.com</div>
-                  <div style={{ fontWeight:700, marginBottom:'12px' }}>Chief Complaint: Headache</div>
-                  <div>
-                    <div className="tabbar" style={{ marginBottom:'12px' }}>
-                      <button className={centerTab==='medicine'?'active':''} onClick={()=>setCenterTab('medicine')}>Medicine</button>
-                      <button className={centerTab==='lab'?'active':''} onClick={()=>setCenterTab('lab')}>Lab Request</button>
-                      <div style={{ marginLeft:'auto' }}>
-                        <button className="request-btn" onClick={openMhModal}>Request Medical History</button>
-                      </div>
-                    </div>
-                    {centerTab === 'medicine' ? (
-                      <div>
-                        <div className="grid-2">
-                          <div>
-                            <div style={{ fontWeight:600 }}>Brand</div>
-                            <input className="input-sm pill" value={medForm.brand} onChange={(e)=> setMedForm(m=>({...m, brand:e.target.value}))} />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight:600 }}>Generic</div>
-                            <input className="input-sm pill" value={medForm.generic} onChange={(e)=> setMedForm(m=>({...m, generic:e.target.value}))} />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight:600 }}>Dosage</div>
-                            <input className="input-sm pill" value={medForm.dosage} onChange={(e)=> setMedForm(m=>({...m, dosage:e.target.value}))} />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight:600 }}>Form</div>
-                            <input className="input-sm pill" value={medForm.form} onChange={(e)=> setMedForm(m=>({...m, form:e.target.value}))} />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight:600 }}>Quantity</div>
-                            <input className="input-sm pill" value={medForm.quantity} onChange={(e)=> setMedForm(m=>({...m, quantity:e.target.value}))} />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight:600 }}>Instructions</div>
-                            <input className="input-sm pill" value={medForm.instructions} onChange={(e)=> setMedForm(m=>({...m, instructions:e.target.value}))} />
-                          </div>
-                        </div>
-                        <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'10px' }}>
-                          <button className="tiny-btn plus-black" title="Add medicine" onClick={addMedicine}>+</button>
-                        </div>
-                        <div className="prescription-list">
-                          {(encounter.medicines || []).length === 0 ? (
-                            <div style={{ color:'#555' }}>No medicines added yet.</div>
-                          ) : (
-                            <ol className="rx-list">
-                              {(encounter.medicines || []).map((m, idx) => (
-                                <li key={idx} className="prescription-item">
-                                  <div className="rx-item-title">{formatMedicineDisplay(m)}</div>
-                                  <div className="rx-sig">Sig: {m.instructions}</div>
-                                  <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                                    <button className="edit-btn" onClick={() => removeMedicine(idx)}>Remove</button>
-                                  </div>
-                                </li>
-                              ))}
-                            </ol>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="grid-2">
-                          <div>
-                            <div style={{ fontWeight:600 }}>Lab Test</div>
-                            <input className="input-sm pill" value={labForm.test} onChange={(e)=> setLabForm(f=>({...f, test:e.target.value}))} />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight:600 }}>Remarks</div>
-                            <input className="input-sm pill" value={labForm.remarks} onChange={(e)=> setLabForm(f=>({...f, remarks:e.target.value}))} />
-                          </div>
-                        </div>
-                        <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'10px' }}>
-                          <button className="tiny-btn plus-black" title="Add lab request" onClick={addLab}>+</button>
-                        </div>
-                        <div className="prescription-list">
-                          {(encounter.labRequests || []).length === 0 ? (
-                            <div style={{ color:'#555' }}>No lab requests added yet.</div>
-                          ) : (
-                            <ol className="lab-list">
-                              {(encounter.labRequests || []).map((l, idx) => (
-                                <li className="prescription-item" key={idx}>
-                                  <div className="rx-item-title">{formatLabRequestDisplay(l)}</div>
-                                  <div className="rx-sig">Remarks: {l.remarks || 'N/A'}</div>
-                                  <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                                    <button className="edit-btn" onClick={() => removeLab(idx)}>Remove</button>
-                                  </div>
-                                </li>
-                              ))}
-                            </ol>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="panel-body soap-section">
-            <div className="right-label">Subjective:</div>
-            <textarea className="input-lg" value={encounter.subjective} onChange={(e)=> saveEncounter({ subjective: e.target.value })}></textarea>
-            <div className="right-label">Objective:</div>
-            <textarea className="input-lg" value={encounter.objective} onChange={(e)=> saveEncounter({ objective: e.target.value })}></textarea>
-            <div className="right-label">Assessment:</div>
-            <textarea className="input-lg" value={encounter.assessment} onChange={(e)=> saveEncounter({ assessment: e.target.value })}></textarea>
-            <div className="right-label">Plan:</div>
-            <textarea className="input-lg" value={encounter.plan} onChange={(e)=> saveEncounter({ plan: e.target.value })}></textarea>
-            <div className="right-label">Referral:</div>
-            <textarea className="input-lg" value={encounter.referral} onChange={(e)=> saveEncounter({ referral: e.target.value })}></textarea>
-            <div style={{ display:'flex', alignItems:'center', gap:'10px', marginTop:'8px' }}>
-              <div>Follow up?</div>
-              <input type="checkbox" checked={!!encounter.followUp} onChange={(e) => saveEncounter({ followUp: e.target.checked })} />
-              <button className="btn-primary" style={{ marginLeft:'auto' }} onClick={() => { saveEncounter({}); alert('Encounter saved.'); }}>Save Encounter</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Medical history requests list below center section for visibility */}
-      <div className="prescription-list" style={{ marginTop:'16px' }}>
-        <h4 style={{ marginBottom:'8px' }}>Medical History Requests</h4>
-        {mhRequests.length === 0 ? (
-          <div style={{ color:'#555' }}>No requests yet.</div>
-        ) : (
-          <div className="lab-list">
-            {mhRequests.map((r, index)=> (
-              <div key={r.id} className="prescription-item" style={{ 
-                border: '1px solid #ddd', 
-                borderRadius: '8px', 
-                padding: '12px', 
-                marginBottom: '12px',
-                backgroundColor: '#fff'
-              }}>
-                <div className="rx-item-title" style={{ marginBottom: '8px' }}>
-                  {index + 1}. {new Date(r.createdAt).toLocaleDateString()} — {r.status}
-                </div>
-                {r.reason && <div className="rx-sig" style={{ marginBottom: '4px' }}>Reason: {r.reason}</div>}
-                {(r.from || r.to) && <div className="rx-sig" style={{ marginBottom: '8px' }}>Range: {r.from || '—'} to {r.to || '—'}</div>}
-                <div style={{ display:'flex', gap:'8px', justifyContent:'flex-end' }}>
-                  {r.status !== 'Fulfilled' && r.status !== 'Cancelled' && (
-                    <button className="btn-primary" onClick={()=> updateMhStatus(r.id, 'Fulfilled')}>Mark Fulfilled</button>
-                  )}
-                  <button className="edit-btn" onClick={()=> downloadMhPdf(r)}>Download PDF</button>
-                  {r.status !== 'Cancelled' && (
-                    <button className="edit-btn" onClick={()=> updateMhStatus(r.id, 'Cancelled')}>Cancel</button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="ticket-rows">{renderTickets()}</div>
       </div>
     </div>
   );
@@ -989,25 +811,24 @@ const SpecialistDashboard = () => {
             className="profile-img"
           />
           <div>
-            <label htmlFor="profile-photo-upload" className="upload-btn">
+            <div className="upload-btn">
               <FaUpload /> Upload Photo
-            </label>
-            <input
-              id="profile-photo-upload"
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onload = (e) => {
-                    handleProfileChange("profileImage", e.target.result);
-                  };
-                  reader.readAsDataURL(file);
-                }
-              }}
-              style={{ display: "none" }}
-            />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                      handleProfileChange("profileImage", e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                style={{ display: "none" }}
+              />
+            </div>
           </div>
         </div>
 
@@ -1056,25 +877,24 @@ const SpecialistDashboard = () => {
               className="profile-img"
             />
             <div>
-              <label htmlFor="prc-license-upload" className="upload-btn">
+              <div className="upload-btn">
                 <FaUpload /> Upload PRC License Photo
-              </label>
-              <input
-                id="prc-license-upload"
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                      handleProfileChange("prcImage", e.target.result);
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-                style={{ display: "none" }}
-              />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        handleProfileChange("prcImage", e.target.result);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  style={{ display: "none" }}
+                />
+              </div>
             </div>
           </div>
           <div className="input-group full-width">
@@ -1266,28 +1086,27 @@ const SpecialistDashboard = () => {
                   className="profile-img"
                 />
                 <div>
-                  <label htmlFor="gcash-qr-upload" className="upload-btn">
+                  <div className="upload-btn">
                     <FaUpload /> Upload GCash QR
-                  </label>
-                  <input
-                    id="gcash-qr-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                          setAccountDetails((prev) => ({
-                            ...prev,
-                            gcashQr: e.target.result,
-                          }));
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    style={{ display: "none" }}
-                  />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (e) => {
+                            setAccountDetails((prev) => ({
+                              ...prev,
+                              gcashQr: e.target.result,
+                            }));
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      style={{ display: "none" }}
+                    />
+                  </div>
                 </div>
               </div>
             </>
@@ -1648,27 +1467,6 @@ const SpecialistDashboard = () => {
               <button className="btn-primary" onClick={addSchedule}>
                 Add Schedule
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {mhModal.open && (
-        <div className="modal" style={{ display:'flex', position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', justifyContent:'center', alignItems:'center', zIndex:1000 }} onClick={(e)=>{ if (e.target.classList.contains('modal')) setMhModal({ open:false, reason:'', from:'', to:'', consent:false }); }}>
-          <div className="modal-content" style={{ background:'#fff', padding:'1.6rem', borderRadius:'12px', width:'90%', maxWidth:'520px' }}>
-            <h3 style={{ marginBottom:'1rem' }}>Request Medical History</h3>
-            <div className="input-group"><label>Reason</label><textarea rows="3" value={mhModal.reason} onChange={(e)=> setMhModal(m=>({ ...m, reason:e.target.value }))}></textarea></div>
-            <div className="form-grid">
-              <div className="input-group"><label>From</label><input type="date" value={mhModal.from} onChange={(e)=> setMhModal(m=>({ ...m, from:e.target.value }))} /></div>
-              <div className="input-group"><label>To</label><input type="date" value={mhModal.to} onChange={(e)=> setMhModal(m=>({ ...m, to:e.target.value }))} /></div>
-            </div>
-            <div style={{ display:'flex', alignItems:'center', gap:'8px', margin:'8px 0 16px' }}>
-              <input id="mhConsent" type="checkbox" checked={mhModal.consent} onChange={(e)=> setMhModal(m=>({ ...m, consent:e.target.checked }))} />
-              <label htmlFor="mhConsent">I have the patient's consent</label>
-            </div>
-            <div style={{ display:'flex', gap:'10px', justifyContent:'flex-end' }}>
-              <button className="edit-btn" onClick={()=> setMhModal({ open:false, reason:'', from:'', to:'', consent:false })}>Cancel</button>
-              <button className="btn-primary" onClick={submitMh}>Submit Request</button>
             </div>
           </div>
         </div>

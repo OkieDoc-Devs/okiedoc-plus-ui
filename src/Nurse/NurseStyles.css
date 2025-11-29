@@ -1,5 +1,6 @@
-html, body {
-  font-family: 'Inter', Arial, sans-serif;
+html,
+body {
+  font-family: "Inter", Arial, sans-serif;
   background: #f7f8fa;
   color: #222;
   min-height: 100vh;
@@ -7,7 +8,27 @@ html, body {
   padding: 0;
   opacity: 1 !important;
 }
-.dashboard, .dashboard-header, .dashboard-title, .dashboard-nav, .appointments-section, .tickets-container, .ticket-card, .modal-overlay, .modal-content, .modal-header, .modal-actions, .invoice-modal, .invoice-form, .invoice-items, .invoice-item, .invoice-fees, .fee-item, .add-item-btn, .remove-item-btn, .submit-btn, .cancel-btn {
+.dashboard,
+.dashboard-header,
+.dashboard-title,
+.dashboard-nav,
+.appointments-section,
+.tickets-container,
+.ticket-card,
+.modal-overlay,
+.modal-content,
+.modal-header,
+.modal-actions,
+.invoice-modal,
+.invoice-form,
+.invoice-items,
+.invoice-item,
+.invoice-fees,
+.fee-item,
+.add-item-btn,
+.remove-item-btn,
+.submit-btn,
+.cancel-btn {
   opacity: 1 !important;
 }
 .calendar {
@@ -46,87 +67,87 @@ html, body {
   font-style: normal;
 }
 
-.calendar .form-group {
-  margin-bottom: 22px;
+/* Create Appointment form layout */
+.create-appointment-form .form-section {
+  padding: 16px 20px 0 20px;
 }
-
-.calendar label {
+.create-appointment-form .form-section h3 {
+  margin: 0 0 12px 0;
   color: #0b5388;
-  font-weight: 500;
-  font-size: 0.95rem;
-  margin-bottom: 8px;
+  font-size: 1.1rem;
+}
+.create-appointment-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.create-appointment-form .form-group {
   display: flex;
-  align-items: center;
+  flex-direction: column;
 }
-
-.calendar .form-input {
-  border: 2px solid #bfe5f9;
+.create-appointment-form input,
+.create-appointment-form select,
+.create-appointment-form textarea {
+  border: 1.5px solid #bfe5f9;
   border-radius: 8px;
-  padding: 12px 15px;
-  font-family: "Roboto";
-  font-size: 1rem;
-  transition: all 0.3s ease;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
   color: #000000;
-  background-color: #fffefb;
-}
-
-.calendar .form-input:focus {
-  border-color: #4aa7ed;
-  box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.2);
-  outline: none;
-}
-
-.calendar .form-input:hover {
-  border-color: #0aadef;
-}
-
-.calendar-container {
-  background-color: #f5f0f0;
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 22px;
-  border-left: 4px solid #0aadef;
-}
-
-.date-input,
-.time-input {
   background-color: #ffffff;
+  opacity: 1 !important;
+}
+.create-appointment-form textarea {
+  resize: none;
+}
+/* Increase visibility of date/time picker icons on the right side */
+.create-appointment-form input[type="date"]::-webkit-calendar-picker-indicator,
+.create-appointment-form input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 1 !important;
+  filter: brightness(0) saturate(100%) invert(21%) sepia(78%) saturate(1000%)
+    hue-rotate(181deg) brightness(92%) contrast(95%);
   cursor: pointer;
 }
-
-.schedule-btn {
-  background: #4aa7ed;
-  color: white;
+/* Firefox (uses a different indicator pseudo-element) */
+.create-appointment-form input[type="date"]::-moz-calendar-picker-indicator,
+.create-appointment-form input[type="time"]::-moz-calendar-picker-indicator {
+  opacity: 1 !important;
+}
+.create-appointment-form input:focus,
+.create-appointment-form select:focus,
+.create-appointment-form textarea:focus {
+  outline: none;
+  border-color: #4aa7ed;
+  box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.18);
+}
+.create-appointment-form .modal-actions {
+  position: sticky;
+  bottom: 0;
+  background: #ffffff;
+}
+.submit-btn {
+  background-color: #0aadef;
+  color: #000000;
   border: none;
-  padding: 15px 20px;
+  padding: 10px 18px;
   border-radius: 8px;
-  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  box-shadow: 0 4px 12px rgba(11, 83, 136, 0.2);
 }
-
-.btn-icon {
-  font-size: 1.2rem;
-  font-style: normal;
+.submit-btn:hover {
+  background-color: #4aa7ed;
 }
-
-.schedule-btn:hover {
-  background: #0b5388;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(11, 83, 136, 0.3);
+.cancel-btn {
+  background-color: #f44336;
+  color: #ffffff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
 }
-
-.schedule-help {
-  margin-top: 15px;
-  color: #666;
-  font-size: 0.85rem;
-  text-align: center;
+.cancel-btn:hover {
+  background-color: #da190b;
 }
 
 .calendar select.form-input {
@@ -504,7 +525,7 @@ html, body {
 }
 
 .save-btn {
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -815,21 +836,37 @@ html, body {
 
 .tickets-list .ticket-card {
   border-left: 4px solid #ff9800;
-  background: linear-gradient(0deg, rgba(255, 152, 0, 0.06), rgba(255, 255, 255, 1));
+  background: linear-gradient(
+    0deg,
+    rgba(255, 152, 0, 0.06),
+    rgba(255, 255, 255, 1)
+  );
   color: #000000;
 }
 
 .processing-tickets .ticket-card {
   border-left: 4px solid #2196f3;
-  background: linear-gradient(0deg, rgba(33, 150, 243, 0.06), rgba(255, 255, 255, 1));
+  background: linear-gradient(
+    0deg,
+    rgba(33, 150, 243, 0.06),
+    rgba(255, 255, 255, 1)
+  );
   color: #000000;
 }
 
 /* Ensure text inside ticket cards is readable */
-.ticket-card .ticket-header h3 { color: #0b5388; }
-.ticket-card .ticket-details p { color: #0b5388; }
-.ticket-card .ticket-time { color: #0b5388; }
-.ticket-card .ticket-details strong { color: #0b5388; }
+.ticket-card .ticket-header h3 {
+  color: #0b5388;
+}
+.ticket-card .ticket-details p {
+  color: #0b5388;
+}
+.ticket-card .ticket-time {
+  color: #0b5388;
+}
+.ticket-card .ticket-details strong {
+  color: #0b5388;
+}
 
 .appointment-card {
   background-color: white;
@@ -911,16 +948,16 @@ html, body {
 }
 
 .action-btn.edit {
-  background-color: #2196F3;
+  background-color: #2196f3;
   color: white;
 }
 
 .action-btn.edit:hover {
-  background-color: #1976D2;
+  background-color: #1976d2;
 }
 
 .action-btn.view {
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
 }
 
@@ -1084,7 +1121,8 @@ html, body {
 .create-appointment-form input[type="date"]::-webkit-calendar-picker-indicator,
 .create-appointment-form input[type="time"]::-webkit-calendar-picker-indicator {
   opacity: 1 !important;
-  filter: brightness(0) saturate(100%) invert(21%) sepia(78%) saturate(1000%) hue-rotate(181deg) brightness(92%) contrast(95%);
+  filter: brightness(0) saturate(100%) invert(21%) sepia(78%) saturate(1000%)
+    hue-rotate(181deg) brightness(92%) contrast(95%);
   cursor: pointer;
 }
 
@@ -1234,6 +1272,50 @@ html, body {
   box-shadow: 0 4px 12px rgba(11, 83, 136, 0.2);
 }
 
+/* ROS Tab Styling */
+.ros-section {
+  background: #f9fbfd;
+  border-radius: 12px;
+  padding: 24px 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(11, 83, 136, 0.07);
+}
+.ros-section h3 {
+  margin-top: 0;
+  margin-bottom: 18px;
+  color: #0b5388;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.ros-group {
+  margin-bottom: 22px;
+}
+.ros-group-title {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 1.08rem;
+  color: #2a4d6c;
+  font-weight: 500;
+}
+.ros-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 24px;
+}
+.ros-item-label {
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px 12px;
+  margin: 0;
+  box-shadow: 0 1px 4px rgba(11, 83, 136, 0.04);
+  font-size: 0.98rem;
+  display: flex;
+  align-items: center;
+}
+.ros-item-label input[type="checkbox"] {
+  margin-right: 8px;
+}
+
 @media (max-width: 768px) {
   .create-appointment-form .form-row {
     grid-template-columns: 1fr;
@@ -1252,27 +1334,186 @@ html, body {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .search-box {
     min-width: auto;
   }
-  
+
   .filter-buttons {
     justify-content: center;
   }
-  
+
   .detail-row {
     grid-template-columns: 1fr;
     gap: 5px;
   }
-  
+
   .appointment-actions {
     flex-direction: column;
     align-items: stretch;
   }
-  
-  .action-btn, .status-select {
+
+  .action-btn,
+  .status-select {
     width: 100%;
     text-align: center;
   }
+}
+
+/* Text Pills Styling */
+.text-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+  min-height: 40px;
+}
+
+.text-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.text-pill {
+  display: flex;
+  align-items: center;
+  background: #f0f8ff;
+  border: 1px solid #399eeb;
+  border-radius: 16px;
+  padding: 4px 8px 4px 12px;
+  font-size: 14px;
+  color: #0b5388;
+  gap: 6px;
+}
+
+.text-pill span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.remove-pill {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.remove-pill:hover {
+  background: #ff4444;
+  color: white;
+}
+
+.text-input-container input[type="text"] {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  padding: 4px;
+  background: transparent;
+  flex: 1;
+  min-width: 200px;
+}
+
+.text-input-container input[type="text"]::placeholder {
+  color: #888;
+  font-style: italic;
+}
+
+/* View Pills Styling (for displaying saved pills in ticket view) */
+.view-pills-container {
+  margin-top: 5px;
+}
+
+.view-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.view-pill {
+  display: flex;
+  align-items: center;
+  background: #f0f8ff;
+  border: 1px solid #399eeb;
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 14px;
+  color: #0b5388;
+}
+
+.view-pill span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* Checkbox Group Styling */
+.checkbox-group {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 5px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  gap: 8px;
+  position: relative;
+}
+
+.checkbox-item input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  height: 18px;
+  width: 18px;
+  background-color: #ffffff;
+  border: 2px solid #d0d7de;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.checkbox-item:hover .checkmark {
+  border-color: #399eeb;
+}
+
+.checkbox-item input:checked ~ .checkmark {
+  background-color: #399eeb;
+  border-color: #399eeb;
+}
+
+.checkbox-item input:checked ~ .checkmark:after {
+  content: "\2713";
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
 }

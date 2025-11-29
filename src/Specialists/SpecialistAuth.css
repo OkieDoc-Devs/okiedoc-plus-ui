@@ -1,19 +1,67 @@
-:root {
-  --primary: #4aa7ed;
-  --secondary: #BFESF9;
-  --navy: #0b5388;
-  --accent: #0aadef;
-  --light-bg: #f5f0f0;
-  --dark: #000000;
-  --white: #ffffff;
-  --offwhite: #fffffb;
-  --gray: #7a7a7a;
-  --light-gray: #e5e5e5;
-  --success: #4caf50;
-  --warning: #ff9800;
-  --danger: #f44336;
+/* Specialist Auth Styles - Clean Design */
+
+/* Error message styles */
+.error-message {
+  color: #e74c3c;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  display: block;
 }
 
+.login-input.error {
+  border-color: #e74c3c;
+  box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.1);
+}
+
+/* Password toggle button styles */
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.password-toggle:hover {
+  color: #333;
+}
+
+.password-toggle.visible {
+  color: #4aa7ed;
+}
+
+.password-toggle.hidden {
+  color: #999;
+}
+
+/* Loading button styles */
+.login-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Form layout improvements */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.login-form > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Specialist Auth Styles - Clean Design */
 .specialist-auth-body {
   background: #bfe5f9;
   min-height: 100vh;

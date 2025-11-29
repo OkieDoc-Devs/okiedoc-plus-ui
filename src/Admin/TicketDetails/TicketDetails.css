@@ -1,0 +1,426 @@
+:root {
+    --td-primary: #0B5388;
+    --td-accent: #4AA7ED;
+    --td-bg: #f3f6f8;
+    --td-white: #ffffff;
+    --td-text: #2c3e50;
+    --td-gray: #95a5a6;
+    --td-border: #e0e0e0;
+}
+
+.ticket-details-page {
+    background-color: var(--td-bg);
+    min-height: 100vh;
+    padding: 24px;
+    font-family: 'Inter', sans-serif;
+    color: var(--td-text);
+}
+
+.td-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    background: var(--td-white);
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.td-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--td-primary);
+    margin-right: 16px;
+}
+
+.td-header-left {
+    display: flex;
+    align-items: center;
+}
+
+.td-status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.td-status-badge.completed { background-color: #d4edda; color: #155724; }
+.td-status-badge.pending { background-color: #fff3cd; color: #856404; }
+
+.td-header-right {
+    display: flex;
+    gap: 12px;
+}
+
+.td-btn-primary, .td-btn-secondary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.td-btn-primary { background: var(--td-primary); color: white; }
+.td-btn-secondary { background: white; border: 1px solid var(--td-border); color: var(--td-text); }
+.td-btn-primary:hover { background: #083d63; }
+.td-btn-secondary:hover { background: #f8f9fa; }
+
+.td-grid-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr 320px;
+    gap: 24px;
+    height: calc(100vh - 140px); /* Fill remaining height */
+}
+
+.td-card {
+    background: var(--td-white);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 24px;
+    height: fit-content;
+}
+
+.card-header h4 {
+    margin: 0 0 16px 0;
+    color: var(--td-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1rem;
+    border-bottom: 1px solid var(--td-border);
+    padding-bottom: 12px;
+}
+
+.patient-card { text-align: center; }
+
+.td-avatar-large {
+    width: 80px;
+    height: 80px;
+    background: #e3f2fd;
+    color: var(--td-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    margin: 0 auto 12px;
+}
+
+.td-subtext { color: var(--td-gray); font-size: 0.9rem; margin-bottom: 16px; }
+.td-divider { height: 1px; background: var(--td-border); margin: 16px 0; }
+
+.td-info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+}
+.td-info-row label { color: var(--td-gray); }
+.td-info-row span { font-weight: 600; color: var(--td-text); }
+
+.staff-chain {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.staff-node {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    position: relative;
+}
+
+.staff-icon {
+    width: 32px;
+    height: 32px;
+    background: white;
+    border: 1px solid var(--td-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--td-primary);
+    font-size: 0.9rem;
+}
+
+.staff-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.staff-role {
+    font-size: 0.7rem;
+    color: var(--td-gray);
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.staff-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--td-text);
+}
+
+.staff-time {
+    font-size: 0.75rem;
+    color: var(--td-accent);
+}
+
+.staff-arrow {
+    position: absolute;
+    bottom: -14px;
+    left: 16px;
+    color: var(--td-gray);
+    font-size: 0.8rem;
+    transform: rotate(90deg);
+    z-index: 1;
+}
+
+
+.td-main-content { 
+    overflow-y: auto; 
+    padding-right: 4px; 
+}
+
+.soap-section { margin-bottom: 20px; }
+.soap-label { font-size: 0.85rem; font-weight: 700; color: var(--td-gray); text-transform: uppercase; }
+.soap-content.highlight { font-size: 1.1rem; font-weight: 500; color: var(--td-primary); margin-top: 4px; }
+
+.soap-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.soap-box {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 3px solid var(--td-accent);
+}
+
+.soap-tag {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--td-accent);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.soap-box p { margin: 0; font-size: 0.95rem; line-height: 1.5; }
+
+/* Prescription Table */
+.prescription-section h5 { margin: 0 0 12px 0; color: var(--td-text); }
+.td-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.td-table th { text-align: left; background: #f1f3f5; padding: 8px; color: var(--td-gray); font-weight: 600; }
+.td-table td { border-bottom: 1px solid var(--td-border); padding: 8px; }
+
+
+.td-chat-panel { 
+    height: 100%; 
+    display: flex; 
+    flex-direction: column; 
+}
+
+/* Video Log Styles */
+.video-log-card {
+    flex: 0 0 auto !important;
+    margin-bottom: 24px;
+}
+
+.video-logs {
+    padding: 0 8px;
+}
+
+.video-log-item {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+.video-log-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--td-primary);
+}
+
+.video-duration {
+    background: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: var(--td-text);
+}
+
+.video-participants {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--td-text);
+    line-height: 1.4;
+}
+
+/* Chat Card */
+.chat-card { 
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    padding: 0; 
+    overflow: hidden; 
+    min-height: 300px;
+}
+
+.chat-card .card-header { padding: 16px; margin: 0; background: #fff; z-index: 10; }
+
+.chat-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: #f0f2f5;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.chat-bubble-container { display: flex; flex-direction: column; max-width: 85%; }
+.chat-bubble-container.patient { align-self: flex-start; }
+.chat-bubble-container.specialist { align-self: flex-end; align-items: flex-end; }
+.chat-bubble-container.system { align-self: center; max-width: 100%; width: 100%; align-items: center; }
+
+.chat-bubble {
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    position: relative;
+}
+
+.chat-bubble-container.patient .chat-bubble {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-bottom-left-radius: 2px;
+}
+
+.chat-bubble-container.specialist .chat-bubble {
+    background: var(--td-primary);
+    color: white;
+    border-bottom-right-radius: 2px;
+}
+
+.chat-bubble-container.system .chat-bubble {
+    background: transparent;
+    color: var(--td-gray);
+    font-size: 0.8rem;
+    font-style: italic;
+    padding: 4px;
+}
+
+.chat-time {
+    font-size: 0.7rem;
+    color: #aaa;
+    margin-top: 4px;
+    margin-left: 4px;
+}
+
+.chat-footer-readonly {
+    padding: 12px;
+    text-align: center;
+    background: #f8f9fa;
+    border-top: 1px solid var(--td-border);
+    color: var(--td-gray);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+/* =========================================
+   PRINT STYLES - Fixes empty print preview
+   ========================================= */
+@media print {
+    /* 1. Hide buttons and non-printable elements */
+    .td-header-right {
+        display: none !important;
+    }
+    
+    /* 2. Reset Layout to Block (Stacking) */
+    .ticket-details-page {
+        background-color: white;
+        padding: 0;
+        margin: 0;
+        height: auto;
+        overflow: visible;
+        width: 100%;
+    }
+
+    .td-grid-layout {
+        display: block !important;
+        grid-template-columns: none;
+        height: auto !important;
+        overflow: visible !important;
+        gap: 20px;
+    }
+
+    /* 3. Fix the Sidebar */
+    .td-sidebar {
+        width: 100%;
+        margin-bottom: 20px;
+        page-break-inside: avoid;
+        display: flex;
+        gap: 20px;
+    }
+    .td-sidebar .td-card {
+        flex: 1;
+        margin-bottom: 0;
+    }
+
+    .td-main-content {
+        width: 100%;
+        height: auto !important;
+        overflow: visible !important;
+        padding: 0;
+        margin-bottom: 20px;
+        display: block;
+    }
+
+    /* 5. Fix Chat Panel */
+    .td-chat-panel {
+        width: 100%;
+        height: auto !important;
+        overflow: visible !important;
+        page-break-before: always;
+    }
+    .chat-card, .chat-feed {
+        overflow: visible !important;
+        height: auto !important;
+    }
+
+    .td-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        height: auto !important;
+        margin-bottom: 20px;
+        page-break-inside: avoid;
+    }
+
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}

@@ -1,48 +1,26 @@
 import "../App.css";
 import "./NurseStyles.css";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import {
+  getNurseId,
+  getNurseFirstName,
+  getNurseProfileImage,
+  loadTickets,
+  saveTickets,
+} from "./services/storageService.js";
+import { buildGoogleCalendarUrl } from "./services/calendarService.js";
+import { getFallbackTickets } from "./services/ticketService.js";
+import {
+  fetchTicketsFromAPI,
+  fetchNotificationsFromAPI,
+  fetchDashboardFromAPI,
+} from "./services/apiService.js";
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  const [notifications] = useState([
-    {
-      id: 1,
-      type: "New Ticket",
-      message: "New ticket T005 submitted by Alex Smith",
-      time: "5 mins ago",
-      unread: true,
-    },
-    {
-      id: 2,
-      type: "Payment Confirmation",
-      message: "Payment confirmed for appointment #A123",
-      time: "15 mins ago",
-      unread: true,
-    },
-    {
-      id: 3,
-      type: "Chat Notification",
-      message: "New message from Dr. Smith",
-      time: "30 mins ago",
-      unread: false,
-    },
-    {
-      id: 4,
-      type: "Upload Files",
-      message: "Patient uploaded medical records",
-      time: "1 hour ago",
-      unread: false,
-    },
-    {
-      id: 5,
-      type: "HMO Notification",
-      message: "HMO approval received for patient ID P001",
-      time: "2 hours ago",
-      unread: false,
-    },
-  ]);
+  const [notifications, setNotifications] = useState([]);
 
   const handleTabClick = (tab) => {
     if (tab === "notifications") {
@@ -54,73 +32,90 @@ export default function Dashboard() {
     navigate("/");
   };
 
-  // Tickets from localStorage
   const [tickets, setTickets] = useState(() => {
-    try {
-      const raw = localStorage.getItem("nurse.tickets");
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
+    const loadedTickets = loadTickets();
+    // If no tickets in localStorage, use fallback data
+    if (!loadedTickets || loadedTickets.length === 0) {
+      const fallbackTickets = getFallbackTickets();
+      saveTickets(fallbackTickets);
+      return fallbackTickets;
     }
+    return loadedTickets;
   });
 
   useEffect(() => {
-    const onStorage = () => {
+    const loadDashboardData = async () => {
       try {
-        const raw = localStorage.getItem("nurse.tickets");
-        setTickets(raw ? JSON.parse(raw) : []);
-      } catch {}
+        // Try to fetch from dashboard API first (includes both tickets and notifications)
+        const dashboardData = await fetchDashboardFromAPI();
+        if (dashboardData) {
+          // Update tickets
+          if (dashboardData.tickets && dashboardData.tickets.length > 0) {
+            setTickets(dashboardData.tickets);
+            saveTickets(dashboardData.tickets);
+          }
+          // Update notifications
+          if (dashboardData.notifications) {
+            setNotifications(dashboardData.notifications);
+          }
+          return;
+        }
+      } catch (error) {
+        console.log(
+          "Dashboard API not available, trying individual endpoints:",
+          error.message
+        );
+
+        // Fallback to individual API calls
+        try {
+          const apiTickets = await fetchTicketsFromAPI();
+          if (apiTickets && apiTickets.length > 0) {
+            setTickets(apiTickets);
+            saveTickets(apiTickets);
+          }
+        } catch (ticketError) {
+          console.log("Tickets API not available:", ticketError.message);
+        }
+
+        try {
+          const apiNotifications = await fetchNotificationsFromAPI();
+          if (apiNotifications && apiNotifications.length > 0) {
+            setNotifications(apiNotifications);
+          }
+        } catch (notifError) {
+          console.log("Notifications API not available:", notifError.message);
+        }
+      }
+
+      // Final fallback to localStorage or demo data if tickets not loaded
+      if (tickets.length === 0) {
+        let loadedTickets = loadTickets();
+        if (!loadedTickets || loadedTickets.length === 0) {
+          loadedTickets = getFallbackTickets();
+          saveTickets(loadedTickets);
+        }
+        setTickets(loadedTickets);
+      }
     };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+
+    loadDashboardData();
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log("Dashboard: Page became visible, reloading data");
+        loadDashboardData();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const nurseId = useMemo(() => {
-    let id = localStorage.getItem("nurse.id");
-    if (!id) {
-      id = `N${Math.random().toString(36).slice(2, 8)}`;
-      localStorage.setItem("nurse.id", id);
-    }
-    return id;
-  }, []);
-
-  const confirmedTickets = useMemo(
-    () =>
-      tickets.filter(
-        (t) => t.status === "Confirmed" && t.claimedBy === nurseId
-      ),
-    [tickets, nurseId]
-  );
-
-  const toCalendarDateRange = (dateStr, timeStr, durationMinutes = 30) => {
-    try {
-      const startLocal = new Date(`${dateStr} ${timeStr}`);
-      const endLocal = new Date(startLocal.getTime() + durationMinutes * 60000);
-      const fmt = (d) =>
-        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-      return { start: fmt(startLocal), end: fmt(endLocal) };
-    } catch {
-      const fmt = (d) =>
-        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-      const now = new Date();
-      const end = new Date(now.getTime() + durationMinutes * 60000);
-      return { start: fmt(now), end: fmt(end) };
-    }
-  };
-
-  const buildGoogleCalendarUrl = (ticket) => {
-    const { start, end } = toCalendarDateRange(
-      ticket.preferredDate,
-      ticket.preferredTime,
-      30
-    );
-    const title = encodeURIComponent(`Consultation: ${ticket.patientName}`);
-    const details = encodeURIComponent(
-      `Patient: ${ticket.patientName}\nEmail: ${ticket.email}\nMobile: ${ticket.mobile}\nChief Complaint: ${ticket.chiefComplaint}\nChannel: ${ticket.consultationChannel}\nSpecialist: ${ticket.preferredSpecialist}`
-    );
-    const location = encodeURIComponent("OkieDoc+ Platform");
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${start}%2F${end}`;
-  };
+  const nurseId = getNurseId();
 
   return (
     <div className="dashboard">
@@ -135,16 +130,11 @@ export default function Dashboard() {
         <h3 className="dashboard-title">Nurse Dashboard</h3>
         <div className="user-account">
           <img
-            src={
-              localStorage.getItem("nurse.profileImageDataUrl") ||
-              "/account.svg"
-            }
+            src={getNurseProfileImage()}
             alt="Account"
             className="account-icon"
           />
-          <span className="account-name">
-            {localStorage.getItem("nurse.firstName") || "Nurse"}
-          </span>
+          <span className="account-name">{getNurseFirstName()}</span>
           <div className="account-dropdown">
             <button
               className="dropdown-item"
@@ -175,6 +165,12 @@ export default function Dashboard() {
           </button>
           <button
             className={`nav-tab`}
+            onClick={() => navigate("/nurse-messages")}
+          >
+            Messages
+          </button>
+          <button
+            className={`nav-tab`}
             onClick={() => handleTabClick("notifications")}
           >
             Notifications ({notifications.filter((n) => n.unread).length})
@@ -182,30 +178,80 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Confirmed Tickets for scheduling */}
       <div className="appointments-section">
         <div className="processing-tickets">
-          <h2>Confirmed Tickets ({confirmedTickets.length})</h2>
-          {confirmedTickets.map((ticket) => (
+          <h2>All Tickets ({tickets.length})</h2>
+          {tickets.map((ticket) => (
             <div key={ticket.id} className="ticket-card processing">
               <div className="ticket-header">
                 <h3>{ticket.patientName}</h3>
                 <span
                   className="status-badge"
-                  style={{ backgroundColor: "#4caf50" }}
+                  style={{
+                    backgroundColor:
+                      ticket.status === "Confirmed"
+                        ? "#4caf50"
+                        : ticket.status === "Pending"
+                        ? "#ff9800"
+                        : "#2196f3",
+                  }}
                 >
-                  Confirmed
+                  {ticket.status}
                 </span>
               </div>
+              <div className="ticket-content">
+                <p>
+                  <strong>Email:</strong> {ticket.email}
+                </p>
+                <p>
+                  <strong>Mobile:</strong> {ticket.mobile}
+                </p>
+                <p>
+                  <strong>Chief Complaint:</strong> {ticket.chiefComplaint}
+                </p>
+                <p>
+                  <strong>Preferred Date:</strong> {ticket.preferredDate}
+                </p>
+                <p>
+                  <strong>Preferred Time:</strong> {ticket.preferredTime}
+                </p>
+                <p>
+                  <strong>Specialist:</strong> {ticket.preferredSpecialist}
+                </p>
+              </div>
               <div className="ticket-actions">
-                <a
-                  href={buildGoogleCalendarUrl(ticket)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="action-btn edit"
-                >
-                  Create Schedule (Google Calendar)
-                </a>
+                {ticket.status === "Pending" && (
+                  <button
+                    className="action-btn edit"
+                    style={{
+                      background: "#4caf50",
+                      color: "#fff",
+                    }}
+                    onClick={() => {
+                      setTickets((prev) => {
+                        const updated = prev.map((t) =>
+                          t.id === ticket.id
+                            ? { ...t, status: "Confirmed", claimedBy: nurseId }
+                            : t
+                        );
+                        saveTickets(updated);
+                        return updated;
+                      });
+                    }}
+                  >
+                    Confirm Ticket
+                  </button>
+                )}
+                {ticket.status === "Confirmed" && (
+                  <a
+                    href={buildGoogleCalendarUrl(ticket)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="action-btn edit"
+                  >
+                    Create Schedule (Google Calendar)
+                  </a>
+                )}
                 <button
                   className="action-btn remove"
                   style={{
@@ -214,13 +260,9 @@ export default function Dashboard() {
                     color: "#fff",
                   }}
                   onClick={() => {
-                    // Remove ticket from state and localStorage
                     setTickets((prev) => {
                       const updated = prev.filter((t) => t.id !== ticket.id);
-                      localStorage.setItem(
-                        "nurse.tickets",
-                        JSON.stringify(updated)
-                      );
+                      saveTickets(updated);
                       return updated;
                     });
                   }}
@@ -230,6 +272,11 @@ export default function Dashboard() {
               </div>
             </div>
           ))}
+          {tickets.length === 0 && (
+            <div className="empty-state">
+              <p>No tickets available</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

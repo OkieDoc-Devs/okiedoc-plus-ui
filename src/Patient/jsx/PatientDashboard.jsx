@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { logoutPatient } from "../services/auth";
 import { useNavigate } from 'react-router';
 import MedicalRecords from './MedicalRecords';
 import Appointments from './Appointments';
@@ -50,6 +51,7 @@ import {
 } from 'react-icons/fa';
 
 const PatientDashboard = () => {
+  const [globalId, setGlobalId] = useState("");
   const [activePage, setActivePage] = useState('home');
   const [profileImage, setProfileImage] = useState(null);
   const [activeTicket, setActiveTicket] = useState(null);
@@ -84,6 +86,12 @@ const PatientDashboard = () => {
   
   // State for mobile detection
   const [isMobile, setIsMobile] = useState(false);
+
+  // Shows Global ID
+  useEffect(() => {
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    if (currentUser.globalId) setGlobalId(currentUser.globalId);
+  }, []);
 
   // Load appointments from localStorage on component mount
   useEffect(() => {
@@ -216,8 +224,14 @@ const PatientDashboard = () => {
   }, []);
 
 
-  const handleLogout = () => {
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logoutPatient();
+      localStorage.removeItem("currentUser");
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   // Profile editing functions
@@ -1147,8 +1161,7 @@ const PatientDashboard = () => {
               </button>
               <button 
                 className="patient-mobile-logout-btn"
-                onClick={handleLogout}
-              >
+                onClick={handleLogout}>
                 <FaSignOutAlt className="patient-mobile-logout-icon" />
                 <span>Sign Out</span>
               </button>

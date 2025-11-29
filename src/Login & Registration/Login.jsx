@@ -1,6 +1,8 @@
 import "./auth.css";
-import { useNavigate } from "react-router-dom"; // Use react-router-dom
-import { useState } from "react";
+import { useNavigate, useLocation } from "react-router";
+import { useState, useEffect } from "react";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+import authService from "../Specialists/authService";
 import { loginAdmin } from "../api/Admin/api.js";
 
 export default function Login() {
@@ -34,22 +36,74 @@ export default function Login() {
       ...prev,
       [id]: value,
     }));
-    setError(""); // Clear error on input change
+
+    // Clear error when user starts typing
+    if (errors[fieldName]) {
+      setErrors((prev) => ({
+        ...prev,
+        [fieldName]: "",
+      }));
+    }
+  };
+
+  const dummyCredentials = {
+    nurse: { email: "nurse@okiedoc.com", password: "nurse123" },
+    admin: { email: "admin@okiedoc.com", password: "admin123" },
+    patient: { email: "patient@okiedoc.com", password: "patient123" },
+    specialist: { email: "specialist@okiedoc.com", password: "specialist123" },
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    // Admin login attempt using API
-    if (formData.email === "admin@okiedocplus.com") {
-      try {
-        await loginAdmin(formData.email, formData.password);
-        sessionStorage.setItem("isAdminLoggedIn", "true");
-        navigate("/admin/specialist-dashboard");
-        return;
-      } catch (err) {
-        setError(err.message || "Invalid admin credentials. Please try again.");
+    try {
+      const result = await loginWithAPI(formData.email, formData.password);
+
+      if (result.success) {
+        // Store general user data
+        localStorage.setItem(
+          "currentUser",
+          JSON.stringify({
+            id: result.user.id,
+            email: result.user.email,
+            userType: result.user.userType,
+            globalId: result.user.globalId || null,
+          })
+        );
+
+        // If nurse, store nurse-specific data for the nurse module
+        if (result.user.userType === "nurse") {
+          // Check different possible field names for the nurse's name
+          const firstName =
+            result.user.firstName ||
+            result.user.first_name ||
+            result.user.name?.split(" ")[0] ||
+            result.user.fullName?.split(" ")[0] ||
+            "Nurse";
+
+          const lastName =
+            result.user.lastName ||
+            result.user.last_name ||
+            result.user.name?.split(" ")[1] ||
+            result.user.fullName?.split(" ")[1] ||
+            "";
+
+          localStorage.setItem("nurse.id", result.user.id);
+          localStorage.setItem("nurse.email", result.user.email);
+          localStorage.setItem("nurse.firstName", firstName);
+          localStorage.setItem("nurse.lastName", lastName);
+
+          console.log("Nurse data stored in localStorage:", {
+            id: result.user.id,
+            email: result.user.email,
+            firstName: firstName,
+            lastName: lastName,
+            rawUserObject: result.user, // Log the raw object to see all available fields
+          });
+        }
+
+        navigate(result.user.dashboardRoute);
         return;
       }
     }
@@ -86,6 +140,8 @@ export default function Login() {
     } else {
       setError("Invalid email or password. Please try again.");
     }
+
+    setIsLoading(false);
   };
 
   return (
@@ -101,46 +157,75 @@ export default function Login() {
           <img src="/okie-doc-logo.png" alt="OkieDoc+" className="logo-image" />
           <div style={{ width: "2.5rem" }}></div>
         </div>
-        <h2 className="login-title">Sign in</h2>
-        <form className="login-form" onSubmit={handleSubmit}>
-          {error && (
-            <p style={{ color: "red", marginBottom: "10px" }}>{error}</p>
-          )}
-          <label className="login-label" htmlFor="email">
-            Email address
-          </label>
-          <input
-            className="login-input"
-            id="email"
-            type="email"
-            placeholder="Enter your email address"
-            value={formData.email}
-            onChange={handleInputChange}
-            required
-          />
-          <label className="login-label">Password</label>
-          <div className="login-password">
+
+        {/* Regular Patient/Nurse Login */}
+        <>
+          <h2 className="login-title">Sign in</h2>
+          <form className="login-form" onSubmit={handleSubmit}>
+            {error && (
+              <p style={{ color: "red", marginBottom: "10px" }}>{error}</p>
+            )}
+            <label className="login-label" htmlFor="email">
+              Email address
+            </label>
             <input
               className="login-input"
-              id="password"
-              type="password"
-              placeholder="Enter your password"
-              value={formData.password}
+              id="email"
+              type="email"
+              placeholder="Enter your email address"
+              value={formData.email}
               onChange={handleInputChange}
               required
+              disabled={isLoading}
             />
-          </div>
-          <button className="login-btn" type="submit">
-            Sign in
-          </button>
-          <p className="login-text">
-            Don't have an Okie-Doc+ account?{" "}
-            <a href="/registration">Register</a>
-          </p>
-          <p className="specialist-text">
-            Are you a specialist? <a href="/specialist-login">Login Here</a>
-          </p>
-        </form>
+            <label className="login-label">Password</label>
+            <div className="login-password">
+              <input
+                className="login-input"
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={handleInputChange}
+                required
+                disabled={isLoading}
+              />
+            </div>
+            <button className="login-btn" type="submit" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Sign in"}
+            </button>
+            <p className="login-text">
+              Don't have an Okie-Doc+ account?{" "}
+              <a href="/registration">Register</a>
+            </p>
+            <p className="specialist-text">
+              Are you a specialist?{" "}
+              <a
+                href="/specialist-login"
+                className="specialist-link"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/specialist-login");
+                }}
+              >
+                Login Here
+              </a>
+            </p>
+            <p className="specialist-text">
+              Need to register as a specialist?{" "}
+              <a
+                href="/specialist-registration"
+                className="specialist-register-link"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/specialist-registration");
+                }}
+              >
+                Register as Specialist
+              </a>
+            </p>
+          </form>
+        </>
       </div>
     </div>
   );

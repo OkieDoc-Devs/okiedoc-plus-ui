@@ -1,160 +1,149 @@
 import "../App.css";
 import "./NurseStyles.css";
-import "./NurseStyles.css";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import NurseConsultationHistory from "../Patient/jsx/ConsultationHistory";
+import {
+  getNurseId,
+  getNurseFirstName,
+  getNurseProfileImage,
+} from "./services/storageService.js";
+import {
+  filterTicketsByStatus,
+  createNewTicket,
+  claimTicket as claimTicketUtil,
+  updateTicketStatus,
+  rescheduleTicket,
+} from "./services/ticketService.js";
+import { addNotification } from "./services/notificationService.js";
+import {
+  createInitialInvoiceData,
+  initializeInvoice,
+  calculateInvoiceTotal,
+  generateInvoicePDF,
+} from "./services/invoiceService.js";
+import {
+  fetchTicketsFromAPI,
+  createTicket,
+  updateTicket,
+  fetchNotificationsFromAPI,
+  fetchDoctorsFromAPI,
+  logoutFromAPI,
+} from "./services/apiService.js";
 
-const LOCAL_STORAGE_KEYS = {
-  tickets: "nurse.tickets",
-  notifications: "nurse.notifications",
-  online: "nurse.online",
-  nurseId: "nurse.id",
-};
-
-function generateId(prefix = "T") {
-  return `${prefix}${Math.random().toString(36).slice(2, 8)}${Date.now()
-    .toString(36)
-    .slice(-4)}`;
-}
-
-function loadFromStorage(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveToStorage(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
-}
+const USE_API = true;
 
 export default function ManageAppointment() {
   const [showConsultationHistory, setShowConsultationHistory] = useState(false);
   const navigate = useNavigate();
   const [online] = useState(true);
-  const [tickets, setTickets] = useState(() => {
-    const existing = loadFromStorage(LOCAL_STORAGE_KEYS.tickets, []);
-    if (existing.length > 0) return existing;
-    return [
-      {
-        id: generateId(),
-        patientName: "John Doe",
-        email: "john.doe@example.com",
-        mobile: "09171234567",
-        chiefComplaint: "Headache",
-        symptoms: "Mild pain",
-        otherSymptoms: "Nausea",
-        preferredDate: "2025-09-01",
-        preferredTime: "09:00",
-        preferredSpecialist: "Dr. Smith",
-        consultationChannel: "Platform",
-        hasHMO: false,
-        hmo: {
-          company: "",
-          memberId: "",
-          expirationDate: "",
-          loaCode: "",
-          eLOAFile: null,
-        },
-        source: "platform",
-        status: "Pending",
-        claimedBy: null,
-      },
-      {
-        id: generateId(),
-        patientName: "Jane Smith",
-        email: "jane.smith@example.com",
-        mobile: "09179876543",
-        chiefComplaint: "Cough",
-        symptoms: "Dry cough",
-        otherSymptoms: "Fever",
-        preferredDate: "2025-09-02",
-        preferredTime: "14:00",
-        preferredSpecialist: "Dr. Lee",
-        consultationChannel: "Platform",
-        hasHMO: true,
-        hmo: {
-          company: "MediCare",
-          memberId: "MC12345",
-          expirationDate: "2026-01-01",
-          loaCode: "LOA9876",
-          eLOAFile: null,
-        },
-        source: "platform",
-        status: "Pending",
-        claimedBy: null,
-      },
-      {
-        id: generateId(),
-        patientName: "Carlos Gomez",
-        email: "carlos.gomez@example.com",
-        mobile: "09175551234",
-        chiefComplaint: "Back pain",
-        symptoms: "Lower back pain",
-        otherSymptoms: "None",
-        preferredDate: "2025-09-03",
-        preferredTime: "11:30",
-        preferredSpecialist: "Dr. Patel",
-        consultationChannel: "Platform",
-        hasHMO: false,
-        hmo: {
-          company: "",
-          memberId: "",
-          expirationDate: "",
-          loaCode: "",
-          eLOAFile: null,
-        },
-        source: "platform",
-        status: "Pending",
-        claimedBy: null,
-      },
-    ];
-  });
+  const [tickets, setTickets] = useState([]);
+
   useEffect(() => {
-    // Load tickets on mount - API integration currently using local storage
-    // To enable API integration, uncomment the code below and import fetchTicketsFromAPI from './services/apiService.js'
-    // const loadTicketsData = async () => {
-    //   try {
-    //     const data = await fetchTicketsFromAPI();
-    //     setTickets(data);
-    //     console.log("Tickets loaded successfully:", data);
-    //   } catch (error) {
-    //     console.error("Error loading tickets:", error);
-    //   }
-    // };
-    // loadTicketsData();
-    // const interval = setInterval(loadTicketsData, 30000);
-    // return () => clearInterval(interval);
+    if (!USE_API) {
+      console.log("ManageAppointments: API disabled, no data will be loaded");
+      return;
+    }
+
+    const loadTicketsData = async () => {
+      console.log(
+        "ManageAppointments: Loading tickets from API for logged-in nurse..."
+      );
+      try {
+        const data = await fetchTicketsFromAPI();
+        console.log("ManageAppointments: Tickets loaded from API:", data);
+        console.log(
+          "ManageAppointments: API returned",
+          data?.length,
+          "tickets"
+        );
+        console.log(
+          "ManageAppointments: Checking claimedBy fields:",
+          data?.map((t) => ({
+            id: t.id,
+            status: t.status,
+            claimedBy: t.claimedBy,
+          }))
+        );
+
+        setTickets((prevTickets) => {
+          const apiTickets = data || [];
+          const apiTicketIds = new Set(apiTickets.map((t) => t.id));
+
+          const localOnlyTickets = prevTickets.filter(
+            (t) => !apiTicketIds.has(t.id)
+          );
+
+          const mergedApiTickets = apiTickets.map((apiTicket) => {
+            const localTicket = prevTickets.find((t) => t.id === apiTicket.id);
+
+            return {
+              ...apiTicket,
+              claimedBy: apiTicket.claimedBy || localTicket?.claimedBy || null,
+            };
+          });
+
+          const mergedTickets = [...mergedApiTickets, ...localOnlyTickets];
+
+          console.log("ManageAppointments: Merged tickets count:", {
+            fromAPI: apiTickets.length,
+            localOnly: localOnlyTickets.length,
+            total: mergedTickets.length,
+          });
+
+          console.log(
+            "ManageAppointments: Sample ticket after merge:",
+            mergedTickets[0]
+          );
+
+          return mergedTickets;
+        });
+      } catch (error) {
+        console.error(
+          "ManageAppointments: Error loading tickets from API:",
+          error
+        );
+      }
+    };
+
+    loadTicketsData();
+
+    const interval = setInterval(loadTicketsData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  const [notifications] = useState(getFallbackNotifications());
+  const [notifications, setNotifications] = useState([]);
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const notificationsArray = await fetchNotificationsFromAPI();
+        setNotifications(notificationsArray || []);
+      } catch (error) {
+        console.error(
+          "ManageAppointments: Error loading notifications:",
+          error
+        );
+        setNotifications([]);
+      }
+    };
+
+    loadNotifications();
+
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceTicket, setInvoiceTicket] = useState(null);
-  const [invoiceData, setInvoiceData] = useState({
-    items: [
-      {
-        name: "Consultation Fee",
-        description: "Medical consultation",
-        quantity: 1,
-        amount: 100,
-      },
-    ],
-    platformFee: 25,
-    eNurseFee: 15,
-    invoiceNumber: "",
-    paymentLink: "",
-  });
+  const [invoiceData, setInvoiceData] = useState(createInitialInvoiceData());
   const [showCreateTicketModal, setShowCreateTicketModal] = useState(false);
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
   const [newTicketData, setNewTicketData] = useState({
     patientName: "",
     email: "",
     mobile: "",
+    patientBirthdate: "",
     chiefComplaint: "",
     symptoms: "",
     otherSymptoms: "",
@@ -178,6 +167,44 @@ export default function ManageAppointment() {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
   const [createTicketTab, setCreateTicketTab] = useState("medical");
+  const [emailError, setEmailError] = useState("");
+  const [doctors, setDoctors] = useState([]);
+  const [showTicketDetailModal, setShowTicketDetailModal] = useState(false);
+  const [ticketDetailTab, setTicketDetailTab] = useState("assessment");
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const calculateAge = (birthdate) => {
+    if (!birthdate) return null;
+    const today = new Date();
+    const birth = new Date(birthdate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birth.getDate())
+    ) {
+      age--;
+    }
+    return age;
+  };
 
   const [textPills, setTextPills] = useState({
     medicalRecords: [],
@@ -310,43 +337,198 @@ export default function ManageAppointment() {
   };
 
   const nurseName = getNurseFirstName();
-  const nurseId = getNurseId();
+  const [nurseId, setNurseId] = useState(null);
+
+  // Fetch nurse profile to get the correct nurse ID (from nurses table, not users table)
+  useEffect(() => {
+    const loadNurseProfile = async () => {
+      if (!USE_API) return;
+
+      try {
+        const response = await fetch(
+          `${
+            import.meta.env.MODE === "production"
+              ? "https://your-production-url.com"
+              : "http://localhost:1337"
+          }/api/nurse/profile`,
+          {
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data && data.data.id) {
+            // Store the nurse's Id (from nurses table) in localStorage
+            localStorage.setItem("nurse.id", String(data.data.id));
+            setNurseId(data.data.id);
+            console.log(
+              "ManageAppointments: Loaded nurse ID from profile:",
+              data.data.id
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error loading nurse profile:", error);
+        // Fallback to getNurseId() if API fails
+        const fallbackId = getNurseId();
+        if (fallbackId !== null) {
+          setNurseId(fallbackId);
+        }
+      }
+    };
+
+    loadNurseProfile();
+  }, []);
+
+  // Fetch doctors on mount
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        const doctorsData = await fetchDoctorsFromAPI();
+        setDoctors(doctorsData || []);
+      } catch (error) {
+        console.error("Error loading doctors:", error);
+        // Fallback to default doctors
+        setDoctors([
+          { id: 1, name: "Dr. Smith", specialization: "General Medicine" },
+          { id: 2, name: "Dr. Lee", specialization: "Cardiology" },
+          { id: 3, name: "Dr. Patel", specialization: "Neurology" },
+        ]);
+      }
+    };
+    loadDoctors();
+  }, []);
 
   useEffect(() => {}, [online]);
 
-  useEffect(() => {
-    saveToStorage(LOCAL_STORAGE_KEYS.tickets, tickets);
-  }, [tickets]);
-
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logoutFromAPI();
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
     navigate("/");
   };
 
-  const claimTicket = (ticketId) => {
-    setTickets((prev) => claimTicketUtil(prev, ticketId, nurseId));
-    addNotification("New Ticket", `Ticket ${ticketId} claimed by ${nurseName}`);
-  };
+  const claimTicket = async (ticketId) => {
+    console.log("🔥 CLAIM TICKET BUTTON CLICKED! Ticket ID:", ticketId);
+    console.log("=====================================");
+    console.log("CLAIMING TICKET");
+    console.log("=====================================");
+    console.log("Ticket ID:", ticketId);
+    console.log("Nurse ID (claimedBy):", nurseId);
+    console.log("Nurse Name:", nurseName);
+    console.log("New Status: Processing");
+    console.log("USE_API:", USE_API);
 
-  const updateStatus = (ticketId, newStatus) => {
-    setTickets((prev) => updateTicketStatus(prev, ticketId, newStatus));
-    if (newStatus === "For Payment")
-      addNotification("Payment", `Invoice generated for ticket ${ticketId}`);
-    if (newStatus === "Confirmed")
+    if (!USE_API) {
+      console.log("ManageAppointments: API disabled, cannot claim without API");
+      alert("API is required to claim tickets. Please enable API integration.");
+      return;
+    }
+
+    try {
+      const updateData = {
+        claimedBy: nurseId,
+        status: "Processing",
+      };
+
+      console.log("Sending update to API:");
+      console.log(JSON.stringify(updateData, null, 2));
+
+      const result = await updateTicket(ticketId, updateData);
+
+      console.log("=====================================");
+      console.log("TICKET CLAIMED SUCCESSFULLY");
+      console.log("=====================================");
+      console.log("API Response:", result);
+      console.log("Response status:", result?.status);
+      console.log("Response claimedBy:", result?.claimedBy);
+
+      setTickets((prev) => {
+        const updated = claimTicketUtil(prev, ticketId, nurseId);
+        console.log("Local state updated. Finding claimed ticket...");
+        const claimedTicket = updated.find((t) => t.id === ticketId);
+        console.log("Claimed ticket in local state:", claimedTicket);
+        return updated;
+      });
       addNotification(
-        "Payment Confirmation",
-        `Payment confirmed for ticket ${ticketId}`
+        "New Ticket",
+        `Ticket ${ticketId} claimed by ${nurseName}`
       );
+    } catch (error) {
+      console.error("=====================================");
+      console.error("ERROR CLAIMING TICKET");
+      console.error("=====================================");
+      console.error("Error details:", error);
+      alert(`Failed to claim ticket: ${error.message}. Please try again.`);
+    }
   };
 
-  const openInvoice = (ticket, fromDetailsModal = false) => {
-    const invoiceNumber = generateId("INV");
-    const paymentLink = `${window.location.origin}/pay/${invoiceNumber}`;
-    setInvoiceData((prev) => ({
-      ...prev,
-      items: prev.items,
-      invoiceNumber,
-      paymentLink,
-    }));
+  const updateStatus = async (ticketId, newStatus) => {
+    console.log(
+      "ManageAppointments: Updating ticket status:",
+      ticketId,
+      newStatus
+    );
+
+    if (!USE_API) {
+      console.log("ManageAppointments: API disabled, updating status locally");
+      setTickets((prev) => updateTicketStatus(prev, ticketId, newStatus));
+
+      if (newStatus === "For Payment")
+        addNotification("Payment", `Invoice generated for ticket ${ticketId}`);
+      if (newStatus === "Confirmed")
+        addNotification(
+          "Payment Confirmation",
+          `Payment confirmed for ticket ${ticketId}`
+        );
+      return;
+    }
+
+    try {
+      await updateTicket(ticketId, { status: newStatus });
+      console.log(
+        "ManageAppointments: Ticket status updated successfully in API"
+      );
+
+      setTickets((prev) => updateTicketStatus(prev, ticketId, newStatus));
+
+      if (newStatus === "For Payment")
+        addNotification("Payment", `Invoice generated for ticket ${ticketId}`);
+      if (newStatus === "Confirmed")
+        addNotification(
+          "Payment Confirmation",
+          `Payment confirmed for ticket ${ticketId}`
+        );
+    } catch (error) {
+      console.error(
+        "ManageAppointments: Error updating ticket status in API:",
+        error
+      );
+
+      setTickets((prev) => updateTicketStatus(prev, ticketId, newStatus));
+
+      if (newStatus === "For Payment")
+        addNotification(
+          "Payment",
+          `Invoice generated locally (API unavailable)`
+        );
+      if (newStatus === "Confirmed")
+        addNotification(
+          "Payment Confirmation",
+          `Payment confirmed locally (API unavailable)`
+        );
+    }
+  };
+
+  const openInvoice = (ticket) => {
+    const invoiceInitData = initializeInvoice();
+    setInvoiceData(invoiceInitData);
     setInvoiceTicket(ticket);
     setShowInvoiceModal(true);
   };
@@ -391,49 +573,59 @@ export default function ManageAppointment() {
     updateStatus(ticketId, "Confirmed");
   };
 
-  const handleReschedule = (ticketId) => {
-    if (rescheduleDate && rescheduleTime) {
+  const handleReschedule = async (ticketId) => {
+    if (!rescheduleDate || !rescheduleTime) {
+      alert("Please select both date and time for rescheduling.");
+      return;
+    }
+
+    console.log("ManageAppointments: Rescheduling ticket:", ticketId);
+
+    if (!USE_API) {
+      console.log("ManageAppointments: API disabled, rescheduling locally");
       setTickets((prev) =>
-        prev.map((t) =>
-          t.id === ticketId
-            ? {
-                ...t,
-                preferredDate: rescheduleDate,
-                preferredTime: rescheduleTime,
-              }
-            : t
-        )
+        rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime)
       );
       setRescheduleDate("");
       setRescheduleTime("");
       alert("Appointment rescheduled successfully!");
-    } else {
-      alert("Please select both date and time for rescheduling.");
+      addNotification(
+        "Reschedule",
+        `Ticket ${ticketId} rescheduled to ${rescheduleDate} at ${rescheduleTime}`
+      );
+      return;
     }
-  };
 
-  const toCalendarDateRange = (dateStr, timeStr, durationMinutes = 30) => {
     try {
-      const startLocal = new Date(`${dateStr} ${timeStr}`);
-      if (isNaN(startLocal.getTime())) {
-        const fallback = new Date();
-        const endFallback = new Date(
-          fallback.getTime() + durationMinutes * 60000
-        );
-        const fmt = (d) =>
-          d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-        return { start: fmt(fallback), end: fmt(endFallback) };
-      }
-      const endLocal = new Date(startLocal.getTime() + durationMinutes * 60000);
-      const fmt = (d) =>
-        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-      return { start: fmt(startLocal), end: fmt(endLocal) };
-    } catch {
-      const now = new Date();
-      const end = new Date(now.getTime() + durationMinutes * 60000);
-      const fmt = (d) =>
-        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-      return { start: fmt(now), end: fmt(end) };
+      await updateTicket(ticketId, {
+        preferredDate: rescheduleDate,
+        preferredTime: rescheduleTime,
+      });
+      console.log("ManageAppointments: Ticket rescheduled successfully in API");
+
+      setTickets((prev) =>
+        rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime)
+      );
+      setRescheduleDate("");
+      setRescheduleTime("");
+      alert("Appointment rescheduled successfully!");
+      addNotification(
+        "Reschedule",
+        `Ticket ${ticketId} rescheduled to ${rescheduleDate} at ${rescheduleTime}`
+      );
+    } catch (error) {
+      console.error(
+        "ManageAppointments: Error rescheduling ticket in API:",
+        error
+      );
+
+      setTickets((prev) =>
+        rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime)
+      );
+      setRescheduleDate("");
+      setRescheduleTime("");
+      alert("Appointment rescheduled locally (API unavailable)");
+      addNotification("Reschedule", `Ticket ${ticketId} rescheduled locally`);
     }
   };
 
@@ -442,6 +634,7 @@ export default function ManageAppointment() {
       patientName: "",
       email: "",
       mobile: "",
+      patientBirthdate: "",
       chiefComplaint: "",
       symptoms: "",
       otherSymptoms: "",
@@ -478,39 +671,106 @@ export default function ManageAppointment() {
       familyHistory: "",
       allergies: "",
     });
+    setEmailError("");
     setShowCreateTicketModal(true);
   };
 
-  const submitCreateTicket = (e) => {
+  const submitCreateTicket = async (e) => {
     e.preventDefault();
-    const id = generateId("TK");
-    const newTicket = {
-      id,
-      ...newTicketData,
-      medicalRecordsPills: textPills.medicalRecords,
-      familyHistoryPills: textPills.familyHistory,
-      allergiesPills: textPills.allergies,
-      hmo: newTicketData.hasHMO ? newTicketData.hmo : null,
-      status: "Pending",
-      createdAt: new Date().toISOString(),
-      claimedBy: null,
-    };
-    setTickets((prev) => [newTicket, ...prev]);
-    setShowCreateTicketModal(false);
-    setTextPills({
-      medicalRecords: [],
-      familyHistory: [],
-      allergies: [],
-    });
-    setTextInput({
-      medicalRecords: "",
-      familyHistory: "",
-      allergies: "",
-    });
-    addNotification(
-      "New Ticket",
-      `Ticket ${newTicket.id} created via ${newTicket.source}`
-    );
+
+    if (isSubmittingTicket) {
+      console.log(
+        "⚠️ Ticket submission already in progress, ignoring duplicate request"
+      );
+      return;
+    }
+
+    if (newTicketData.email && !validateEmail(newTicketData.email)) {
+      setEmailError("Please enter a valid email address");
+      alert("Please enter a valid email address before submitting.");
+      return;
+    }
+
+    setIsSubmittingTicket(true);
+    console.log("🔒 Ticket submission locked");
+
+    const newTicket = createNewTicket(newTicketData, textPills);
+
+    console.log("=====================================");
+    console.log("CREATING NEW TICKET");
+    console.log("=====================================");
+    console.log("Ticket Data being sent to API:");
+    console.log(JSON.stringify(newTicket, null, 2));
+    console.log("-------------------------------------");
+    console.log("Key fields to check:");
+    console.log("- ID:", newTicket.id);
+    console.log("- Patient Name:", newTicket.patientName);
+    console.log("- Email:", newTicket.email);
+    console.log("- Status:", newTicket.status);
+    console.log("- Created At:", newTicket.createdAt);
+    console.log("- Created At (typeof):", typeof newTicket.createdAt);
+    console.log("- Created At (Date parse):", new Date(newTicket.createdAt));
+    console.log("- Preferred Date:", newTicket.preferredDate);
+    console.log("- Preferred Time:", newTicket.preferredTime);
+    console.log("=====================================");
+
+    if (!USE_API) {
+      console.log(
+        "ManageAppointments: API disabled, cannot create ticket without API"
+      );
+      alert(
+        "API is required to create tickets. Please enable API integration."
+      );
+      return;
+    }
+
+    try {
+      console.log("Sending ticket to API endpoint: POST /api/nurse/tickets");
+      const createdTicket = await createTicket(newTicket);
+      console.log("-------------------------------------");
+      console.log("TICKET CREATED SUCCESSFULLY IN API");
+      console.log("-------------------------------------");
+      console.log("Response from API:");
+      console.log(JSON.stringify(createdTicket, null, 2));
+      console.log("=====================================");
+
+      setTickets((prev) => {
+        const ticketToAdd = createdTicket || newTicket;
+        console.log(
+          "ManageAppointments: Adding ticket to state immediately:",
+          ticketToAdd.id
+        );
+        return [ticketToAdd, ...prev];
+      });
+
+      setShowCreateTicketModal(false);
+      setTextPills({
+        medicalRecords: [],
+        familyHistory: [],
+        allergies: [],
+      });
+      setTextInput({
+        medicalRecords: "",
+        familyHistory: "",
+        allergies: "",
+      });
+      setEmailError("");
+      addNotification(
+        "New Ticket",
+        `Ticket ${(createdTicket || newTicket).id} created via ${
+          newTicket.source
+        }`
+      );
+
+      console.log("🔓 Ticket submission unlocked (success)");
+      setIsSubmittingTicket(false);
+    } catch (error) {
+      console.error("ManageAppointments: Error creating ticket in API:", error);
+      alert(`Failed to create ticket: ${error.message}. Please try again.`);
+
+      console.log("🔓 Ticket submission unlocked (error)");
+      setIsSubmittingTicket(false);
+    }
   };
 
   const pendingTickets = filterTicketsByStatus(tickets, "Pending");
@@ -519,176 +779,9 @@ export default function ManageAppointment() {
     "Processing",
     nurseId
   );
-  const confirmedTickets = tickets.filter(
-    (t) => t.status === "Confirmed" && t.claimedBy === nurseId
-  );
-
-  const generateInvoicePDF = async () => {
-    if (!invoiceTicket) return;
-
-    const { default: jsPDF } = await import("jspdf");
-    const pdf = new jsPDF();
-
-    const logoUrl = "/okie-doc-logo.png";
-    try {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      const img = new Image();
-      let displayWidth = 40;
-      let displayHeight = displayWidth / (1839 / 544);
-
-      img.onload = () => {
-        canvas.width = img.width + 12;
-        canvas.height = img.height + 12;
-
-        ctx.shadowColor = "#399eeb";
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 63;
-        ctx.shadowOffsetY = 80;
-
-        ctx.drawImage(img, 0, 0, img.width, img.height);
-
-        const logoBase64 = canvas.toDataURL("image/png");
-
-        pdf.addImage(logoBase64, "PNG", 85, 10, displayWidth, displayHeight);
-
-        generatePDFContent(pdf);
-      };
-
-      img.src = logoUrl;
-    } catch {
-      generatePDFContent(pdf);
-    }
-  };
-
-  const generatePDFContent = (pdf) => {
-    pdf.setFont("helvetica");
-
-    pdf.setFontSize(12);
-    pdf.setFont("helvetica", "bold");
-
-    let yPosition = 35;
-
-    pdf.text(`Date: ${new Date().toLocaleDateString()}`, 150, yPosition);
-    pdf.text(`Invoice No: ${invoiceData.invoiceNumber}`, 20, yPosition);
-
-    yPosition += 6;
-    const formatDate = (dateStr) => {
-      if (!dateStr) return "";
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) {
-        const [y, m, day] = dateStr.split("-");
-        if (y && m && day) {
-          return `${day}/${m}/${y.slice(-2)}`;
-        }
-        return dateStr;
-      }
-      const day = String(d.getDate()).padStart(2, "0");
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const year = String(d.getFullYear()).slice(-2);
-      return `${day}/${month}/${year}`;
-    };
-
-    const formatTime = (timeStr) => {
-      if (!timeStr) return "";
-      let [h, m] = timeStr.split(":");
-      h = Number(h);
-      const ampm = h >= 12 ? "PM" : "AM";
-      h = h % 12 || 12;
-      return `${h}:${m} ${ampm}`;
-    };
-
-    pdf.text(
-      `Date of Consultation: ${formatDate(
-        invoiceTicket.preferredDate
-      )} ${formatTime(invoiceTicket.preferredTime)}`,
-      20,
-      yPosition
-    );
-
-    yPosition += 15;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("PATIENT INFORMATION:", 20, yPosition);
-
-    pdf.setFont("helvetica", "normal");
-    yPosition += 8;
-
-    pdf.text(`Name: ${invoiceTicket.patientName}`, 20, yPosition);
-    yPosition += 6;
-    pdf.text(`Mobile Number: ${invoiceTicket.mobile}`, 20, yPosition);
-    yPosition += 6;
-    pdf.text(`Email Address: ${invoiceTicket.email}`, 20, yPosition);
-
-    yPosition += 20;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("INVOICE ITEMS:", 20, yPosition);
-
-    yPosition += 10;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Item", 20, yPosition);
-    pdf.text("Description", 70, yPosition);
-    pdf.text("Qty", 130, yPosition);
-    pdf.text("Amount", 150, yPosition);
-
-    pdf.line(20, yPosition + 2, 180, yPosition + 2);
-
-    pdf.setFont("helvetica", "normal");
-    yPosition += 8;
-    invoiceData.items.forEach((item) => {
-      pdf.text(item.name, 20, yPosition);
-      pdf.text(item.description, 70, yPosition);
-      pdf.text(item.quantity.toString(), 130, yPosition);
-      pdf.text(`PHP ${item.amount}`, 150, yPosition);
-      yPosition += 8;
-    });
-
-    yPosition += 10;
-    pdf.line(20, yPosition, 180, yPosition);
-    yPosition += 8;
-
-    pdf.text(`Platform Fee:`, 120, yPosition);
-    pdf.text(`PHP ${invoiceData.platformFee}`, 150, yPosition);
-    yPosition += 6;
-
-    pdf.text(`E-Nurse Fee:`, 120, yPosition);
-    pdf.text(`PHP ${invoiceData.eNurseFee}`, 150, yPosition);
-    yPosition += 8;
-
-    pdf.setFont("helvetica", "bold");
-    pdf.text(`TOTAL AMOUNT:`, 110, yPosition);
-    pdf.text(`PHP ${invoiceTotal.toFixed(2)}`, 150, yPosition);
-
-    yPosition += 15;
-    pdf.setFont("helvetica", "normal");
-    pdf.text("Payment Link:", 20, yPosition);
-    yPosition += 6;
-    pdf.setTextColor(0, 0, 255);
-    pdf.text(invoiceData.paymentLink, 20, yPosition);
-    pdf.setTextColor(0, 0, 0);
-
-    yPosition += 20;
-    pdf.line(20, yPosition, 180, yPosition);
-    yPosition += 10;
-    pdf.setFontSize(10);
-    pdf.text("This is a system-generated invoice.", 105, yPosition, {
-      align: "center",
-    });
-
-    yPosition += 8;
-    pdf.text(
-      "For inquiries, please contact support@okiedocplus.com",
-      105,
-      yPosition,
-      {
-        align: "center",
-      }
-    );
-
-    pdf.save(`Invoice_${invoiceData.invoiceNumber || "OkieDoc"}.pdf`);
-  };
 
   const handleDownloadInvoice = () => {
-    generateInvoicePDF();
+    generateInvoicePDF(invoiceData, invoiceTicket);
   };
 
   return (
@@ -770,48 +863,118 @@ export default function ManageAppointment() {
           <div className="processing-tickets">
             <h2>Processing Tickets ({processingTickets.length})</h2>
             {processingTickets.map((ticket) => (
-              <div key={ticket.id} className="ticket-card processing">
-                <div className="ticket-header">
-                  <h3>{ticket.patientName}</h3>
-                  <span
-                    className="status-badge"
-                    style={{ backgroundColor: "#2196f3" }}
-                  >
-                    {ticket.status}
-                  </span>
+              <div
+                key={ticket.id}
+                className="ticket-card-new"
+                onClick={() => {
+                  setSelectedTicket(ticket);
+                  setShowTicketDetailModal(true);
+                  setTicketDetailTab("assessment");
+                }}
+                style={{ cursor: "pointer", borderLeftColor: "#2196f3" }}
+              >
+                <div className="ticket-card-header">
+                  <span className="ticket-number">TICKET #{ticket.id}</span>
                 </div>
-                <div
-                  className="ticket-actions"
-                  style={{ display: "flex", gap: 8 }}
-                >
-                  {ticket.claimedBy ? (
-                    <button
-                      className="action-btn edit"
-                      onClick={() => openInvoice(ticket)}
+
+                <div className="ticket-card-body">
+                  <div className="ticket-left-section">
+                    <div className="ticket-patient-details">
+                      <h4 className="ticket-section-title">PATIENT DETAILS</h4>
+                      <div className="ticket-details-grid">
+                        <div className="ticket-details-col">
+                          <p>
+                            <strong>Name:</strong> {ticket.patientName}
+                          </p>
+                          <p>
+                            <strong>Age:</strong>{" "}
+                            {ticket.age ||
+                              calculateAge(ticket.patientBirthdate) ||
+                              "N/A"}
+                          </p>
+                          <p>
+                            <strong>Birthdate:</strong>{" "}
+                            {formatDate(ticket.patientBirthdate) || "N/A"}
+                          </p>
+                        </div>
+                        <div className="ticket-details-col">
+                          <p>
+                            <strong>Email:</strong> {ticket.email}
+                          </p>
+                          <p>
+                            <strong>Mobile:</strong> {ticket.mobile}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="ticket-assignments">
+                      <p>
+                        <strong>Assigned Nurse:</strong>{" "}
+                        {ticket.assignedNurse || nurseName}
+                      </p>
+                      <p>
+                        <strong>Assigned Specialist:</strong>{" "}
+                        {ticket.assignedSpecialist ||
+                          ticket.preferredSpecialist ||
+                          "Not specified"}
+                      </p>
+                      <p>
+                        <strong>Consultation Type:</strong>{" "}
+                        {ticket.consultationType || ticket.chiefComplaint}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="ticket-right-section">
+                    <div className="ticket-meta">
+                      <p>
+                        <strong>Date Created:</strong>{" "}
+                        {formatDate(ticket.createdAt) || ticket.dateCreated}
+                      </p>
+                      <p>
+                        <strong>Status:</strong>{" "}
+                        <span
+                          className="ticket-status-text processing"
+                          style={{ color: "#2196f3" }}
+                        >
+                          {ticket.status}
+                        </span>
+                      </p>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      Generate Invoice
-                    </button>
-                  ) : (
-                    <button
-                      className="action-btn view"
-                      onClick={() => setSelectedTicket(ticket)}
-                    >
-                      Manage
-                    </button>
-                  )}
-                  <button
-                    className="action-btn"
-                    onClick={() => simulatePayment(ticket.id)}
-                  >
-                    Simulate Payment
-                  </button>
-                  <button
-                    className="action-btn"
-                    style={{ marginLeft: "auto" }}
-                    onClick={() => setShowConsultationHistory(true)}
-                  >
-                    View Consultation History
-                  </button>
+                      {ticket.claimedBy ? (
+                        <button
+                          className="ticket-history-btn"
+                          onClick={() => openInvoice(ticket)}
+                        >
+                          Generate Invoice
+                        </button>
+                      ) : (
+                        <button
+                          className="ticket-history-btn"
+                          onClick={() => setSelectedTicket(ticket)}
+                        >
+                          Manage
+                        </button>
+                      )}
+                      <button
+                        className="ticket-history-btn"
+                        style={{ background: "#4caf50" }}
+                        onClick={() => simulatePayment(ticket.id)}
+                      >
+                        Simulate Payment
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -820,56 +983,124 @@ export default function ManageAppointment() {
           <div className="tickets-list">
             <h2>Pending Tickets ({pendingTickets.length})</h2>
             {pendingTickets.map((ticket) => (
-              <div key={ticket.id} className="ticket-card">
-                <div className="ticket-header">
-                  <h3>{ticket.patientName || "Unnamed"}</h3>
-                  <span className="ticket-time">
-                    {new Date(ticket.createdAt).toLocaleString()}
-                  </span>
+              <div
+                key={ticket.id}
+                className="ticket-card-new"
+                onClick={() => {
+                  setSelectedTicket(ticket);
+                  setShowTicketDetailModal(true);
+                  setTicketDetailTab("assessment");
+                }}
+                style={{ cursor: "pointer", borderLeftColor: "#ff9800" }}
+              >
+                <div className="ticket-card-header">
+                  <span className="ticket-number">TICKET #{ticket.id}</span>
                 </div>
-                <div className="ticket-details">
-                  <p>
-                    <strong>Chief Complaint:</strong> {ticket.chiefComplaint}
-                  </p>
-                  <p>
-                    <strong>Preferred:</strong> {ticket.preferredDate} at{" "}
-                    {ticket.preferredTime}
-                  </p>
-                  <p>
-                    <strong>Specialist:</strong> {ticket.preferredSpecialist}
-                  </p>
-                  <p>
-                    <strong>Channel:</strong> {ticket.consultationChannel}
-                  </p>
-                  <p>
-                    <strong>HMO:</strong>{" "}
-                    {ticket.hasHMO ? "Yes" : ticket.hmo ? "Yes" : "No"}
-                  </p>
-                </div>
-                <div
-                  className="ticket-actions"
-                  style={{ display: "flex", gap: 8 }}
-                >
-                  <button
-                    className="action-btn view"
-                    onClick={() => setSelectedTicket(ticket)}
-                  >
-                    View Details
-                  </button>
-                  <button
-                    className="action-btn edit"
-                    onClick={() => claimTicket(ticket.id)}
-                    disabled={!!ticket.claimedBy}
-                  >
-                    Claim Ticket
-                  </button>
-                  <button
-                    className="action-btn"
-                    style={{ marginLeft: "auto" }}
-                    onClick={() => setShowConsultationHistory(true)}
-                  >
-                    View Consultation History
-                  </button>
+
+                <div className="ticket-card-body">
+                  <div className="ticket-left-section">
+                    <div className="ticket-patient-details">
+                      <h4 className="ticket-section-title">PATIENT DETAILS</h4>
+                      <div className="ticket-details-grid">
+                        <div className="ticket-details-col">
+                          <p>
+                            <strong>Name:</strong>{" "}
+                            {ticket.patientName || "Unnamed"}
+                          </p>
+                          <p>
+                            <strong>Age:</strong>{" "}
+                            {ticket.age ||
+                              calculateAge(ticket.patientBirthdate) ||
+                              "N/A"}
+                          </p>
+                          <p>
+                            <strong>Birthdate:</strong>{" "}
+                            {formatDate(ticket.patientBirthdate) || "N/A"}
+                          </p>
+                        </div>
+                        <div className="ticket-details-col">
+                          <p>
+                            <strong>Email:</strong> {ticket.email}
+                          </p>
+                          <p>
+                            <strong>Mobile:</strong> {ticket.mobile}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="ticket-assignments">
+                      <p>
+                        <strong>Assigned Nurse:</strong>{" "}
+                        {ticket.assignedNurse || nurseName}
+                      </p>
+                      <p>
+                        <strong>Assigned Specialist:</strong>{" "}
+                        {ticket.assignedSpecialist ||
+                          ticket.preferredSpecialist ||
+                          "Not specified"}
+                      </p>
+                      <p>
+                        <strong>Chief Complaint:</strong>{" "}
+                        {ticket.chiefComplaint}
+                      </p>
+                      <p>
+                        <strong>Channel:</strong> {ticket.consultationChannel}
+                      </p>
+                      <p>
+                        <strong>HMO:</strong>{" "}
+                        {ticket.hasHMO ? "Yes" : ticket.hmo ? "Yes" : "No"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="ticket-right-section">
+                    <div className="ticket-meta">
+                      <p>
+                        <strong>Date Created:</strong>{" "}
+                        {new Date(ticket.createdAt).toLocaleString()}
+                      </p>
+                      <p>
+                        <strong>Preferred:</strong>{" "}
+                        {formatDate(ticket.preferredDate)} at{" "}
+                        {ticket.preferredTime}
+                      </p>
+                      <p>
+                        <strong>Status:</strong>{" "}
+                        <span className="ticket-status-text pending">
+                          {ticket.status}
+                        </span>
+                      </p>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        className="ticket-history-btn"
+                        onClick={() => setSelectedTicket(ticket)}
+                      >
+                        Manage
+                      </button>
+                      <button
+                        className="ticket-history-btn"
+                        style={{ background: "#4caf50" }}
+                        onClick={() => claimTicket(ticket.id)}
+                        disabled={ticket.claimedBy === nurseId}
+                      >
+                        {ticket.claimedBy === nurseId
+                          ? "Already Claimed"
+                          : ticket.claimedBy
+                          ? "Re-Claim Ticket"
+                          : "Claim Ticket"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -896,7 +1127,7 @@ export default function ManageAppointment() {
         </div>
       </div>
 
-      {selectedTicket && (
+      {selectedTicket && !showTicketDetailModal && (
         <div className="modal-overlay">
           <div className="ticket-modal">
             <div className="modal-header">
@@ -1017,7 +1248,7 @@ export default function ManageAppointment() {
                 <div className="info-grid">
                   <div className="info-item">
                     <label>Preferred Date:</label>
-                    <span>{selectedTicket.preferredDate}</span>
+                    <span>{formatDate(selectedTicket.preferredDate)}</span>
                   </div>
                   <div className="info-item">
                     <label>Preferred Time:</label>
@@ -1156,9 +1387,11 @@ export default function ManageAppointment() {
                   onChange={(e) => setAssignedSpecialist(e.target.value)}
                 >
                   <option value="">Select Specialist</option>
-                  <option value="Dr. Smith">Dr. Smith</option>
-                  <option value="Dr. Lee">Dr. Lee</option>
-                  <option value="Dr. Patel">Dr. Patel</option>
+                  {doctors.map((doctor) => (
+                    <option key={doctor.id} value={doctor.name}>
+                      {doctor.name} - {doctor.specialization}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div
@@ -1281,6 +1514,18 @@ export default function ManageAppointment() {
                       Generate Invoice
                     </button>
                   )}
+                {selectedTicket.status === "Processing" && (
+                  <button
+                    className="action-btn edit"
+                    onClick={() => {
+                      updateStatus(selectedTicket.id, "Completed");
+                      setShowTicketDetails(false);
+                    }}
+                    style={{ backgroundColor: "#28a745" }}
+                  >
+                    Mark Completed
+                  </button>
+                )}
                 <button
                   className="action-btn"
                   onClick={() => updateStatus(selectedTicket.id, "Incomplete")}
@@ -1317,7 +1562,8 @@ export default function ManageAppointment() {
                 </p>
                 <p>
                   <strong>Date of Consultation:</strong>{" "}
-                  {invoiceTicket?.preferredDate} {invoiceTicket?.preferredTime}
+                  {formatDate(invoiceTicket?.preferredDate)}{" "}
+                  {invoiceTicket?.preferredTime}
                 </p>
                 <p>
                   <strong>Patient Name:</strong> {invoiceTicket?.patientName}
@@ -1561,19 +1807,87 @@ export default function ManageAppointment() {
                         />
                       </div>
                     </div>
-                    <div className="form-group">
-                      <label htmlFor="email">Email Address</label>
-                      <input
-                        id="email"
-                        name="email"
-                        value={newTicketData.email}
-                        onChange={(e) =>
-                          setNewTicketData({
-                            ...newTicketData,
-                            email: e.target.value,
-                          })
-                        }
-                      />
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="patientBirthdate">
+                          Date of Birth *
+                        </label>
+                        <input
+                          id="patientBirthdate"
+                          name="patientBirthdate"
+                          type="date"
+                          value={newTicketData.patientBirthdate}
+                          max={new Date().toISOString().split("T")[0]}
+                          onChange={(e) =>
+                            setNewTicketData({
+                              ...newTicketData,
+                              patientBirthdate: e.target.value,
+                            })
+                          }
+                          required
+                        />
+                        {newTicketData.patientBirthdate && (
+                          <span
+                            style={{
+                              fontSize: "0.875rem",
+                              color: "#666",
+                              marginTop: 4,
+                              display: "block",
+                            }}
+                          >
+                            Age: {calculateAge(newTicketData.patientBirthdate)}{" "}
+                            years old
+                          </span>
+                        )}
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="email">Email Address *</label>
+                        <input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={newTicketData.email}
+                          onChange={(e) => {
+                            const email = e.target.value;
+                            setNewTicketData({
+                              ...newTicketData,
+                              email: email,
+                            });
+
+                            if (email && !validateEmail(email)) {
+                              setEmailError(
+                                "Please enter a valid email address"
+                              );
+                            } else {
+                              setEmailError("");
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const email = e.target.value;
+                            if (email && !validateEmail(email)) {
+                              setEmailError(
+                                "Please enter a valid email address"
+                              );
+                            }
+                          }}
+                          required
+                          style={{
+                            borderColor: emailError ? "red" : "",
+                          }}
+                        />
+                        {emailError && (
+                          <span
+                            style={{
+                              color: "red",
+                              fontSize: "0.875rem",
+                              marginTop: "4px",
+                              display: "block",
+                            }}
+                          >
+                            {emailError}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1925,9 +2239,17 @@ export default function ManageAppointment() {
                           required
                         >
                           <option value="">Select Doctor</option>
-                          <option value="Dr. Smith">Dr. Smith</option>
-                          <option value="Dr. Lee">Dr. Lee</option>
-                          <option value="Dr. Patel">Dr. Patel</option>
+                          {doctors && doctors.length > 0 ? (
+                            doctors.map((doctor) => (
+                              <option key={doctor.id} value={doctor.name}>
+                                {doctor.name} - {doctor.specialization}
+                              </option>
+                            ))
+                          ) : (
+                            <option value="" disabled>
+                              Loading specialists...
+                            </option>
+                          )}
                         </select>
                       </div>
                       <div className="form-group">
@@ -2205,6 +2527,290 @@ export default function ManageAppointment() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket Detail Modal with 4 Tabs */}
+      {showTicketDetailModal && selectedTicket && (
+        <div className="modal-overlay">
+          <div
+            className="ticket-detail-modal"
+            style={{ maxWidth: 900, width: "90%" }}
+          >
+            <div
+              className="modal-header"
+              style={{ borderBottom: "1px solid #e0e0e0", paddingBottom: 16 }}
+            >
+              <div>
+                <h2 style={{ margin: 0, color: "#0b5388" }}>
+                  TICKET #{selectedTicket.id}
+                </h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowTicketDetailModal(false);
+                  setSelectedTicket(null);
+                }}
+                className="close-btn"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Patient Info Summary */}
+            <div
+              style={{
+                padding: "16px 24px",
+                background: "#f8f9fa",
+                borderBottom: "1px solid #e0e0e0",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 16,
+                }}
+              >
+                <div>
+                  <p
+                    style={{
+                      margin: "0 0 4px",
+                      fontSize: 12,
+                      color: "#666",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Patient Details
+                  </p>
+                  <p style={{ margin: "0 0 4px" }}>
+                    <strong>Name:</strong> {selectedTicket.patientName}
+                  </p>
+                  <p style={{ margin: "0 0 4px" }}>
+                    <strong>Email:</strong> {selectedTicket.email}
+                  </p>
+                  <p style={{ margin: "0 0 4px" }}>
+                    <strong>Age:</strong>{" "}
+                    {selectedTicket.age ||
+                      calculateAge(selectedTicket.patientBirthdate) ||
+                      "N/A"}
+                  </p>
+                  <p style={{ margin: "0 0 4px" }}>
+                    <strong>Mobile:</strong> {selectedTicket.mobile}
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    <strong>Birthdate:</strong>{" "}
+                    {formatDate(selectedTicket.patientBirthdate) || "N/A"}
+                  </p>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <p style={{ margin: "0 0 4px", color: "#0b5388" }}>
+                    <strong>Date Created:</strong>{" "}
+                    {formatDate(selectedTicket.createdAt)}
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    <strong>Status:</strong>{" "}
+                    <span
+                      style={{
+                        color:
+                          selectedTicket.status === "Confirmed"
+                            ? "#4caf50"
+                            : selectedTicket.status === "Processing"
+                            ? "#2196f3"
+                            : "#ff9800",
+                      }}
+                    >
+                      {selectedTicket.status}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <div
+                style={{
+                  marginTop: 16,
+                  paddingTop: 16,
+                  borderTop: "1px solid #e0e0e0",
+                }}
+              >
+                <p style={{ margin: "0 0 4px" }}>
+                  <strong>Assigned Nurse:</strong>{" "}
+                  {selectedTicket.assignedNurse || nurseName || "N/A"}
+                </p>
+                <p style={{ margin: "0 0 4px" }}>
+                  <strong>Assigned Specialist:</strong>{" "}
+                  {selectedTicket.assignedSpecialist || "Not specified"}
+                </p>
+                <p style={{ margin: 0 }}>
+                  <strong>Consultation Type:</strong>{" "}
+                  {selectedTicket.consultationChannel ||
+                    selectedTicket.chiefComplaint}
+                </p>
+              </div>
+              <div style={{ marginTop: 16, textAlign: "right" }}>
+                <button
+                  className="action-btn"
+                  style={{
+                    background: "#0b5388",
+                    color: "#fff",
+                    padding: "8px 20px",
+                    borderRadius: 20,
+                  }}
+                  onClick={() => alert("Feature in progress")}
+                >
+                  Consultation Histories
+                </button>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div
+              style={{
+                display: "flex",
+                borderBottom: "2px solid #e0e0e0",
+                background: "#fff",
+              }}
+            >
+              {[
+                "assessment",
+                "medicalHistory",
+                "laboratoryRequest",
+                "prescription",
+              ].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setTicketDetailTab(tab)}
+                  style={{
+                    flex: 1,
+                    padding: "12px 16px",
+                    border: "none",
+                    background:
+                      ticketDetailTab === tab ? "#e3f2fd" : "transparent",
+                    color: ticketDetailTab === tab ? "#0b5388" : "#666",
+                    fontWeight: ticketDetailTab === tab ? 600 : 400,
+                    cursor: "pointer",
+                    borderBottom:
+                      ticketDetailTab === tab
+                        ? "2px solid #0b5388"
+                        : "2px solid transparent",
+                    marginBottom: "-2px",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {tab === "assessment" && "Assessment"}
+                  {tab === "medicalHistory" && "Medical History"}
+                  {tab === "laboratoryRequest" && "Laboratory Request"}
+                  {tab === "prescription" && "Prescription"}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content */}
+            <div
+              className="modal-body"
+              style={{
+                padding: 24,
+                maxHeight: 400,
+                overflowY: "auto",
+                background: "#e8f4fc",
+              }}
+            >
+              {ticketDetailTab === "assessment" && (
+                <div>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    "Sed ut perspiciatis unde omnis iste natus error sit
+                    voluptatem accusantium doloremque laudantium, totam rem
+                    aperiam, eaque ipsa quae ab illo inventore veritatis et
+                    quasi architecto beatae vitae dicta sunt explicabo. Nemo
+                    enim ipsam
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    voluptatem quia voluptas sit aspernatur aut odit aut fugit,
+                    sed quia consequuntur magni dolores eos qui ratione
+                    voluptatem sequi nesciunt. Neque porro quisquam est, qui
+                    dolorem ipsum quia dolor sit amet, consectetur, adipisci
+                    velit, sed quia non numquam eius modi tempora incidunt ut
+                    labore et dolore magnam aliquam quaerat voluptatem.
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Ut enim ad minima veniam, quis nostrum exercitationem ullam
+                    corporis suscipit laboriosam, nisi ut aliquid ex ea commodi
+                    consequatur? Quis autem vel eum iure reprehenderit qui in ea
+                    voluptate velit esse quam nihil molestiae consequatur, vel
+                    illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+                  </p>
+                </div>
+              )}
+
+              {ticketDetailTab === "medicalHistory" && (
+                <div>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+                    sed do eiusmod tempor incididunt ut labore et dolore magna
+                    aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Duis aute irure dolor in reprehenderit in voluptate velit
+                    esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
+                    occaecat cupidatat non proident, sunt in culpa qui officia
+                    deserunt mollit anim id est laborum."
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Sed ut perspiciatis unde omnis iste natus error sit
+                    voluptatem accusantium doloremque laudantium, totam rem
+                    aperiam, eaque ipsa quae ab illo inventore veritatis et
+                    quasi architecto beatae vitae dicta sunt explicabo.
+                  </p>
+                </div>
+              )}
+
+              {ticketDetailTab === "laboratoryRequest" && (
+                <div>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    "At vero eos et accusamus et iusto odio dignissimos ducimus
+                    qui blanditiis praesentium voluptatum deleniti atque
+                    corrupti quos dolores et quas molestias excepturi sint
+                    occaecati cupiditate non provident.
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Similique sunt in culpa qui officia deserunt mollitia animi,
+                    id est laborum et dolorum fuga. Et harum quidem rerum
+                    facilis est et expedita distinctio."
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Nam libero tempore, cum soluta nobis est eligendi optio
+                    cumque nihil impedit quo minus id quod maxime placeat facere
+                    possimus, omnis voluptas assumenda est, omnis dolor
+                    repellendus.
+                  </p>
+                </div>
+              )}
+
+              {ticketDetailTab === "prescription" && (
+                <div>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    "Temporibus autem quibusdam et aut officiis debitis aut
+                    rerum necessitatibus saepe eveniet ut et voluptates
+                    repudiandae sint et molestiae non recusandae. Itaque earum
+                    rerum hic tenetur a sapiente delectus.
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Ut aut reiciendis voluptatibus maiores alias consequatur aut
+                    perferendis doloribus asperiores repellat. Nam libero
+                    tempore, cum soluta nobis est eligendi optio cumque nihil
+                    impedit quo minus id quod maxime placeat facere possimus."
+                  </p>
+                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                    Omnis voluptas assumenda est, omnis dolor repellendus.
+                    Temporibus autem quibusdam et aut officiis debitis aut rerum
+                    necessitatibus saepe eveniet ut et voluptates repudiandae
+                    sint et molestiae non recusandae.
+                  </p>
                 </div>
               )}
             </div>

@@ -10,6 +10,7 @@ export default function SpecialistLogin() {
     password: "",
   });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -20,18 +21,29 @@ export default function SpecialistLogin() {
     setError("");
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
-    const result = authService.loginSpecialist(formData.email, formData.password);
-    if (result.success) {
-      const path = authService.getRedirectPath("specialist");
-      navigate(path);
-      return;
+    try {
+      const result = await authService.loginSpecialist(
+        formData.email,
+        formData.password
+      );
+      if (result.success) {
+        const path =
+          result.redirect || authService.getRedirectPath("specialist");
+        navigate(path);
+        return;
+      }
+
+      setError(result.error || "Invalid email or password. Please try again.");
+    } catch (err) {
+      setError("Login failed. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    setError(result.error || "Invalid email or password. Please try again.");
   };
 
   return (
@@ -44,11 +56,7 @@ export default function SpecialistLogin() {
           >
             <span className="material-symbols-outlined">arrow_back_2</span>
           </button>
-          <img
-            src="/okie-doc-logo.png"
-            alt="OkieDoc+"
-            className="logo-image"
-          />
+          <img src="/okie-doc-logo.png" alt="OkieDoc+" className="logo-image" />
           <div style={{ width: "2.5rem" }}></div>
         </div>
         <h2 className="login-title">Specialist Sign in</h2>
@@ -80,20 +88,26 @@ export default function SpecialistLogin() {
               required
             />
           </div>
-          <button className="login-btn" type="submit">
-            Sign in
+          <button className="login-btn" type="submit" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Sign in"}
           </button>
           <p className="login-text">
-            Don&apos;t have a specialist account? {" "}
-            <a className="specialist-register-link" href="/specialist-registration">Register as a specialist</a>
+            Don&apos;t have a specialist account?{" "}
+            <a
+              className="specialist-register-link"
+              href="/specialist-registration"
+            >
+              Register as a specialist
+            </a>
           </p>
           <p className="login-text">
-            Not a specialist? <a className="specialist-link" href="/login">Back to general login</a>
+            Not a specialist?{" "}
+            <a className="specialist-link" href="/login">
+              Back to general login
+            </a>
           </p>
         </form>
       </div>
     </div>
   );
 }
-
-

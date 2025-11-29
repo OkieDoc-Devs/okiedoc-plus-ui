@@ -17,8 +17,34 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=arrow_back_2"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+      referrerpolicy="no-referrer"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OkieDoc+</title>
+    <script>
+      window.io = window.io || {};
+      window.io.sails = window.io.sails || {};
+      window.io.sails.autoConnect = false;
+    </script>
+    <script src="http://localhost:1337/socket/sails.io.js"></script>
+    <script>
+      if (typeof io !== "undefined" && io.sails) {
+        io.sails.url = "http://localhost:1337";
+        io.sails.transports = ["websocket", "polling"];
+        io.sails.useCORSRouteToGetCookie = true;
+        io.sails.environment = "development";
+        console.log("Sails.io.js configured for:", io.sails.url);
+        io.socket = io.sails.connect();
+        console.log("Sails.io.js socket connecting to:", io.sails.url);
+      } else {
+        console.warn(
+          "Sails.io.js failed to load - check if backend is running and serving /socket/sails.io.js"
+        );
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

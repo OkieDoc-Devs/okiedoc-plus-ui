@@ -82,7 +82,24 @@ const SpecialistDashboard = () => {
           getPatientAndNurseUsers(),
         ]);
 
-        const processedSpecialists = (specialistsData || []).map((spec, index) => {
+        // Extract arrays from response objects if needed
+        const specialistsArray = Array.isArray(specialistsData) 
+          ? specialistsData 
+          : (specialistsData?.specialists || specialistsData?.data || []);
+        const pendingArray = Array.isArray(pendingData)
+          ? pendingData
+          : (pendingData?.applications || pendingData?.data || []);
+        const transactionsArray = Array.isArray(transactionsData)
+          ? transactionsData
+          : (transactionsData?.transactions || transactionsData?.data || []);
+        const consultationsArray = Array.isArray(consultationsData)
+          ? consultationsData
+          : (consultationsData?.consultations || consultationsData?.data || []);
+        const usersArray = Array.isArray(usersData)
+          ? usersData
+          : (usersData?.users || usersData?.data || []);
+
+        const processedSpecialists = (specialistsArray || []).map((spec, index) => {
             const nameParts = (spec.name || '').split(' ');
             const firstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : (spec.name || '');
             const lastName = nameParts.length > 1 ? nameParts.slice(-1)[0] : '';
@@ -102,7 +119,7 @@ const SpecialistDashboard = () => {
             };
         });
 
-        const processedPending = (pendingData || []).map((app, index) => ({
+        const processedPending = (pendingArray || []).map((app, index) => ({
           ...app,
           details: {
             ...(app.details || {}),
@@ -118,9 +135,9 @@ const SpecialistDashboard = () => {
 
         setSpecialists(processedSpecialists);
         setPendingApplications(processedPending);
-        setTransactions(transactionsData || []);
-        setConsultations(consultationsData || []);
-        setUsers(usersData || []); // Set the new users state
+        setTransactions(transactionsArray || []);
+        setConsultations(consultationsArray || []);
+        setUsers(usersArray || []); // Set the new users state
 
       } catch (error) {
         console.error("Failed to fetch dashboard data from backend:", error);

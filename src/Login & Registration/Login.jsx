@@ -12,6 +12,7 @@ export default function Login() {
     password: "",
   });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // Keep dummy credentials for fallback/local testing
   const dummyCredentials = {
@@ -27,6 +28,7 @@ export default function Login() {
       email: "specialist@okiedocplus.com",
       password: "specialistOkDoc123",
     },
+    admin: { email: "admin@okiedoc.com", password: "admin123" },
     // No dummy admin needed if using API
   };
 
@@ -36,26 +38,45 @@ export default function Login() {
       ...prev,
       [id]: value,
     }));
-
-    // Clear error when user starts typing
-    if (errors[fieldName]) {
-      setErrors((prev) => ({
-        ...prev,
-        [fieldName]: "",
-      }));
-    }
   };
 
-  const dummyCredentials = {
-    nurse: { email: "nurse@okiedoc.com", password: "nurse123" },
-    admin: { email: "admin@okiedoc.com", password: "admin123" },
-    patient: { email: "patient@okiedoc.com", password: "patient123" },
-    specialist: { email: "specialist@okiedoc.com", password: "specialist123" },
+  const loginWithAPI = async (email, password) => {
+    try {
+      const response = await fetch("http://localhost:1337/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          user: data.user,
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || "Login failed",
+        };
+      }
+    } catch (error) {
+      console.error("API login failed, trying fallback credentials:", error.message);
+      return {
+        success: false,
+        error: error.message || "Login failed",
+      };
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
       const result = await loginWithAPI(formData.email, formData.password);
@@ -103,9 +124,16 @@ export default function Login() {
           });
         }
 
-        navigate(result.user.dashboardRoute);
+        navigate(result.user.dashboardRoute || "/patient-dashboard");
         return;
+      } else {
+        setError(result.error || "Invalid email or password");
       }
+    } catch (error) {
+      console.error("Login error:", error);
+      setError("An error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
 
     // Fallback to dummy credentials for other roles (adjust or remove as needed)
@@ -140,8 +168,6 @@ export default function Login() {
     } else {
       setError("Invalid email or password. Please try again.");
     }
-
-    setIsLoading(false);
   };
 
   return (

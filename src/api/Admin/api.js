@@ -72,7 +72,10 @@ export const getSpecialists = async () => {
 export const getPendingApplications = async () => {
   try {
     const response = await apiClient.get('/api/v1/admin/pending-applications');
-    return response.data;
+    // Handle both array and object responses
+    return Array.isArray(response.data) 
+      ? response.data 
+      : (response.data?.applications || response.data?.data || []);
   } catch (error) {
     console.error('Failed to fetch pending applications:', error);
     throw error;
@@ -85,7 +88,10 @@ export const getPendingApplications = async () => {
 export const getTransactions = async () => {
     try {
         const response = await apiClient.get('/api/v1/admin/transactions');
-        return response.data;
+        // Handle both array and object responses
+        return Array.isArray(response.data)
+          ? response.data
+          : (response.data?.transactions || response.data?.data || []);
     } catch (error) {
         console.error('Failed to fetch transactions:', error);
         throw error;
@@ -98,7 +104,10 @@ export const getTransactions = async () => {
 export const getConsultations = async () => {
     try {
         const response = await apiClient.get('/api/v1/admin/consultations');
-        return response.data;
+        // Handle both array and object responses
+        return Array.isArray(response.data)
+          ? response.data
+          : (response.data?.consultations || response.data?.data || []);
     } catch (error) {
         console.error('Failed to fetch consultations:', error);
         throw error;
@@ -111,7 +120,11 @@ export const getConsultations = async () => {
 export const getPatientAndNurseUsers = async () => {
   try {
     const response = await apiClient.get('/api/v1/admin/users');
-    return response.data;
+    // Handle both array and object responses
+    const users = Array.isArray(response.data)
+      ? response.data
+      : (response.data?.users || response.data?.data || []);
+    return users;
   } catch (error) {
     console.error('Failed to fetch users:', error);
     return [

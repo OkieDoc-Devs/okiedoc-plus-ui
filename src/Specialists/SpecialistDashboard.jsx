@@ -930,66 +930,69 @@ const SpecialistDashboard = () => {
   };
 
   const renderSchedules = () => (
-    <div className="dashboard-content">
+    <div className="dashboard-content schedule-page">
       <div className="schedule-container">
-        <div className="calendar-header">
-          <button
-            className="calendar-nav"
-            onClick={() => {
-              if (currentMonth === 0) {
-                setCurrentMonth(11);
-                setCurrentYear(currentYear - 1);
-              } else {
-                setCurrentMonth(currentMonth - 1);
-              }
-            }}
-          >
-            ‹
-          </button>
-          <h2>
-            {getMonthName(currentMonth)} {currentYear}
-          </h2>
-          <button
-            className="calendar-nav"
-            onClick={() => {
-              if (currentMonth === 11) {
-                setCurrentMonth(0);
-                setCurrentYear(currentYear + 1);
-              } else {
-                setCurrentMonth(currentMonth + 1);
-              }
-            }}
-          >
-            ›
-          </button>
-        </div>
-
-        <div className="calendar-container">
-          <div className="calendar">
-            <div className="calendar-weekdays">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                (day) => (
-                  <div key={day} className="weekday">
-                    {day}
-                  </div>
-                )
-              )}
+        <div className="schedule-layout">
+          <div className="calendar-main">
+            <div className="calendar-header">
+              <button
+                className="calendar-nav"
+                onClick={() => {
+                  if (currentMonth === 0) {
+                    setCurrentMonth(11);
+                    setCurrentYear(currentYear - 1);
+                  } else {
+                    setCurrentMonth(currentMonth - 1);
+                  }
+                }}
+              >
+                ‹
+              </button>
+              <h2>
+                {getMonthName(currentMonth)} {currentYear}
+              </h2>
+              <button
+                className="calendar-nav"
+                onClick={() => {
+                  if (currentMonth === 11) {
+                    setCurrentMonth(0);
+                    setCurrentYear(currentYear + 1);
+                  } else {
+                    setCurrentMonth(currentMonth + 1);
+                  }
+                }}
+              >
+                ›
+              </button>
             </div>
-            <div className="calendar-days">{renderCalendar()}</div>
-          </div>
-        </div>
 
-        {selectedDate && (
-          <div className="selected-date-panel">
-            <h3>
-              {getMonthName(currentMonth)} {selectedDate}, {currentYear}
-            </h3>
-            <button
-              className="btn-primary"
-              onClick={() => setShowScheduleModal(true)}
-            >
-              Add Schedule
-            </button>
+            <div className="calendar-container">
+              <div className="calendar">
+                <div className="calendar-weekdays">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    (day) => (
+                      <div key={day} className="weekday">
+                        {day}
+                      </div>
+                    )
+                  )}
+                </div>
+                <div className="calendar-days">{renderCalendar()}</div>
+              </div>
+            </div>
+          </div>
+
+          {selectedDate && (
+            <div className="selected-date-panel">
+              <h3>
+                {getMonthName(currentMonth)} {selectedDate}, {currentYear}
+              </h3>
+              <button
+                className="btn-primary"
+                onClick={() => setShowScheduleModal(true)}
+              >
+                Add Schedule
+              </button>
 
               <div className="day-schedules">
                 {/* Show confirmed tickets for this day */}
@@ -1114,20 +1117,10 @@ const SpecialistDashboard = () => {
 
   const renderDashboard = () => (
     <div className="dashboard-content">
-      <div className="filters">
-        {["All Tickets", "Confirmed", "Pending", "Completed"].map((filter) => (
-          <div
-            key={filter}
-            className={`filter-item ${
-              ticketFilter === (filter === "All Tickets" ? "All" : filter)
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              setTicketFilter(filter === "All Tickets" ? "All" : filter)
-            }
-          >
-            {filter}
+      <div className="chart-layout">
+        <div className="panel">
+          <div className="left-col-header">
+            <div style={{ fontWeight: 700 }}>Tickets</div>
           </div>
           <div style={{ padding: "12px 10px" }}>
             <div className="filters two-col" style={{ marginRight: "0" }}>
@@ -1704,24 +1697,25 @@ const SpecialistDashboard = () => {
             className="profile-img"
           />
           <div>
-            <div className="upload-btn">
+            <label htmlFor="profile-photo-upload" className="upload-btn">
               <FaUpload /> Upload Photo
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                      handleProfileChange("profileImage", e.target.result);
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-                style={{ display: "none" }}
-              />
-            </div>
+            </label>
+            <input
+              id="profile-photo-upload"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (e) => {
+                    handleProfileChange("profileImage", e.target.result);
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+              style={{ display: "none" }}
+            />
           </div>
         </div>
 
@@ -1770,24 +1764,25 @@ const SpecialistDashboard = () => {
               className="profile-img"
             />
             <div>
-              <div className="upload-btn">
+              <label htmlFor="prc-license-upload" className="upload-btn">
                 <FaUpload /> Upload PRC License Photo
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (e) => {
-                        handleProfileChange("prcImage", e.target.result);
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                  style={{ display: "none" }}
-                />
-              </div>
+              </label>
+              <input
+                id="prc-license-upload"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                      handleProfileChange("prcImage", e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                style={{ display: "none" }}
+              />
             </div>
           </div>
           <div className="input-group full-width">
@@ -1979,27 +1974,28 @@ const SpecialistDashboard = () => {
                   className="profile-img"
                 />
                 <div>
-                  <div className="upload-btn">
+                  <label htmlFor="gcash-qr-upload" className="upload-btn">
                     <FaUpload /> Upload GCash QR
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (e) => {
-                            setAccountDetails((prev) => ({
-                              ...prev,
-                              gcashQr: e.target.result,
-                            }));
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      style={{ display: "none" }}
-                    />
-                  </div>
+                  </label>
+                  <input
+                    id="gcash-qr-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                          setAccountDetails((prev) => ({
+                            ...prev,
+                            gcashQr: e.target.result,
+                          }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    style={{ display: "none" }}
+                  />
                 </div>
               </div>
             </>

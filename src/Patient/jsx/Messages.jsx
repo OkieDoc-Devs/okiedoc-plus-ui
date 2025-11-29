@@ -235,14 +235,6 @@ const Messages = () => {
     }
   };
 
-  useEffect(() => {
-    if (chatMessagesRef.current) {
-      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
-    }
-  }, [chatMessages]);
-
-  const remainingChars = CHARACTER_LIMIT - newMessage.length;
-
   return (
     <div className="patient-page-content">
       {chatLoading && conversations.length === 0 && (
@@ -271,8 +263,6 @@ const Messages = () => {
                 type="text"
                 placeholder="Search conversations..."
                 className="patient-search-input"
-                value={searchQuery}
-                onChange={handleSearchChange}
               />
             </div>
             <button
@@ -330,12 +320,8 @@ const Messages = () => {
                       getUserTypeLabel(conversation.otherUserType)}
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="patient-no-results">
-                <p>No conversations found</p>
               </div>
-            )}
+            ))}
           </div>
         </div>
 

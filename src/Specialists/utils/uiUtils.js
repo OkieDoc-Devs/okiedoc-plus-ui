@@ -22,9 +22,10 @@ export const getStatusBadgeClass = (status) => {
  */
 export const filterTicketsByStatus = (tickets, filter) => {
   if (filter === "All") return tickets;
-  return tickets.filter(ticket => 
-    ticket.status.toLowerCase() === filter.toLowerCase()
-  );
+  return tickets.filter((ticket) => {
+    const ticketStatus = ticket.status || ticket.Status || "Pending";
+    return ticketStatus.toLowerCase() === filter.toLowerCase();
+  });
 };
 
 /**
@@ -36,10 +37,10 @@ export const filterTicketsByStatus = (tickets, filter) => {
  */
 export const filterBySearchTerm = (data, searchTerm, searchFields) => {
   if (!searchTerm) return data;
-  
+
   const lowerSearchTerm = searchTerm.toLowerCase();
-  return data.filter(item => 
-    searchFields.some(field => {
+  return data.filter((item) =>
+    searchFields.some((field) => {
       const value = item[field];
       return value && value.toString().toLowerCase().includes(lowerSearchTerm);
     })
@@ -53,12 +54,18 @@ export const filterBySearchTerm = (data, searchTerm, searchFields) => {
  * @param {string} fieldPath - Path to specialization field (e.g., "details.specializations")
  * @returns {Array} Filtered data
  */
-export const filterBySpecialization = (data, specialization, fieldPath = "details.specializations") => {
+export const filterBySpecialization = (
+  data,
+  specialization,
+  fieldPath = "details.specializations"
+) => {
   if (!specialization) return data;
-  
-  return data.filter(item => {
+
+  return data.filter((item) => {
     const specializations = getNestedValue(item, fieldPath);
-    return Array.isArray(specializations) && specializations.includes(specialization);
+    return (
+      Array.isArray(specializations) && specializations.includes(specialization)
+    );
   });
 };
 
@@ -69,7 +76,7 @@ export const filterBySpecialization = (data, specialization, fieldPath = "detail
  * @returns {*} Value at path or undefined
  */
 export const getNestedValue = (obj, path) => {
-  return path.split('.').reduce((current, key) => current?.[key], obj);
+  return path.split(".").reduce((current, key) => current?.[key], obj);
 };
 
 /**
@@ -84,20 +91,27 @@ export const filterTransactions = (transactions, filters) => {
     specialization = "",
     status = "",
     dateFrom = "",
-    dateTo = ""
+    dateTo = "",
   } = filters;
 
-  return transactions.filter(transaction => {
+  return transactions.filter((transaction) => {
     // Search term filter
-    const searchFields = ['patientName', 'specialistName', 'channel', 'paymentMethod', 'status'];
-    const matchesSearch = !searchTerm || 
-      searchFields.some(field => 
+    const searchFields = [
+      "patientName",
+      "specialistName",
+      "channel",
+      "paymentMethod",
+      "status",
+    ];
+    const matchesSearch =
+      !searchTerm ||
+      searchFields.some((field) =>
         transaction[field]?.toLowerCase().includes(searchTerm.toLowerCase())
       );
 
     // Specialization filter
-    const matchesSpecialization = !specialization || 
-      transaction.specialty === specialization;
+    const matchesSpecialization =
+      !specialization || transaction.specialty === specialization;
 
     // Status filter
     const matchesStatus = !status || transaction.status === status;
@@ -112,11 +126,14 @@ export const filterTransactions = (transactions, filters) => {
       if (fromDate) fromDate.setHours(0, 0, 0, 0);
       if (toDate) toDate.setHours(23, 59, 59, 999);
 
-      matchesDate = (!fromDate || transactionDate >= fromDate) && 
-                   (!toDate || transactionDate <= toDate);
+      matchesDate =
+        (!fromDate || transactionDate >= fromDate) &&
+        (!toDate || transactionDate <= toDate);
     }
 
-    return matchesSearch && matchesSpecialization && matchesStatus && matchesDate;
+    return (
+      matchesSearch && matchesSpecialization && matchesStatus && matchesDate
+    );
   });
 };
 
@@ -126,8 +143,11 @@ export const filterTransactions = (transactions, filters) => {
  * @param {string} fieldPath - Path to specializations field
  * @returns {Array} Array of unique specializations
  */
-export const getAllSpecializations = (data, fieldPath = "details.specializations") => {
-  const specializations = data.flatMap(item => {
+export const getAllSpecializations = (
+  data,
+  fieldPath = "details.specializations"
+) => {
+  const specializations = data.flatMap((item) => {
     const specs = getNestedValue(item, fieldPath);
     return Array.isArray(specs) ? specs : [];
   });
@@ -140,11 +160,11 @@ export const getAllSpecializations = (data, fieldPath = "details.specializations
  * @returns {string} Formatted file size
  */
 export const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return "0 Bytes";
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
 /**
@@ -168,14 +188,16 @@ export const generateUserInitials = (firstName, lastName) => {
 export const validateFormData = (data, rules) => {
   const errors = {};
 
-  Object.keys(rules).forEach(field => {
+  Object.keys(rules).forEach((field) => {
     const rule = rules[field];
     const value = data[field];
 
     if (rule.required && (!value || value.toString().trim() === "")) {
       errors[field] = rule.message || `${field} is required`;
     } else if (rule.minLength && value && value.length < rule.minLength) {
-      errors[field] = rule.message || `${field} must be at least ${rule.minLength} characters`;
+      errors[field] =
+        rule.message ||
+        `${field} must be at least ${rule.minLength} characters`;
     } else if (rule.pattern && value && !rule.pattern.test(value)) {
       errors[field] = rule.message || `${field} format is invalid`;
     } else if (rule.custom && value && !rule.custom(value)) {
@@ -185,6 +207,6 @@ export const validateFormData = (data, rules) => {
 
   return {
     isValid: Object.keys(errors).length === 0,
-    errors
+    errors,
   };
 };

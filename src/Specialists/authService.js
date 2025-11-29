@@ -1,187 +1,192 @@
-// Centralized Authentication Service
+/**
+ * Specialist Authentication Service
+ * Handles authentication and session management for specialists
+ */
+
+import * as api from "./services/apiService.js";
+
+const STORAGE_KEYS = {
+  currentUser: "okiedoc_specialist_user",
+  userType: "okiedoc_user_type",
+  token: "okiedoc_auth_token",
+};
+
 class AuthService {
   constructor() {
-    this.storageKeys = {
-      specialists: 'okiedoc_specialists',
-      currentUser: 'okiedoc_current_user',
-      userType: 'okiedoc_user_type'
-    };
-    
-    // Initialize dummy data
-    this.initializeDummySpecialists();
+    this.currentUser = null;
+    this.isInitialized = false;
   }
 
-  // Specialist Management
-  registerSpecialist(specialistData) {
+  /**
+   * Initialize auth service - check for existing session
+   */
+  async initialize() {
+    if (this.isInitialized) return;
+
     try {
-      const specialists = this.getAllSpecialists();
-      
-      // Check if specialist already exists
-      const existingSpecialist = specialists.find(
-        s => s.email.toLowerCase() === specialistData.email.toLowerCase()
-      );
-      
-      if (existingSpecialist) {
-        throw new Error('A specialist with this email already exists');
+      // Try to restore session from API
+      const response = await api.getCurrentUser();
+      if (response.success && response.user) {
+        this.currentUser = response.user;
+        localStorage.setItem(
+          STORAGE_KEYS.currentUser,
+          JSON.stringify(response.user)
+        );
+        localStorage.setItem(
+          STORAGE_KEYS.userType,
+          response.user.userType || "specialist"
+        );
       }
-
-      const newSpecialist = {
-        id: Date.now() + Math.random(),
-        ...specialistData,
-        registeredAt: new Date().toISOString(),
-        isActive: true
-      };
-
-      specialists.push(newSpecialist);
-      localStorage.setItem(this.storageKeys.specialists, JSON.stringify(specialists));
-      
-      return {
-        success: true,
-        specialist: newSpecialist
-      };
     } catch (error) {
-      return {
-        success: false,
-        error: error.message
-      };
+      // Session expired or not authenticated
+      this.clearLocalStorage();
     }
+
+    this.isInitialized = true;
   }
 
-  getAllSpecialists() {
+  /**
+   * Login specialist with email and password
+   * @param {string} email
+   * @param {string} password
+   * @returns {Promise<object>} Login result
+   */
+  async loginSpecialist(email, password) {
     try {
-      const specialists = localStorage.getItem(this.storageKeys.specialists);
-      return specialists ? JSON.parse(specialists) : [];
-    } catch (error) {
-      console.error('Error loading specialists:', error);
-      return [];
-    }
-  }
+      const response = await api.loginSpecialist(email, password);
 
-  // Authentication Methods
-  loginSpecialist(email, password) {
-    try {
-      const specialists = this.getAllSpecialists();
-      const specialist = specialists.find(
-        s => s.email.toLowerCase() === email.toLowerCase() && s.password === password
-      );
+      if (response.success) {
+        this.currentUser = response.user;
+        localStorage.setItem(
+          STORAGE_KEYS.currentUser,
+          JSON.stringify(response.user)
+        );
+        localStorage.setItem(STORAGE_KEYS.userType, "specialist");
 
-      if (!specialist) {
-        return {
-          success: false,
-          error: 'Invalid email or password'
-        };
-      }
-
-      if (!specialist.isActive) {
-        return {
-          success: false,
-          error: 'Account is deactivated'
-        };
-      }
-
-      // Set current user session
-      this.setCurrentUser(specialist, 'specialist');
-      
-      return {
-        success: true,
-        user: specialist
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: 'Login failed. Please try again.'
-      };
-    }
-  }
-
-  loginUser(email, password) {
-    try {
-      // Check regular users first
-      const registeredUsers = JSON.parse(
-        localStorage.getItem("registeredUsers") || "[]"
-      );
-      const user = registeredUsers.find(
-        u => u.email === email && u.password === password
-      );
-
-      if (user) {
-        this.setCurrentUser(user, 'patient');
         return {
           success: true,
-          user: user,
-          userType: 'patient'
-        };
-      }
-
-      // Check specialist users
-      const specialistResult = this.loginSpecialist(email, password);
-      if (specialistResult.success) {
-        return {
-          success: true,
-          user: specialistResult.user,
-          userType: 'specialist'
+          user: response.user,
+          redirect: response.redirect || "/specialist-dashboard",
         };
       }
 
       return {
         success: false,
-        error: 'Invalid email or password'
+        error: response.message || "Login failed",
       };
     } catch (error) {
+      console.error("Login error:", error);
       return {
         success: false,
-        error: 'Login failed. Please try again.'
+        error: error.message || "Login failed. Please try again.",
       };
     }
   }
 
-  // Session Management
-  setCurrentUser(user, userType) {
-    localStorage.setItem(this.storageKeys.currentUser, JSON.stringify(user));
-    localStorage.setItem(this.storageKeys.userType, userType);
+  /**
+   * Logout specialist
+   * @returns {Promise<object>} Logout result
+   */
+  async logout() {
+    try {
+      await api.logoutSpecialist();
+    } catch (error) {
+      console.error("Logout API error:", error);
+    } finally {
+      this.clearLocalStorage();
+      this.currentUser = null;
+    }
+
+    return { success: true };
   }
 
+  /**
+   * Get current user from memory or localStorage
+   * @returns {object|null} Current user data or null
+   */
   getCurrentUser() {
-    try {
-      const user = localStorage.getItem(this.storageKeys.currentUser);
-      const userType = localStorage.getItem(this.storageKeys.userType);
-      
-      if (!user || !userType) {
-        return null;
-      }
-
+    if (this.currentUser) {
       return {
-        user: JSON.parse(user),
-        userType: userType
+        user: this.currentUser,
+        userType: "specialist",
       };
-    } catch (error) {
-      console.error('Error getting current user:', error);
-      return null;
     }
+
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.currentUser);
+      const userType = localStorage.getItem(STORAGE_KEYS.userType);
+
+      if (stored && userType) {
+        this.currentUser = JSON.parse(stored);
+        return {
+          user: this.currentUser,
+          userType,
+        };
+      }
+    } catch (error) {
+      console.error("Error getting current user:", error);
+    }
+
+    return null;
   }
 
+  /**
+   * Check if user is logged in
+   * @returns {boolean}
+   */
   isLoggedIn() {
-    const currentUser = this.getCurrentUser();
-    return currentUser !== null;
+    return this.getCurrentUser() !== null;
   }
 
-  logout() {
-    localStorage.removeItem(this.storageKeys.currentUser);
-    localStorage.removeItem(this.storageKeys.userType);
+  /**
+   * Check if current user is a specialist
+   * @returns {boolean}
+   */
+  isSpecialist() {
+    const current = this.getCurrentUser();
+    return current && current.userType === "specialist";
   }
 
-  // Route redirection based on user type
+  /**
+   * Update current user data in memory and localStorage
+   * @param {object} userData - Updated user data
+   */
+  updateCurrentUser(userData) {
+    this.currentUser = { ...this.currentUser, ...userData };
+    localStorage.setItem(
+      STORAGE_KEYS.currentUser,
+      JSON.stringify(this.currentUser)
+    );
+  }
+
+  /**
+   * Clear all auth data from localStorage
+   */
+  clearLocalStorage() {
+    localStorage.removeItem(STORAGE_KEYS.currentUser);
+    localStorage.removeItem(STORAGE_KEYS.userType);
+    localStorage.removeItem(STORAGE_KEYS.token);
+  }
+
+  /**
+   * Get redirect path based on user type
+   * @param {string} userType
+   * @returns {string} Redirect path
+   */
   getRedirectPath(userType) {
     const paths = {
-      'specialist': '/specialist-dashboard',
-      'patient': '/patient-dashboard',
-      'nurse': '/nurse-dashboard',
-      'admin': '/admin/specialist-dashboard'
+      specialist: "/specialist-dashboard",
+      patient: "/patient-dashboard",
+      nurse: "/nurse-dashboard",
+      admin: "/admin/specialist-dashboard",
     };
-    return paths[userType] || '/dashboard';
+    return paths[userType] || "/dashboard";
   }
 
-  // Validation helpers
+  // ==========================================
+  // Validation Helpers
+  // ==========================================
+
   validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -195,77 +200,49 @@ class AuthService {
     const errors = {};
 
     if (!data.firstName?.trim()) {
-      errors.firstName = 'First name is required';
+      errors.firstName = "First name is required";
     }
 
     if (!data.lastName?.trim()) {
-      errors.lastName = 'Last name is required';
+      errors.lastName = "Last name is required";
     }
 
     if (!data.email?.trim()) {
-      errors.email = 'Email is required';
+      errors.email = "Email is required";
     } else if (!this.validateEmail(data.email)) {
-      errors.email = 'Please enter a valid email address';
+      errors.email = "Please enter a valid email address";
     }
 
     if (!data.password) {
-      errors.password = 'Password is required';
+      errors.password = "Password is required";
     } else if (!this.validatePassword(data.password)) {
-      errors.password = 'Password must be at least 6 characters long';
+      errors.password = "Password must be at least 6 characters long";
     }
 
     if (!data.confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password';
+      errors.confirmPassword = "Please confirm your password";
     } else if (data.password !== data.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
+      errors.confirmPassword = "Passwords do not match";
     }
 
-    if (!data.specialty?.trim()) {
-      errors.specialty = 'Medical specialty is required';
+    if (!data.specialization?.trim()) {
+      errors.specialization = "Medical specialty is required";
     }
 
-    if (!data.licenseNumber?.trim()) {
-      errors.licenseNumber = 'License number is required';
-    }
-
-    if (!data.experience) {
-      errors.experience = 'Years of experience is required';
+    if (!data.prcNumber?.trim()) {
+      errors.prcNumber = "PRC license number is required";
     }
 
     return {
       isValid: Object.keys(errors).length === 0,
-      errors
+      errors,
     };
-  }
-
-  // Initialize dummy data
-  initializeDummySpecialists() {
-    const existingSpecialists = this.getAllSpecialists();
-    if (existingSpecialists.length > 0) {
-      return existingSpecialists;
-    }
-
-    const dummySpecialists = [
-      {
-        id: 'dummy-specialist-1',
-        firstName: 'John',
-        lastName: 'Smith',
-        email: 'specialist@okiedocplus.com',
-        password: 'specialistOkDoc123',
-        specialty: 'Cardiology',
-        licenseNumber: 'MD-12345',
-        experience: 10,
-        phone: '+63 912 345 6789',
-        isActive: true,
-        registeredAt: '2024-01-01T00:00:00.000Z'
-      }
-    ];
-
-    localStorage.setItem(this.storageKeys.specialists, JSON.stringify(dummySpecialists));
-    return dummySpecialists;
   }
 }
 
 // Create and export singleton instance
 const authService = new AuthService();
 export default authService;
+
+// Also export the class for testing
+export { AuthService };

@@ -13,6 +13,79 @@ import {
 } from "react-icons/fa";
 import "./SpecialistDashboard.css";
 import authService from "./authService";
+import * as specialistApi from "./services/apiService";
+import FloatingChat from "./FloatingChat";
+import SpecialistCall from "./SpecialistCall";
+import {
+  formatDateLabel,
+  getDaysInMonth,
+  getFirstDayOfMonth,
+  getMonthName,
+  formatDateKey,
+  parseTicketDate,
+  isToday,
+  isPastDate,
+  loadTickets,
+  saveTickets,
+  loadProfileData,
+  saveProfileData,
+  loadServicesData,
+  saveServicesData,
+  loadAccountData,
+  saveAccountData,
+  loadScheduleData,
+  saveScheduleData,
+  loadEncounterData,
+  saveEncounterData,
+  loadMedicalHistoryData,
+  saveMedicalHistoryData,
+  getCurrentUserEmail,
+  getStatusBadgeClass,
+  filterTicketsByStatus,
+  filterBySearchTerm,
+  filterBySpecialization,
+  filterTransactions,
+  getAllSpecializations,
+  formatFileSize,
+  generateUserInitials,
+  validateFormData,
+  SUB_SPECIALIZATIONS,
+  createDefaultEncounter,
+  createDefaultMedicineForm,
+  createDefaultLabForm,
+  validateMedicine,
+  validateLabRequest,
+  addMedicineToEncounter,
+  removeMedicineFromEncounter,
+  addLabRequestToEncounter,
+  removeLabRequestFromEncounter,
+  createMedicalHistoryRequest,
+  updateMedicalHistoryStatus,
+  formatMedicineDisplay,
+  formatLabRequestDisplay,
+  getSubSpecializations,
+  isValidSpecialization,
+  isValidSubSpecialization,
+  exportTransactionsToCSV,
+  generateMedicalHistoryHTML,
+  openPrintWindow,
+  downloadMedicalHistoryPDF,
+  generateEncounterSummaryHTML,
+  downloadEncounterSummaryPDF,
+  exportToJSON,
+  validateEmail,
+  validatePassword,
+  validatePhone,
+  validatePRCLicense,
+  validateSpecialistProfile,
+  validatePasswordChange,
+  validateServiceFee,
+  validateAccountDetails,
+  validateScheduleData,
+  validateMedicalHistoryRequest,
+  sanitizeInput,
+  validateFileUpload,
+} from "./utils";
 
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
@@ -74,34 +147,22 @@ const SpecialistDashboard = () => {
   const [editingService, setEditingService] = useState({ name: "", fee: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
+  // Call state
+  const [callState, setCallState] = useState({
+    isOpen: false,
+    callType: "audio", // 'audio' or 'video'
+    patient: null,
+  });
+
   // SOAP Notes and Encounter Management
   const [selectedTicketId, setSelectedTicketId] = useState(null);
-  const [encounter, setEncounter] = useState({
-    subjective: "",
-    objective: "",
-    assessment: "",
-    plan: "",
-    referral: "",
-    followUp: false,
-    medicines: [],
-    labRequests: []
-  });
+  const [encounter, setEncounter] = useState(createDefaultEncounter());
 
   // Medicine prescription form
-  const [medForm, setMedForm] = useState({
-    brand: "",
-    generic: "",
-    dosage: "",
-    form: "",
-    quantity: "",
-    instructions: ""
-  });
+  const [medForm, setMedForm] = useState(createDefaultMedicineForm());
 
   // Lab request form
-  const [labForm, setLabForm] = useState({
-    test: "",
-    remarks: ""
-  });
+  const [labForm, setLabForm] = useState(createDefaultLabForm());
 
   // Medical History Requests
   const [mhRequests, setMhRequests] = useState([]);
@@ -110,98 +171,58 @@ const SpecialistDashboard = () => {
     reason: "",
     from: "",
     to: "",
-    consent: false
+    consent: false,
   });
 
   // Center panel tab (Medicine | Lab)
   const [centerTab, setCenterTab] = useState("medicine");
 
-  const SUB_SPECIALIZATIONS = {
-    Cardiology: [
-      "Interventional Cardiology",
-      "Electrophysiology",
-      "Heart Failure",
-      "Pediatric Cardiology",
-    ],
-    Dermatology: [
-      "Cosmetic Dermatology",
-      "Mohs Surgery",
-      "Pediatric Dermatology",
-      "Dermatopathology",
-    ],
-    Orthopedics: [
-      "Sports Medicine",
-      "Spine Surgery",
-      "Hand Surgery",
-      "Joint Replacement",
-    ],
-    Pediatrics: [
-      "Neonatology",
-      "Pediatric Neurology",
-      "Pediatric Cardiology",
-      "Pediatric Endocrinology",
-    ],
-    "Internal Medicine": [
-      "Endocrinology",
-      "Gastroenterology",
-      "Pulmonology",
-      "Nephrology",
-      "Rheumatology",
-      "Infectious Disease",
-    ],
-    Neurology: ["Stroke", "Epilepsy", "Movement Disorders", "Neuromuscular"],
-    Ophthalmology: ["Glaucoma", "Retina", "Cornea", "Pediatric Ophthalmology"],
-    "Obstetrics & Gynecology": [
-      "Maternal-Fetal Medicine",
-      "Reproductive Endocrinology",
-      "Gynecologic Oncology",
-      "Urogynecology",
-    ],
-    "Otolaryngology (ENT)": [
-      "Rhinology",
-      "Laryngology",
-      "Otology",
-      "Head & Neck Surgery",
-    ],
-    Psychiatry: [
-      "Child & Adolescent",
-      "Addiction",
-      "Geriatric",
-      "Consultation-Liaison",
-    ],
-    Urology: [
-      "Endourology",
-      "Urologic Oncology",
-      "Pediatric Urology",
-      "Female Urology",
-    ],
-  };
+  // Dashboard stats from API
+  const [dashboardStats, setDashboardStats] = useState({
+    totalPatients: 0,
+    pendingConsultations: 0,
+    completedToday: 0,
+    upcomingAppointments: 0,
+  });
 
-  const formatDateLabel = (dt, timeLabel) => {
-    const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-    return `${
-      monthNames[dt.getMonth()]
-    } ${dt.getDate()}, ${dt.getFullYear()} - ${timeLabel}`;
-  };
+  // API error state
+  const [apiError, setApiError] = useState(null);
 
-  const loadTickets = useCallback(() => {
-    const savedTickets = localStorage.getItem("specialistTickets");
-    if (savedTickets) {
-      setTickets(JSON.parse(savedTickets));
-    } else {
+  const loadTicketsData = useCallback(async () => {
+    console.log("[SpecialistDashboard] Loading tickets from API...");
+    try {
+      // Try to fetch from API first
+      const response = await specialistApi.fetchTickets();
+      console.log("[SpecialistDashboard] API response:", response);
+      if (response.success && response.tickets) {
+        console.log(
+          `[SpecialistDashboard] Loaded ${response.tickets.length} tickets from API`
+        );
+        setTickets(response.tickets);
+        setApiError(null);
+        // Save to localStorage for offline access
+        saveTickets(response.tickets);
+        return;
+      } else {
+        console.warn(
+          "[SpecialistDashboard] API response missing tickets:",
+          response
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[SpecialistDashboard] Failed to fetch tickets from API:",
+        error
+      );
+      setApiError("Could not connect to server. Using offline data.");
+    }
+
+    // Fallback to localStorage
+    const savedTickets = loadTickets();
+    console.log(
+      `[SpecialistDashboard] Loaded ${savedTickets.length} tickets from localStorage`
+    );
+    if (savedTickets.length === 0) {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const plusDays = (n) =>
@@ -232,7 +253,105 @@ const SpecialistDashboard = () => {
       ];
 
       setTickets(defaultTickets);
-      localStorage.setItem("specialistTickets", JSON.stringify(defaultTickets));
+      saveTickets(defaultTickets);
+    } else {
+      setTickets(savedTickets);
+    }
+  }, []);
+
+  // Load dashboard data from API
+  const loadDashboardData = useCallback(async () => {
+    try {
+      const response = await specialistApi.fetchDashboard();
+      if (response.success) {
+        setDashboardStats(response.stats || dashboardStats);
+        if (response.specialist) {
+          // Update profile data
+          setProfileData((prev) => ({
+            ...prev,
+            firstName: response.specialist.firstName || prev.firstName,
+            lastName: response.specialist.lastName || prev.lastName,
+            email: response.specialist.email || prev.email,
+            specialization:
+              response.specialist.specialization || prev.specialization,
+            subSpecialization:
+              response.specialist.subSpecialization || prev.subSpecialization,
+            profileImage: response.specialist.profileImage || prev.profileImage,
+            prcNumber: response.specialist.prcNumber || prev.prcNumber,
+          }));
+
+          // Update currentUser with API data
+          setCurrentUser((prev) => ({
+            ...prev,
+            firstName:
+              response.specialist.firstName || prev?.firstName || prev?.fName,
+            lastName:
+              response.specialist.lastName || prev?.lastName || prev?.lName,
+            fName: response.specialist.firstName || prev?.fName,
+            lName: response.specialist.lastName || prev?.lName,
+            email: response.specialist.email || prev?.email,
+            specialization:
+              response.specialist.specialization || prev?.specialization,
+            profileImage:
+              response.specialist.profileImage || prev?.profileImage,
+          }));
+
+          // Update user initials
+          const firstName =
+            response.specialist.firstName || response.specialist.fName;
+          const lastName =
+            response.specialist.lastName || response.specialist.lName;
+          if (firstName || lastName) {
+            const initials = generateUserInitials(firstName, lastName);
+            setUserInitials(initials);
+          }
+        }
+      }
+
+      // Also fetch profile separately to ensure we have the latest data
+      try {
+        const profileResponse = await specialistApi.fetchProfile();
+        if (profileResponse) {
+          setCurrentUser((prev) => ({
+            ...prev,
+            firstName:
+              profileResponse.firstName ||
+              profileResponse.fName ||
+              prev?.firstName ||
+              prev?.fName,
+            lastName:
+              profileResponse.lastName ||
+              profileResponse.lName ||
+              prev?.lastName ||
+              prev?.lName,
+            fName:
+              profileResponse.firstName || profileResponse.fName || prev?.fName,
+            lName:
+              profileResponse.lastName || profileResponse.lName || prev?.lName,
+            email: profileResponse.email || prev?.email,
+            specialization:
+              profileResponse.specialization || prev?.specialization,
+            profileImage: profileResponse.profileImage || prev?.profileImage,
+          }));
+
+          // Update user initials from profile
+          const profileFirstName =
+            profileResponse.firstName || profileResponse.fName;
+          const profileLastName =
+            profileResponse.lastName || profileResponse.lName;
+          if (profileFirstName || profileLastName) {
+            const initials = generateUserInitials(
+              profileFirstName,
+              profileLastName
+            );
+            setUserInitials(initials);
+          }
+        }
+      } catch (profileError) {
+        console.warn("Failed to fetch profile from API:", profileError);
+      }
+    } catch (error) {
+      console.warn("Failed to fetch dashboard from API:", error);
     }
   }, []);
 
@@ -241,24 +360,22 @@ const SpecialistDashboard = () => {
 
     // Check authentication using auth service
     const currentUser = authService.getCurrentUser();
-    
-    if (!currentUser || currentUser.userType !== 'specialist') {
-      navigate("/login?specialist=true");
+
+    if (!currentUser || currentUser.userType !== "specialist") {
+      navigate("/specialist-login");
       return;
     }
 
     setCurrentUser(currentUser.user);
     setIsLoading(false);
 
-    const initials = (
-      (currentUser.user.firstName || currentUser.user.fName || "D")[0] + 
-      (currentUser.user.lastName || currentUser.user.lName || "S")[0]
-    ).toUpperCase();
+    const initials = generateUserInitials(
+      currentUser.user.firstName || currentUser.user.fName,
+      currentUser.user.lastName || currentUser.user.lName
+    );
     setUserInitials(initials);
 
-    const profile = JSON.parse(
-      localStorage.getItem("profile:" + currentUser.user.email) || "{}"
-    );
+    const profile = loadProfileData(currentUser.user.email);
     setProfileData((prev) => ({
       ...prev,
       firstName: currentUser.user.firstName || currentUser.user.fName || "",
@@ -266,7 +383,8 @@ const SpecialistDashboard = () => {
       email: currentUser.user.email,
       phone: profile.phone || currentUser.user.phone || "+63 ",
       prcNumber: profile.prcNumber || currentUser.user.licenseNumber || "",
-      specialization: profile.specialization || currentUser.user.specialty || "",
+      specialization:
+        profile.specialization || currentUser.user.specialty || "",
       subSpecialization: profile.subSpecialization || "",
       bio:
         profile.bio || "Board-certified specialist with years of experience.",
@@ -274,27 +392,23 @@ const SpecialistDashboard = () => {
       profileImage: profile.profileImage || "",
     }));
 
-    const savedServices = JSON.parse(
-      localStorage.getItem("services:" + currentUser.user.email) || "{}"
-    );
+    const savedServices = loadServicesData(currentUser.user.email);
     setServices((prev) => ({ ...prev, ...savedServices }));
 
-    const savedAccount = JSON.parse(
-      localStorage.getItem("account:" + currentUser.user.email) || "{}"
-    );
+    const savedAccount = loadAccountData(currentUser.user.email);
     setAccountDetails((prev) => ({ ...prev, ...savedAccount }));
 
-    const savedSchedules = JSON.parse(
-      localStorage.getItem("schedule:" + currentUser.user.email) || "{}"
-    );
+    const savedSchedules = loadScheduleData(currentUser.user.email);
     setSchedules(savedSchedules);
 
-    loadTickets();
+    // Load data from API
+    loadTicketsData();
+    loadDashboardData();
 
     return () => {
       document.body.classList.remove("specialist-dashboard-body");
     };
-  }, [navigate, loadTickets]);
+  }, [navigate, loadTicketsData, loadDashboardData]);
 
   // Handle ticket selection and encounter loading
   useEffect(() => {
@@ -303,37 +417,74 @@ const SpecialistDashboard = () => {
     }
   }, [tickets, selectedTicketId]);
 
+  // Reload tickets when dashboard tab becomes active
+  useEffect(() => {
+    if (activeTab === "dashboard") {
+      console.log(
+        "[SpecialistDashboard] Dashboard tab active, reloading tickets..."
+      );
+      loadTicketsData();
+    }
+  }, [activeTab, loadTicketsData]);
+
   useEffect(() => {
     if (selectedTicketId) {
-      const data = readEncounter(selectedTicketId);
+      const data = loadEncounterData(selectedTicketId);
       if (data) {
         setEncounter(data);
       } else {
-        setEncounter({
-          subjective: "",
-          objective: "",
-          assessment: "",
-          plan: "",
-          referral: "",
-          followUp: false,
-          medicines: [],
-          labRequests: []
-        });
+        setEncounter(createDefaultEncounter());
       }
-      setMhRequests(readMh(selectedTicketId));
+      setMhRequests(loadMedicalHistoryData(selectedTicketId));
     }
   }, [selectedTicketId]);
 
   const handleNavigation = (target, title) => {
     setActiveTab(target);
     setPageTitle(title);
+    // Reload tickets when navigating to dashboard
+    if (target === "dashboard") {
+      loadTicketsData();
+    }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (window.confirm("Are you sure you want to logout?")) {
-      authService.logout();
+      await authService.logout();
       navigate("/");
     }
+  };
+
+  const handleStartCall = (conversation) => {
+    setCallState({
+      isOpen: true,
+      callType: "audio",
+      patient: {
+        name: conversation.name,
+        avatar: conversation.avatar,
+        id: conversation.id,
+      },
+    });
+  };
+
+  const handleStartVideoCall = (conversation) => {
+    setCallState({
+      isOpen: true,
+      callType: "video",
+      patient: {
+        name: conversation.name,
+        avatar: conversation.avatar,
+        id: conversation.id,
+      },
+    });
+  };
+
+  const handleCloseCall = () => {
+    setCallState({
+      isOpen: false,
+      callType: "audio",
+      patient: null,
+    });
   };
 
   const handleProfileChange = (field, value) => {
@@ -344,10 +495,38 @@ const SpecialistDashboard = () => {
     setPasswordData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const saveProfile = () => {
-    const email = localStorage.getItem("currentSpecialistEmail");
+  const saveProfile = async () => {
+    const email = getCurrentUserEmail();
     if (!email) return;
 
+    // Validate profile data
+    const validation = validateSpecialistProfile(profileData);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      alert(firstError);
+      return;
+    }
+
+    try {
+      // Try to save via API first
+      const updatedProfile = await specialistApi.updateProfile({
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phone: profileData.phone,
+        specialization: profileData.specialization,
+        subSpecialization: profileData.subSpecialization,
+        bio: profileData.bio,
+      });
+
+      // Update auth service with new data
+      authService.updateCurrentUser(updatedProfile);
+      setApiError(null);
+    } catch (error) {
+      console.warn("Failed to save profile to API, saving locally:", error);
+      setApiError("Could not save to server. Saved locally.");
+    }
+
+    // Also save locally as backup
     const user = JSON.parse(localStorage.getItem(email) || "{}");
     user.fName = profileData.firstName || user.fName;
     user.lName = profileData.lastName || user.lName;
@@ -362,38 +541,52 @@ const SpecialistDashboard = () => {
       prcImage: profileData.prcImage,
       profileImage: profileData.profileImage,
     };
-    localStorage.setItem("profile:" + email, JSON.stringify(profile));
+    saveProfileData(email, profile);
 
     setCurrentUser(user);
-    const initials = (
-      (user.fName || "D")[0] + (user.lName || "R")[0]
-    ).toUpperCase();
+    const initials = generateUserInitials(user.fName, user.lName);
     setUserInitials(initials);
 
     alert("Profile saved successfully.");
   };
 
-  const updatePassword = () => {
-    const email = localStorage.getItem("currentSpecialistEmail");
+  const updatePassword = async () => {
+    const email = getCurrentUserEmail();
     if (!email) return;
 
-    const { currentPassword, newPassword, confirmPassword } = passwordData;
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      alert("Please fill in all password fields.");
+    // Validate password data
+    const validation = validatePasswordChange(passwordData);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      alert(firstError);
       return;
     }
 
-    if (newPassword.length < 3) {
-      alert("New password must be at least 3 characters.");
+    const { currentPassword, newPassword } = passwordData;
+
+    try {
+      // Try to change password via API
+      await specialistApi.changePassword(currentPassword, newPassword);
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      alert("Password updated successfully.");
       return;
+    } catch (error) {
+      console.warn("Failed to change password via API:", error);
+      // If API fails with auth error, show API error
+      if (
+        error.message.includes("incorrect") ||
+        error.message.includes("Invalid")
+      ) {
+        alert(error.message);
+        return;
+      }
     }
 
-    if (newPassword !== confirmPassword) {
-      alert("New passwords do not match.");
-      return;
-    }
-
+    // Fallback to localStorage
     const user = JSON.parse(localStorage.getItem(email) || "{}");
     if (!user || user.password !== currentPassword) {
       alert("Current password is incorrect.");
@@ -416,27 +609,72 @@ const SpecialistDashboard = () => {
     setShowEditServiceModal(true);
   };
 
-  const updateServiceFee = () => {
-    const newFee = parseFloat(editingService.fee);
-    if (isNaN(newFee) || newFee < 0) {
-      alert("Please enter a valid fee.");
+  const updateServiceFee = async () => {
+    // Validate service fee
+    const validation = validateServiceFee(editingService);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      alert(firstError);
       return;
     }
 
-    const email = localStorage.getItem("currentSpecialistEmail");
-    const updatedServices = { ...services, [editingService.name]: newFee };
+    try {
+      // Try to update via API
+      await specialistApi.updateService(
+        editingService.name,
+        parseFloat(editingService.fee)
+      );
+    } catch (error) {
+      console.warn("Failed to update service fee via API:", error);
+    }
+
+    // Also save locally
+    const email = getCurrentUserEmail();
+    const updatedServices = {
+      ...services,
+      [editingService.name]: parseFloat(editingService.fee),
+    };
     setServices(updatedServices);
-    localStorage.setItem("services:" + email, JSON.stringify(updatedServices));
+    saveServicesData(email, updatedServices);
     setShowEditServiceModal(false);
   };
 
-  const saveAccountDetails = () => {
-    const email = localStorage.getItem("currentSpecialistEmail");
-    localStorage.setItem("account:" + email, JSON.stringify(accountDetails));
+  const saveAccountDetails = async () => {
+    // Validate account details
+    const validation = validateAccountDetails(accountDetails);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      alert(firstError);
+      return;
+    }
+
+    try {
+      // Try to update via API
+      await specialistApi.updatePaymentAccount(accountDetails);
+    } catch (error) {
+      console.warn("Failed to update payment account via API:", error);
+    }
+
+    // Also save locally
+    const email = getCurrentUserEmail();
+    saveAccountData(email, accountDetails);
     alert("Account details saved.");
   };
 
-  const viewTicket = (ticketId) => {
+  const viewTicket = async (ticketId) => {
+    try {
+      // Try to fetch from API first
+      const ticket = await specialistApi.fetchTicket(ticketId);
+      if (ticket) {
+        setSelectedTicket(ticket);
+        setShowTicketModal(true);
+        return;
+      }
+    } catch (error) {
+      console.warn("Failed to fetch ticket from API:", error);
+    }
+
+    // Fallback to local data
     const ticket = tickets.find((t) => t.id === ticketId);
     if (ticket) {
       setSelectedTicket(ticket);
@@ -444,219 +682,138 @@ const SpecialistDashboard = () => {
     }
   };
 
-  const updateTicketStatus = (newStatus) => {
+  const updateTicketStatus = async (newStatus) => {
     if (!selectedTicket) return;
 
+    try {
+      // Try to update via API
+      await specialistApi.updateTicket(selectedTicket.id, {
+        status: newStatus,
+      });
+    } catch (error) {
+      console.warn("Failed to update ticket via API:", error);
+    }
+
+    // Also update locally
     const updatedTickets = tickets.map((t) =>
       t.id === selectedTicket.id ? { ...t, status: newStatus } : t
     );
     setTickets(updatedTickets);
-    localStorage.setItem("specialistTickets", JSON.stringify(updatedTickets));
+    saveTickets(updatedTickets);
     setSelectedTicket({ ...selectedTicket, status: newStatus });
   };
 
   // Encounter Management Functions
-  const getEncounterKey = (ticketId) => `encounter:${ticketId}`;
-  
-  const readEncounter = (ticketId) => {
-    if (!ticketId) return null;
-    try {
-      return JSON.parse(localStorage.getItem(getEncounterKey(ticketId)) || 'null');
-    } catch {
-      return null;
-    }
-  };
-
-  const writeEncounter = (ticketId, data) => {
-    if (!ticketId) return;
-    localStorage.setItem(getEncounterKey(ticketId), JSON.stringify(data));
-  };
-
-  const saveEncounter = (updated) => {
+  const saveEncounter = async (updated) => {
     const next = { ...encounter, ...(updated || {}) };
     setEncounter(next);
-    if (selectedTicketId) writeEncounter(selectedTicketId, next);
+    if (selectedTicketId) {
+      // Save locally
+      saveEncounterData(selectedTicketId, next);
+
+      // Save to API
+      try {
+        const assessment = next.assessment || "";
+        const prescription = JSON.stringify(next.medicines || []);
+        const laboratoryRequest = JSON.stringify(next.labRequests || []);
+
+        await specialistApi.updateTicketConsultation(selectedTicketId, {
+          assessment,
+          prescription,
+          laboratoryRequest,
+        });
+      } catch (error) {
+        console.warn("Failed to save consultation data to API:", error);
+      }
+    }
   };
 
   // Medicine Management
   const addMedicine = () => {
-    const payload = { ...medForm };
-    if (!payload.brand && !payload.generic) {
-      alert('Enter medicine brand or generic.');
-      return;
+    try {
+      const updatedEncounter = addMedicineToEncounter(encounter, medForm);
+      setEncounter(updatedEncounter);
+      setMedForm(createDefaultMedicineForm());
+      saveEncounter({ medicines: updatedEncounter.medicines });
+    } catch (error) {
+      alert(error.message);
     }
-    if (!payload.instructions) {
-      alert('Enter instructions.');
-      return;
-    }
-    const list = (encounter.medicines || []).slice();
-    list.push(payload);
-    setMedForm({ brand: "", generic: "", dosage: "", form: "", quantity: "", instructions: "" });
-    saveEncounter({ medicines: list });
   };
 
   const removeMedicine = (idx) => {
-    const list = (encounter.medicines || []).slice();
-    list.splice(idx, 1);
-    saveEncounter({ medicines: list });
+    const updatedEncounter = removeMedicineFromEncounter(encounter, idx);
+    setEncounter(updatedEncounter);
+    saveEncounter({ medicines: updatedEncounter.medicines });
   };
 
   // Lab Request Management
   const addLab = () => {
-    const test = (labForm.test || '').trim();
-    const remarks = (labForm.remarks || '').trim();
-    if (!test) {
-      alert('Enter a lab test.');
-      return;
+    try {
+      const updatedEncounter = addLabRequestToEncounter(encounter, labForm);
+      setEncounter(updatedEncounter);
+      setLabForm(createDefaultLabForm());
+      saveEncounter({ labRequests: updatedEncounter.labRequests });
+    } catch (error) {
+      alert(error.message);
     }
-    const list = Array.isArray(encounter.labRequests) ? encounter.labRequests.slice() : [];
-    list.push({ test, remarks });
-    setLabForm({ test: "", remarks: "" });
-    saveEncounter({ labRequests: list });
   };
 
   const removeLab = (idx) => {
-    const list = (encounter.labRequests || []).slice();
-    list.splice(idx, 1);
-    saveEncounter({ labRequests: list });
+    const updatedEncounter = removeLabRequestFromEncounter(encounter, idx);
+    setEncounter(updatedEncounter);
+    saveEncounter({ labRequests: updatedEncounter.labRequests });
   };
 
   // Medical History Management
-  const mhKey = (ticketId) => `mh:${ticketId}`;
-  
-  const readMh = (ticketId) => {
-    try {
-      return JSON.parse(localStorage.getItem(mhKey(ticketId)) || '[]');
-    } catch {
-      return [];
-    }
-  };
-
-  const writeMh = (ticketId, items) => {
-    localStorage.setItem(mhKey(ticketId), JSON.stringify(items || []));
-  };
-
   const openMhModal = () => {
     setMhModal({ open: true, reason: "", from: "", to: "", consent: false });
   };
 
   const submitMh = () => {
-    if (!mhModal.consent) {
-      alert('Please confirm consent.');
-      return;
+    try {
+      const item = createMedicalHistoryRequest(mhModal);
+      const list = loadMedicalHistoryData(selectedTicketId).concat([item]);
+      saveMedicalHistoryData(selectedTicketId, list);
+      setMhRequests(list);
+      setMhModal({ open: false, reason: "", from: "", to: "", consent: false });
+      downloadMhPdf(item);
+    } catch (error) {
+      alert(error.message);
     }
-    const item = {
-      id: 'MH-' + Date.now(),
-      reason: (mhModal.reason || '').trim(),
-      from: mhModal.from || '',
-      to: mhModal.to || '',
-      consent: true,
-      status: 'Pending',
-      createdAt: new Date().toISOString()
-    };
-    const list = readMh(selectedTicketId).concat([item]);
-    writeMh(selectedTicketId, list);
-    setMhRequests(list);
-    setMhModal({ open: false, reason: "", from: "", to: "", consent: false });
-    downloadMhPdf(item);
   };
 
   const updateMhStatus = (id, status) => {
-    const list = readMh(selectedTicketId).map(x => 
-      x.id === id ? { ...x, status, updatedAt: new Date().toISOString() } : x
+    const list = loadMedicalHistoryData(selectedTicketId).map((x) =>
+      updateMedicalHistoryStatus(x, status)
     );
-    writeMh(selectedTicketId, list);
+    saveMedicalHistoryData(selectedTicketId, list);
     setMhRequests(list);
   };
 
   const downloadMhPdf = (item) => {
-    const t = tickets.find(x => x.id === selectedTicketId) || {};
-    const html = `
-      <h1>Medical History Request</h1>
-      <div class="meta">
-        <div><strong>Patient:</strong> ${t.patient || ''}</div>
-        <div><strong>Ticket:</strong> ${selectedTicketId || ''}</div>
-        <div><strong>Created:</strong> ${new Date(item.createdAt).toLocaleString()}</div>
-        <div><strong>Status:</strong> ${item.status}</div>
-      </div>
-      <div class="box">
-        <div><strong>Reason:</strong> ${item.reason || '—'}</div>
-        <div><strong>Date range:</strong> ${item.from || '—'} to ${item.to || '—'}</div>
-        <div><strong>Consent:</strong> Yes</div>
-      </div>
-    `;
-    openPrintWindow(html);
-  };
-
-  const openPrintWindow = (html) => {
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.open();
-    w.document.write(`<!DOCTYPE html><html><head><title>Medical History Request</title><style>
-      body{font-family:Poppins,Arial,sans-serif;padding:24px;color:#111}
-      h1{font-size:20px;margin-bottom:8px}
-      h2{font-size:16px;margin:10px 0}
-      .meta div{margin:4px 0}
-      .box{background:#f2f2f2;padding:16px;border-radius:10px}
-    </style></head><body>${html}</body></html>`);
-    w.document.close();
-    setTimeout(() => { try { w.focus(); w.print(); } catch(e){} }, 300);
+    const t = tickets.find((x) => x.id === selectedTicketId) || {};
+    downloadMedicalHistoryPDF(item, t);
   };
 
   const filteredTickets = useMemo(() => {
-    if (ticketFilter === "All") return tickets;
-    return tickets.filter(
-      (t) => t.status.toLowerCase() === ticketFilter.toLowerCase()
-    );
+    return filterTicketsByStatus(tickets, ticketFilter);
   }, [tickets, ticketFilter]);
 
-  const getStatusBadgeClass = (status) => {
-    const s = (status || "").toLowerCase();
-    if (s === "confirmed" || s === "processing" || s === "completed")
-      return "status-confirmed";
-    if (s === "pending") return "status-pending";
-    return "status-pending";
-  };
-
-  const getDaysInMonth = (year, month) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (year, month) => {
-    return new Date(year, month, 1).getDay();
-  };
-
-  const getMonthName = (month) => {
-    const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-    return monthNames[month];
-  };
-
-  const formatDateKey = (year, month, day) => {
-    return `${year}-${String(month + 1).padStart(2, "0")}-${String(
-      day
-    ).padStart(2, "0")}`;
-  };
-
-  const addSchedule = () => {
-    if (!selectedDate || !scheduleData.time) {
-      alert("Please select a date and time.");
+  const addSchedule = async () => {
+    if (!selectedDate) {
+      alert("Please select a date.");
       return;
     }
 
-    const email = localStorage.getItem("currentSpecialistEmail");
+    // Validate schedule data
+    const validation = validateScheduleData(scheduleData);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      alert(firstError);
+      return;
+    }
+
+    const email = getCurrentUserEmail();
     const dateKey = formatDateKey(currentYear, currentMonth, selectedDate);
     const newSchedule = {
       time: scheduleData.time,
@@ -665,21 +822,43 @@ const SpecialistDashboard = () => {
       id: Date.now(),
     };
 
+    try {
+      // Try to save via API
+      await specialistApi.updateSchedule({
+        date: dateKey,
+        time: scheduleData.time,
+        duration: parseInt(scheduleData.duration),
+        notes: scheduleData.notes || "Available for consultation",
+        isAvailable: true,
+      });
+    } catch (error) {
+      console.warn("Failed to save schedule via API:", error);
+    }
+
+    // Also save locally
     const updatedSchedules = {
       ...schedules,
       [dateKey]: [...(schedules[dateKey] || []), newSchedule],
     };
 
     setSchedules(updatedSchedules);
-    localStorage.setItem("schedule:" + email, JSON.stringify(updatedSchedules));
+    saveScheduleData(email, updatedSchedules);
 
     setShowScheduleModal(false);
     setSelectedDate(null);
     setScheduleData({ time: "", duration: "30", notes: "" });
   };
 
-  const deleteSchedule = (dateKey, scheduleId) => {
-    const email = localStorage.getItem("currentSpecialistEmail");
+  const deleteSchedule = async (dateKey, scheduleId) => {
+    try {
+      // Try to delete via API
+      await specialistApi.deleteSchedule(scheduleId);
+    } catch (error) {
+      console.warn("Failed to delete schedule via API:", error);
+    }
+
+    // Also delete locally
+    const email = getCurrentUserEmail();
     const updatedSchedules = {
       ...schedules,
       [dateKey]: schedules[dateKey].filter((s) => s.id !== scheduleId),
@@ -690,7 +869,7 @@ const SpecialistDashboard = () => {
     }
 
     setSchedules(updatedSchedules);
-    localStorage.setItem("schedule:" + email, JSON.stringify(updatedSchedules));
+    saveScheduleData(email, updatedSchedules);
   };
 
   const renderCalendar = () => {
@@ -698,8 +877,7 @@ const SpecialistDashboard = () => {
     const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
     const days = [];
     const today = new Date();
-    const isCurrentMonth =
-      today.getFullYear() === currentYear && today.getMonth() === currentMonth;
+    const isCurrentMonth = isToday(currentYear, currentMonth, today.getDate());
 
     for (let i = 0; i < firstDay; i++) {
       days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
@@ -708,58 +886,42 @@ const SpecialistDashboard = () => {
     for (let day = 1; day <= daysInMonth; day++) {
       const dateKey = formatDateKey(currentYear, currentMonth, day);
       const hasSchedule = schedules[dateKey] && schedules[dateKey].length > 0;
-      
+
       // Check for confirmed tickets on this date
-      const dayTickets = tickets.filter(ticket => {
-        if (ticket.status !== 'Confirmed') return false;
-        
-        // Parse the ticket date from the "when" field
-        const ticketDateStr = ticket.when;
-        if (!ticketDateStr) return false;
-        
-        // Extract date from format like "January 15, 2024 - 10:30 AM"
-        const dateMatch = ticketDateStr.match(/(\w+)\s+(\d+),\s+(\d+)/);
-        if (!dateMatch) return false;
-        
-        const [, monthName, dayStr, yearStr] = dateMatch;
-        const monthNames = [
-          "January", "February", "March", "April", "May", "June",
-          "July", "August", "September", "October", "November", "December"
-        ];
-        const ticketMonth = monthNames.indexOf(monthName);
-        const ticketDay = parseInt(dayStr);
-        const ticketYear = parseInt(yearStr);
-        
-        return ticketYear === currentYear && ticketMonth === currentMonth && ticketDay === day;
+      const dayTickets = tickets.filter((ticket) => {
+        if (ticket.status !== "Confirmed") return false;
+
+        const parsedDate = parseTicketDate(ticket.when);
+        if (!parsedDate) return false;
+
+        return (
+          parsedDate.year === currentYear &&
+          parsedDate.month === currentMonth &&
+          parsedDate.day === day
+        );
       });
-      
+
       const hasTickets = dayTickets.length > 0;
       const totalItems = (schedules[dateKey]?.length || 0) + dayTickets.length;
-      
-      const isToday = isCurrentMonth && today.getDate() === day;
-      const isPast =
-        new Date(currentYear, currentMonth, day) <
-        new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+      const isTodayDate = isToday(currentYear, currentMonth, day);
+      const isPast = isPastDate(currentYear, currentMonth, day);
 
       days.push(
         <div
           key={day}
-          className={`calendar-day ${hasSchedule || hasTickets ? "has-schedule" : ""} ${
-            isToday ? "today" : ""
-          } ${isPast ? "past" : ""} ${hasTickets ? "has-tickets" : ""}`}
+          className={`calendar-day ${
+            hasSchedule || hasTickets ? "has-schedule" : ""
+          } ${isTodayDate ? "today" : ""} ${isPast ? "past" : ""} ${
+            hasTickets ? "has-tickets" : ""
+          }`}
           onClick={() => !isPast && setSelectedDate(day)}
         >
           <span className="day-number">{day}</span>
           {totalItems > 0 && (
-            <div className="schedule-indicator">
-              {totalItems}
-            </div>
+            <div className="schedule-indicator">{totalItems}</div>
           )}
-          {hasTickets && (
-            <div className="ticket-indicator">
-              T
-            </div>
-          )}
+          {hasTickets && <div className="ticket-indicator">T</div>}
         </div>
       );
     }
@@ -807,11 +969,13 @@ const SpecialistDashboard = () => {
             <div className="calendar-container">
               <div className="calendar">
                 <div className="calendar-weekdays">
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                    <div key={day} className="weekday">
-                      {day}
-                    </div>
-                  ))}
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    (day) => (
+                      <div key={day} className="weekday">
+                        {day}
+                      </div>
+                    )
+                  )}
                 </div>
                 <div className="calendar-days">{renderCalendar()}</div>
               </div>
@@ -831,94 +995,90 @@ const SpecialistDashboard = () => {
               </button>
 
               <div className="day-schedules">
-              {/* Show confirmed tickets for this day */}
-              {(() => {
-                const dayTickets = tickets.filter(ticket => {
-                  if (ticket.status !== 'Confirmed') return false;
-                  
-                  const ticketDateStr = ticket.when;
-                  if (!ticketDateStr) return false;
-                  
-                  const dateMatch = ticketDateStr.match(/(\w+)\s+(\d+),\s+(\d+)/);
-                  if (!dateMatch) return false;
-                  
-                  const [, monthName, dayStr, yearStr] = dateMatch;
-                  const monthNames = [
-                    "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"
-                  ];
-                  const ticketMonth = monthNames.indexOf(monthName);
-                  const ticketDay = parseInt(dayStr);
-                  const ticketYear = parseInt(yearStr);
-                  
-                  return ticketYear === currentYear && ticketMonth === currentMonth && ticketDay === selectedDate;
-                });
+                {/* Show confirmed tickets for this day */}
+                {(() => {
+                  const dayTickets = tickets.filter((ticket) => {
+                    if (ticket.status !== "Confirmed") return false;
 
-                return dayTickets.map((ticket) => {
-                  // Extract time from ticket.when
-                  const timeMatch = ticket.when.match(/(\d{1,2}:\d{2}\s*[AP]M)/i);
-                  const ticketTime = timeMatch ? timeMatch[1] : 'Time TBD';
-                  
-                  return (
-                    <div key={`ticket-${ticket.id}`} className="schedule-item ticket-item">
-                      <div className="schedule-time">{ticketTime}</div>
-                      <div className="schedule-duration">Consultation</div>
-                      <div className="schedule-notes">
-                        <strong>Patient:</strong> {ticket.patient}<br />
-                        <strong>Service:</strong> {ticket.service}
+                    const parsedDate = parseTicketDate(ticket.when);
+                    if (!parsedDate) return false;
+
+                    return (
+                      parsedDate.year === currentYear &&
+                      parsedDate.month === currentMonth &&
+                      parsedDate.day === selectedDate
+                    );
+                  });
+
+                  return dayTickets.map((ticket) => {
+                    // Extract time from ticket.when
+                    const timeMatch = ticket.when.match(
+                      /(\d{1,2}:\d{2}\s*[AP]M)/i
+                    );
+                    const ticketTime = timeMatch ? timeMatch[1] : "Time TBD";
+
+                    return (
+                      <div
+                        key={`ticket-${ticket.id}`}
+                        className="schedule-item ticket-item"
+                      >
+                        <div className="schedule-time">{ticketTime}</div>
+                        <div className="schedule-duration">Consultation</div>
+                        <div className="schedule-notes">
+                          <strong>Patient:</strong> {ticket.patient}
+                          <br />
+                          <strong>Service:</strong> {ticket.service}
+                        </div>
+                        <div className="ticket-badge">Ticket</div>
                       </div>
-                      <div className="ticket-badge">Ticket</div>
+                    );
+                  });
+                })()}
+
+                {/* Show regular schedules */}
+                {schedules[
+                  formatDateKey(currentYear, currentMonth, selectedDate)
+                ]?.map((schedule) => (
+                  <div key={schedule.id} className="schedule-item">
+                    <div className="schedule-time">{schedule.time}</div>
+                    <div className="schedule-duration">
+                      {schedule.duration} mins
                     </div>
-                  );
-                });
-              })()}
-
-              {/* Show regular schedules */}
-              {schedules[
-                formatDateKey(currentYear, currentMonth, selectedDate)
-              ]?.map((schedule) => (
-                <div key={schedule.id} className="schedule-item">
-                  <div className="schedule-time">{schedule.time}</div>
-                  <div className="schedule-duration">
-                    {schedule.duration} mins
+                    <div className="schedule-notes">{schedule.notes}</div>
+                    <button
+                      className="delete-btn"
+                      onClick={() =>
+                        deleteSchedule(
+                          formatDateKey(
+                            currentYear,
+                            currentMonth,
+                            selectedDate
+                          ),
+                          schedule.id
+                        )
+                      }
+                    >
+                      Delete
+                    </button>
                   </div>
-                  <div className="schedule-notes">{schedule.notes}</div>
-                  <button
-                    className="delete-btn"
-                    onClick={() =>
-                      deleteSchedule(
-                        formatDateKey(currentYear, currentMonth, selectedDate),
-                        schedule.id
-                      )
-                    }
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
+                ))}
 
-              {/* Show message if no items */}
-              {!schedules[formatDateKey(currentYear, currentMonth, selectedDate)]?.length && 
-               !tickets.some(ticket => {
-                 if (ticket.status !== 'Confirmed') return false;
-                 const ticketDateStr = ticket.when;
-                 if (!ticketDateStr) return false;
-                 const dateMatch = ticketDateStr.match(/(\w+)\s+(\d+),\s+(\d+)/);
-                 if (!dateMatch) return false;
-                 const [, monthName, dayStr, yearStr] = dateMatch;
-                 const monthNames = [
-                   "January", "February", "March", "April", "May", "June",
-                   "July", "August", "September", "October", "November", "December"
-                 ];
-                 const ticketMonth = monthNames.indexOf(monthName);
-                 const ticketDay = parseInt(dayStr);
-                 const ticketYear = parseInt(yearStr);
-                 return ticketYear === currentYear && ticketMonth === currentMonth && ticketDay === selectedDate;
-               }) && (
-                <p>No schedules or appointments for this day</p>
-              )}
+                {/* Show message if no items */}
+                {!schedules[
+                  formatDateKey(currentYear, currentMonth, selectedDate)
+                ]?.length &&
+                  !tickets.some((ticket) => {
+                    if (ticket.status !== "Confirmed") return false;
+                    const parsedDate = parseTicketDate(ticket.when);
+                    if (!parsedDate) return false;
+                    return (
+                      parsedDate.year === currentYear &&
+                      parsedDate.month === currentMonth &&
+                      parsedDate.day === selectedDate
+                    );
+                  }) && <p>No schedules or appointments for this day</p>}
+              </div>
             </div>
-          </div>
           )}
         </div>
       </div>
@@ -962,24 +1122,73 @@ const SpecialistDashboard = () => {
           <div className="left-col-header">
             <div style={{ fontWeight: 700 }}>Tickets</div>
           </div>
-          <div style={{ padding: '12px 10px' }}>
-            <div className="filters two-col" style={{ marginRight: '0' }}>
-              {['All Tickets','Pending','Confirmed','Completed'].map(label => (
-                <div key={label} className={`filter-item ${ticketFilter === (label === 'All Tickets' ? 'All' : label) ? 'active' : ''}`} onClick={() => setTicketFilter(label === 'All Tickets' ? 'All' : label)}>{label}</div>
-        ))}
-      </div>
+          <div style={{ padding: "12px 10px" }}>
+            <div className="filters two-col" style={{ marginRight: "0" }}>
+              {[
+                "All Tickets",
+                "Pending",
+                "Confirmed",
+                "Processing",
+                "Completed",
+              ].map((label) => (
+                <div
+                  key={label}
+                  className={`filter-item ${
+                    ticketFilter === (label === "All Tickets" ? "All" : label)
+                      ? "active"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    setTicketFilter(label === "All Tickets" ? "All" : label)
+                  }
+                >
+                  {label}
+                </div>
+              ))}
+            </div>
             {filteredTickets.length === 0 ? (
-              <div style={{ padding: '1rem', color: '#7A7A7A' }}>No tickets found.</div>
+              <div style={{ padding: "1rem", color: "#7A7A7A" }}>
+                No tickets found.
+              </div>
             ) : (
-              filteredTickets.map(t => (
-                <div key={t.id} className={`sidebar-ticket ${selectedTicketId === t.id ? 'active' : ''}`} onClick={() => setSelectedTicketId(t.id)}>
+              filteredTickets.map((t) => (
+                <div
+                  key={t.id}
+                  className={`sidebar-ticket ${
+                    selectedTicketId === t.id ? "active" : ""
+                  }`}
+                  onClick={() => setSelectedTicketId(t.id)}
+                >
                   <div className="name">{t.patient}</div>
-                  <div className="meta">{t.id} • {t.service}</div>
+                  <div className="meta">
+                    {t.id} • {t.service}
+                  </div>
                   <div className="meta">{t.when}</div>
-                  <div style={{ marginTop:8, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                    <span className={`status-badge ${getStatusBadgeClass(t.status)}`}>{t.status}</span>
-                    <button className="edit-btn small" onClick={(e) => { e.stopPropagation(); viewTicket(t.id); }}>Details</button>
-        </div>
+                  <div
+                    style={{
+                      marginTop: 8,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <span
+                      className={`status-badge ${getStatusBadgeClass(
+                        t.status
+                      )}`}
+                    >
+                      {t.status}
+                    </span>
+                    <button
+                      className="edit-btn small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        viewTicket(t.id);
+                      }}
+                    >
+                      Details
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -989,65 +1198,197 @@ const SpecialistDashboard = () => {
         <div className="panel">
           <div className="panel-body">
             {(() => {
-              const t = tickets.find(x => x.id === selectedTicketId);
-              if (!t) return <div style={{ color:'#7A7A7A' }}>Select a ticket to start.</div>;
+              const t = tickets.find((x) => x.id === selectedTicketId);
+              if (!t)
+                return (
+                  <div style={{ color: "#7A7A7A" }}>
+                    Select a ticket to start.
+                  </div>
+                );
+
+              // Format birthday for display
+              const formatBirthday = (dateStr) => {
+                if (!dateStr) return "Not provided";
+                try {
+                  const date = new Date(dateStr);
+                  return date.toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  });
+                } catch {
+                  return dateStr;
+                }
+              };
+
               return (
                 <div>
-                  <div style={{ fontWeight:700, fontSize:'18px', marginBottom:'8px' }}>Name: {t.patient}</div>
-                  <div style={{ marginBottom:'6px' }}>Birthday: June 19, 1988</div>
-                  <div style={{ marginBottom:'6px' }}>Mobile Number: 09377413567</div>
-                  <div style={{ marginBottom:'14px' }}>Email Address: johnsantos@gmail.com</div>
-                  <div style={{ fontWeight:700, marginBottom:'12px' }}>Chief Complaint: Headache</div>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "18px",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    Name: {t.patient || t.patientName || "Unknown"}
+                  </div>
+                  <div style={{ marginBottom: "6px" }}>
+                    Birthday: {formatBirthday(t.patientBirthdate)}{" "}
+                    {t.age ? `(${t.age} years old)` : ""}
+                  </div>
+                  <div style={{ marginBottom: "6px" }}>
+                    Mobile Number: {t.mobile || "Not provided"}
+                  </div>
+                  <div style={{ marginBottom: "14px" }}>
+                    Email Address: {t.email || "Not provided"}
+                  </div>
+                  <div style={{ fontWeight: 700, marginBottom: "12px" }}>
+                    Chief Complaint: {t.chiefComplaint || "Not specified"}
+                  </div>
                   <div>
-                    <div className="tabbar" style={{ marginBottom:'12px' }}>
-                      <button className={centerTab==='medicine'?'active':''} onClick={()=>setCenterTab('medicine')}>Medicine</button>
-                      <button className={centerTab==='lab'?'active':''} onClick={()=>setCenterTab('lab')}>Lab Request</button>
-                      <div style={{ marginLeft:'auto' }}>
-                        <button className="request-btn" onClick={openMhModal}>Request Medical History</button>
+                    <div className="tabbar" style={{ marginBottom: "12px" }}>
+                      <button
+                        className={centerTab === "medicine" ? "active" : ""}
+                        onClick={() => setCenterTab("medicine")}
+                      >
+                        Medicine
+                      </button>
+                      <button
+                        className={centerTab === "lab" ? "active" : ""}
+                        onClick={() => setCenterTab("lab")}
+                      >
+                        Lab Request
+                      </button>
+                      <div style={{ marginLeft: "auto" }}>
+                        <button className="request-btn" onClick={openMhModal}>
+                          Request Medical History
+                        </button>
                       </div>
                     </div>
-                    {centerTab === 'medicine' ? (
+                    {centerTab === "medicine" ? (
                       <div>
                         <div className="grid-2">
                           <div>
-                            <div style={{ fontWeight:600 }}>Brand</div>
-                            <input className="input-sm pill" value={medForm.brand} onChange={(e)=> setMedForm(m=>({...m, brand:e.target.value}))} />
+                            <div style={{ fontWeight: 600 }}>Brand</div>
+                            <input
+                              className="input-sm pill"
+                              value={medForm.brand}
+                              onChange={(e) =>
+                                setMedForm((m) => ({
+                                  ...m,
+                                  brand: e.target.value,
+                                }))
+                              }
+                            />
                           </div>
                           <div>
-                            <div style={{ fontWeight:600 }}>Generic</div>
-                            <input className="input-sm pill" value={medForm.generic} onChange={(e)=> setMedForm(m=>({...m, generic:e.target.value}))} />
+                            <div style={{ fontWeight: 600 }}>Generic</div>
+                            <input
+                              className="input-sm pill"
+                              value={medForm.generic}
+                              onChange={(e) =>
+                                setMedForm((m) => ({
+                                  ...m,
+                                  generic: e.target.value,
+                                }))
+                              }
+                            />
                           </div>
                           <div>
-                            <div style={{ fontWeight:600 }}>Dosage</div>
-                            <input className="input-sm pill" value={medForm.dosage} onChange={(e)=> setMedForm(m=>({...m, dosage:e.target.value}))} />
+                            <div style={{ fontWeight: 600 }}>Dosage</div>
+                            <input
+                              className="input-sm pill"
+                              value={medForm.dosage}
+                              onChange={(e) =>
+                                setMedForm((m) => ({
+                                  ...m,
+                                  dosage: e.target.value,
+                                }))
+                              }
+                            />
                           </div>
                           <div>
-                            <div style={{ fontWeight:600 }}>Form</div>
-                            <input className="input-sm pill" value={medForm.form} onChange={(e)=> setMedForm(m=>({...m, form:e.target.value}))} />
+                            <div style={{ fontWeight: 600 }}>Form</div>
+                            <input
+                              className="input-sm pill"
+                              value={medForm.form}
+                              onChange={(e) =>
+                                setMedForm((m) => ({
+                                  ...m,
+                                  form: e.target.value,
+                                }))
+                              }
+                            />
                           </div>
                           <div>
-                            <div style={{ fontWeight:600 }}>Quantity</div>
-                            <input className="input-sm pill" value={medForm.quantity} onChange={(e)=> setMedForm(m=>({...m, quantity:e.target.value}))} />
+                            <div style={{ fontWeight: 600 }}>Quantity</div>
+                            <input
+                              className="input-sm pill"
+                              value={medForm.quantity}
+                              onChange={(e) =>
+                                setMedForm((m) => ({
+                                  ...m,
+                                  quantity: e.target.value,
+                                }))
+                              }
+                            />
                           </div>
                           <div>
-                            <div style={{ fontWeight:600 }}>Instructions</div>
-                            <input className="input-sm pill" value={medForm.instructions} onChange={(e)=> setMedForm(m=>({...m, instructions:e.target.value}))} />
+                            <div style={{ fontWeight: 600 }}>Instructions</div>
+                            <input
+                              className="input-sm pill"
+                              value={medForm.instructions}
+                              onChange={(e) =>
+                                setMedForm((m) => ({
+                                  ...m,
+                                  instructions: e.target.value,
+                                }))
+                              }
+                            />
                           </div>
                         </div>
-                        <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'10px' }}>
-                          <button className="tiny-btn plus-black" title="Add medicine" onClick={addMedicine}>+</button>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            marginTop: "10px",
+                          }}
+                        >
+                          <button
+                            className="tiny-btn plus-black"
+                            title="Add medicine"
+                            onClick={addMedicine}
+                          >
+                            +
+                          </button>
                         </div>
                         <div className="prescription-list">
                           {(encounter.medicines || []).length === 0 ? (
-                            <div style={{ color:'#555' }}>No medicines added yet.</div>
+                            <div style={{ color: "#555" }}>
+                              No medicines added yet.
+                            </div>
                           ) : (
                             <ol className="rx-list">
                               {(encounter.medicines || []).map((m, idx) => (
                                 <li key={idx} className="prescription-item">
-                                  <div className="rx-item-title">{(m.brand || m.generic)}{m.dosage?` ${m.dosage}`:''}{m.form?`/ ${m.form}`:''}{m.quantity?` (Qty: ${m.quantity})`:''}</div>
-                                  <div className="rx-sig">Sig: {m.instructions}</div>
-                                  <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                                    <button className="edit-btn" onClick={() => removeMedicine(idx)}>Remove</button>
+                                  <div className="rx-item-title">
+                                    {formatMedicineDisplay(m)}
+                                  </div>
+                                  <div className="rx-sig">
+                                    Sig: {m.instructions}
+                                  </div>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "flex-end",
+                                    }}
+                                  >
+                                    <button
+                                      className="edit-btn"
+                                      onClick={() => removeMedicine(idx)}
+                                    >
+                                      Remove
+                                    </button>
                                   </div>
                                 </li>
                               ))}
@@ -1059,28 +1400,74 @@ const SpecialistDashboard = () => {
                       <div>
                         <div className="grid-2">
                           <div>
-                            <div style={{ fontWeight:600 }}>Lab Test</div>
-                            <input className="input-sm pill" value={labForm.test} onChange={(e)=> setLabForm(f=>({...f, test:e.target.value}))} />
+                            <div style={{ fontWeight: 600 }}>Lab Test</div>
+                            <input
+                              className="input-sm pill"
+                              value={labForm.test}
+                              onChange={(e) =>
+                                setLabForm((f) => ({
+                                  ...f,
+                                  test: e.target.value,
+                                }))
+                              }
+                            />
                           </div>
                           <div>
-                            <div style={{ fontWeight:600 }}>Remarks</div>
-                            <input className="input-sm pill" value={labForm.remarks} onChange={(e)=> setLabForm(f=>({...f, remarks:e.target.value}))} />
+                            <div style={{ fontWeight: 600 }}>Remarks</div>
+                            <input
+                              className="input-sm pill"
+                              value={labForm.remarks}
+                              onChange={(e) =>
+                                setLabForm((f) => ({
+                                  ...f,
+                                  remarks: e.target.value,
+                                }))
+                              }
+                            />
                           </div>
                         </div>
-                        <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'10px' }}>
-                          <button className="tiny-btn plus-black" title="Add lab request" onClick={addLab}>+</button>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            marginTop: "10px",
+                          }}
+                        >
+                          <button
+                            className="tiny-btn plus-black"
+                            title="Add lab request"
+                            onClick={addLab}
+                          >
+                            +
+                          </button>
                         </div>
                         <div className="prescription-list">
                           {(encounter.labRequests || []).length === 0 ? (
-                            <div style={{ color:'#555' }}>No lab requests added yet.</div>
+                            <div style={{ color: "#555" }}>
+                              No lab requests added yet.
+                            </div>
                           ) : (
                             <ol className="lab-list">
                               {(encounter.labRequests || []).map((l, idx) => (
                                 <li className="prescription-item" key={idx}>
-                                  <div className="rx-item-title">{l.test}</div>
-                                  <div className="rx-sig">Remarks: {l.remarks || 'N/A'}</div>
-                                  <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                                    <button className="edit-btn" onClick={() => removeLab(idx)}>Remove</button>
+                                  <div className="rx-item-title">
+                                    {formatLabRequestDisplay(l)}
+                                  </div>
+                                  <div className="rx-sig">
+                                    Remarks: {l.remarks || "N/A"}
+                                  </div>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "flex-end",
+                                    }}
+                                  >
+                                    <button
+                                      className="edit-btn"
+                                      onClick={() => removeLab(idx)}
+                                    >
+                                      Remove
+                                    </button>
                                   </div>
                                 </li>
                               ))}
@@ -1099,51 +1486,196 @@ const SpecialistDashboard = () => {
         <div className="panel">
           <div className="panel-body soap-section">
             <div className="right-label">Subjective:</div>
-            <textarea className="input-lg" value={encounter.subjective} onChange={(e)=> saveEncounter({ subjective: e.target.value })}></textarea>
+            <textarea
+              className="input-lg"
+              value={encounter.subjective}
+              onChange={(e) => saveEncounter({ subjective: e.target.value })}
+            ></textarea>
             <div className="right-label">Objective:</div>
-            <textarea className="input-lg" value={encounter.objective} onChange={(e)=> saveEncounter({ objective: e.target.value })}></textarea>
+            <textarea
+              className="input-lg"
+              value={encounter.objective}
+              onChange={(e) => saveEncounter({ objective: e.target.value })}
+            ></textarea>
             <div className="right-label">Assessment:</div>
-            <textarea className="input-lg" value={encounter.assessment} onChange={(e)=> saveEncounter({ assessment: e.target.value })}></textarea>
+            <textarea
+              className="input-lg"
+              value={encounter.assessment}
+              onChange={(e) => saveEncounter({ assessment: e.target.value })}
+            ></textarea>
             <div className="right-label">Plan:</div>
-            <textarea className="input-lg" value={encounter.plan} onChange={(e)=> saveEncounter({ plan: e.target.value })}></textarea>
+            <textarea
+              className="input-lg"
+              value={encounter.plan}
+              onChange={(e) => saveEncounter({ plan: e.target.value })}
+            ></textarea>
             <div className="right-label">Referral:</div>
-            <textarea className="input-lg" value={encounter.referral} onChange={(e)=> saveEncounter({ referral: e.target.value })}></textarea>
-            <div style={{ display:'flex', alignItems:'center', gap:'10px', marginTop:'8px' }}>
+            <textarea
+              className="input-lg"
+              value={encounter.referral}
+              onChange={(e) => saveEncounter({ referral: e.target.value })}
+            ></textarea>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                marginTop: "8px",
+              }}
+            >
               <div>Follow up?</div>
-              <input type="checkbox" checked={!!encounter.followUp} onChange={(e) => saveEncounter({ followUp: e.target.checked })} />
-              <button className="btn-primary" style={{ marginLeft:'auto' }} onClick={() => { saveEncounter({}); alert('Encounter saved.'); }}>Save Encounter</button>
+              <input
+                type="checkbox"
+                checked={!!encounter.followUp}
+                onChange={(e) => saveEncounter({ followUp: e.target.checked })}
+              />
+              <button
+                className="btn-primary"
+                style={{ marginLeft: "auto" }}
+                onClick={async () => {
+                  await saveEncounter({});
+                  alert("Encounter saved.");
+                }}
+              >
+                Save Encounter
+              </button>
+              {(() => {
+                const t = tickets.find((x) => x.id === selectedTicketId);
+                const status = t?.status || t?.Status || "";
+                const isDisabled =
+                  status === "Completed" || status === "Processing";
+
+                return (
+                  <button
+                    className="btn-secondary"
+                    style={{
+                      marginLeft: "10px",
+                      opacity: isDisabled ? 0.5 : 1,
+                      cursor: isDisabled ? "not-allowed" : "pointer",
+                    }}
+                    disabled={isDisabled}
+                    onClick={async () => {
+                      if (!selectedTicketId) return;
+
+                      // Check if ticket is completed or already processing
+                      const ticket = tickets.find(
+                        (x) => x.id === selectedTicketId
+                      );
+                      const ticketStatus =
+                        ticket?.status || ticket?.Status || "";
+
+                      console.log("[Pass Back] Ticket:", ticket);
+                      console.log("[Pass Back] Status:", ticketStatus);
+
+                      if (ticketStatus === "Completed") {
+                        alert("Cannot pass back a completed ticket.");
+                        return;
+                      }
+                      if (ticketStatus === "Processing") {
+                        alert(
+                          "This ticket has already been passed back to the nurse."
+                        );
+                        return;
+                      }
+
+                      const notes = prompt(
+                        "Add notes (optional) when passing back to nurse:"
+                      );
+                      if (notes === null) return; // User cancelled
+
+                      try {
+                        // Save current encounter data first
+                        await saveEncounter({});
+
+                        // Pass back to nurse
+                        await specialistApi.passTicketBackToNurse(
+                          selectedTicketId,
+                          notes || ""
+                        );
+                        alert("Ticket passed back to nurse successfully!");
+
+                        // Reload tickets and clear selected ticket
+                        await loadTicketsData();
+                        await loadDashboardData();
+                        setSelectedTicket(null);
+                        setSelectedTicketId(null);
+                        setShowTicketModal(false);
+                      } catch (error) {
+                        console.error("Error passing ticket back:", error);
+                        alert(
+                          error.message ||
+                            "Failed to pass ticket back to nurse. Please try again."
+                        );
+                      }
+                    }}
+                  >
+                    Pass Back to Nurse {isDisabled ? `(${status})` : ""}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>
       </div>
 
       {/* Medical history requests list below center section for visibility */}
-      <div className="prescription-list" style={{ marginTop:'16px' }}>
-        <h4 style={{ marginBottom:'8px' }}>Medical History Requests</h4>
+      <div className="prescription-list" style={{ marginTop: "16px" }}>
+        <h4 style={{ marginBottom: "8px" }}>Medical History Requests</h4>
         {mhRequests.length === 0 ? (
-          <div style={{ color:'#555' }}>No requests yet.</div>
+          <div style={{ color: "#555" }}>No requests yet.</div>
         ) : (
           <div className="lab-list">
-            {mhRequests.map((r, index)=> (
-              <div key={r.id} className="prescription-item" style={{ 
-                border: '1px solid #ddd', 
-                borderRadius: '8px', 
-                padding: '12px', 
-                marginBottom: '12px',
-                backgroundColor: '#fff'
-              }}>
-                <div className="rx-item-title" style={{ marginBottom: '8px' }}>
-                  {index + 1}. {new Date(r.createdAt).toLocaleDateString()} — {r.status}
+            {mhRequests.map((r, index) => (
+              <div
+                key={r.id}
+                className="prescription-item"
+                style={{
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  padding: "12px",
+                  marginBottom: "12px",
+                  backgroundColor: "#fff",
+                }}
+              >
+                <div className="rx-item-title" style={{ marginBottom: "8px" }}>
+                  {index + 1}. {new Date(r.createdAt).toLocaleDateString()} —{" "}
+                  {r.status}
                 </div>
-                {r.reason && <div className="rx-sig" style={{ marginBottom: '4px' }}>Reason: {r.reason}</div>}
-                {(r.from || r.to) && <div className="rx-sig" style={{ marginBottom: '8px' }}>Range: {r.from || '—'} to {r.to || '—'}</div>}
-                <div style={{ display:'flex', gap:'8px', justifyContent:'flex-end' }}>
-                  {r.status !== 'Fulfilled' && r.status !== 'Cancelled' && (
-                    <button className="btn-primary" onClick={()=> updateMhStatus(r.id, 'Fulfilled')}>Mark Fulfilled</button>
+                {r.reason && (
+                  <div className="rx-sig" style={{ marginBottom: "4px" }}>
+                    Reason: {r.reason}
+                  </div>
+                )}
+                {(r.from || r.to) && (
+                  <div className="rx-sig" style={{ marginBottom: "8px" }}>
+                    Range: {r.from || "—"} to {r.to || "—"}
+                  </div>
+                )}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  {r.status !== "Fulfilled" && r.status !== "Cancelled" && (
+                    <button
+                      className="btn-primary"
+                      onClick={() => updateMhStatus(r.id, "Fulfilled")}
+                    >
+                      Mark Fulfilled
+                    </button>
                   )}
-                  <button className="edit-btn" onClick={()=> downloadMhPdf(r)}>Download PDF</button>
-                  {r.status !== 'Cancelled' && (
-                    <button className="edit-btn" onClick={()=> updateMhStatus(r.id, 'Cancelled')}>Cancel</button>
+                  <button className="edit-btn" onClick={() => downloadMhPdf(r)}>
+                    Download PDF
+                  </button>
+                  {r.status !== "Cancelled" && (
+                    <button
+                      className="edit-btn"
+                      onClick={() => updateMhStatus(r.id, "Cancelled")}
+                    >
+                      Cancel
+                    </button>
                   )}
                 </div>
               </div>
@@ -1279,7 +1811,7 @@ const SpecialistDashboard = () => {
               }
             >
               <option value="">Select sub specialization</option>
-              {(SUB_SPECIALIZATIONS[profileData.specialization] || []).map(
+              {getSubSpecializations(profileData.specialization).map(
                 (subSpec) => (
                   <option key={subSpec} value={subSpec}>
                     {subSpec}
@@ -1549,15 +2081,17 @@ const SpecialistDashboard = () => {
 
   if (isLoading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh', 
-        backgroundColor: '#f0f8ff',
-        fontSize: '18px',
-        color: '#333'
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          backgroundColor: "#f0f8ff",
+          fontSize: "18px",
+          color: "#333",
+        }}
+      >
         Loading specialist dashboard...
       </div>
     );
@@ -1631,7 +2165,8 @@ const SpecialistDashboard = () => {
               </div>
               <div className="user-info">
                 <div className="user-name">
-                  Dr. {currentUser?.firstName || currentUser?.fName || "Specialist"}{" "}
+                  Dr.{" "}
+                  {currentUser?.firstName || currentUser?.fName || "Specialist"}{" "}
                   {currentUser?.lastName || currentUser?.lName || "Name"}
                 </div>
                 <div className="user-role">Specialist</div>
@@ -1830,25 +2365,134 @@ const SpecialistDashboard = () => {
       )}
 
       {mhModal.open && (
-        <div className="modal" style={{ display:'flex', position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', justifyContent:'center', alignItems:'center', zIndex:1000 }} onClick={(e)=>{ if (e.target.classList.contains('modal')) setMhModal({ open:false, reason:'', from:'', to:'', consent:false }); }}>
-          <div className="modal-content" style={{ background:'#fff', padding:'1.6rem', borderRadius:'12px', width:'90%', maxWidth:'520px' }}>
-            <h3 style={{ marginBottom:'1rem' }}>Request Medical History</h3>
-            <div className="input-group"><label>Reason</label><textarea rows="3" value={mhModal.reason} onChange={(e)=> setMhModal(m=>({ ...m, reason:e.target.value }))}></textarea></div>
-            <div className="form-grid">
-              <div className="input-group"><label>From</label><input type="date" value={mhModal.from} onChange={(e)=> setMhModal(m=>({ ...m, from:e.target.value }))} /></div>
-              <div className="input-group"><label>To</label><input type="date" value={mhModal.to} onChange={(e)=> setMhModal(m=>({ ...m, to:e.target.value }))} /></div>
+        <div
+          className="modal"
+          style={{
+            display: "flex",
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+          onClick={(e) => {
+            if (e.target.classList.contains("modal"))
+              setMhModal({
+                open: false,
+                reason: "",
+                from: "",
+                to: "",
+                consent: false,
+              });
+          }}
+        >
+          <div
+            className="modal-content"
+            style={{
+              background: "#fff",
+              padding: "1.6rem",
+              borderRadius: "12px",
+              width: "90%",
+              maxWidth: "520px",
+            }}
+          >
+            <h3 style={{ marginBottom: "1rem" }}>Request Medical History</h3>
+            <div className="input-group">
+              <label>Reason</label>
+              <textarea
+                rows="3"
+                value={mhModal.reason}
+                onChange={(e) =>
+                  setMhModal((m) => ({ ...m, reason: e.target.value }))
+                }
+              ></textarea>
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:'8px', margin:'8px 0 16px' }}>
-              <input id="mhConsent" type="checkbox" checked={mhModal.consent} onChange={(e)=> setMhModal(m=>({ ...m, consent:e.target.checked }))} />
+            <div className="form-grid">
+              <div className="input-group">
+                <label>From</label>
+                <input
+                  type="date"
+                  value={mhModal.from}
+                  onChange={(e) =>
+                    setMhModal((m) => ({ ...m, from: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="input-group">
+                <label>To</label>
+                <input
+                  type="date"
+                  value={mhModal.to}
+                  onChange={(e) =>
+                    setMhModal((m) => ({ ...m, to: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                margin: "8px 0 16px",
+              }}
+            >
+              <input
+                id="mhConsent"
+                type="checkbox"
+                checked={mhModal.consent}
+                onChange={(e) =>
+                  setMhModal((m) => ({ ...m, consent: e.target.checked }))
+                }
+              />
               <label htmlFor="mhConsent">I have the patient's consent</label>
             </div>
-            <div style={{ display:'flex', gap:'10px', justifyContent:'flex-end' }}>
-              <button className="edit-btn" onClick={()=> setMhModal({ open:false, reason:'', from:'', to:'', consent:false })}>Cancel</button>
-              <button className="btn-primary" onClick={submitMh}>Submit Request</button>
+            <div
+              style={{
+                display: "flex",
+                gap: "10px",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                className="edit-btn"
+                onClick={() =>
+                  setMhModal({
+                    open: false,
+                    reason: "",
+                    from: "",
+                    to: "",
+                    consent: false,
+                  })
+                }
+              >
+                Cancel
+              </button>
+              <button className="btn-primary" onClick={submitMh}>
+                Submit Request
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Floating Chat Widget */}
+      <FloatingChat
+        tickets={tickets}
+        currentUser={currentUser}
+        onStartCall={handleStartCall}
+        onStartVideoCall={handleStartVideoCall}
+      />
+
+      {/* Call/Video Call Component */}
+      <SpecialistCall
+        isOpen={callState.isOpen}
+        onClose={handleCloseCall}
+        callType={callState.callType}
+        patient={callState.patient}
+        currentUser={currentUser}
+      />
     </div>
   );
 };

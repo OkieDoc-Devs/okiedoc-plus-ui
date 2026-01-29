@@ -58,9 +58,6 @@ createRoot(document.getElementById("root")).render(
         <Route path="/patient/Consultation_History" element={<ConsultationHistory />} />
         <Route path="/patient/Account" element={<PatientMyAccount />} />
         
-        {/* Legacy route for backward compatibility */}
-        <Route path="/patient-dashboard" element={<PatientDashboard />} />
-        
         <Route
           path="/specialist-dashboard"
           element={<SpecialistDashboard2 />}

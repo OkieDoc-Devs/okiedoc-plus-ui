@@ -22,21 +22,10 @@ import {
   FaPills, 
   FaFileAlt,
   FaHistory,
-  FaClock,
-  FaCheckCircle,
-  FaCreditCard,
-  FaUserCheck,
-  FaPlay,
   FaComments,
-  FaCamera,
-  FaEdit,
-  FaSave,
   FaTimes,
-  FaLock,
-  FaUpload,
   FaBars,
   FaTimes as FaClose,
-  FaBell,
   FaChevronRight,
   FaCalendarPlus,
   FaFileInvoice
@@ -231,22 +220,22 @@ const PatientDashboard = () => {
       <section className="patient-quick-actions">
         <h2 className="patient-section-title">What would you like to do?</h2>
         <div className="patient-action-cards-grid">
-          <button className="patient-action-card" onClick={() => setActivePage('appointments')}>
+          <button className="patient-action-card" onClick={() => navigate('/patient/Appointments')}>
             <FaCalendarPlus className="patient-action-card-icon" />
             <h3>Book Appointment</h3>
             <p>Schedule with a specialist</p>
           </button>
-          <button className="patient-action-card" onClick={() => setActivePage('messages')}>
+          <button className="patient-action-card" onClick={() => navigate('/patient/Messages')}>
             <FaComments className="patient-action-card-icon" />
             <h3>Messages</h3>
             <p>Chat with your team</p>
           </button>
-          <button className="patient-action-card" onClick={() => setActivePage('medical-records')}>
+          <button className="patient-action-card" onClick={() => navigate('/patient/Medical_Records')}>
             <FaFileInvoice className="patient-action-card-icon" />
             <h3>Medical Records</h3>
             <p>View your documents</p>
           </button>
-          <button className="patient-action-card" onClick={() => setActivePage('lab-results')}>
+          <button className="patient-action-card" onClick={() => navigate('/patient/Lab_Results')}>
             <FaFlask className="patient-action-card-icon" />
             <h3>Lab Results</h3>
             <p>Check your tests</p>
@@ -258,7 +247,7 @@ const PatientDashboard = () => {
       <section className="patient-appointments-section">
         <div className="patient-section-header">
           <h2 className="patient-section-title">Upcoming Appointments</h2>
-          <button className="patient-view-all-btn" onClick={() => setActivePage('appointments')}>
+          <button className="patient-view-all-btn" onClick={() => navigate('/patient/Appointments')}>
             View All →
           </button>
         </div>
@@ -269,7 +258,7 @@ const PatientDashboard = () => {
               <FaCalendarAlt className="patient-empty-icon" />
               <h3>No Appointments Scheduled</h3>
               <p>You haven't booked any appointments yet. Schedule one now!</p>
-              <button className="patient-empty-cta-btn" onClick={() => setActivePage('appointments')}>
+              <button className="patient-empty-cta-btn" onClick={() => navigate('/patient/Appointments')}>
                 Book Your First Appointment
               </button>
             </div>
@@ -278,13 +267,13 @@ const PatientDashboard = () => {
               {homeAppointments.map(appointment => (
                 <div key={appointment.id} className={`patient-appointment-card patient-status-${appointment.status?.toLowerCase().replace(/\s+/g, '-')}`}>
                   <div className="patient-appointment-card-header">
-                    <div className="patient-appointment-left">
-                      <h3 className="patient-appointment-title">{appointment.title}</h3>
+                    <div className="patient-header-left">
+                      <h3 className="patient-appointment-title">{appointment.title.split(' - ')[0]}</h3>
                       <span className={`patient-status-badge patient-status-${appointment.status?.toLowerCase().replace(/\s+/g, '-')}`}>
                         {appointment.status}
                       </span>
                     </div>
-                    <div className="patient-appointment-actions">
+                    <div className="patient-header-right">
                       {appointment.status === 'Active' && (
                         <button className="patient-action-btn patient-chat-btn" onClick={() => openChat(appointment)} title="Chat">
                           <FaComments />
@@ -363,39 +352,7 @@ const PatientDashboard = () => {
   );
 
   const renderPage = () => {
-    switch (activePage) {
-      case 'home':
-        return renderHomePage();
-      case 'appointments':
-        return <Appointments onAppointmentAdded={refreshAppointments} />;
-      case 'messages':
-        return <Messages />;
-      case 'medical-records':
-        return <MedicalRecords />;
-      case 'lab-results':
-        return <LabResults />;
-      case 'billing':
-        return <Billing />;
-      case 'my-account':
-        return (
-          <MyAccount 
-            profileImage={profileImage} 
-            setProfileImage={setProfileImage}
-            profileData={profileData}
-            setProfileData={setProfileData}
-            passwordData={passwordData}
-            setPasswordData={setPasswordData}
-            isEditing={isEditingProfile}
-            setIsEditing={setIsEditingProfile}
-            activeTab={activeProfileTab}
-            setActiveTab={setActiveProfileTab}
-          />
-        );
-      case 'consultation-history':
-        return <ConsultationHistory />;
-      default:
-        return null;
-    }
+    return renderHomePage();
   };
 
   return (
@@ -405,24 +362,23 @@ const PatientDashboard = () => {
         <div className="patient-sidebar-header">
           <div className="patient-logo">
             <img src="/okie-doc-logo.png" alt="OkieDoc+" className="patient-logo-image" />
-            <span className="patient-logo-text">OkieDoc+</span>
           </div>
         </div>
 
         <nav className="patient-nav-menu">
           {[
-            { id: 'home', label: 'Home', icon: FaHome },
-            { id: 'appointments', label: 'Appointments', icon: FaCalendarAlt },
-            { id: 'messages', label: 'Messages', icon: FaEnvelope },
-            { id: 'medical-records', label: 'Medical Records', icon: FaFileMedicalAlt },
-            { id: 'lab-results', label: 'Lab Results', icon: FaFlask },
-            { id: 'billing', label: 'Billing', icon: FaReceipt },
-            { id: 'consultation-history', label: 'History', icon: FaHistory }
-          ].map(({ id, label, icon: Icon }) => (
+            { id: 'home', label: 'Home', icon: FaHome, path: '/patient/Dashboard' },
+            { id: 'appointments', label: 'Appointments', icon: FaCalendarAlt, path: '/patient/Appointments' },
+            { id: 'messages', label: 'Messages', icon: FaEnvelope, path: '/patient/Messages' },
+            { id: 'medical-records', label: 'Medical Records', icon: FaFileMedicalAlt, path: '/patient/Medical_Records' },
+            { id: 'lab-results', label: 'Lab Results', icon: FaFlask, path: '/patient/Lab_Results' },
+            { id: 'billing', label: 'Billing', icon: FaReceipt, path: '/patient/Billing' },
+            { id: 'consultation-history', label: 'History', icon: FaHistory, path: '/patient/Consultation_History' }
+          ].map(({ id, label, icon: Icon, path }) => (
             <button
               key={id}
               className={`patient-nav-item ${activePage === id ? 'patient-active' : ''}`}
-              onClick={() => setActivePage(id)}
+              onClick={() => navigate(path)}
             >
               <Icon className="patient-nav-icon" />
               <span className="patient-nav-text">{label}</span>
@@ -431,7 +387,7 @@ const PatientDashboard = () => {
         </nav>
 
         <div className="patient-sidebar-footer">
-          <button className="patient-profile-btn" onClick={() => setActivePage('my-account')}>
+          <button className="patient-profile-btn" onClick={() => navigate('/patient/Account')}>
             <div className="patient-profile-avatar-small">
               {profileImage ? <img src={profileImage} alt="Profile" /> : <FaUser />}
             </div>
@@ -500,7 +456,7 @@ const PatientDashboard = () => {
         </div>
       )}
 
-      {/* Mobile Menu */}
+      {/* Muji's Mobile Menu Redesigned. The previous code wasn't that great overall. */}
       {isMobileMenuOpen && (
         <div className="patient-mobile-overlay" onClick={() => setIsMobileMenuOpen(false)}>
           <div className="patient-mobile-sidebar" onClick={(e) => e.stopPropagation()}>
@@ -510,17 +466,17 @@ const PatientDashboard = () => {
             </div>
             <nav className="patient-mobile-nav">
               {[
-                { id: 'home', label: 'Home', icon: FaHome },
-                { id: 'appointments', label: 'Appointments', icon: FaCalendarAlt },
-                { id: 'messages', label: 'Messages', icon: FaEnvelope },
-                { id: 'medical-records', label: 'Medical Records', icon: FaFileMedicalAlt },
-                { id: 'lab-results', label: 'Lab Results', icon: FaFlask },
-                { id: 'billing', label: 'Billing', icon: FaReceipt }
-              ].map(({ id, label, icon: Icon }) => (
+                { id: 'home', label: 'Home', icon: FaHome, path: '/patient/Dashboard' },
+                { id: 'appointments', label: 'Appointments', icon: FaCalendarAlt, path: '/patient/Appointments' },
+                { id: 'messages', label: 'Messages', icon: FaEnvelope, path: '/patient/Messages' },
+                { id: 'medical-records', label: 'Medical Records', icon: FaFileMedicalAlt, path: '/patient/Medical_Records' },
+                { id: 'lab-results', label: 'Lab Results', icon: FaFlask, path: '/patient/Lab_Results' },
+                { id: 'billing', label: 'Billing', icon: FaReceipt, path: '/patient/Billing' }
+              ].map(({ id, label, icon: Icon, path }) => (
                 <button
                   key={id}
                   className={`patient-mobile-nav-item ${activePage === id ? 'active' : ''}`}
-                  onClick={() => { setActivePage(id); setIsMobileMenuOpen(false); }}
+                  onClick={() => { navigate(path); setIsMobileMenuOpen(false); }}
                 >
                   <Icon />
                   <span>{label}</span>

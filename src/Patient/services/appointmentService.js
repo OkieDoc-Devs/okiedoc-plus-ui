@@ -113,7 +113,7 @@ class AppointmentService {
     const dummyTickets = [
       {
         id: 'dummy-1',
-        title: 'Cardiology Consultation - Dr. Maria Santos',
+        title: 'Cardiology Consultation',
         status: 'Pending',
         specialist: 'Dr. Maria Santos',
         date: '2024-01-15',
@@ -141,7 +141,7 @@ class AppointmentService {
       },
       {
         id: 'dummy-2',
-        title: 'Dermatology Consultation - Dr. Lisa Garcia',
+        title: 'Dermatology Consultation',
         status: 'Processing',
         specialist: 'Dr. Lisa Garcia',
         date: '2024-01-12',
@@ -169,7 +169,7 @@ class AppointmentService {
       },
       {
         id: 'dummy-3',
-        title: 'Pediatrics Consultation - Dr. Michael Brown',
+        title: 'Pediatrics Consultation',
         status: 'Confirmed',
         specialist: 'Dr. Michael Brown',
         date: '2024-01-18',
@@ -197,7 +197,7 @@ class AppointmentService {
       },
       {
         id: 'dummy-5',
-        title: 'Neurology Consultation - Dr. Jennifer Martinez',
+        title: 'Neurology Consultation',
         status: 'For Payment',
         specialist: 'Dr. Jennifer Martinez',
         date: '2024-01-20',
@@ -225,7 +225,7 @@ class AppointmentService {
       },
       {
         id: 'dummy-6',
-        title: 'General Medicine Consultation - Dr. Robert Johnson',
+        title: 'General Medicine Consultation',
         status: 'Active',
         specialist: 'Dr. Robert Johnson',
         date: '2024-01-22',

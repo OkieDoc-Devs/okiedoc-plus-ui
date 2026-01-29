@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { FaUserMd, FaCalendarPlus, FaClock, FaCheckCircle, FaCreditCard, FaUserCheck, FaPlay, FaComments, FaPaperclip, FaUpload, FaFileAlt, FaTimes, FaPhone, FaVideo, FaDesktop, FaFilePdf, FaImage, FaExclamationTriangle, FaCalendarAlt } from 'react-icons/fa';
+import { FaUserMd, FaCalendarPlus, FaClock, FaCheckCircle, FaCreditCard, FaUserCheck, FaPlay, FaComments, FaUpload, FaTimes, FaPhone, FaVideo, FaDesktop, FaFilePdf, FaImage, FaExclamationTriangle, FaCalendarAlt } from 'react-icons/fa';
 import { useNavigate } from 'react-router';
 import '../css/AppointmentBooking.css';
 import '../css/PatientDashboard.css';
 import HotlineBooking from './HotlineBooking';
 import appointmentService from '../services/appointmentService';
+import PatientLayout from './PatientLayout';
 
 const Appointments = ({ onAppointmentAdded }) => {
   const navigate = useNavigate();
   const [activeTicket, setActiveTicket] = useState(null);
   const [chatMessage, setChatMessage] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(true); // Always true - login check disabled
   const [appointmentForm, setAppointmentForm] = useState({
@@ -31,9 +31,7 @@ const Appointments = ({ onAppointmentAdded }) => {
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('');
 
   // Authentication check disabled - users can book without login
   useEffect(() => {
@@ -130,46 +128,29 @@ const Appointments = ({ onAppointmentAdded }) => {
     }
   };
 
-  const handleSendMessage = () => {
-    if (chatMessage.trim()) {
-      const newMessage = {
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (chatMessage.trim() && activeTicket) {
+      setChatMessages(prev => [...prev, {
         id: Date.now(),
-        text: chatMessage,
         sender: 'patient',
-        timestamp: new Date().toLocaleTimeString()
-      };
-      setChatMessages([...chatMessages, newMessage]);
+        message: chatMessage.trim(),
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'text'
+      }]);
       setChatMessage('');
     }
   };
 
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
-    const newFiles = files.map(file => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      file: file
-    }));
-    setUploadedFiles([...uploadedFiles, ...newFiles]);
-  };
-
   const openChat = (appointment) => {
     setActiveTicket(appointment);
-    // Initialize with sample messages for this appointment
     setChatMessages([
       {
         id: 1,
         sender: 'nurse',
-        text: `Hello! I'm here to assist you with your ${appointment.title} appointment.`,
-        timestamp: new Date().toLocaleTimeString()
-      },
-      {
-        id: 2,
-        sender: 'nurse',
-        text: 'Please feel free to ask any questions or share any concerns you may have.',
-        timestamp: new Date().toLocaleTimeString()
+        message: `Hello! I'm here to assist you with your ${appointment.title.split(' - ')[0]} appointment.`,
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'text'
       }
     ]);
   };
@@ -384,68 +365,28 @@ const Appointments = ({ onAppointmentAdded }) => {
     }
   };
 
-  // Handle payment
+  // Handle payment - redirect to billing page
   const handlePayment = (appointment) => {
-    setSelectedAppointment(appointment);
-    setShowPaymentModal(true);
-  };
-
-  const closePaymentModal = () => {
-    setShowPaymentModal(false);
-    setSelectedAppointment(null);
-    setPaymentMethod('');
-  };
-
-  const handlePaymentSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!paymentMethod) {
-      alert('Please select a payment method');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simulate payment success/failure
-      const paymentSuccess = Math.random() > 0.2; // 80% success rate for demo
-      
-      if (paymentSuccess) {
-        alert('Payment successful! You will receive a Payment Acknowledgement Receipt via email.');
-        // Update appointment status to confirmed
-        console.log('Payment successful for appointment:', selectedAppointment.id);
-      } else {
-        alert('Payment failed. Please try again or contact support.');
-      }
-      
-      closePaymentModal();
-    } catch (error) {
-      console.error('Payment error:', error);
-      alert('There was an error processing your payment. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    navigate('/patient/Billing');
   };
 
 
   return (
-    <div className="patient-page-content">
-      <div className="patient-appointments-header">
-        <div>
-          <h2 className="patient-page-title">My Appointments</h2>
-          <p className="patient-page-subtitle">Track your consultation requests and appointments</p>
+    <PatientLayout pageTitle="My Appointments" pageSubtitle="Track your consultation requests and appointments">
+      <div className="patient-page-content">
+        <div className="patient-appointments-header">
+          <div>
+            <h2 className="patient-page-title">My Appointments</h2>
+            <p className="patient-page-subtitle">Track your consultation requests and appointments</p>
+          </div>
+          <div className="patient-book-appointment">
+            <HotlineBooking onAppointmentAdded={loadAppointments} />
+            <button className="patient-book-btn" onClick={handleBookAppointment}>
+              <FaCalendarPlus className="patient-book-icon" />
+              Book New Appointment
+            </button>
+          </div>
         </div>
-        <div className="patient-book-appointment">
-          <HotlineBooking onAppointmentAdded={loadAppointments} />
-          <button className="patient-book-btn" onClick={handleBookAppointment}>
-            <FaCalendarPlus className="patient-book-icon" />
-            Book New Appointment
-          </button>
-        </div>
-      </div>
       
       <div className="patient-appointments-section">
         {appointments.length === 0 ? (
@@ -460,7 +401,7 @@ const Appointments = ({ onAppointmentAdded }) => {
           appointments.map(appointment => (
             <div key={appointment.id} className={`patient-appointment-card ${getStatusColor(appointment.status)}`}>
               <div className="patient-appointment-left">
-                <h3 className="patient-appointment-title">{appointment.title}</h3>
+                <h3 className="patient-appointment-title">{appointment.title.split(' - ')[0]}</h3>
               </div>
 
               <div className="patient-appointment-middle">
@@ -515,81 +456,32 @@ const Appointments = ({ onAppointmentAdded }) => {
           <div className="patient-chat-modal" onClick={(e) => e.stopPropagation()}>
             <div className="patient-chat-header">
               <div className="patient-chat-ticket-info">
-                <h3 className="patient-chat-ticket-title">{activeTicket.title}</h3>
-                <p className="patient-chat-ticket-specialist">{activeTicket.specialist}</p>
+                <h3>{activeTicket.title}</h3>
+                <p>{activeTicket.specialist}</p>
               </div>
-              <button className="patient-chat-close-btn" onClick={closeChat}>
-                <FaTimes />
-              </button>
+              <button className="patient-chat-close-btn" onClick={closeChat}><FaTimes /></button>
             </div>
 
             <div className="patient-chat-messages">
-              {chatMessages.map(message => (
+              {chatMessages.map((message) => (
                 <div key={message.id} className={`patient-message ${message.sender === 'patient' ? 'patient-message-patient' : 'patient-message-nurse'}`}>
                   <div className="patient-message-content">
-                    <p className="patient-message-text">{message.text}</p>
+                    <p className="patient-message-text">{message.message}</p>
                     <span className="patient-message-time">{message.timestamp}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="patient-document-upload">
-              <div className="patient-upload-header">
-                <h4 className="patient-upload-title">Upload Documents</h4>
-                <p className="patient-upload-subtitle">Share files with your specialist</p>
-              </div>
-              
-              <div className="patient-file-upload-area">
-                <input
-                  type="file"
-                  id="patient-file-upload"
-                  multiple
-                  onChange={handleFileUpload}
-                  style={{ display: 'none' }}
-                />
-                <label htmlFor="patient-file-upload" className="patient-file-label">
-                  <FaUpload className="patient-upload-icon" />
-                  <span className="patient-upload-text">Choose files to upload</span>
-                  <span className="patient-upload-hint">PDF, DOC, JPG, PNG up to 10MB</span>
-                </label>
-              </div>
-
-              {uploadedFiles.length > 0 && (
-                <div className="patient-uploaded-files">
-                  <h5 className="patient-files-title">Uploaded Files:</h5>
-                  {uploadedFiles.map(file => (
-                    <div key={file.id} className="patient-file-item">
-                      <FaFileAlt className="patient-file-icon" />
-                      <div className="patient-file-info">
-                        <span className="patient-file-name">{file.name}</span>
-                        <span className="patient-file-size">({(file.size / 1024).toFixed(1)} KB)</span>
-                      </div>
-                      <button 
-                        className="patient-file-remove"
-                        onClick={() => setUploadedFiles(prev => prev.filter(f => f.id !== file.id))}
-                      >
-                        <FaTimes />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <form className="patient-chat-input-form" onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}>
-              <div className="patient-chat-input-container">
-                <input
-                  type="text"
-                  className="patient-chat-input"
-                  placeholder="Type your message..."
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                />
-                <button type="submit" className="patient-chat-send-btn">
-                  Send
-                </button>
-              </div>
+            <form className="patient-chat-input-form" onSubmit={handleSendMessage}>
+              <input
+                type="text"
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                placeholder="Type your message..."
+                className="patient-chat-input"
+              />
+              <button type="submit" className="patient-chat-send-btn">Send</button>
             </form>
           </div>
         </div>
@@ -924,86 +816,6 @@ const Appointments = ({ onAppointmentAdded }) => {
         </div>
       )}
 
-      {/* Payment Modal */}
-      {showPaymentModal && selectedAppointment && (
-        <div className="patient-booking-modal-overlay" onClick={closePaymentModal}>
-          <div className="patient-booking-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="patient-booking-header">
-              <h2 className="patient-booking-title">Payment</h2>
-              <button className="patient-booking-close" onClick={closePaymentModal}>
-                <FaTimes />
-              </button>
-            </div>
-
-            <form className="patient-booking-form" onSubmit={handlePaymentSubmit}>
-              <div className="patient-booking-content">
-                <div className="patient-payment-info">
-                  <h3 className="patient-section-title">Appointment Details</h3>
-                  <div className="patient-payment-details">
-                    <p><strong>Specialist:</strong> {selectedAppointment.specialist}</p>
-                    <p><strong>Date:</strong> {selectedAppointment.date}</p>
-                    <p><strong>Time:</strong> {selectedAppointment.time}</p>
-                    <p><strong>Consultation Fee:</strong> ₱500.00</p>
-                  </div>
-                </div>
-
-                <div className="patient-form-group">
-                  <label className="patient-form-label">Select Payment Method *</label>
-                  <div className="patient-payment-methods">
-                    {paymentMethods.map(method => (
-                      <label key={method.value} className="patient-payment-option">
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value={method.value}
-                          checked={paymentMethod === method.value}
-                          onChange={(e) => setPaymentMethod(e.target.value)}
-                          className="patient-payment-radio"
-                        />
-                        <span className="patient-payment-icon">{method.icon}</span>
-                        <span className="patient-payment-label">{method.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="patient-payment-note">
-                  <FaExclamationTriangle className="patient-warning-icon" />
-                  <p>You will be redirected to the selected payment gateway to complete your transaction securely.</p>
-                </div>
-              </div>
-
-              <div className="patient-booking-actions">
-                <button
-                  type="button"
-                  className="patient-booking-cancel"
-                  onClick={closePaymentModal}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="patient-booking-submit"
-                  disabled={isSubmitting || !paymentMethod}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <FaClock className="patient-spinner" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <FaCreditCard />
-                      Proceed to Payment
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
 
       {/* Appointment Details Modal */}
@@ -1025,7 +837,7 @@ const Appointments = ({ onAppointmentAdded }) => {
                 <div className="patient-appointment-details-grid">
                   <div className="patient-appointment-details-item">
                     <span className="patient-appointment-details-label">Title:</span>
-                    <span className="patient-appointment-details-value">{selectedAppointment.title}</span>
+                    <span className="patient-appointment-details-value">{selectedAppointment.title.split(' - ')[0]}</span>
                   </div>
                   <div className="patient-appointment-details-item">
                     <span className="patient-appointment-details-label">Status:</span>
@@ -1110,6 +922,7 @@ const Appointments = ({ onAppointmentAdded }) => {
         </div>
       )}
     </div>
+    </PatientLayout>
   );
 };
 

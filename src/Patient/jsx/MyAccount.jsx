@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import "../css/PatientDashboard.css";
+import PatientLayout from './PatientLayout';
 import { FaUser, FaCamera, FaLock, FaSave, FaTimes } from 'react-icons/fa';
 
 const MyAccount = ({ 
@@ -79,7 +81,7 @@ const MyAccount = ({
       newPassword: '',
       confirmPassword: ''
     });
-    // You can add API call here to change password
+    // *I'll add API call* 
   };
 
   const handleCancel = () => {
@@ -88,7 +90,8 @@ const MyAccount = ({
   };
 
   return (
-    <div className="patient-page-content">
+    <PatientLayout pageTitle="My Account" pageSubtitle="Manage your profile and account settings">
+      <div className="patient-page-content">
       <h2>My Account</h2>
       
       <div className="patient-account-container">
@@ -353,7 +356,8 @@ const MyAccount = ({
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </PatientLayout>
   );
 };
 

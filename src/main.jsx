@@ -13,6 +13,13 @@ import ManageAppointments from "./Nurse/ManageAppointments.jsx";
 import Messages from "./Nurse/Messages.jsx";
 import SpecialistDashboard from "./Admin/Specialistdashboard/SpecialistDashboard.jsx";
 import PatientDashboard from "./Patient/jsx/PatientDashboard.jsx";
+import Appointments from "./Patient/jsx/Appointments.jsx";
+import MedicalRecords from "./Patient/jsx/MedicalRecords.jsx";
+import LabResults from "./Patient/jsx/LabResults.jsx";
+import Billing from "./Patient/jsx/Billing.jsx";
+import ConsultationHistory from "./Patient/jsx/ConsultationHistory.jsx";
+import PatientMyAccount from "./Patient/jsx/MyAccount.jsx";
+import PatientMessages from "./Patient/jsx/Messages.jsx";
 import SpecialistDashboard2 from "./Specialists/SpecialistDashboard.jsx";
 import SpecialistLogin from "./Login & Registration/SpecialistLogin.jsx";
 import SpecialistRegistration from "./Login & Registration/SpecialistRegistration.jsx";
@@ -40,7 +47,20 @@ createRoot(document.getElementById("root")).render(
           path="/admin/specialist-dashboard"
           element={<SpecialistDashboard />}
         />
+        
+        {/* Patient Routes */}
+        <Route path="/patient/Dashboard" element={<PatientDashboard />} />
+        <Route path="/patient/Appointments" element={<Appointments />} />
+        <Route path="/patient/Messages" element={<PatientMessages />} />
+        <Route path="/patient/Medical_Records" element={<MedicalRecords />} />
+        <Route path="/patient/Lab_Results" element={<LabResults />} />
+        <Route path="/patient/Billing" element={<Billing />} />
+        <Route path="/patient/Consultation_History" element={<ConsultationHistory />} />
+        <Route path="/patient/Account" element={<PatientMyAccount />} />
+        
+        {/* Legacy route for backward compatibility */}
         <Route path="/patient-dashboard" element={<PatientDashboard />} />
+        
         <Route
           path="/specialist-dashboard"
           element={<SpecialistDashboard2 />}

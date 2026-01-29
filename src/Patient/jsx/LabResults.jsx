@@ -1,10 +1,13 @@
 import React from 'react';
+import "../css/PatientDashboard.css";
+import PatientLayout from './PatientLayout';
 import { FaFileAlt, FaFlask } from 'react-icons/fa';
 
 const LabResults = () => {
   return (
-    <div className="patient-page-content">
-      <h2>Lab Results</h2>
+    <PatientLayout pageTitle="Lab Results" pageSubtitle="Check your test results and reports">
+      <div className="patient-page-content">
+        <h2>Lab Results</h2>
       <div className="patient-lab-results-section">
         <div className="patient-lab-result-card">
           <h3>Recent Lab Tests</h3>
@@ -42,7 +45,8 @@ const LabResults = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </PatientLayout>
   );
 };
 

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import "../css/PatientDashboard.css";
+import PatientLayout from './PatientLayout';
 import { 
   FaUserMd, 
   FaCheckCircle, 
@@ -287,13 +289,15 @@ const MedicalRecords = () => {
   };
 
   return (
-    <div className="patient-page-content">
+    <PatientLayout pageTitle="Medical Records" pageSubtitle="View and manage your medical documents">
+      <div className="patient-page-content">
       <h2>Medical Records</h2>
       
       <div className="patient-unified-medical-form">
         {categories.map(category => renderCategorySection(category.key))}
       </div>
     </div>
+    </PatientLayout>
   );
 };
 

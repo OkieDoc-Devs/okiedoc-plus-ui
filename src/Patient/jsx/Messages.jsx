@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import "../css/PatientDashboard.css";
 import {
   FaComments,
   FaTimes,
@@ -8,6 +9,7 @@ import {
   FaCamera,
 } from "react-icons/fa";
 import axios from "axios";
+import PatientLayout from './PatientLayout';
 
 const API_BASE = "http://localhost:1337/api";
 
@@ -146,12 +148,13 @@ const Messages = () => {
   const remainingChars = CHARACTER_LIMIT - newMessage.length;
 
   return (
-    <div className="patient-page-content">
-      <div
-        className={`patient-messenger-container ${
-          activeChat ? "has-active-chat" : ""
-        }`}
-      >
+    <PatientLayout pageTitle="Messages" pageSubtitle="Chat with your specialists and healthcare team">
+      <div className="patient-page-content">
+        <div
+          className={`patient-messenger-container ${
+            activeChat ? "has-active-chat" : ""
+          }`}
+        >
         {/* Conversations Sidebar */}
         <div className="patient-conversations-sidebar">
           <div className="patient-conversations-header">
@@ -372,7 +375,8 @@ const Messages = () => {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </PatientLayout>
   );
 };
 

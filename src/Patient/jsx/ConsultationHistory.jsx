@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import "../css/PatientDashboard.css";
+import PatientLayout from './PatientLayout';
 import {
   FaEye,
   FaDownload,
@@ -195,7 +197,8 @@ const ConsultationHistory = () => {
   };
 
   return (
-    <div className="patient-page-content">
+    <PatientLayout pageTitle="Consultation History" pageSubtitle="View your past consultations">
+      <div className="patient-page-content">
       <div className="patient-page-header">
         <h2 className="patient-page-title">Consultation History</h2>
         <p className="patient-page-subtitle">
@@ -655,7 +658,8 @@ const ConsultationHistory = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PatientLayout>
   );
 };
 

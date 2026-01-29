@@ -77,7 +77,7 @@ export default function Login() {
     ) {
       // Set some indicator for patient login if needed
       localStorage.setItem("userRole", "patient"); // Example
-      navigate("/patient-dashboard");
+      navigate("/patient/Dashboard");
       return;
     }
 

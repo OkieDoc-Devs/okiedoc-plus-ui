@@ -51,24 +51,20 @@ export default function Registration() {
       [id]: value,
     }));
 
-    // Clear errors when user starts typing
     if (errors[id]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [id]: ""
+        [id]: "",
       }));
     }
-
-
-    // console.log(`Registration - ${id}: ${value}`);
   };
 
   const handleCheckboxChange = (e) => {
     setTermsAccepted(e.target.checked);
     if (errors.terms) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        terms: ""
+        terms: "",
       }));
     }
   };
@@ -76,9 +72,9 @@ export default function Registration() {
   const handlePrivacyChange = (e) => {
     setPrivacyAccepted(e.target.checked);
     if (errors.privacy) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        privacy: ""
+        privacy: "",
       }));
     }
   };
@@ -91,38 +87,43 @@ export default function Registration() {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
-  // Password validation functions (disabled)
   const isPasswordValid = (password) => {
-    return password.length > 0; // Simple validation - just check if password exists
+    return password.length > 0;
   };
 
   const getPasswordRequirements = (password) => {
-    return []; // Return empty array to hide requirements
+    return [];
   };
 
   const shouldShowRequirements = () => {
-    return false; // Always return false to hide requirements
+    return false;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Clear previous errors messages
     setErrors({});
-    // Clear previous success messages
     setSuccess("");
-    // Validation
     const newErrors = {};
 
-    if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
+    if (!formData.firstName.trim())
+      newErrors.firstName = "First name is required";
     if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
-    if (!formData.email.trim()) {newErrors.email = "Email is required";} 
-      else if (!/\S+@\S+\.\S+/.test(formData.email)) {newErrors.email = "Please enter a valid email address";}
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
     if (!formData.password) newErrors.password = "Password is required";
-    if (!formData.confirmPassword) {newErrors.confirmPassword = "Please confirm your password";} 
-      else if (formData.password !== formData.confirmPassword) {newErrors.confirmPassword = "Passwords do not match";}
-    if (!termsAccepted) newErrors.terms = "You must accept the terms and conditions";
-    if (!privacyAccepted) newErrors.privacy = "You must accept the privacy policy";
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password";
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+    if (!termsAccepted)
+      newErrors.terms = "You must accept the terms and conditions";
+    if (!privacyAccepted)
+      newErrors.privacy = "You must accept the privacy policy";
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -137,7 +138,7 @@ export default function Registration() {
           id: result.user.id,
           email: result.user.email,
           userType: result.user.userType,
-          globalId: result.user.globalId, // <-- add this
+          globalId: result.user.globalId,
         };
         localStorage.setItem("currentUser", JSON.stringify(userData));
         setFormData({
@@ -177,72 +178,78 @@ export default function Registration() {
             <div style={{ width: "2.5rem" }}></div>
           </div>
           <h2 className="login-title">Register</h2>
+          <p className="login-subtitle">
+            Create your OkieDoc+ account in a few steps.
+          </p>
           <form className="login-form" onSubmit={handleSubmit}>
             {success && (
-              <p style={{ color: "green", marginBottom: "10px" }}>{success}</p>
+              <p className="auth-alert auth-alert--success">{success}</p>
             )}
-            
-            {/* First Name */}
+
             <label className="login-label" htmlFor="firstName">
               First Name
             </label>
             <input
-              className={`login-input ${errors.firstName ? 'error' : ''}`}
+              className={`login-input ${errors.firstName ? "error" : ""}`}
               id="firstName"
               type="text"
               placeholder="Enter your first name"
               value={formData.firstName}
               onChange={handleInputChange}
             />
-            {errors.firstName && <span className="error-message">{errors.firstName}</span>}
+            {errors.firstName && (
+              <span className="error-message">{errors.firstName}</span>
+            )}
 
-            {/* Last Name */}
             <label className="login-label" htmlFor="lastName">
               Last Name
             </label>
             <input
-              className={`login-input ${errors.lastName ? 'error' : ''}`}
+              className={`login-input ${errors.lastName ? "error" : ""}`}
               id="lastName"
               type="text"
               placeholder="Enter your last name"
               value={formData.lastName}
               onChange={handleInputChange}
             />
-            {errors.lastName && <span className="error-message">{errors.lastName}</span>}
+            {errors.lastName && (
+              <span className="error-message">{errors.lastName}</span>
+            )}
 
-            {/* Email */}
             <label className="login-label" htmlFor="email">
               Email address
             </label>
             <input
-              className={`login-input ${errors.email ? 'error' : ''}`}
+              className={`login-input ${errors.email ? "error" : ""}`}
               id="email"
               type="email"
               placeholder="Enter your email address"
               value={formData.email}
               onChange={handleInputChange}
             />
-            {errors.email && <span className="error-message">{errors.email}</span>}
+            {errors.email && (
+              <span className="error-message">{errors.email}</span>
+            )}
 
-            {/* Birthday */}
             <label className="login-label" htmlFor="birthday">
               Birthday
             </label>
             <input
-              className={`login-input ${errors.birthday ? 'error' : ''}`}
+              className={`login-input ${errors.birthday ? "error" : ""}`}
               id="birthday"
               type="date"
               value={formData.birthday}
               onChange={handleInputChange}
             />
-            {errors.birthday && <span className="error-message">{errors.birthday}</span>}
+            {errors.birthday && (
+              <span className="error-message">{errors.birthday}</span>
+            )}
 
-            {/* Gender */}
             <label className="login-label" htmlFor="gender">
               Gender
             </label>
             <select
-              className={`login-input ${errors.gender ? 'error' : ''}`}
+              className={`login-input ${errors.gender ? "error" : ""}`}
               id="gender"
               value={formData.gender}
               onChange={handleInputChange}
@@ -253,29 +260,31 @@ export default function Registration() {
               <option value="Other">Other</option>
               <option value="Prefer-not-to-say">Prefer not to say</option>
             </select>
-            {errors.gender && <span className="error-message">{errors.gender}</span>}
+            {errors.gender && (
+              <span className="error-message">{errors.gender}</span>
+            )}
 
-            {/* Mobile Number */}
             <label className="login-label" htmlFor="mobileNumber">
               Mobile Number
             </label>
             <input
-              className={`login-input ${errors.mobileNumber ? 'error' : ''}`}
+              className={`login-input ${errors.mobileNumber ? "error" : ""}`}
               id="mobileNumber"
               type="tel"
               placeholder="+63 912 345 6789"
               value={formData.mobileNumber}
               onChange={handleInputChange}
             />
-            {errors.mobileNumber && <span className="error-message">{errors.mobileNumber}</span>}
+            {errors.mobileNumber && (
+              <span className="error-message">{errors.mobileNumber}</span>
+            )}
 
-            {/* Password */}
             <label className="login-label" htmlFor="password">
               Password
             </label>
             <div className="login-password">
               <input
-                className={`login-input ${errors.password ? 'error' : ''}`}
+                className={`login-input ${errors.password ? "error" : ""}`}
                 id="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
@@ -284,22 +293,22 @@ export default function Registration() {
               />
               <button
                 type="button"
-                className={`password-toggle ${showPassword ? 'visible' : 'hidden'}`}
+                className={`password-toggle ${showPassword ? "visible" : "hidden"}`}
                 onClick={togglePasswordVisibility}
               >
                 {showPassword ? <FaEye /> : <FaEyeSlash />}
               </button>
             </div>
-            {errors.password && <span className="error-message">{errors.password}</span>}
+            {errors.password && (
+              <span className="error-message">{errors.password}</span>
+            )}
 
-
-            {/* Confirm Password */}
             <label className="login-label" htmlFor="confirmPassword">
               Confirm Password
             </label>
             <div className="login-password">
               <input
-                className={`login-input ${errors.confirmPassword ? 'error' : ''}`}
+                className={`login-input ${errors.confirmPassword ? "error" : ""}`}
                 id="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirm your password"
@@ -308,15 +317,16 @@ export default function Registration() {
               />
               <button
                 type="button"
-                className={`password-toggle ${showConfirmPassword ? 'visible' : 'hidden'}`}
+                className={`password-toggle ${showConfirmPassword ? "visible" : "hidden"}`}
                 onClick={toggleConfirmPasswordVisibility}
               >
                 {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
               </button>
             </div>
-            {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
+            {errors.confirmPassword && (
+              <span className="error-message">{errors.confirmPassword}</span>
+            )}
 
-            {/* Terms and Conditions */}
             <div className="terms-container">
               <label className="terms-checkbox">
                 <input
@@ -324,13 +334,16 @@ export default function Registration() {
                   checked={termsAccepted}
                   onChange={handleCheckboxChange}
                 />
-                <span className="checkmark"></span>
-                I agree to the <a href="#" className="terms-link">Terms and Conditions</a>
+                <span className="checkmark"></span>I agree to the{" "}
+                <a href="#" className="terms-link">
+                  Terms and Conditions
+                </a>
               </label>
-              {errors.terms && <span className="error-message">{errors.terms}</span>}
+              {errors.terms && (
+                <span className="error-message">{errors.terms}</span>
+              )}
             </div>
 
-            {/* Privacy Policy */}
             <div className="terms-container">
               <label className="terms-checkbox">
                 <input
@@ -338,10 +351,14 @@ export default function Registration() {
                   checked={privacyAccepted}
                   onChange={handlePrivacyChange}
                 />
-                <span className="checkmark"></span>
-                I agree to the <a href="#" className="terms-link">Privacy Policy</a>
+                <span className="checkmark"></span>I agree to the{" "}
+                <a href="#" className="terms-link">
+                  Privacy Policy
+                </a>
               </label>
-              {errors.privacy && <span className="error-message">{errors.privacy}</span>}
+              {errors.privacy && (
+                <span className="error-message">{errors.privacy}</span>
+              )}
             </div>
 
             <button className="login-btn" type="submit">
@@ -351,7 +368,10 @@ export default function Registration() {
               Already have an Okie-Doc+ account? <a href="/login">Login</a>
             </p>
             <p className="login-text">
-              Are you a specialist? <a href="/login?register=true&specialist=true">Register as a specialist</a>
+              Are you a specialist?{" "}
+              <a href="/login?register=true&specialist=true">
+                Register as a specialist
+              </a>
             </p>
           </form>
         </div>

@@ -14,7 +14,6 @@ export default function Login() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Keep dummy credentials for fallback/local testing
   const dummyCredentials = {
     nurse: {
       email: "nurse@okiedocplus.com",
@@ -29,7 +28,6 @@ export default function Login() {
       password: "specialistOkDoc123",
     },
     admin: { email: "admin@okiedoc.com", password: "admin123" },
-    // No dummy admin needed if using API
   };
 
   const handleInputChange = (e) => {
@@ -65,7 +63,10 @@ export default function Login() {
         };
       }
     } catch (error) {
-      console.error("API login failed, trying fallback credentials:", error.message);
+      console.error(
+        "API login failed, trying fallback credentials:",
+        error.message,
+      );
       return {
         success: false,
         error: error.message || "Login failed",
@@ -82,7 +83,21 @@ export default function Login() {
       const result = await loginWithAPI(formData.email, formData.password);
 
       if (result.success) {
-        // Store general user data
+        const fullName =
+          result.user.fullName ||
+          result.user.Full_Name ||
+          result.user.full_name ||
+          result.user.name ||
+          "";
+        const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
+        const firstName =
+          result.user.firstName || result.user.first_name || nameParts[0] || "";
+        const lastName =
+          result.user.lastName ||
+          result.user.last_name ||
+          nameParts.slice(1).join(" ") ||
+          "";
+
         localStorage.setItem(
           "currentUser",
           JSON.stringify({
@@ -90,12 +105,13 @@ export default function Login() {
             email: result.user.email,
             userType: result.user.userType,
             globalId: result.user.globalId || null,
-          })
+            fullName,
+            firstName,
+            lastName,
+          }),
         );
 
-        // If nurse, store nurse-specific data for the nurse module
         if (result.user.userType === "nurse") {
-          // Check different possible field names for the nurse's name
           const firstName =
             result.user.firstName ||
             result.user.first_name ||
@@ -120,7 +136,7 @@ export default function Login() {
             email: result.user.email,
             firstName: firstName,
             lastName: lastName,
-            rawUserObject: result.user, // Log the raw object to see all available fields
+            rawUserObject: result.user,
           });
         }
 
@@ -136,30 +152,27 @@ export default function Login() {
       setIsLoading(false);
     }
 
-    // Fallback to dummy credentials for other roles (adjust or remove as needed)
     if (
       formData.email === dummyCredentials.nurse.email &&
       formData.password === dummyCredentials.nurse.password
     ) {
-      // Set some indicator for nurse login if needed
-      localStorage.setItem("userRole", "nurse"); // Example
+      localStorage.setItem("userRole", "nurse");
       navigate("/nurse-dashboard");
       return;
     } else if (
       formData.email === dummyCredentials.patient.email &&
       formData.password === dummyCredentials.patient.password
     ) {
-      // Set some indicator for patient login if needed
-      localStorage.setItem("userRole", "patient"); // Example
+      localStorage.setItem("userRole", "patient");
       navigate("/patient-dashboard");
       return;
     }
 
     const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
+      localStorage.getItem("registeredUsers") || "[]",
     );
     const user = registeredUsers.find(
-      (u) => u.email === formData.email && u.password === formData.password
+      (u) => u.email === formData.email && u.password === formData.password,
     );
 
     if (user) {
@@ -184,13 +197,13 @@ export default function Login() {
           <div style={{ width: "2.5rem" }}></div>
         </div>
 
-        {/* Regular Patient/Nurse Login */}
         <>
           <h2 className="login-title">Sign in</h2>
+          <p className="login-subtitle">
+            Welcome back! Please enter your details.
+          </p>
           <form className="login-form" onSubmit={handleSubmit}>
-            {error && (
-              <p style={{ color: "red", marginBottom: "10px" }}>{error}</p>
-            )}
+            {error && <p className="auth-alert auth-alert--error">{error}</p>}
             <label className="login-label" htmlFor="email">
               Email address
             </label>

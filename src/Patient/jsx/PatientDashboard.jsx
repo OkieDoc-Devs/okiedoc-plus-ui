@@ -10,6 +10,7 @@ import Billing from "./Billing";
 import MyAccount from "./MyAccount";
 import ConsultationHistory from "./ConsultationHistory";
 import appointmentService from "../services/appointmentService";
+import { fetchPatientProfile } from "../services/apiService";
 import {
   FaHome,
   FaCalendarAlt,
@@ -17,12 +18,10 @@ import {
   FaFileMedicalAlt,
   FaFlask,
   FaReceipt,
-  FaSignOutAlt,
   FaUser,
   FaUserMd,
   FaPills,
   FaFileAlt,
-  FaChevronLeft,
   FaHistory,
   FaClock,
   FaCheckCircle,
@@ -39,10 +38,7 @@ import {
   FaHourglassHalf,
   FaDollarSign,
   FaUpload,
-  FaBars,
   FaTimes as FaClose,
-  FaStethoscope,
-  FaFileAlt as FaRecords,
   FaBell,
   FaEllipsisH,
   FaPhone,
@@ -51,26 +47,26 @@ import {
 } from "react-icons/fa";
 
 const PatientDashboard = () => {
-  const [globalId, setGlobalId] = useState("");
+  const [_globalId, setGlobalId] = useState("");
   const [activePage, setActivePage] = useState("home");
   const [profileImage, setProfileImage] = useState(null);
   const [activeTicket, setActiveTicket] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [showAppointmentDetails, setShowAppointmentDetails] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [profileData, setProfileData] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "patient@okiedoc.com",
-    phone: "+1 (555) 123-4567",
-    dateOfBirth: "1990-01-15",
-    address: "123 Main Street, City, State 12345",
-    emergencyContact: "Jane Doe",
-    emergencyPhone: "+1 (555) 987-6543",
+    fullName: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    dateOfBirth: "",
+    address: "",
+    emergencyContact: "",
+    emergencyPhone: "",
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -81,11 +77,25 @@ const PatientDashboard = () => {
   const [showMobileProfileModal, setShowMobileProfileModal] = useState(false);
   const navigate = useNavigate();
 
+  const parseNameParts = (value) => {
+    if (!value || typeof value !== "string") {
+      return { firstName: "", lastName: "" };
+    }
+    const parts = value.trim().split(/\s+/);
+    if (parts.length === 1) {
+      return { firstName: parts[0], lastName: "" };
+    }
+    return {
+      firstName: parts[0],
+      lastName: parts.slice(1).join(" "),
+    };
+  };
+
+  const normalizeName = (value) =>
+    typeof value === "string" ? value.trim() : "";
+
   // State for home appointments
   const [homeAppointments, setHomeAppointments] = useState([]);
-
-  // State for mobile detection
-  const [isMobile, setIsMobile] = useState(false);
 
   // Shows Global ID
   useEffect(() => {
@@ -93,21 +103,189 @@ const PatientDashboard = () => {
     if (currentUser.globalId) setGlobalId(currentUser.globalId);
   }, []);
 
+  useEffect(() => {
+    const loadPatientProfile = async () => {
+      try {
+        const profile = await fetchPatientProfile();
+
+        const nameSource = normalizeName(
+          profile.fullName ||
+            profile.Full_Name ||
+            profile.full_name ||
+            profile.fullname ||
+            profile.Name ||
+            profile.Patient_Name ||
+            profile.patient_name ||
+            profile.displayName ||
+            profile.Display_Name ||
+            "",
+        );
+        const parsedName = parseNameParts(nameSource);
+        const computedFullName =
+          nameSource ||
+          [
+            normalizeName(
+              profile.firstName || profile.First_Name || parsedName.firstName,
+            ),
+            normalizeName(
+              profile.lastName || profile.Last_Name || parsedName.lastName,
+            ),
+          ]
+            .filter(Boolean)
+            .join(" ");
+
+        const resolvedProfileImage =
+          profile.profileImage ||
+          profile.Profile_Image_Data_URL ||
+          profile.Profile_Image ||
+          profile.Profile_Image_URL ||
+          profile.avatar ||
+          null;
+
+        setProfileData((prev) => ({
+          ...prev,
+          fullName: computedFullName || prev.fullName,
+          firstName:
+            profile.firstName ||
+            profile.First_Name ||
+            profile.first_name ||
+            parsedName.firstName ||
+            prev.firstName,
+          lastName:
+            profile.lastName ||
+            profile.Last_Name ||
+            profile.last_name ||
+            parsedName.lastName ||
+            prev.lastName,
+          email: profile.email || profile.Email || prev.email,
+          phone: profile.phone || profile.Phone || prev.phone,
+          dateOfBirth:
+            profile.dateOfBirth ||
+            profile.Date_Of_Birth ||
+            profile.Birth_Date ||
+            profile.birthdate ||
+            prev.dateOfBirth,
+          address: profile.address || profile.Address || prev.address,
+          emergencyContact:
+            profile.emergencyContact ||
+            profile.Emergency_Contact ||
+            prev.emergencyContact,
+          emergencyPhone:
+            profile.emergencyPhone ||
+            profile.Emergency_Phone ||
+            prev.emergencyPhone,
+        }));
+
+        if (resolvedProfileImage) {
+          setProfileImage(resolvedProfileImage);
+        }
+
+        if (
+          profile.globalId ||
+          profile.Global_Id ||
+          profile.Global_ID ||
+          profile.global_id ||
+          profile.Patient_ID ||
+          profile.Patient_Id ||
+          profile.patient_id ||
+          profile.Patient_Code ||
+          profile.patient_code
+        ) {
+          setGlobalId(
+            profile.globalId ||
+              profile.Global_Id ||
+              profile.Global_ID ||
+              profile.global_id ||
+              profile.Patient_ID ||
+              profile.Patient_Id ||
+              profile.patient_id ||
+              profile.Patient_Code ||
+              profile.patient_code,
+          );
+        }
+      } catch (error) {
+        console.warn("Falling back to currentUser profile data.", error);
+        try {
+          const currentUser = JSON.parse(
+            localStorage.getItem("currentUser") || "{}",
+          );
+
+          const fallbackNameSource = normalizeName(
+            currentUser.fullName ||
+              currentUser.Full_Name ||
+              currentUser.full_name ||
+              currentUser.fullname ||
+              currentUser.Name ||
+              currentUser.Patient_Name ||
+              currentUser.patient_name ||
+              currentUser.displayName ||
+              currentUser.Display_Name ||
+              "",
+          );
+          const fallbackParsedName = parseNameParts(fallbackNameSource);
+          const fallbackFullName =
+            fallbackNameSource ||
+            [
+              normalizeName(fallbackParsedName.firstName),
+              normalizeName(fallbackParsedName.lastName),
+            ]
+              .filter(Boolean)
+              .join(" ");
+
+          setProfileData((prev) => ({
+            ...prev,
+            fullName: fallbackFullName || prev.fullName,
+            firstName:
+              currentUser.firstName ||
+              currentUser.First_Name ||
+              fallbackParsedName.firstName ||
+              prev.firstName,
+            lastName:
+              currentUser.lastName ||
+              currentUser.Last_Name ||
+              fallbackParsedName.lastName ||
+              prev.lastName,
+            email: currentUser.email || currentUser.Email || prev.email,
+            phone: currentUser.phone || currentUser.Phone || prev.phone,
+            dateOfBirth:
+              currentUser.dateOfBirth ||
+              currentUser.Date_Of_Birth ||
+              currentUser.Birth_Date ||
+              prev.dateOfBirth,
+            address: currentUser.address || currentUser.Address || prev.address,
+            emergencyContact:
+              currentUser.emergencyContact ||
+              currentUser.Emergency_Contact ||
+              prev.emergencyContact,
+            emergencyPhone:
+              currentUser.emergencyPhone ||
+              currentUser.Emergency_Phone ||
+              prev.emergencyPhone,
+          }));
+
+          if (
+            currentUser.profileImage ||
+            currentUser.Profile_Image_URL ||
+            currentUser.avatar
+          ) {
+            setProfileImage(
+              currentUser.profileImage ||
+                currentUser.Profile_Image_URL ||
+                currentUser.avatar,
+            );
+          }
+        } catch (localError) {
+          console.error("Failed to load patient profile fallback:", localError);
+        }
+      }
+    };
+
+    loadPatientProfile();
+  }, []);
+
   // Load appointments from localStorage on component mount
   useEffect(() => {
     loadHomeAppointments();
-  }, []);
-
-  // Detect mobile device
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-
-    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Debug: Monitor homeAppointments changes
@@ -202,25 +380,6 @@ const PatientDashboard = () => {
     return () => {
       document.body.classList.remove("patient-dashboard-active");
     };
-  }, []);
-
-  // Close mobile menu when switching to desktop view
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 768 && isMobileMenuOpen) {
-        setIsMobileMenuOpen(false);
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [isMobileMenuOpen]);
-
-  // Check screen size on mount and close mobile menu if on desktop
-  useEffect(() => {
-    if (window.innerWidth > 768) {
-      setIsMobileMenuOpen(false);
-    }
   }, []);
 
   const handleLogout = async () => {
@@ -383,6 +542,13 @@ const PatientDashboard = () => {
     }
   };
 
+  const displayName =
+    normalizeName(profileData.fullName) ||
+    [normalizeName(profileData.firstName), normalizeName(profileData.lastName)]
+      .filter(Boolean)
+      .join(" ") ||
+    "Patient";
+
   const renderPage = () => {
     switch (activePage) {
       case "home":
@@ -398,7 +564,7 @@ const PatientDashboard = () => {
                       className="patient-desktop-action-btn"
                       onClick={() =>
                         alert(
-                          "Physical consultation booking will be implemented soon!"
+                          "Physical consultation booking will be implemented soon!",
                         )
                       }
                     >
@@ -409,7 +575,7 @@ const PatientDashboard = () => {
                       className="patient-desktop-action-btn"
                       onClick={() =>
                         alert(
-                          "Physical consultation booking will be implemented soon!"
+                          "Physical consultation booking will be implemented soon!",
                         )
                       }
                     >
@@ -420,7 +586,7 @@ const PatientDashboard = () => {
                       className="patient-desktop-action-btn"
                       onClick={() =>
                         alert(
-                          "Physical consultation booking will be implemented soon!"
+                          "Physical consultation booking will be implemented soon!",
                         )
                       }
                     >
@@ -431,7 +597,7 @@ const PatientDashboard = () => {
                       className="patient-desktop-action-btn"
                       onClick={() =>
                         alert(
-                          "Physical consultation booking will be implemented soon!"
+                          "Physical consultation booking will be implemented soon!",
                         )
                       }
                     >
@@ -459,13 +625,13 @@ const PatientDashboard = () => {
                             appointment.title,
                             appointment.status,
                             "ID:",
-                            appointment.id
+                            appointment.id,
                           );
                           return (
                             <div
                               key={appointment.id}
                               className={`patient-home-ticket-card ${getWebStatusColor(
-                                appointment.status
+                                appointment.status,
                               )}`}
                             >
                               <div className="patient-home-ticket-left">
@@ -764,7 +930,7 @@ const PatientDashboard = () => {
                                   className="patient-file-remove"
                                   onClick={() =>
                                     setUploadedFiles((prev) =>
-                                      prev.filter((f) => f.id !== file.id)
+                                      prev.filter((f) => f.id !== file.id),
                                     )
                                   }
                                 >
@@ -837,7 +1003,7 @@ const PatientDashboard = () => {
                   className="patient-mobile-action-btn"
                   onClick={() =>
                     alert(
-                      "Physical consultation booking will be implemented soon!"
+                      "Physical consultation booking will be implemented soon!",
                     )
                   }
                 >
@@ -848,7 +1014,7 @@ const PatientDashboard = () => {
                   className="patient-mobile-action-btn"
                   onClick={() =>
                     alert(
-                      "Physical consultation booking will be implemented soon!"
+                      "Physical consultation booking will be implemented soon!",
                     )
                   }
                 >
@@ -859,7 +1025,7 @@ const PatientDashboard = () => {
                   className="patient-mobile-action-btn"
                   onClick={() =>
                     alert(
-                      "Physical consultation booking will be implemented soon!"
+                      "Physical consultation booking will be implemented soon!",
                     )
                   }
                 >
@@ -870,7 +1036,7 @@ const PatientDashboard = () => {
                   className="patient-mobile-action-btn"
                   onClick={() =>
                     alert(
-                      "Physical consultation booking will be implemented soon!"
+                      "Physical consultation booking will be implemented soon!",
                     )
                   }
                 >
@@ -900,7 +1066,7 @@ const PatientDashboard = () => {
                         <div
                           key={index}
                           className={`patient-mobile-appointment-card ${getStatusColor(
-                            appointment.status
+                            appointment.status,
                           )}`}
                         >
                           <div className="patient-mobile-appointment-left">
@@ -1180,7 +1346,7 @@ const PatientDashboard = () => {
                       <div
                         key={index}
                         className={`patient-mobile-appointment-card ${getStatusColor(
-                          appointment.status
+                          appointment.status,
                         )}`}
                       >
                         <div className="patient-mobile-appointment-left">
@@ -1315,302 +1481,122 @@ const PatientDashboard = () => {
 
   return (
     <div className="patient-dashboard">
-      {/* Sidebar */}
-      <div className="patient-sidebar">
-        <div className="patient-logo">
-          <img
-            src="/okie-doc-logo.png"
-            alt="OkieDoc+"
-            className="patient-logo-image"
-          />
-        </div>
-        <nav className="patient-nav-menu">
-          <div
-            className={`patient-nav-item ${
-              activePage === "home" ? "patient-active" : ""
-            }`}
-            onClick={() => setActivePage("home")}
-          >
-            <FaHome className="patient-nav-icon" />
-            <span className="patient-nav-text">Home</span>
-          </div>
-          <div
-            className={`patient-nav-item ${
-              activePage === "appointments" ? "patient-active" : ""
-            }`}
-            onClick={() => setActivePage("appointments")}
-          >
-            <FaCalendarAlt className="patient-nav-icon" />
-            <span className="patient-nav-text">Appointments</span>
-          </div>
-          <div
-            className={`patient-nav-item ${
-              activePage === "messages" ? "patient-active" : ""
-            }`}
-            onClick={() => setActivePage("messages")}
-          >
-            <FaEnvelope className="patient-nav-icon" />
-            <span className="patient-nav-text">Messages</span>
-          </div>
-          <div
-            className={`patient-nav-item ${
-              activePage === "medical-records" ? "patient-active" : ""
-            }`}
-            onClick={() => setActivePage("medical-records")}
-          >
-            <FaFileMedicalAlt className="patient-nav-icon" />
-            <span className="patient-nav-text">Medical Records</span>
-          </div>
-          <div
-            className={`patient-nav-item ${
-              activePage === "lab-results" ? "patient-active" : ""
-            }`}
-            onClick={() => setActivePage("lab-results")}
-          >
-            <FaFlask className="patient-nav-icon" />
-            <span className="patient-nav-text">Lab Results</span>
-          </div>
-          <div
-            className={`patient-nav-item ${
-              activePage === "billing" ? "patient-active" : ""
-            }`}
-            onClick={() => setActivePage("billing")}
-          >
-            <FaReceipt className="patient-nav-icon" />
-            <span className="patient-nav-text">Consultation Billing</span>
-          </div>
-          <div
-            className={`patient-nav-item ${
-              activePage === "consultation-history" ? "patient-active" : ""
-            }`}
-            onClick={() => setActivePage("consultation-history")}
-          >
-            <FaHistory className="patient-nav-icon" />
-            <span className="patient-nav-text">Consultation History</span>
-          </div>
-        </nav>
-        <div className="patient-sign-out">
-          <button className="patient-sign-out-btn" onClick={handleLogout}>
-            <FaChevronLeft className="patient-sign-out-icon" />
-            <span className="patient-sign-out-text">Sign Out</span>
-          </button>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="patient-main-content">
         {/* Header */}
         <div className="patient-header">
           <div className="patient-header-left">
-            <h1 className="patient-welcome-text">
-              Welcome, {profileData.firstName}
-            </h1>
+            <img
+              src="/okie-doc-logo.png"
+              alt="OkieDoc+"
+              className="patient-header-logo"
+            />
           </div>
-          <div
-            className="patient-user-profile"
-            onClick={() => setActivePage("my-account")}
-          >
-            <div className="patient-profile-avatar">
-              {profileImage ? (
-                <img
-                  src={profileImage}
-                  alt="Profile"
-                  className="patient-header-profile-image"
-                />
-              ) : (
-                <FaUser className="patient-header-profile-icon" />
+          <div className="patient-header-center">
+            <div className="patient-header-titles">
+              <h1 className="patient-dashboard-title">Patient Dashboard</h1>
+              {activePage === "home" && (
+                <p className="patient-welcome-text">Welcome, {displayName}</p>
               )}
             </div>
-            <span className="patient-profile-name">{`${profileData.firstName} ${profileData.lastName}`}</span>
           </div>
+          <div className="patient-user-profile">
+            <button
+              className="patient-profile-trigger"
+              onClick={() => setActivePage("my-account")}
+            >
+              <span className="patient-profile-avatar">
+                {profileImage ? (
+                  <img
+                    src={profileImage}
+                    alt="Profile"
+                    className="patient-header-profile-image"
+                  />
+                ) : (
+                  <FaUser className="patient-header-profile-icon" />
+                )}
+              </span>
+              <span className="patient-profile-name">{displayName}</span>
+            </button>
+            <div className="patient-account-dropdown">
+              <button
+                className="patient-dropdown-item"
+                onClick={() => setActivePage("my-account")}
+              >
+                My Account
+              </button>
+              <button
+                className="patient-dropdown-item patient-logout-item"
+                onClick={handleLogout}
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="patient-dashboard-nav">
+          <button
+            className={`patient-nav-tab ${
+              activePage === "home" ? "active" : ""
+            }`}
+            onClick={() => setActivePage("home")}
+          >
+            Home
+          </button>
+          <button
+            className={`patient-nav-tab ${
+              activePage === "appointments" ? "active" : ""
+            }`}
+            onClick={() => setActivePage("appointments")}
+          >
+            Appointments
+          </button>
+          <button
+            className={`patient-nav-tab ${
+              activePage === "messages" ? "active" : ""
+            }`}
+            onClick={() => setActivePage("messages")}
+          >
+            Messages
+          </button>
+          <button
+            className={`patient-nav-tab ${
+              activePage === "medical-records" ? "active" : ""
+            }`}
+            onClick={() => setActivePage("medical-records")}
+          >
+            Medical Records
+          </button>
+          <button
+            className={`patient-nav-tab ${
+              activePage === "lab-results" ? "active" : ""
+            }`}
+            onClick={() => setActivePage("lab-results")}
+          >
+            Lab Results
+          </button>
+          <button
+            className={`patient-nav-tab ${
+              activePage === "billing" ? "active" : ""
+            }`}
+            onClick={() => setActivePage("billing")}
+          >
+            Consultation Billing
+          </button>
+          <button
+            className={`patient-nav-tab ${
+              activePage === "consultation-history" ? "active" : ""
+            }`}
+            onClick={() => setActivePage("consultation-history")}
+          >
+            Consultation History
+          </button>
         </div>
 
         {/* Page Content */}
         {renderPage()}
       </div>
-
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div
-          className="patient-mobile-overlay"
-          onClick={() => setIsMobileMenuOpen(false)}
-        >
-          <div
-            className="patient-mobile-sidebar"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="patient-mobile-header">
-              <div className="patient-mobile-logo">
-                <img
-                  src="/okie-doc-logo.png"
-                  alt="Okie-Doc+"
-                  className="patient-mobile-logo-image"
-                />
-              </div>
-              <button
-                className="patient-mobile-close-btn"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <FaClose />
-              </button>
-            </div>
-
-            <div className="patient-mobile-profile">
-              <div className="patient-mobile-profile-avatar">
-                {profileImage ? (
-                  <img
-                    src={profileImage}
-                    alt="Profile"
-                    className="patient-mobile-profile-image"
-                  />
-                ) : (
-                  <FaUser className="patient-mobile-profile-icon" />
-                )}
-              </div>
-              <div className="patient-mobile-profile-info">
-                <h3 className="patient-mobile-profile-name">{`${profileData.firstName} ${profileData.lastName}`}</h3>
-                <p className="patient-mobile-profile-email">
-                  {profileData.email}
-                </p>
-              </div>
-            </div>
-
-            <nav className="patient-mobile-nav">
-              <button
-                className={`patient-mobile-nav-item ${
-                  activePage === "home" ? "active" : ""
-                }`}
-                onClick={() => {
-                  setActivePage("home");
-                  setIsMobileMenuOpen(false);
-                }}
-              >
-                <FaHome className="patient-mobile-nav-icon" />
-                <span>Home</span>
-              </button>
-              <button
-                className={`patient-mobile-nav-item ${
-                  activePage === "appointments" ? "active" : ""
-                }`}
-                onClick={() => {
-                  setActivePage("appointments");
-                  setIsMobileMenuOpen(false);
-                }}
-              >
-                <FaCalendarAlt className="patient-mobile-nav-icon" />
-                <span>Appointments</span>
-              </button>
-              <button
-                className={`patient-mobile-nav-item ${
-                  activePage === "messages" ? "active" : ""
-                }`}
-                onClick={() => {
-                  setActivePage("messages");
-                  setIsMobileMenuOpen(false);
-                }}
-              >
-                <FaEnvelope className="patient-mobile-nav-icon" />
-                <span>Messages</span>
-              </button>
-              <button
-                className={`patient-mobile-nav-item ${
-                  activePage === "medical-records" ? "active" : ""
-                }`}
-                onClick={() => {
-                  setActivePage("medical-records");
-                  setIsMobileMenuOpen(false);
-                }}
-              >
-                <FaFileMedicalAlt className="patient-mobile-nav-icon" />
-                <span>Medical Records</span>
-              </button>
-              <button
-                className={`patient-mobile-nav-item ${
-                  activePage === "lab-results" ? "active" : ""
-                }`}
-                onClick={() => {
-                  setActivePage("lab-results");
-                  setIsMobileMenuOpen(false);
-                }}
-              >
-                <FaFlask className="patient-mobile-nav-icon" />
-                <span>Lab Results</span>
-              </button>
-              <button
-                className={`patient-mobile-nav-item ${
-                  activePage === "billing" ? "active" : ""
-                }`}
-                onClick={() => {
-                  setActivePage("billing");
-                  setIsMobileMenuOpen(false);
-                }}
-              >
-                <FaReceipt className="patient-mobile-nav-icon" />
-                <span>Consultation Billing</span>
-              </button>
-              <button
-                className={`patient-mobile-nav-item ${
-                  activePage === "consultation-history" ? "active" : ""
-                }`}
-                onClick={() => {
-                  setActivePage("consultation-history");
-                  setIsMobileMenuOpen(false);
-                }}
-              >
-                <FaHistory className="patient-mobile-nav-icon" />
-                <span>Consultation History</span>
-              </button>
-              <button
-                className="patient-mobile-logout-btn"
-                onClick={handleLogout}
-              >
-                <FaSignOutAlt className="patient-mobile-logout-icon" />
-                <span>Sign Out</span>
-              </button>
-            </nav>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile Bottom Navigation - Only render on mobile */}
-      {isMobile && (
-        <div className="patient-mobile-bottom-nav">
-          <button
-            className={`patient-mobile-nav-item ${
-              activePage === "home" ? "active" : ""
-            }`}
-            onClick={() => setActivePage("home")}
-          >
-            <FaStethoscope className="patient-mobile-nav-icon" />
-            <span className="patient-mobile-nav-label">Home</span>
-          </button>
-          <button
-            className={`patient-mobile-nav-item ${
-              activePage === "medical-records" ? "active" : ""
-            }`}
-            onClick={() => setActivePage("medical-records")}
-          >
-            <FaRecords className="patient-mobile-nav-icon" />
-            <span className="patient-mobile-nav-label">Records</span>
-          </button>
-          <button
-            className={`patient-mobile-nav-item ${
-              activePage === "messages" ? "active" : ""
-            }`}
-            onClick={() => setActivePage("messages")}
-          >
-            <FaEnvelope className="patient-mobile-nav-icon" />
-            <span className="patient-mobile-nav-label">Messages</span>
-          </button>
-          <button
-            className="patient-mobile-nav-item"
-            onClick={() => setIsMobileMenuOpen(true)}
-          >
-            <FaBars className="patient-mobile-nav-icon" />
-            <span className="patient-mobile-nav-label">Menu</span>
-          </button>
-        </div>
-      )}
 
       {/* Mobile Profile Modal */}
       {showMobileProfileModal && (

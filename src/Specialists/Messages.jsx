@@ -6,20 +6,20 @@ import {
   FaPhone,
   FaVideo,
   FaPlus,
+  FaSearch,
   FaFileAlt,
-  FaSpinner,
-  FaComments,
 } from "react-icons/fa";
-import { useChat } from "../services/chatService";
+import useChat from "../Nurse/services/useChat";
 import {
   isAllowedFileType,
   getMaxFileSize,
   formatFileSize,
   getUserTypeLabel,
-} from "../services/chatService";
-import SpecialistCall from "../../Specialists/SpecialistCall.jsx";
+} from "../Nurse/services/chatService";
+import SpecialistCall from "./SpecialistCall";
+import "./SpecialistDashboard.css";
 
-const Messages = () => {
+const Messages = ({ currentUser }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -36,38 +36,23 @@ const Messages = () => {
 
   const getCurrentUserId = () => {
     try {
-      const currentUser = localStorage.getItem("currentUser");
-      if (currentUser) {
-        const user = JSON.parse(currentUser);
-        if (user.id) {
-          console.log("Chat: Using currentUser.id:", user.id);
-          return user.id;
-        }
+      const user = localStorage.getItem("okiedoc_specialist_user");
+      if (user) {
+        const parsed = JSON.parse(user);
+        return parsed.id;
       }
-    } catch (error) {
-      console.error("Error getting current user:", error);
+      return currentUser?.id || null;
+    } catch {
+      return currentUser?.id || null;
     }
-    console.warn("Chat: Could not determine current user ID");
-    return null;
   };
 
   const currentUserId = getCurrentUserId();
-  const currentUserProfile = () => {
-    try {
-      const currentUser = localStorage.getItem("currentUser");
-      return currentUser ? JSON.parse(currentUser) : null;
-    } catch (error) {
-      console.error("Error getting current user profile:", error);
-      return null;
-    }
-  };
 
   const {
     conversations,
     activeConversation,
     messages: chatMessages,
-    loading: chatLoading,
-    error: chatError,
     typingUsers,
     openConversation,
     closeConversation,
@@ -77,8 +62,7 @@ const Messages = () => {
     startConversation,
     searchUsers,
     getAllUsers,
-    loadConversations,
-  } = useChat({ currentUserId, currentUserType: "p" });
+  } = useChat({ currentUserId, currentUserType: "s" });
 
   useEffect(() => {
     if (chatMessagesRef.current && activeConversation) {
@@ -111,7 +95,7 @@ const Messages = () => {
     if (showNewChatModal) {
       handleUserSearch("");
     }
-  }, [showNewChatModal]);
+  }, [showNewChatModal, handleUserSearch]);
 
   useEffect(() => {
     if (!showNewChatModal) return;
@@ -246,8 +230,7 @@ const Messages = () => {
   };
 
   const handleCallEnd = async (callInfo) => {
-    setShowVideoCall(false);
-    if (activeConversation && callInfo?.duration > 0) {
+    if (activeConversation && callInfo.duration > 0) {
       const callType = callInfo.type === "video" ? "Video call" : "Voice call";
       const callMessage = `${callType} ended - ${callInfo.formattedDuration}`;
       try {
@@ -268,20 +251,7 @@ const Messages = () => {
   });
 
   return (
-    <div className="patient-messages-container">
-      {chatLoading && conversations.length === 0 && (
-        <div className="loading-state">
-          <FaSpinner className="patient-spinner" />
-          <p>Loading conversations...</p>
-        </div>
-      )}
-      {chatError && (
-        <div className="error-state">
-          <p>Error loading conversations: {chatError}</p>
-          <button onClick={loadConversations}>Retry</button>
-        </div>
-      )}
-
+    <div className="specialist-messages-container">
       <div className="messages-layout">
         <div className="conversations-sidebar">
           <div className="conversations-header">
@@ -363,17 +333,8 @@ const Messages = () => {
               ))
             ) : (
               <div className="no-conversations">
-                <div className="no-conversations-icon">
-                  <FaComments />
-                </div>
-                <h4>No conversations yet</h4>
-                <p>Start a new chat to begin messaging.</p>
-                <button
-                  className="no-conversations-btn"
-                  onClick={() => setShowNewChatModal(true)}
-                >
-                  Start a chat
-                </button>
+                <p>No conversations found</p>
+                <span>Start a new chat to begin messaging</span>
               </div>
             )}
           </div>
@@ -588,6 +549,7 @@ const Messages = () => {
           )}
         </div>
       </div>
+
       {showNewChatModal && (
         <div className="modal" onClick={() => setShowNewChatModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -667,10 +629,11 @@ const Messages = () => {
           onCallEnd={handleCallEnd}
           callType={isVideoCall ? "video" : "audio"}
           patient={{
-            name: activeConversation.name,
-            avatar: activeConversation.avatar,
+            name: activeConversation?.name,
+            avatar: activeConversation?.avatar,
+            id: activeConversation?.id,
           }}
-          currentUser={currentUserProfile()}
+          currentUser={currentUser}
         />
       )}
     </div>

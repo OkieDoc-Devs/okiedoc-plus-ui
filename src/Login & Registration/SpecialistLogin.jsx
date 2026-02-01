@@ -29,7 +29,7 @@ export default function SpecialistLogin() {
     try {
       const result = await authService.loginSpecialist(
         formData.email,
-        formData.password
+        formData.password,
       );
       if (result.success) {
         const path =
@@ -60,10 +60,11 @@ export default function SpecialistLogin() {
           <div style={{ width: "2.5rem" }}></div>
         </div>
         <h2 className="login-title">Specialist Sign in</h2>
+        <p className="login-subtitle">
+          Access your specialist dashboard and consultations.
+        </p>
         <form className="login-form" onSubmit={handleSubmit}>
-          {error && (
-            <p style={{ color: "red", marginBottom: "10px" }}>{error}</p>
-          )}
+          {error && <p className="auth-alert auth-alert--error">{error}</p>}
           <label className="login-label" htmlFor="email">
             Email address
           </label>

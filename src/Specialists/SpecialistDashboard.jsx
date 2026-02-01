@@ -1,21 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router";
-import {
-  FaHospitalUser,
-  FaThLarge,
-  FaUser,
-  FaCalendarAlt,
-  FaFirstAid,
-  FaMoneyBillWave,
-  FaSignOutAlt,
-  FaUpload,
-  FaTimes,
-} from "react-icons/fa";
+import { FaUpload, FaTimes } from "react-icons/fa";
 import "./SpecialistDashboard.css";
 import authService from "./authService";
 import * as specialistApi from "./services/apiService";
-import FloatingChat from "./FloatingChat";
 import SpecialistCall from "./SpecialistCall";
+import Messages from "./Messages";
 import {
   formatDateLabel,
   getDaysInMonth,
@@ -147,24 +137,19 @@ const SpecialistDashboard = () => {
   const [editingService, setEditingService] = useState({ name: "", fee: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Call state
   const [callState, setCallState] = useState({
     isOpen: false,
-    callType: "audio", // 'audio' or 'video'
+    callType: "audio",
     patient: null,
   });
 
-  // SOAP Notes and Encounter Management
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [encounter, setEncounter] = useState(createDefaultEncounter());
 
-  // Medicine prescription form
   const [medForm, setMedForm] = useState(createDefaultMedicineForm());
 
-  // Lab request form
   const [labForm, setLabForm] = useState(createDefaultLabForm());
 
-  // Medical History Requests
   const [mhRequests, setMhRequests] = useState([]);
   const [mhModal, setMhModal] = useState({
     open: false,
@@ -174,10 +159,8 @@ const SpecialistDashboard = () => {
     consent: false,
   });
 
-  // Center panel tab (Medicine | Lab)
   const [centerTab, setCenterTab] = useState("medicine");
 
-  // Dashboard stats from API
   const [dashboardStats, setDashboardStats] = useState({
     totalPatients: 0,
     pendingConsultations: 0,
@@ -185,42 +168,38 @@ const SpecialistDashboard = () => {
     upcomingAppointments: 0,
   });
 
-  // API error state
   const [apiError, setApiError] = useState(null);
 
   const loadTicketsData = useCallback(async () => {
     console.log("[SpecialistDashboard] Loading tickets from API...");
     try {
-      // Try to fetch from API first
       const response = await specialistApi.fetchTickets();
       console.log("[SpecialistDashboard] API response:", response);
       if (response.success && response.tickets) {
         console.log(
-          `[SpecialistDashboard] Loaded ${response.tickets.length} tickets from API`
+          `[SpecialistDashboard] Loaded ${response.tickets.length} tickets from API`,
         );
         setTickets(response.tickets);
         setApiError(null);
-        // Save to localStorage for offline access
         saveTickets(response.tickets);
         return;
       } else {
         console.warn(
           "[SpecialistDashboard] API response missing tickets:",
-          response
+          response,
         );
       }
     } catch (error) {
       console.error(
         "[SpecialistDashboard] Failed to fetch tickets from API:",
-        error
+        error,
       );
       setApiError("Could not connect to server. Using offline data.");
     }
 
-    // Fallback to localStorage
     const savedTickets = loadTickets();
     console.log(
-      `[SpecialistDashboard] Loaded ${savedTickets.length} tickets from localStorage`
+      `[SpecialistDashboard] Loaded ${savedTickets.length} tickets from localStorage`,
     );
     if (savedTickets.length === 0) {
       const now = new Date();
@@ -259,14 +238,12 @@ const SpecialistDashboard = () => {
     }
   }, []);
 
-  // Load dashboard data from API
   const loadDashboardData = useCallback(async () => {
     try {
       const response = await specialistApi.fetchDashboard();
       if (response.success) {
         setDashboardStats(response.stats || dashboardStats);
         if (response.specialist) {
-          // Update profile data
           setProfileData((prev) => ({
             ...prev,
             firstName: response.specialist.firstName || prev.firstName,
@@ -280,7 +257,6 @@ const SpecialistDashboard = () => {
             prcNumber: response.specialist.prcNumber || prev.prcNumber,
           }));
 
-          // Update currentUser with API data
           setCurrentUser((prev) => ({
             ...prev,
             firstName:
@@ -296,7 +272,6 @@ const SpecialistDashboard = () => {
               response.specialist.profileImage || prev?.profileImage,
           }));
 
-          // Update user initials
           const firstName =
             response.specialist.firstName || response.specialist.fName;
           const lastName =
@@ -308,7 +283,6 @@ const SpecialistDashboard = () => {
         }
       }
 
-      // Also fetch profile separately to ensure we have the latest data
       try {
         const profileResponse = await specialistApi.fetchProfile();
         if (profileResponse) {
@@ -334,7 +308,6 @@ const SpecialistDashboard = () => {
             profileImage: profileResponse.profileImage || prev?.profileImage,
           }));
 
-          // Update user initials from profile
           const profileFirstName =
             profileResponse.firstName || profileResponse.fName;
           const profileLastName =
@@ -342,7 +315,7 @@ const SpecialistDashboard = () => {
           if (profileFirstName || profileLastName) {
             const initials = generateUserInitials(
               profileFirstName,
-              profileLastName
+              profileLastName,
             );
             setUserInitials(initials);
           }
@@ -358,7 +331,6 @@ const SpecialistDashboard = () => {
   useEffect(() => {
     document.body.classList.add("specialist-dashboard-body");
 
-    // Check authentication using auth service
     const currentUser = authService.getCurrentUser();
 
     if (!currentUser || currentUser.userType !== "specialist") {
@@ -371,7 +343,7 @@ const SpecialistDashboard = () => {
 
     const initials = generateUserInitials(
       currentUser.user.firstName || currentUser.user.fName,
-      currentUser.user.lastName || currentUser.user.lName
+      currentUser.user.lastName || currentUser.user.lName,
     );
     setUserInitials(initials);
 
@@ -401,7 +373,6 @@ const SpecialistDashboard = () => {
     const savedSchedules = loadScheduleData(currentUser.user.email);
     setSchedules(savedSchedules);
 
-    // Load data from API
     loadTicketsData();
     loadDashboardData();
 
@@ -410,18 +381,16 @@ const SpecialistDashboard = () => {
     };
   }, [navigate, loadTicketsData, loadDashboardData]);
 
-  // Handle ticket selection and encounter loading
   useEffect(() => {
     if (tickets.length > 0 && !selectedTicketId) {
       setSelectedTicketId(tickets[0].id);
     }
   }, [tickets, selectedTicketId]);
 
-  // Reload tickets when dashboard tab becomes active
   useEffect(() => {
     if (activeTab === "dashboard") {
       console.log(
-        "[SpecialistDashboard] Dashboard tab active, reloading tickets..."
+        "[SpecialistDashboard] Dashboard tab active, reloading tickets...",
       );
       loadTicketsData();
     }
@@ -442,7 +411,6 @@ const SpecialistDashboard = () => {
   const handleNavigation = (target, title) => {
     setActiveTab(target);
     setPageTitle(title);
-    // Reload tickets when navigating to dashboard
     if (target === "dashboard") {
       loadTicketsData();
     }
@@ -499,7 +467,6 @@ const SpecialistDashboard = () => {
     const email = getCurrentUserEmail();
     if (!email) return;
 
-    // Validate profile data
     const validation = validateSpecialistProfile(profileData);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
@@ -508,7 +475,6 @@ const SpecialistDashboard = () => {
     }
 
     try {
-      // Try to save via API first
       const updatedProfile = await specialistApi.updateProfile({
         firstName: profileData.firstName,
         lastName: profileData.lastName,
@@ -518,7 +484,6 @@ const SpecialistDashboard = () => {
         bio: profileData.bio,
       });
 
-      // Update auth service with new data
       authService.updateCurrentUser(updatedProfile);
       setApiError(null);
     } catch (error) {
@@ -526,7 +491,6 @@ const SpecialistDashboard = () => {
       setApiError("Could not save to server. Saved locally.");
     }
 
-    // Also save locally as backup
     const user = JSON.parse(localStorage.getItem(email) || "{}");
     user.fName = profileData.firstName || user.fName;
     user.lName = profileData.lastName || user.lName;
@@ -554,7 +518,6 @@ const SpecialistDashboard = () => {
     const email = getCurrentUserEmail();
     if (!email) return;
 
-    // Validate password data
     const validation = validatePasswordChange(passwordData);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
@@ -565,7 +528,6 @@ const SpecialistDashboard = () => {
     const { currentPassword, newPassword } = passwordData;
 
     try {
-      // Try to change password via API
       await specialistApi.changePassword(currentPassword, newPassword);
       setPasswordData({
         currentPassword: "",
@@ -576,7 +538,6 @@ const SpecialistDashboard = () => {
       return;
     } catch (error) {
       console.warn("Failed to change password via API:", error);
-      // If API fails with auth error, show API error
       if (
         error.message.includes("incorrect") ||
         error.message.includes("Invalid")
@@ -586,7 +547,6 @@ const SpecialistDashboard = () => {
       }
     }
 
-    // Fallback to localStorage
     const user = JSON.parse(localStorage.getItem(email) || "{}");
     if (!user || user.password !== currentPassword) {
       alert("Current password is incorrect.");
@@ -610,7 +570,6 @@ const SpecialistDashboard = () => {
   };
 
   const updateServiceFee = async () => {
-    // Validate service fee
     const validation = validateServiceFee(editingService);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
@@ -619,16 +578,14 @@ const SpecialistDashboard = () => {
     }
 
     try {
-      // Try to update via API
       await specialistApi.updateService(
         editingService.name,
-        parseFloat(editingService.fee)
+        parseFloat(editingService.fee),
       );
     } catch (error) {
       console.warn("Failed to update service fee via API:", error);
     }
 
-    // Also save locally
     const email = getCurrentUserEmail();
     const updatedServices = {
       ...services,
@@ -640,7 +597,6 @@ const SpecialistDashboard = () => {
   };
 
   const saveAccountDetails = async () => {
-    // Validate account details
     const validation = validateAccountDetails(accountDetails);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
@@ -649,13 +605,11 @@ const SpecialistDashboard = () => {
     }
 
     try {
-      // Try to update via API
       await specialistApi.updatePaymentAccount(accountDetails);
     } catch (error) {
       console.warn("Failed to update payment account via API:", error);
     }
 
-    // Also save locally
     const email = getCurrentUserEmail();
     saveAccountData(email, accountDetails);
     alert("Account details saved.");
@@ -663,7 +617,6 @@ const SpecialistDashboard = () => {
 
   const viewTicket = async (ticketId) => {
     try {
-      // Try to fetch from API first
       const ticket = await specialistApi.fetchTicket(ticketId);
       if (ticket) {
         setSelectedTicket(ticket);
@@ -674,7 +627,6 @@ const SpecialistDashboard = () => {
       console.warn("Failed to fetch ticket from API:", error);
     }
 
-    // Fallback to local data
     const ticket = tickets.find((t) => t.id === ticketId);
     if (ticket) {
       setSelectedTicket(ticket);
@@ -686,7 +638,6 @@ const SpecialistDashboard = () => {
     if (!selectedTicket) return;
 
     try {
-      // Try to update via API
       await specialistApi.updateTicket(selectedTicket.id, {
         status: newStatus,
       });
@@ -694,24 +645,20 @@ const SpecialistDashboard = () => {
       console.warn("Failed to update ticket via API:", error);
     }
 
-    // Also update locally
     const updatedTickets = tickets.map((t) =>
-      t.id === selectedTicket.id ? { ...t, status: newStatus } : t
+      t.id === selectedTicket.id ? { ...t, status: newStatus } : t,
     );
     setTickets(updatedTickets);
     saveTickets(updatedTickets);
     setSelectedTicket({ ...selectedTicket, status: newStatus });
   };
 
-  // Encounter Management Functions
   const saveEncounter = async (updated) => {
     const next = { ...encounter, ...(updated || {}) };
     setEncounter(next);
     if (selectedTicketId) {
-      // Save locally
       saveEncounterData(selectedTicketId, next);
 
-      // Save to API
       try {
         const assessment = next.assessment || "";
         const prescription = JSON.stringify(next.medicines || []);
@@ -728,7 +675,6 @@ const SpecialistDashboard = () => {
     }
   };
 
-  // Medicine Management
   const addMedicine = () => {
     try {
       const updatedEncounter = addMedicineToEncounter(encounter, medForm);
@@ -746,7 +692,6 @@ const SpecialistDashboard = () => {
     saveEncounter({ medicines: updatedEncounter.medicines });
   };
 
-  // Lab Request Management
   const addLab = () => {
     try {
       const updatedEncounter = addLabRequestToEncounter(encounter, labForm);
@@ -764,7 +709,6 @@ const SpecialistDashboard = () => {
     saveEncounter({ labRequests: updatedEncounter.labRequests });
   };
 
-  // Medical History Management
   const openMhModal = () => {
     setMhModal({ open: true, reason: "", from: "", to: "", consent: false });
   };
@@ -784,7 +728,7 @@ const SpecialistDashboard = () => {
 
   const updateMhStatus = (id, status) => {
     const list = loadMedicalHistoryData(selectedTicketId).map((x) =>
-      updateMedicalHistoryStatus(x, status)
+      updateMedicalHistoryStatus(x, status),
     );
     saveMedicalHistoryData(selectedTicketId, list);
     setMhRequests(list);
@@ -805,7 +749,6 @@ const SpecialistDashboard = () => {
       return;
     }
 
-    // Validate schedule data
     const validation = validateScheduleData(scheduleData);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
@@ -823,7 +766,6 @@ const SpecialistDashboard = () => {
     };
 
     try {
-      // Try to save via API
       await specialistApi.updateSchedule({
         date: dateKey,
         time: scheduleData.time,
@@ -835,7 +777,6 @@ const SpecialistDashboard = () => {
       console.warn("Failed to save schedule via API:", error);
     }
 
-    // Also save locally
     const updatedSchedules = {
       ...schedules,
       [dateKey]: [...(schedules[dateKey] || []), newSchedule],
@@ -851,13 +792,11 @@ const SpecialistDashboard = () => {
 
   const deleteSchedule = async (dateKey, scheduleId) => {
     try {
-      // Try to delete via API
       await specialistApi.deleteSchedule(scheduleId);
     } catch (error) {
       console.warn("Failed to delete schedule via API:", error);
     }
 
-    // Also delete locally
     const email = getCurrentUserEmail();
     const updatedSchedules = {
       ...schedules,
@@ -887,7 +826,6 @@ const SpecialistDashboard = () => {
       const dateKey = formatDateKey(currentYear, currentMonth, day);
       const hasSchedule = schedules[dateKey] && schedules[dateKey].length > 0;
 
-      // Check for confirmed tickets on this date
       const dayTickets = tickets.filter((ticket) => {
         if (ticket.status !== "Confirmed") return false;
 
@@ -922,7 +860,7 @@ const SpecialistDashboard = () => {
             <div className="schedule-indicator">{totalItems}</div>
           )}
           {hasTickets && <div className="ticket-indicator">T</div>}
-        </div>
+        </div>,
       );
     }
 
@@ -974,7 +912,7 @@ const SpecialistDashboard = () => {
                       <div key={day} className="weekday">
                         {day}
                       </div>
-                    )
+                    ),
                   )}
                 </div>
                 <div className="calendar-days">{renderCalendar()}</div>
@@ -995,7 +933,6 @@ const SpecialistDashboard = () => {
               </button>
 
               <div className="day-schedules">
-                {/* Show confirmed tickets for this day */}
                 {(() => {
                   const dayTickets = tickets.filter((ticket) => {
                     if (ticket.status !== "Confirmed") return false;
@@ -1011,9 +948,8 @@ const SpecialistDashboard = () => {
                   });
 
                   return dayTickets.map((ticket) => {
-                    // Extract time from ticket.when
                     const timeMatch = ticket.when.match(
-                      /(\d{1,2}:\d{2}\s*[AP]M)/i
+                      /(\d{1,2}:\d{2}\s*[AP]M)/i,
                     );
                     const ticketTime = timeMatch ? timeMatch[1] : "Time TBD";
 
@@ -1035,7 +971,6 @@ const SpecialistDashboard = () => {
                   });
                 })()}
 
-                {/* Show regular schedules */}
                 {schedules[
                   formatDateKey(currentYear, currentMonth, selectedDate)
                 ]?.map((schedule) => (
@@ -1052,9 +987,9 @@ const SpecialistDashboard = () => {
                           formatDateKey(
                             currentYear,
                             currentMonth,
-                            selectedDate
+                            selectedDate,
                           ),
-                          schedule.id
+                          schedule.id,
                         )
                       }
                     >
@@ -1063,7 +998,6 @@ const SpecialistDashboard = () => {
                   </div>
                 ))}
 
-                {/* Show message if no items */}
                 {!schedules[
                   formatDateKey(currentYear, currentMonth, selectedDate)
                 ]?.length &&
@@ -1174,7 +1108,7 @@ const SpecialistDashboard = () => {
                   >
                     <span
                       className={`status-badge ${getStatusBadgeClass(
-                        t.status
+                        t.status,
                       )}`}
                     >
                       {t.status}
@@ -1206,7 +1140,6 @@ const SpecialistDashboard = () => {
                   </div>
                 );
 
-              // Format birthday for display
               const formatBirthday = (dateStr) => {
                 if (!dateStr) return "Not provided";
                 try {
@@ -1485,140 +1418,153 @@ const SpecialistDashboard = () => {
 
         <div className="panel">
           <div className="panel-body soap-section">
-            <div className="right-label">Subjective:</div>
-            <textarea
-              className="input-lg"
-              value={encounter.subjective}
-              onChange={(e) => saveEncounter({ subjective: e.target.value })}
-            ></textarea>
-            <div className="right-label">Objective:</div>
-            <textarea
-              className="input-lg"
-              value={encounter.objective}
-              onChange={(e) => saveEncounter({ objective: e.target.value })}
-            ></textarea>
-            <div className="right-label">Assessment:</div>
-            <textarea
-              className="input-lg"
-              value={encounter.assessment}
-              onChange={(e) => saveEncounter({ assessment: e.target.value })}
-            ></textarea>
-            <div className="right-label">Plan:</div>
-            <textarea
-              className="input-lg"
-              value={encounter.plan}
-              onChange={(e) => saveEncounter({ plan: e.target.value })}
-            ></textarea>
-            <div className="right-label">Referral:</div>
-            <textarea
-              className="input-lg"
-              value={encounter.referral}
-              onChange={(e) => saveEncounter({ referral: e.target.value })}
-            ></textarea>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                marginTop: "8px",
-              }}
-            >
-              <div>Follow up?</div>
-              <input
-                type="checkbox"
-                checked={!!encounter.followUp}
-                onChange={(e) => saveEncounter({ followUp: e.target.checked })}
-              />
-              <button
-                className="btn-primary"
-                style={{ marginLeft: "auto" }}
-                onClick={async () => {
-                  await saveEncounter({});
-                  alert("Encounter saved.");
-                }}
-              >
-                Save Encounter
-              </button>
-              {(() => {
-                const t = tickets.find((x) => x.id === selectedTicketId);
-                const status = t?.status || t?.Status || "";
-                const isDisabled =
-                  status === "Completed" || status === "Processing";
+            <div className="soap-header">
+              <div className="soap-title">SOAP Notes</div>
+              <div className="soap-subtitle">
+                Document the encounter summary and next steps
+              </div>
+            </div>
+            <div className="soap-grid">
+              <label className="soap-field">
+                <span className="soap-label">Subjective</span>
+                <textarea
+                  className="input-lg soap-textarea"
+                  value={encounter.subjective}
+                  onChange={(e) =>
+                    saveEncounter({ subjective: e.target.value })
+                  }
+                ></textarea>
+              </label>
+              <label className="soap-field">
+                <span className="soap-label">Objective</span>
+                <textarea
+                  className="input-lg soap-textarea"
+                  value={encounter.objective}
+                  onChange={(e) => saveEncounter({ objective: e.target.value })}
+                ></textarea>
+              </label>
+              <label className="soap-field">
+                <span className="soap-label">Assessment</span>
+                <textarea
+                  className="input-lg soap-textarea"
+                  value={encounter.assessment}
+                  onChange={(e) =>
+                    saveEncounter({ assessment: e.target.value })
+                  }
+                ></textarea>
+              </label>
+              <label className="soap-field">
+                <span className="soap-label">Plan</span>
+                <textarea
+                  className="input-lg soap-textarea"
+                  value={encounter.plan}
+                  onChange={(e) => saveEncounter({ plan: e.target.value })}
+                ></textarea>
+              </label>
+              <label className="soap-field soap-field--wide">
+                <span className="soap-label">Referral</span>
+                <textarea
+                  className="input-lg soap-textarea"
+                  value={encounter.referral}
+                  onChange={(e) => saveEncounter({ referral: e.target.value })}
+                ></textarea>
+              </label>
+            </div>
+            <div className="soap-actions">
+              <label className="soap-followup">
+                <input
+                  type="checkbox"
+                  className="soap-followup-checkbox"
+                  checked={!!encounter.followUp}
+                  onChange={(e) =>
+                    saveEncounter({ followUp: e.target.checked })
+                  }
+                />
+                <span>Follow up</span>
+              </label>
+              <div className="soap-buttons">
+                <button
+                  className="btn-primary soap-save"
+                  onClick={async () => {
+                    await saveEncounter({});
+                    alert("Encounter saved.");
+                  }}
+                >
+                  Save Encounter
+                </button>
+                {(() => {
+                  const t = tickets.find((x) => x.id === selectedTicketId);
+                  const status = t?.status || t?.Status || "";
+                  const isDisabled =
+                    status === "Completed" || status === "Processing";
 
-                return (
-                  <button
-                    className="btn-secondary"
-                    style={{
-                      marginLeft: "10px",
-                      opacity: isDisabled ? 0.5 : 1,
-                      cursor: isDisabled ? "not-allowed" : "pointer",
-                    }}
-                    disabled={isDisabled}
-                    onClick={async () => {
-                      if (!selectedTicketId) return;
+                  return (
+                    <button
+                      className={`btn-secondary soap-passback${
+                        isDisabled ? " is-disabled" : ""
+                      }`}
+                      disabled={isDisabled}
+                      onClick={async () => {
+                        if (!selectedTicketId) return;
 
-                      // Check if ticket is completed or already processing
-                      const ticket = tickets.find(
-                        (x) => x.id === selectedTicketId
-                      );
-                      const ticketStatus =
-                        ticket?.status || ticket?.Status || "";
-
-                      console.log("[Pass Back] Ticket:", ticket);
-                      console.log("[Pass Back] Status:", ticketStatus);
-
-                      if (ticketStatus === "Completed") {
-                        alert("Cannot pass back a completed ticket.");
-                        return;
-                      }
-                      if (ticketStatus === "Processing") {
-                        alert(
-                          "This ticket has already been passed back to the nurse."
+                        const ticket = tickets.find(
+                          (x) => x.id === selectedTicketId,
                         );
-                        return;
-                      }
+                        const ticketStatus =
+                          ticket?.status || ticket?.Status || "";
 
-                      const notes = prompt(
-                        "Add notes (optional) when passing back to nurse:"
-                      );
-                      if (notes === null) return; // User cancelled
+                        console.log("[Pass Back] Ticket:", ticket);
+                        console.log("[Pass Back] Status:", ticketStatus);
 
-                      try {
-                        // Save current encounter data first
-                        await saveEncounter({});
+                        if (ticketStatus === "Completed") {
+                          alert("Cannot pass back a completed ticket.");
+                          return;
+                        }
+                        if (ticketStatus === "Processing") {
+                          alert(
+                            "This ticket has already been passed back to the nurse.",
+                          );
+                          return;
+                        }
 
-                        // Pass back to nurse
-                        await specialistApi.passTicketBackToNurse(
-                          selectedTicketId,
-                          notes || ""
+                        const notes = prompt(
+                          "Add notes (optional) when passing back to nurse:",
                         );
-                        alert("Ticket passed back to nurse successfully!");
+                        if (notes === null) return;
 
-                        // Reload tickets and clear selected ticket
-                        await loadTicketsData();
-                        await loadDashboardData();
-                        setSelectedTicket(null);
-                        setSelectedTicketId(null);
-                        setShowTicketModal(false);
-                      } catch (error) {
-                        console.error("Error passing ticket back:", error);
-                        alert(
-                          error.message ||
-                            "Failed to pass ticket back to nurse. Please try again."
-                        );
-                      }
-                    }}
-                  >
-                    Pass Back to Nurse {isDisabled ? `(${status})` : ""}
-                  </button>
-                );
-              })()}
+                        try {
+                          await saveEncounter({});
+
+                          await specialistApi.passTicketBackToNurse(
+                            selectedTicketId,
+                            notes || "",
+                          );
+                          alert("Ticket passed back to nurse successfully!");
+
+                          await loadTicketsData();
+                          await loadDashboardData();
+                          setSelectedTicket(null);
+                          setSelectedTicketId(null);
+                          setShowTicketModal(false);
+                        } catch (error) {
+                          console.error("Error passing ticket back:", error);
+                          alert(
+                            error.message ||
+                              "Failed to pass ticket back to nurse. Please try again.",
+                          );
+                        }
+                      }}
+                    >
+                      Pass Back to Nurse {isDisabled ? `(${status})` : ""}
+                    </button>
+                  );
+                })()}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Medical history requests list below center section for visibility */}
       <div className="prescription-list" style={{ marginTop: "16px" }}>
         <h4 style={{ marginBottom: "8px" }}>Medical History Requests</h4>
         {mhRequests.length === 0 ? (
@@ -1816,7 +1762,7 @@ const SpecialistDashboard = () => {
                   <option key={subSpec} value={subSpec}>
                     {subSpec}
                   </option>
-                )
+                ),
               )}
             </select>
           </div>
@@ -2099,83 +2045,93 @@ const SpecialistDashboard = () => {
 
   return (
     <div className="specialist-dashboard">
-      <div className="sidebar">
-        <div className="logo-container">
-          <div className="logo">
-            <img src="/okie-doc-logo.png" alt="Okiedoc+" className="logo-img" />
+      <div className="dashboard-header">
+        <div className="header-center">
+          <img
+            src="/okie-doc-logo.png"
+            alt="Okie-Doc+"
+            className="logo-image"
+          />
+        </div>
+        <h3 className="dashboard-title">Specialist Dashboard</h3>
+        <div className="user-account">
+          {profileData.profileImage ? (
+            <img
+              src={profileData.profileImage}
+              alt="Account"
+              className="account-icon"
+            />
+          ) : (
+            <div
+              className="account-icon"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "1.2rem",
+                fontWeight: "bold",
+                color: "#0b5388",
+              }}
+            >
+              {userInitials}
+            </div>
+          )}
+          <span className="account-name">
+            Dr. {currentUser?.firstName || currentUser?.fName || "Specialist"}{" "}
+            {currentUser?.lastName || currentUser?.lName || ""}
+          </span>
+          <div className="account-dropdown">
+            <button
+              className="dropdown-item"
+              onClick={() => handleNavigation("profile", "Personal Data")}
+            >
+              My Account
+            </button>
+            <button
+              className="dropdown-item logout-item"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
           </div>
         </div>
-
-        <div className="nav-menu">
-          <div
-            className={`nav-item ${activeTab === "dashboard" ? "active" : ""}`}
+        <div className="dashboard-nav">
+          <button
+            className={`nav-tab ${activeTab === "dashboard" ? "active" : ""}`}
             onClick={() => handleNavigation("dashboard", "Dashboard")}
           >
-            <FaThLarge />
-            <span className="nav-text">Dashboard</span>
-          </div>
-          <div
-            className={`nav-item ${activeTab === "profile" ? "active" : ""}`}
-            onClick={() => handleNavigation("profile", "Personal Data")}
+            Dashboard
+          </button>
+          <button
+            className={`nav-tab ${activeTab === "messages" ? "active" : ""}`}
+            onClick={() => handleNavigation("messages", "Messages")}
           >
-            <FaUser />
-            <span className="nav-text">Personal Data</span>
-          </div>
-          <div
-            className={`nav-item ${activeTab === "schedule" ? "active" : ""}`}
+            Messages
+          </button>
+          <button
+            className={`nav-tab ${activeTab === "schedule" ? "active" : ""}`}
             onClick={() => handleNavigation("schedule", "Schedules")}
           >
-            <FaCalendarAlt />
-            <span className="nav-text">Schedules</span>
-          </div>
-          <div
-            className={`nav-item ${activeTab === "services" ? "active" : ""}`}
+            Schedules
+          </button>
+          <button
+            className={`nav-tab ${activeTab === "services" ? "active" : ""}`}
             onClick={() => handleNavigation("services", "Services & Fees")}
           >
-            <FaFirstAid />
-            <span className="nav-text">Services & Fees</span>
-          </div>
-          <div
-            className={`nav-item ${
-              activeTab === "transactions" ? "active" : ""
-            }`}
+            Services & Fees
+          </button>
+          <button
+            className={`nav-tab ${activeTab === "transactions" ? "active" : ""}`}
             onClick={() => handleNavigation("transactions", "Transactions")}
           >
-            <FaMoneyBillWave />
-            <span className="nav-text">Transactions</span>
-          </div>
-          <div className="nav-item" onClick={handleLogout}>
-            <FaSignOutAlt />
-            <span className="nav-text">Logout</span>
-          </div>
+            Transactions
+          </button>
         </div>
       </div>
 
       <div className="main-content">
-        <div className="header">
-          <h1 className="page-title">{pageTitle}</h1>
-          <div className="user-menu">
-            <div className="user-profile">
-              <div className="avatar">
-                {profileData.profileImage ? (
-                  <img src={profileData.profileImage} alt="Profile" />
-                ) : (
-                  <span>{userInitials}</span>
-                )}
-              </div>
-              <div className="user-info">
-                <div className="user-name">
-                  Dr.{" "}
-                  {currentUser?.firstName || currentUser?.fName || "Specialist"}{" "}
-                  {currentUser?.lastName || currentUser?.lName || "Name"}
-                </div>
-                <div className="user-role">Specialist</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {activeTab === "dashboard" && renderDashboard()}
+        {activeTab === "messages" && <Messages currentUser={currentUser} />}
         {activeTab === "profile" && renderProfile()}
         {activeTab === "schedule" && renderSchedules()}
         {activeTab === "services" && renderServices()}
@@ -2305,7 +2261,7 @@ const SpecialistDashboard = () => {
                 value={
                   selectedDate
                     ? `${getMonthName(
-                        currentMonth
+                        currentMonth,
                       )} ${selectedDate}, ${currentYear}`
                     : ""
                 }
@@ -2476,14 +2432,6 @@ const SpecialistDashboard = () => {
           </div>
         </div>
       )}
-
-      {/* Floating Chat Widget */}
-      <FloatingChat
-        tickets={tickets}
-        currentUser={currentUser}
-        onStartCall={handleStartCall}
-        onStartVideoCall={handleStartVideoCall}
-      />
 
       {/* Call/Video Call Component */}
       <SpecialistCall

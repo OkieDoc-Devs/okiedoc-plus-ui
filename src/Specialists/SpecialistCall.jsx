@@ -19,6 +19,7 @@ import {
 const SpecialistCall = ({
   isOpen,
   onClose,
+  onCallEnd,
   callType = "audio",
   patient = null,
   currentUser = null,
@@ -29,17 +30,29 @@ const SpecialistCall = ({
   const [callDuration, setCallDuration] = useState(0);
   const [callStatus, setCallStatus] = useState("connecting");
   const [isIncoming, setIsIncoming] = useState(false);
+  const [localStream, setLocalStream] = useState(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
   const callTimerRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const animationFrameRef = useRef(null);
+  const isMutedRef = useRef(false);
+  const connectTimeoutRef = useRef(null);
+  const ringTimeoutRef = useRef(null);
+  const callEndRef = useRef(false);
 
   useEffect(() => {
-    if (isOpen && callStatus === "connecting") {
-      setTimeout(() => {
+    if (isOpen) {
+      callEndRef.current = false;
+      setCallStatus("connecting");
+      connectTimeoutRef.current = setTimeout(() => {
         setCallStatus("ringing");
-        setTimeout(() => {
+        ringTimeoutRef.current = setTimeout(() => {
+          if (callEndRef.current) return;
           setCallStatus("active");
           startCallTimer();
           initializeMedia();
@@ -48,15 +61,66 @@ const SpecialistCall = ({
     }
 
     return () => {
+      if (connectTimeoutRef.current) {
+        clearTimeout(connectTimeoutRef.current);
+        connectTimeoutRef.current = null;
+      }
+      if (ringTimeoutRef.current) {
+        clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
       if (callTimerRef.current) {
         clearInterval(callTimerRef.current);
       }
       stopMedia();
     };
-  }, [isOpen, callStatus]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      callEndRef.current = true;
+      if (connectTimeoutRef.current) {
+        clearTimeout(connectTimeoutRef.current);
+        connectTimeoutRef.current = null;
+      }
+      if (ringTimeoutRef.current) {
+        clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
+      if (callTimerRef.current) {
+        clearInterval(callTimerRef.current);
+        callTimerRef.current = null;
+      }
+      stopMedia();
+      setCallStatus("connecting");
+      setCallDuration(0);
+      setIsMuted(false);
+      setIsVideoOff(callType === "audio");
+      setIsSpeaking(false);
+      setIsIncoming(false);
+      setIsSpeakerOn(true);
+    }
+  }, [isOpen, callType]);
+
+  useEffect(() => {
+    if (!localVideoRef.current) return;
+
+    if (localStream && callType === "video" && !isVideoOff) {
+      localVideoRef.current.srcObject = localStream;
+    } else {
+      localVideoRef.current.srcObject = null;
+    }
+  }, [localStream, isVideoOff, callType]);
 
   const initializeMedia = async () => {
     try {
+      if (callEndRef.current || !isOpen) {
+        return;
+      }
       const constraints = {
         audio: true,
         video: callType === "video" && !isVideoOff,
@@ -64,12 +128,11 @@ const SpecialistCall = ({
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       localStreamRef.current = stream;
+      setLocalStream(stream);
+      startAudioMeter(stream);
 
       if (localVideoRef.current && callType === "video" && !isVideoOff) {
         localVideoRef.current.srcObject = stream;
-      }
-
-      if (remoteVideoRef.current && callType === "video") {
       }
     } catch (error) {
       console.error("Error accessing media devices:", error);
@@ -78,13 +141,94 @@ const SpecialistCall = ({
   };
 
   const stopMedia = () => {
+    stopAudioMeter();
+
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+        track.enabled = false;
+      });
       localStreamRef.current = null;
     }
+
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
     }
+
+    setLocalStream(null);
+    setIsSpeaking(false);
+  };
+
+  const startAudioMeter = (stream) => {
+    try {
+      const audioTracks = stream.getAudioTracks();
+      if (audioTracks.length === 0) return;
+
+      const audioContext = new (
+        window.AudioContext || window.webkitAudioContext
+      )();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.8;
+      source.connect(analyser);
+
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+
+      if (audioContext.state === "suspended") {
+        audioContext
+          .resume()
+          .then(() => {
+            console.log("AudioContext resumed");
+          })
+          .catch((err) => {
+            console.error("Failed to resume AudioContext:", err);
+          });
+      }
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const tick = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteTimeDomainData(dataArray);
+
+        let sumSquares = 0;
+        for (let i = 0; i < dataArray.length; i += 1) {
+          const value = (dataArray[i] - 128) / 128;
+          sumSquares += value * value;
+        }
+
+        const rms = Math.sqrt(sumSquares / dataArray.length);
+        const speaking = rms > 0.05 && !isMutedRef.current;
+        setIsSpeaking(speaking);
+
+        animationFrameRef.current = requestAnimationFrame(tick);
+      };
+
+      tick();
+    } catch (error) {
+      console.error("Error starting audio meter:", error);
+    }
+  };
+
+  const stopAudioMeter = () => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    if (analyserRef.current) {
+      analyserRef.current.disconnect?.();
+      analyserRef.current = null;
+    }
+
+    if (audioContextRef.current) {
+      audioContextRef.current.close?.();
+      audioContextRef.current = null;
+    }
+
+    setIsSpeaking(false);
   };
 
   const startCallTimer = () => {
@@ -108,6 +252,9 @@ const SpecialistCall = ({
         track.enabled = isMuted;
       });
     }
+    if (!isMuted) {
+      setIsSpeaking(false);
+    }
   };
 
   const handleVideoToggle = () => {
@@ -129,16 +276,41 @@ const SpecialistCall = ({
   };
 
   const handleEndCall = () => {
-    setCallStatus("ended");
-    if (callTimerRef.current) {
-      clearInterval(callTimerRef.current);
+    callEndRef.current = true;
+    if (connectTimeoutRef.current) {
+      clearTimeout(connectTimeoutRef.current);
+      connectTimeoutRef.current = null;
+    }
+    if (ringTimeoutRef.current) {
+      clearTimeout(ringTimeoutRef.current);
+      ringTimeoutRef.current = null;
     }
     stopMedia();
+
+    if (callTimerRef.current) {
+      clearInterval(callTimerRef.current);
+      callTimerRef.current = null;
+    }
+
+    if (onCallEnd && callDuration > 0) {
+      const minutes = Math.floor(callDuration / 60);
+      const seconds = callDuration % 60;
+      const formattedDuration = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+      onCallEnd({
+        type: callType,
+        duration: callDuration,
+        formattedDuration: formattedDuration,
+      });
+    }
+
+    setCallStatus("ended");
+    setIsSpeaking(false);
+    setIsMuted(false);
+    setIsVideoOff(callType === "audio");
+
     setTimeout(() => {
       onClose();
-      setCallStatus("connecting");
-      setCallDuration(0);
-    }, 1000);
+    }, 500);
   };
 
   const handleAcceptCall = () => {
@@ -221,7 +393,7 @@ const SpecialistCall = ({
                 )}
               </div>
               <div className="specialist-local-video">
-                {!isVideoOff && localVideoRef.current?.srcObject ? (
+                {!isVideoOff && localStream ? (
                   <video
                     ref={localVideoRef}
                     autoPlay
@@ -238,6 +410,28 @@ const SpecialistCall = ({
                         <FaUserMd />
                       )}
                     </div>
+                  </div>
+                )}
+                {localStream && localStream.getAudioTracks().length > 0 && (
+                  <div
+                    className={`specialist-mic-indicator ${
+                      isMuted ? "muted" : isSpeaking ? "speaking" : ""
+                    }`}
+                    title={
+                      isMuted
+                        ? "Microphone muted"
+                        : isSpeaking
+                          ? "Microphone active"
+                          : "Microphone on (no sound)"
+                    }
+                  >
+                    {isMuted ? (
+                      <FaMicrophoneSlash
+                        style={{ color: "#ff6b6b", fontSize: "14px" }}
+                      />
+                    ) : (
+                      <div className="specialist-mic-dot"></div>
+                    )}
                   </div>
                 )}
                 {isVideoOff && (
@@ -259,6 +453,28 @@ const SpecialistCall = ({
                 )}
               </div>
               <div className="specialist-call-audio-pulse"></div>
+              {localStream && localStream.getAudioTracks().length > 0 && (
+                <div
+                  className={`specialist-mic-indicator audio ${
+                    isMuted ? "muted" : isSpeaking ? "speaking" : ""
+                  }`}
+                  title={
+                    isMuted
+                      ? "Microphone muted"
+                      : isSpeaking
+                        ? "Microphone active"
+                        : "Microphone on (no sound)"
+                  }
+                >
+                  {isMuted ? (
+                    <FaMicrophoneSlash
+                      style={{ color: "#ff6b6b", fontSize: "14px" }}
+                    />
+                  ) : (
+                    <div className="specialist-mic-dot"></div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -539,6 +755,55 @@ const specialistCallStyles = `
   transform: translate(-50%, -50%);
   color: rgba(255, 255, 255, 0.5);
   font-size: 24px;
+}
+
+.specialist-mic-indicator {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  transition: all 0.2s ease;
+}
+
+.specialist-mic-indicator.audio {
+  bottom: 30px;
+  left: 30px;
+}
+
+.specialist-mic-dot {
+  width: 10px;
+  height: 10px;
+  background: #4caf50;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.specialist-mic-indicator.speaking .specialist-mic-dot {
+  animation: specialist-mic-pulse 0.5s ease-in-out infinite;
+  box-shadow: 0 0 8px #4caf50, 0 0 16px #4caf50;
+}
+
+.specialist-mic-indicator.muted {
+  background: rgba(255, 107, 107, 0.2);
+}
+
+@keyframes specialist-mic-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.8;
+  }
 }
 
 /* Audio Call Area */

@@ -8,7 +8,6 @@ import {
   FaUserCheck,
   FaPlay,
   FaComments,
-  FaPaperclip,
   FaUpload,
   FaFileAlt,
   FaTimes,
@@ -246,7 +245,7 @@ const Appointments = ({ onAppointmentAdded }) => {
       setAppointmentForm((prev) => ({
         ...prev,
         [name]: value,
-        preferredSpecialist: "", // Clear specialist when specialization changes
+        preferredSpecialist: "",
       }));
     } else {
       setAppointmentForm((prev) => ({

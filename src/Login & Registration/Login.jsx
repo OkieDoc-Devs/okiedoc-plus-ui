@@ -140,7 +140,7 @@ export default function Login() {
           });
         }
 
-        navigate(result.user.dashboardRoute || "/patient/main");
+        navigate(result.user.dashboardRoute || "/patient");
         return;
       } else {
         setError(result.error || "Invalid email or password");
@@ -164,7 +164,7 @@ export default function Login() {
       formData.password === dummyCredentials.patient.password
     ) {
       localStorage.setItem("userRole", "patient");
-      navigate("/patient/main");
+      navigate("/patient");
       return;
     }
 
@@ -177,7 +177,7 @@ export default function Login() {
 
     if (user) {
       localStorage.setItem("userRole", "patient");
-      navigate("/patient/main");
+      navigate("/patient");
     } else {
       setError("Invalid email or password. Please try again.");
     }

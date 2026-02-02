@@ -6,6 +6,7 @@ import { logoutPatient } from "../services/auth";
 import { fetchPatientProfile } from "../services/apiService";
 
 const PatientLayout = ({ children }) => {
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [profileImage, setProfileImage] = useState(null);
@@ -17,7 +18,7 @@ const PatientLayout = ({ children }) => {
   // Get active page from URL
   const getActivePageFromPath = () => {
     const path = location.pathname;
-    if (path === "/patient/main") return "home";
+    if (path === "/patient") return "home";
     if (path === "/patient/appointments") return "appointments";
     if (path === "/patient/messages") return "messages";
     if (path === "/patient/medical_records") return "medical-records";
@@ -60,18 +61,20 @@ const PatientLayout = ({ children }) => {
   }, []);
 
   const handleLogout = async () => {
+    setLoading(true);
     try {
       await logoutPatient();
     } catch (error) {
       console.error("Logout error:", error);
     }
     localStorage.removeItem("currentUser");
+    setLoading(false);
     navigate("/login");
   };
 
   const navigateTo = (page) => {
     const routes = {
-      home: "/patient/main",
+      home: "/patient",
       appointments: "/patient/appointments",
       messages: "/patient/messages",
       "medical-records": "/patient/medical_records",
@@ -125,6 +128,7 @@ const PatientLayout = ({ children }) => {
               <button
                 className="patient-dropdown-item patient-logout-item"
                 onClick={handleLogout}
+                disabled={loading}
               >
                 Sign Out
               </button>

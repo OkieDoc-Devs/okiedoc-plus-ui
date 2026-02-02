@@ -13,8 +13,6 @@ import appointmentService from "../services/appointmentService";
 import { fetchPatientProfile } from "../services/apiService";
 import {
   FaCalendarAlt,
-  FaFlask,
-  FaUser,
   FaPills,
   FaFileAlt,
   FaClock,
@@ -365,80 +363,10 @@ const PatientDashboard = () => {
     };
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await logoutPatient();
-      localStorage.removeItem("currentUser");
-      navigate("/login");
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-  };
-
-  // Profile editing functions
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfileImage(e.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleProfileInputChange = (e) => {
-    const { name, value } = e.target;
-    setProfileData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handlePasswordChange = (e) => {
-    const { name, value } = e.target;
-    setPasswordData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSaveProfile = () => {
-    console.log("Saving profile:", profileData);
-    setIsEditingProfile(false);
-    // You can add API call here to save to backend
-  };
-
-  const handleSavePassword = () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert("New passwords do not match");
-      return;
-    }
-    if (passwordData.newPassword.length < 6) {
-      alert("Password must be at least 6 characters long");
-      return;
-    }
-    console.log("Changing password");
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
-    // You can add API call here to change password
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditingProfile(false);
-  };
 
   const handleViewAppointmentDetails = (appointment) => {
     setSelectedAppointment(appointment);
     setShowAppointmentDetails(true);
-  };
-
-  const closeAppointmentDetails = () => {
-    setShowAppointmentDetails(false);
-    setSelectedAppointment(null);
   };
 
   // Web view status functions

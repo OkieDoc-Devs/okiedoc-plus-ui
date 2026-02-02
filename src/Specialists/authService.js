@@ -176,7 +176,7 @@ class AuthService {
   getRedirectPath(userType) {
     const paths = {
       specialist: "/specialist-dashboard",
-      patient: "/patient-dashboard",
+      patient: "/patient/main",
       nurse: "/nurse-dashboard",
       admin: "/admin/specialist-dashboard",
     };

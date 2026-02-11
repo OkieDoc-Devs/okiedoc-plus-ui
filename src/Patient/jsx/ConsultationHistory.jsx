@@ -22,49 +22,16 @@ const ConsultationHistory = () => {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [consultations, setConsultations] = useState([]);
 
-  // Sample consultation data
-  const consultations = [
-    {
-      id: 1,
-      ticketNumber: "CONS-2024-001",
-      date: "2024-01-15",
-      time: "10:30 AM",
-      specialist: "Dr. Sarah Johnson",
-      nurse: "Nurse Emily Davis",
-      status: "Completed",
-      chiefComplaint: "Chest pain and shortness of breath",
-      duration: "45 minutes",
-      rating: 4.5,
-    },
-    {
-      id: 2,
-      ticketNumber: "CONS-2024-002",
-      date: "2024-01-10",
-      time: "2:15 PM",
-      specialist: "Dr. Michael Chen",
-      nurse: "Nurse James Wilson",
-      status: "Incomplete",
-      chiefComplaint: "Fever and body aches",
-      duration: "Cancelled",
-      rating: null,
-    },
-    {
-      id: 3,
-      ticketNumber: "CONS-2024-003",
-      date: "2024-01-05",
-      time: "9:00 AM",
-      specialist: "Dr. Lisa Rodriguez",
-      nurse: "Nurse Maria Garcia",
-      status: "Completed",
-      chiefComplaint: "Headache and dizziness",
-      duration: "30 minutes",
-      rating: 4.8,
-    },
-  ];
+  // Fetch consultation history from the backend * AS TO DO * "USEEFFECT" BROKE SOMETHING THAT MADE THE DASHBOARD NOT COMPLETELY LOAD, MUJI PLEASE
+  // useEffect(() => {
+    // setConsultations(fetchedData);
+  // }, []);
 
   // Sample EMR data for consultation summary
   const getConsultationSummary = (consultationId) => {
+    // Fetch consultation summary from backend based on consultationId * AS TO DO 
     return {
       medicalTeam: {
         assignedNurse: "Nurse Emily Davis",
@@ -73,74 +40,24 @@ const ConsultationHistory = () => {
       },
       chiefComplaint: "Chest pain and shortness of breath",
       status: "Completed",
-      medicalRecords: [
-        "Previous ECG from 2023-12-20",
-        "Blood pressure readings (last 3 months)",
-        "Family history of heart disease",
-      ],
+      medicalRecords: [],
       ros: {
-        subjective:
-          "Patient reports sharp chest pain lasting 2 hours, worsens with deep breathing",
-        objective: "BP: 140/90, HR: 95 bpm, O2 Sat: 98%, No visible distress",
-        assessment: "Possible angina, rule out myocardial infarction",
-        plan: "ECG, cardiac enzymes, chest X-ray, cardiology follow-up",
+        subjective: "",
+        objective: "",
+        assessment: "",
+        plan: "",
       },
-      medications: [
-        { name: "Aspirin 81mg", dosage: "Once daily", duration: "30 days" },
-        { name: "Metoprolol 25mg", dosage: "Twice daily", duration: "14 days" },
-      ],
-      laboratory: [
-        { test: "Complete Blood Count", status: "Completed", result: "Normal" },
-        {
-          test: "Cardiac Enzymes",
-          status: "Pending",
-          result: "Awaiting results",
-        },
-        { test: "ECG", status: "Completed", result: "Normal sinus rhythm" },
-      ],
-      treatmentPlan: [
-        "Continue current medications as prescribed",
-        "Follow up in 2 weeks",
-        "Lifestyle modifications: low-sodium diet, regular exercise",
-        "Return if symptoms worsen",
-      ],
+      medications: [],
+      laboratory: [],
+      treatmentPlan: [],
     };
   };
 
-  // Sample medical documents
   const getMedicalDocuments = (consultationId) => {
+    // Fetch medical documents from backend based on consultationId * AS TO DO 
     return {
-      provided: [
-        {
-          name: "Prescription - Aspirin",
-          type: "prescription",
-          size: "245 KB",
-        },
-        {
-          name: "Laboratory Request - CBC",
-          type: "lab_request",
-          size: "180 KB",
-        },
-        {
-          name: "Treatment Plan - Cardiology",
-          type: "treatment_plan",
-          size: "320 KB",
-        },
-      ],
-      requested: [
-        {
-          name: "Medical Certificate",
-          type: "medical_certificate",
-          price: "$25.00",
-          status: "available",
-        },
-        {
-          name: "Medical Clearance",
-          type: "medical_clearance",
-          price: "$35.00",
-          status: "available",
-        },
-      ],
+      provided: [],
+      requested: [],
     };
   };
 
@@ -150,13 +67,13 @@ const ConsultationHistory = () => {
   };
 
   const handleDownloadDocument = (document) => {
-    // Simulate document download
+    // Simulate document download * THIS ONE SHOULD BE REMOVED LATER AND REPLACED WITH ACTUAL FILE DOWNLOAD LOGIC FROM BACKEND
     console.log(`Downloading ${document.name}`);
     alert(`Downloading ${document.name}...`);
   };
 
   const handleRequestDocument = (document) => {
-    // Simulate document request with payment
+    // Simulate document request with payment * THIS ONE SHOULD BE REMOVED LATER AND REPLACED WITH ACTUAL FILE DOWNLOAD LOGIC FROM BACKEND
     console.log(`Requesting ${document.name} for ${document.price}`);
     alert(`Redirecting to payment for ${document.name} - ${document.price}`);
   };
@@ -246,86 +163,98 @@ const ConsultationHistory = () => {
 
       {/* Consultations List */}
       <div className="patient-consultations-list">
-        {consultations.map((consultation) => (
-          <div key={consultation.id} className="patient-consultation-card">
-            <div className="patient-consultation-header">
-              <div className="patient-consultation-info">
-                <h3 className="patient-consultation-ticket">
-                  {consultation.ticketNumber}
-                </h3>
-                <div className="patient-consultation-datetime">
-                  <span className="patient-consultation-date">
-                    {consultation.date}
-                  </span>
-                  <span className="patient-consultation-time">
-                    {consultation.time}
-                  </span>
-                </div>
-              </div>
-              <div className="patient-consultation-status">
-                {getStatusIcon(consultation.status)}
-                <span
-                  className={`patient-status-text ${getStatusClass(
-                    consultation.status
-                  )}`}
-                >
-                  {consultation.status}
-                </span>
-              </div>
-            </div>
-
-            <div className="patient-consultation-details">
-              <div className="patient-consultation-team">
-                <div className="patient-team-member">
-                  <FaUserMd className="patient-team-icon" />
-                  <span className="patient-team-label">Specialist:</span>
-                  <span className="patient-team-name">
-                    {consultation.specialist}
-                  </span>
-                </div>
-                <div className="patient-team-member">
-                  <FaUserNurse className="patient-team-icon" />
-                  <span className="patient-team-label">Nurse:</span>
-                  <span className="patient-team-name">
-                    {consultation.nurse}
-                  </span>
-                </div>
-              </div>
-
-              <div className="patient-consultation-complaint">
-                <strong>Chief Complaint:</strong> {consultation.chiefComplaint}
-              </div>
-
-              <div className="patient-consultation-meta">
-                <span className="patient-duration">
-                  Duration: {consultation.duration}
-                </span>
-                {consultation.rating && (
-                  <span className="patient-rating">
-                    Rating: {consultation.rating}/5
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="patient-consultation-actions">
-              <button
-                className="patient-view-btn"
-                onClick={() => handleViewSummary(consultation)}
-              >
-                <FaEye className="patient-btn-icon" />
-                View Summary
-              </button>
-              <button
-                className="patient-share-btn"
-                onClick={() => handleShareRecords(consultation)}
-              >
-                <FaShare className="patient-btn-icon" />
-                Share Records
-              </button>
-            </div>
+        {consultations.length === 0 ? (
+          <div className="patient-empty-state">
+            <FaClipboardList className="patient-empty-icon" />
+            <h3 className="patient-empty-title">No Consultations Yet</h3>
+            <p className="patient-empty-message">
+              You haven't had any consultations yet. Your consultation history
+              will appear here once you complete a session.
+            </p>
           </div>
-        ))}
+        ) : (
+          consultations.map((consultation) => (
+            <div key={consultation.id} className="patient-consultation-card">
+              <div className="patient-consultation-header">
+                <div className="patient-consultation-info">
+                  <h3 className="patient-consultation-ticket">
+                    {consultation.ticketNumber}
+                  </h3>
+                  <div className="patient-consultation-datetime">
+                    <span className="patient-consultation-date">
+                      {consultation.date}
+                    </span>
+                    <span className="patient-consultation-time">
+                      {consultation.time}
+                    </span>
+                  </div>
+                </div>
+                <div className="patient-consultation-status">
+                  {getStatusIcon(consultation.status)}
+                  <span
+                    className={`patient-status-text ${getStatusClass(
+                      consultation.status
+                    )}`}
+                  >
+                    {consultation.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="patient-consultation-details">
+                <div className="patient-consultation-team">
+                  <div className="patient-team-member">
+                    <FaUserMd className="patient-team-icon" />
+                    <span className="patient-team-label">Specialist:</span>
+                    <span className="patient-team-name">
+                      {consultation.specialist}
+                    </span>
+                  </div>
+                  <div className="patient-team-member">
+                    <FaUserNurse className="patient-team-icon" />
+                    <span className="patient-team-label">Nurse:</span>
+                    <span className="patient-team-name">
+                      {consultation.nurse}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="patient-consultation-complaint">
+                  <strong>Chief Complaint:</strong>{" "}
+                  {consultation.chiefComplaint}
+                </div>
+
+                <div className="patient-consultation-meta">
+                  <span className="patient-duration">
+                    Duration: {consultation.duration}
+                  </span>
+                  {consultation.rating && (
+                    <span className="patient-rating">
+                      Rating: {consultation.rating}/5
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="patient-consultation-actions">
+                <button
+                  className="patient-view-btn"
+                  onClick={() => handleViewSummary(consultation)}
+                >
+                  <FaEye className="patient-btn-icon" />
+                  View Summary
+                </button>
+                <button
+                  className="patient-share-btn"
+                  onClick={() => handleShareRecords(consultation)}
+                >
+                  <FaShare className="patient-btn-icon" />
+                  Share Records
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Consultation Summary Modal */}

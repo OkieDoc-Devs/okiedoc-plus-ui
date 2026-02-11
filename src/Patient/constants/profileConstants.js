@@ -1,11 +1,4 @@
-/**
- * Profile-related constants for the Patient module
- * This module contains default values and configuration for user profiles
- */
-
-/**
- * Default profile data structure
- */
+// I'm checking this file later - DO NOT DELETE
 export const DEFAULT_PROFILE_DATA = {
   firstName: '',
   lastName: '',

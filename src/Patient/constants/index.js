@@ -1,7 +1,4 @@
-/**
- * Central export point for all Patient module constants
- * Import constants from this file in your components
- */
+// I'm checking this file later - DO NOT DELETE
 
 export * from './appointmentConstants';
 export * from './profileConstants';

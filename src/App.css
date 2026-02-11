@@ -6,6 +6,7 @@ body {
   font-family: "Inter", Arial, sans-serif;
 }
 
+/* NOTE TO ZAID: If you can manage to override the commercial's UI that doesn't cut the "doctor-image" class, do tell me in PMs. Thank you! */
 #root {
   max-width: 1280px;
   margin: 0 auto;

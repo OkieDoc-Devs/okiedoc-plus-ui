@@ -9,7 +9,6 @@ import LabResults from "./LabResults";
 import Billing from "./Billing";
 import MyAccount from "./MyAccount";
 import ConsultationHistory from "./ConsultationHistory";
-import appointmentService from "../services/appointmentService";
 import { fetchPatientProfile } from "../services/apiService";
 import {
   FaCalendarAlt,
@@ -276,12 +275,7 @@ const PatientDashboard = () => {
   }, [homeAppointments]);
 
   const loadHomeAppointments = () => {
-    // Initialize dummy tickets if none exist, but don't clear existing ones
-    appointmentService.initializeDummyTickets();
-    const savedAppointments = appointmentService.getAllAppointments();
-    console.log("Home appointments loaded:", savedAppointments);
-    console.log("Total appointments count:", savedAppointments.length);
-    setHomeAppointments(savedAppointments);
+    // Fetch home appointments from backend * AS TO DO
   };
 
   // Refresh appointments when new ones are added
@@ -294,23 +288,8 @@ const PatientDashboard = () => {
   const openChat = (appointment) => {
     setActiveTicket(appointment);
     // Initialize with sample messages for this appointment
-    setChatMessages([
-      {
-        id: 1,
-        sender: "nurse",
-        message: `Hello! I'm here to assist you with your ${appointment.title} appointment.`,
-        timestamp: new Date().toLocaleTimeString(),
-        type: "text",
-      },
-      {
-        id: 2,
-        sender: "nurse",
-        message:
-          "Please feel free to ask any questions or share any concerns you may have.",
-        timestamp: new Date().toLocaleTimeString(),
-        type: "text",
-      },
-    ]);
+    //  Fetch chat history for the appointment * AS TO DO
+    setChatMessages([]);
   };
 
   const closeChat = () => {
@@ -424,6 +403,7 @@ const PatientDashboard = () => {
             <div className="patient-desktop-home">
               <div className="patient-dashboard-content">
                 {/* Left Column - Appointment Tickets */}
+                
                 <div className="patient-left-column">
                   <div className="patient-desktop-action-buttons">
                     <button
@@ -567,131 +547,19 @@ const PatientDashboard = () => {
                 {/* Right Column - Lab Results & Medications */}
                 <div className="patient-right-column">
                   {/* Lab Test Results Card */}
-                  <div className="patient-lab-results-card">
+                  <div className="patient-lab-results-card"> 
                     <div className="patient-card-header">
                       <h3 className="patient-card-title">Lab Test Results</h3>
-                      <a
-                        href="#"
-                        className="patient-view-all-link"
-                        onClick={() => setActivePage("lab-results")}
-                      >
-                        View All
-                      </a>
                     </div>
-                    <div className="patient-lab-results-list">
-                      <div className="patient-lab-result-item">
-                        <FaFileAlt className="patient-result-icon" />
-                        <span className="patient-result-name">CBC</span>
-                        <span className="patient-result-status patient-not-available">
-                          Not Available Yet
-                        </span>
-                        <span className="patient-result-date">04/20/2025</span>
-                      </div>
-                      <div className="patient-lab-result-item">
-                        <FaFileAlt className="patient-result-icon" />
-                        <span className="patient-result-name">X-RAY</span>
-                        <span className="patient-result-status patient-available">
-                          View Result
-                        </span>
-                        <span className="patient-result-date">04/20/2025</span>
-                      </div>
-                      <div className="patient-lab-result-item">
-                        <FaFileAlt className="patient-result-icon" />
-                        <span className="patient-result-name">Urinalysis</span>
-                        <span className="patient-result-status patient-not-available">
-                          Not Available Yet
-                        </span>
-                        <span className="patient-result-date">04/20/2025</span>
-                      </div>
-                      <div className="patient-lab-result-item">
-                        <FaFileAlt className="patient-result-icon" />
-                        <span className="patient-result-name">Fecalysis</span>
-                        <span className="patient-result-status patient-not-available">
-                          Not Available Yet
-                        </span>
-                        <span className="patient-result-date">04/20/2025</span>
-                      </div>
-                      <div className="patient-lab-result-item">
-                        <FaFileAlt className="patient-result-icon" />
-                        <span className="patient-result-name">ECG</span>
-                        <span className="patient-result-status patient-available">
-                          View Result
-                        </span>
-                        <span className="patient-result-date">04/20/2025</span>
-                      </div>
-                    </div>
+                    <div className="patient-lab-results-list"><p>No lab results available.</p></div>
                   </div>
 
                   {/* Medications Card */}
                   <div className="patient-medications-card">
                     <div className="patient-card-header">
                       <h3 className="patient-card-title">Medications</h3>
-                      <a href="#" className="patient-view-all-link">
-                        View All
-                      </a>
                     </div>
-                    <div className="patient-medications-list">
-                      <div className="patient-medication-item">
-                        <FaPills className="patient-medication-icon" />
-                        <span className="patient-medication-name">
-                          Febuxostat
-                        </span>
-                        <span className="patient-medication-date">
-                          04/20/2025
-                        </span>
-                        <span className="patient-medication-dosage">
-                          40 mg, Take 1 tablet once a day
-                        </span>
-                      </div>
-                      <div className="patient-medication-item">
-                        <FaPills className="patient-medication-icon" />
-                        <span className="patient-medication-name">
-                          Pioglitazone
-                        </span>
-                        <span className="patient-medication-date">
-                          04/20/2025
-                        </span>
-                        <span className="patient-medication-dosage">
-                          15 mg, Take 1 tablet once a day
-                        </span>
-                      </div>
-                      <div className="patient-medication-item">
-                        <FaPills className="patient-medication-icon" />
-                        <span className="patient-medication-name">
-                          Atorvastin
-                        </span>
-                        <span className="patient-medication-date">
-                          04/20/2025
-                        </span>
-                        <span className="patient-medication-dosage">
-                          40 mg, Take 1 tablet once a day
-                        </span>
-                      </div>
-                      <div className="patient-medication-item">
-                        <FaPills className="patient-medication-icon" />
-                        <span className="patient-medication-name">
-                          Transmetil
-                        </span>
-                        <span className="patient-medication-date">
-                          04/20/2025
-                        </span>
-                        <span className="patient-medication-dosage">
-                          500 mg, Take 1 tablet 3x a day
-                        </span>
-                      </div>
-                      <div className="patient-medication-item">
-                        <FaPills className="patient-medication-icon" />
-                        <span className="patient-medication-name">
-                          Metformin
-                        </span>
-                        <span className="patient-medication-date">
-                          04/20/2025
-                        </span>
-                        <span className="patient-medication-dosage">
-                          500 mg, Twice daily, oral
-                        </span>
-                      </div>
-                    </div>
+                    <div className="patient-medications-list"><p>No medications prescribed.</p></div>
                   </div>
                 </div>
 
@@ -872,4 +740,3 @@ const PatientDashboard = () => {
 };
 
 export default PatientDashboard;
-

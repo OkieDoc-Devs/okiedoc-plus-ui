@@ -63,6 +63,7 @@ const PatientLayout = ({ children }) => {
   const handleLogout = async () => {
     setLoading(true);
     try {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       await logoutPatient();
     } catch (error) {
       console.error("Logout error:", error);
@@ -88,6 +89,12 @@ const PatientLayout = ({ children }) => {
 
   return (
     <div className="patient-dashboard">
+      {loading && (
+        <div className="patient-loading-overlay">
+          <div className="patient-loading-spinner"></div>
+          <p>Logging out...</p>
+        </div>
+      )}
       {/* Main Content */}
       <div className="patient-main-content">
         <div className="patient-header">
@@ -138,6 +145,12 @@ const PatientLayout = ({ children }) => {
 
         {/* Button Navs */}
         <div className="patient-dashboard-nav">
+          <button
+            className={`patient-nav-tab ${activePage === "home" ? "active" : ""}`}
+            onClick={() => navigateTo("home")}
+          >
+            Home
+          </button>
           <button
             className={`patient-nav-tab ${activePage === "appointments" ? "active" : ""}`}
             onClick={() => navigateTo("appointments")}

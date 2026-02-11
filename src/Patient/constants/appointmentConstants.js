@@ -1,11 +1,4 @@
-/**
- * Appointment-related constants for the Patient module
- * This module contains all static data and configuration for appointments
- */
-
-/**
- * Available specialists with their details
- */
+// I'm checking this file later - DO NOT DELETE
 export const SPECIALISTS = [
   { id: 1, name: "Dr. Maria Santos", specialty: "Cardiology" },
   { id: 2, name: "Dr. John Smith", specialty: "Hematology" },

@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaCreditCard, FaFileInvoiceDollar, FaDownload, FaCheckCircle, FaEnvelope } from 'react-icons/fa';
 import { FaPesoSign } from 'react-icons/fa6'
 
 const Billing = () => {
-  const [tickets, setTickets] = useState([
-    { id: 1, service: 'Medical Certificate', amount: 300, status: 'For Payment' },
-    { id: 2, service: 'Medical Clearance', amount: 1000, status: 'For Payment' },
-  ]);
-
+  const [tickets, setTickets] = useState([]);
+  useEffect(() => {
+    // Fetch billing tickets from backend * AS TO DO
+  }, []);
   const [showModal, setShowModal] = useState(false);
   const [paidTicket, setPaidTicket] = useState(null);
 
@@ -42,31 +41,33 @@ const Billing = () => {
         {/* Post Consultation Requests */}
         <div className="patient-billing-card">
           <h3>Additional Requests</h3>
-          {tickets.map((ticket) => (
-            <div key={ticket.id} className="patient-bill-item">
-              <FaFileInvoiceDollar className="patient-bill-icon" />
-              <div className="patient-bill-info">
-                <span className="patient-bill-description">{ticket.service}</span>
-                <span className="patient-bill-date">Requested Today</span>
+          {tickets.length > 0 ? (
+            tickets.map((ticket) => (
+              <div key={ticket.id} className="patient-bill-item">
+                <FaFileInvoiceDollar className="patient-bill-icon" />
+                <div className="patient-bill-info">
+                  <span className="patient-bill-description">{ticket.service}</span>
+                  <span className="patient-bill-date">Requested Today</span>
+                </div>
+                <span className="patient-bill-amount">P{ticket.amount}</span>
+                <span className={`patient-bill-status ${ticket.status 
+                      === 'Completed'
+                      ? 'patient-paid'
+                      : 'patient-pending'
+                  }`}
+                >
+                  {ticket.status}
+                </span>
+                {ticket.status === 'For Payment' ? (
+                  <button className="patient-pay-now-btn" onClick={() => handlePay(ticket.id)}>
+                    <FaCreditCard className="patient-pay-icon" /> Pay Now </button>
+                ) : (
+                  <button className="patient-download-btn">
+                    <FaDownload /> Download </button>
+                )}
               </div>
-              <span className="patient-bill-amount">P{ticket.amount}</span>
-              <span className={`patient-bill-status ${ticket.status 
-                    === 'Completed'
-                    ? 'patient-paid'
-                    : 'patient-pending'
-                }`}
-              >
-                {ticket.status}
-              </span>
-              {ticket.status === 'For Payment' ? (
-                <button className="patient-pay-now-btn" onClick={() => handlePay(ticket.id)}>
-                  <FaCreditCard className="patient-pay-icon" /> Pay Now </button>
-              ) : (
-                <button className="patient-download-btn">
-                  <FaDownload /> Download </button>
-              )}
-            </div>
-          ))}
+            ))
+          ) : (<p>No additional requests found.</p>)}
         </div>
       </div>
 

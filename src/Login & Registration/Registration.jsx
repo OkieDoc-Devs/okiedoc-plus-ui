@@ -17,6 +17,7 @@ const registerPatient = async (formData) => {
       birthday: formData.birthday,
       gender: formData.gender,
       mobileNumber: formData.mobileNumber,
+      philHealthNumber: formData.philHealthNumber || null,
     }),
   });
 
@@ -36,6 +37,7 @@ export default function Registration() {
     birthday: "",
     gender: "",
     mobileNumber: "",
+    philHealthNumber: "",
   });
   const [success, setSuccess] = useState("");
   const [errors, setErrors] = useState({});
@@ -57,6 +59,40 @@ export default function Registration() {
         [id]: "",
       }));
     }
+  };
+
+  const handlePhilHealthChange = (e) => {
+    let value = e.target.value.replace(/[^0-9]/g, "");
+    
+    if (value.length > 12) {
+      value = value.slice(0, 12);
+    }
+    
+    let formatted = value;
+    if (value.length > 2) {
+      formatted = value.slice(0, 2) + "-" + value.slice(2);
+    }
+    if (value.length > 11) {
+      formatted = value.slice(0, 2) + "-" + value.slice(2, 11) + "-" + value.slice(11);
+    }
+    
+    setFormData((prev) => ({
+      ...prev,
+      philHealthNumber: formatted,
+    }));
+
+    if (errors.philHealthNumber) {
+      setErrors((prev) => ({
+        ...prev,
+        philHealthNumber: "",
+      }));
+    }
+  };
+
+  const isValidPhilHealthNumber = (number) => {
+    if (!number || number.trim() === "") return true;
+    const pattern = /^\d{2}-\d{9}-\d{1}$/;
+    return pattern.test(number);
   };
 
   const handleCheckboxChange = (e) => {
@@ -114,6 +150,9 @@ export default function Registration() {
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Please enter a valid email address";
     }
+    if (formData.philHealthNumber && !isValidPhilHealthNumber(formData.philHealthNumber)) {
+      newErrors.philHealthNumber = "Invalid PhilHealth number format. Must be XX-XXXXXXXXX-X";
+    }
     if (!formData.password) newErrors.password = "Password is required";
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = "Please confirm your password";
@@ -150,6 +189,7 @@ export default function Registration() {
           birthday: "",
           gender: "",
           mobileNumber: "",
+          philHealthNumber: "",
         });
         setTimeout(() => navigate("/login"), 2000);
       }
@@ -277,6 +317,22 @@ export default function Registration() {
             />
             {errors.mobileNumber && (
               <span className="error-message">{errors.mobileNumber}</span>
+            )}
+
+            <label className="login-label" htmlFor="philHealthNumber">
+              PhilHealth Number <span style={{ color: "#999", fontSize: "0.9em" }}>(Optional)</span>
+            </label>
+            <input
+              className={`login-input ${errors.philHealthNumber ? "error" : ""}`}
+              id="philHealthNumber"
+              type="text"
+              placeholder="XX-XXXXXXXXX-X"
+              value={formData.philHealthNumber}
+              onChange={handlePhilHealthChange}
+              maxLength="14"
+            />
+            {errors.philHealthNumber && (
+              <span className="error-message">{errors.philHealthNumber}</span>
             )}
 
             <label className="login-label" htmlFor="password">

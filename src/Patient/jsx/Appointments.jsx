@@ -8,7 +8,6 @@ import {
   FaUserCheck,
   FaPlay,
   FaComments,
-  FaPaperclip,
   FaUpload,
   FaFileAlt,
   FaTimes,
@@ -24,7 +23,6 @@ import { useNavigate } from "react-router";
 import "../css/AppointmentBooking.css";
 import "../css/PatientDashboard.css";
 import HotlineBooking from "./HotlineBooking";
-import appointmentService from "../services/appointmentService";
 
 const Appointments = ({ onAppointmentAdded }) => {
   const navigate = useNavigate();
@@ -33,7 +31,7 @@ const Appointments = ({ onAppointmentAdded }) => {
   const [chatMessages, setChatMessages] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // Always true - login check disabled
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [appointmentForm, setAppointmentForm] = useState({
     chiefComplaint: "",
     symptoms: "",
@@ -62,14 +60,10 @@ const Appointments = ({ onAppointmentAdded }) => {
   }, []);
 
   // Available specialists
-  const specialists = [
-    { id: 2, name: "Dr. John Smith", specialty: "Hematology" },
-    { id: 3, name: "Dr. Lisa Garcia", specialty: "Radiology" },
-    { id: 4, name: "Dr. Michael Brown", specialty: "Cardiology" },
-    { id: 6, name: "Dr. David Lee", specialty: "Dermatology" },
-    { id: 7, name: "Dr. Jennifer Martinez", specialty: "Pediatrics" },
-    { id: 8, name: "Dr. Robert Johnson", specialty: "Orthopedics" },
-  ];
+  const [specialists, setSpecialists] = useState([]);
+  useEffect(() => {
+    // Fetch specialists from the backend * AS TO DO
+  }, []);
 
   // Get unique specializations for dropdown
   const specializations = [
@@ -102,15 +96,11 @@ const Appointments = ({ onAppointmentAdded }) => {
 
   // Load appointments from localStorage on component mount
   useEffect(() => {
-    loadAppointments();
+    // Fetch appointments from backend * AS TO DO
   }, []);
 
   const loadAppointments = () => {
-    // Initialize dummy tickets if none exist
-    appointmentService.initializeDummyTickets();
-    const savedAppointments = appointmentService.getAllAppointments();
-    console.log("Appointments loaded:", savedAppointments);
-    setAppointments(savedAppointments);
+    // Reload appointments from backend * AS TO DO
   };
 
   const handleViewAppointmentDetails = (appointment) => {
@@ -189,20 +179,8 @@ const Appointments = ({ onAppointmentAdded }) => {
   const openChat = (appointment) => {
     setActiveTicket(appointment);
     // Initialize with sample messages for this appointment
-    setChatMessages([
-      {
-        id: 1,
-        sender: "nurse",
-        text: `Hello! I'm here to assist you with your ${appointment.title} appointment.`,
-        timestamp: new Date().toLocaleTimeString(),
-      },
-      {
-        id: 2,
-        sender: "nurse",
-        text: "Please feel free to ask any questions or share any concerns you may have.",
-        timestamp: new Date().toLocaleTimeString(),
-      },
-    ]);
+    // Fetch chat history for the appointment * AS TO DO 
+    setChatMessages([]);
   };
 
   const closeChat = () => {
@@ -246,7 +224,7 @@ const Appointments = ({ onAppointmentAdded }) => {
       setAppointmentForm((prev) => ({
         ...prev,
         [name]: value,
-        preferredSpecialist: "", // Clear specialist when specialization changes
+        preferredSpecialist: "",
       }));
     } else {
       setAppointmentForm((prev) => ({
@@ -358,8 +336,7 @@ const Appointments = ({ onAppointmentAdded }) => {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Replace with actual API call * AS TO DO
 
       // Create new appointment ticket with all form details
       const newAppointment = {
@@ -391,17 +368,7 @@ const Appointments = ({ onAppointmentAdded }) => {
         createdAt: new Date().toISOString(),
       };
 
-      // Save appointment to localStorage
-      const savedAppointment =
-        appointmentService.addAppointment(newAppointment);
-      console.log("New appointment created:", savedAppointment);
-
-      // Update local state
-      setAppointments((prev) => {
-        const updated = [...prev, savedAppointment];
-        console.log("Updated appointments state:", updated);
-        return updated;
-      });
+      // Send appointment to backend * AS TO DO
 
       // Notify parent component to refresh appointments
       if (onAppointmentAdded) {
@@ -426,8 +393,7 @@ const Appointments = ({ onAppointmentAdded }) => {
 
   // Handle payment
   const handlePayment = (appointment) => {
-    setSelectedAppointment(appointment);
-    setShowPaymentModal(true);
+    alert("TBA");
   };
 
   const closePaymentModal = () => {
@@ -447,24 +413,18 @@ const Appointments = ({ onAppointmentAdded }) => {
     setIsSubmitting(true);
 
     try {
-      // Simulate payment processing
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Simulate payment success/failure
-      const paymentSuccess = Math.random() > 0.2; // 80% success rate for demo
-
-      if (paymentSuccess) {
+      // Implement actual payment processing * AS TO DO
+      // For now, we'll assume success
         alert(
-          "Payment successful! You will receive a Payment Acknowledgement Receipt via email."
+          "Payment successful! You will receive a Payment Acknowledgement Receipt via email. (This is a placeholder)"
         );
         // Update appointment status to confirmed
         console.log(
           "Payment successful for appointment:",
           selectedAppointment.id
         );
-      } else {
-        alert("Payment failed. Please try again or contact support.");
-      }
+      // Handle payment failure * AS TO DO
+      // alert("Payment failed. Please try again or contact support.");
 
       closePaymentModal();
     } catch (error) {

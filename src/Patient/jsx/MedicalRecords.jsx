@@ -29,18 +29,11 @@ const MedicalRecords = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [editingCategory, setEditingCategory] = useState('');
 
-  // Load data from localStorage on component mount
+  // Fetch medical records from the backend * AS TO DO 
   useEffect(() => {
-    const savedData = localStorage.getItem('patient-medical-records');
-    if (savedData) {
-      setMedicalData(JSON.parse(savedData));
-    }
+    // Example:
+    // fetchMedicalRecords().then(data => setMedicalData(data));
   }, []);
-
-  // Save data to localStorage whenever medicalData changes
-  useEffect(() => {
-    localStorage.setItem('patient-medical-records', JSON.stringify(medicalData));
-  }, [medicalData]);
 
   const categories = [
     { key: 'activeDiseases', label: 'Active Diseases', icon: FaStethoscope, color: '#dc3545' },
@@ -81,6 +74,7 @@ const MedicalRecords = () => {
   };
 
   const handleEditItem = (item, category) => {
+    // Consider if editing should be optimistic or wait for backend response * AS TO DO 
     setEditingItem(item.id);
     setEditingCategory(category);
   };
@@ -88,6 +82,7 @@ const MedicalRecords = () => {
   const handleDeleteItem = (id, category) => {
     if (window.confirm('Are you sure you want to delete this record?')) {
       setMedicalData(prev => ({
+        // Call backend to delete item, then update state on success * AS TO DO 
         ...prev,
         [category]: prev[category].filter(item => item.id !== id)
       }));
@@ -95,6 +90,7 @@ const MedicalRecords = () => {
   };
 
   const handleSaveItem = (category) => {
+    // Call backend to save the item (editingItem) * AS TO DO 
     setEditingItem(null);
     setEditingCategory('');
   };

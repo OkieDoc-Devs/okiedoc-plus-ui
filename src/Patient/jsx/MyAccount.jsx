@@ -1,19 +1,91 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FaUser, FaCamera, FaLock, FaSave, FaTimes } from 'react-icons/fa';
+import { fetchPatientProfile } from '../services/apiService';
 
 const MyAccount = ({ 
-  profileImage, 
-  setProfileImage, 
-  profileData, 
-  setProfileData, 
-  passwordData, 
-  setPasswordData, 
-  isEditing, 
-  setIsEditing, 
-  activeTab, 
-  setActiveTab 
+  profileImage: propsProfileImage, 
+  setProfileImage: propsSetProfileImage, 
+  profileData: propsProfileData, 
+  setProfileData: propsSetProfileData, 
+  passwordData: propsPasswordData, 
+  setPasswordData: propsSetPasswordData, 
+  isEditing: propsIsEditing, 
+  setIsEditing: propsSetIsEditing, 
+  activeTab: propsActiveTab, 
+  setActiveTab: propsSetActiveTab 
 }) => {
+  // Use props if provided (for backward compatibility), otherwise use local state
+  const [localProfileImage, setLocalProfileImage] = useState(null);
+  const [localProfileData, setLocalProfileData] = useState({
+    fullName: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    dateOfBirth: "",
+    address: "",
+    emergencyContact: "",
+    emergencyPhone: "",
+  });
+  const [localPasswordData, setLocalPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [localIsEditing, setLocalIsEditing] = useState(false);
+  const [localActiveTab, setLocalActiveTab] = useState("profile");
+
+  // Use props values if available, otherwise use local state
+  const profileImage = propsProfileImage !== undefined ? propsProfileImage : localProfileImage;
+  const setProfileImage = propsSetProfileImage || setLocalProfileImage;
+  const profileData = propsProfileData !== undefined ? propsProfileData : localProfileData;
+  const setProfileData = propsSetProfileData || setLocalProfileData;
+  const passwordData = propsPasswordData !== undefined ? propsPasswordData : localPasswordData;
+  const setPasswordData = propsSetPasswordData || setLocalPasswordData;
+  const isEditing = propsIsEditing !== undefined ? propsIsEditing : localIsEditing;
+  const setIsEditing = propsSetIsEditing || setLocalIsEditing;
+  const activeTab = propsActiveTab !== undefined ? propsActiveTab : localActiveTab;
+  const setActiveTab = propsSetActiveTab || setLocalActiveTab;
+
   const fileInputRef = useRef(null);
+
+  // Load profile data on mount
+  useEffect(() => {
+    const loadProfileData = async () => {
+      try {
+        const currentUser = localStorage.getItem("currentUser");
+        if (currentUser) {
+          const user = JSON.parse(currentUser);
+          setProfileData(prev => ({
+            ...prev,
+            firstName: user.firstName || "",
+            lastName: user.lastName || "",
+            email: user.email || "",
+            fullName: user.fullName || "",
+          }));
+        }
+
+        const profile = await fetchPatientProfile();
+        if (profile) {
+          setProfileData(prev => ({
+            ...prev,
+            firstName: profile.firstName || prev.firstName,
+            lastName: profile.lastName || prev.lastName,
+            email: profile.email || prev.email,
+            phone: profile.phone || prev.phone,
+            dateOfBirth: profile.dateOfBirth || prev.dateOfBirth,
+            address: profile.address || prev.address,
+            emergencyContact: profile.emergencyContact || prev.emergencyContact,
+            emergencyPhone: profile.emergencyPhone || prev.emergencyPhone,
+          }));
+        }
+      } catch (error) {
+        console.error("Error loading profile:", error);
+      }
+    };
+
+    loadProfileData();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

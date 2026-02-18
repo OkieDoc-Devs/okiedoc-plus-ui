@@ -1,7 +1,4 @@
-/**
- * Chat Service Module for Patient Module
- * Re-exports the shared chat service with patient-specific defaults
- */
+// THIS IS FOR LATER REFERENCE - DO NOT DELETE
 
 // Re-export everything from the nurse chat service
 export * from "../../Nurse/services/chatService.js";

@@ -6,9 +6,9 @@ body {
   font-family: "Inter", Arial, sans-serif;
 }
 
+
 #root {
-  width: 100%;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
   text-align: initial;
 }

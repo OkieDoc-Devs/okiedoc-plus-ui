@@ -84,7 +84,6 @@ const SpecialistDashboard = () => {
           getPatientAndNurseUsers(),
         ]);
 
-        // Extract arrays from response objects if needed
         const specialistsArray = Array.isArray(specialistsData)
           ? specialistsData
           : specialistsData?.specialists || specialistsData?.data || [];
@@ -147,29 +146,13 @@ const SpecialistDashboard = () => {
         setPendingApplications(processedPending);
         setTransactions(transactionsArray || []);
         setConsultations(consultationsArray || []);
-        setUsers(usersArray || []); // Set the new users state
+        setUsers(usersArray || []); 
       } catch (error) {
         console.error("Failed to fetch dashboard data from backend:", error);
         if (!users || users.length === 0) {
           setUsers([
-            {
-              id: "p1",
-              userType: "Patient",
-              firstName: "John",
-              lastName: "Doe",
-              email: "patient@gmail.com",
-              mobileNumber: "98765485",
-              subscription: "Paid",
-            },
-            {
-              id: "n1",
-              userType: "Nurse",
-              firstName: "Leslie",
-              lastName: "Rowland",
-              email: "les@row@gmail.com",
-              mobileNumber: "97685334",
-              subscription: "Free",
-            },
+            { id: 'p1', patient_number: 'PT-884920', patient_name: 'John Doe', philhealth_number: '12-3456789-0', date_updated: '2026-02-19' },
+            { id: 'p2', patient_number: 'PT-884921', patient_name: 'Jane Smith', philhealth_number: '98-7654321-0', date_updated: '2026-02-18' }
           ]);
         }
       }
@@ -253,7 +236,7 @@ const SpecialistDashboard = () => {
   const filteredUsers = (users || []).filter((user) => {
     const lowerSearchTerm = searchTerm.toLowerCase();
     const searchString =
-      `${user.firstName || ""} ${user.lastName || ""} ${user.email || ""} ${user.mobileNumber || ""}`.toLowerCase();
+      `${user.patient_number || ""} ${user.patient_name || ""} ${user.philhealth_number || ""} ${user.date_updated || ""}`.toLowerCase();
     const matchesSearch = !searchTerm || searchString.includes(lowerSearchTerm);
     return matchesSearch;
   });
@@ -261,7 +244,6 @@ const SpecialistDashboard = () => {
   const filteredConsultations = consultations || [];
 
   const handleUpdateUser = async (updatedUser) => {
-    // Simulate API call
     try {
       console.log("Simulating update for user:", updatedUser);
       setUsers((prevUsers) =>
@@ -284,7 +266,7 @@ const SpecialistDashboard = () => {
         prevUsers.filter((user) => user.id !== deletingUser.id),
       );
       alert("User deleted successfully! (Simulated)");
-      setDeletingUser(null); // Close confirmation modal
+      setDeletingUser(null);
     } catch (error) {
       alert("Failed to delete user. (Simulated)");
     }
@@ -371,7 +353,6 @@ const SpecialistDashboard = () => {
       </div>
 
       <main className="dashboard-container">
-        {/* FIX: Hide main toolbar if on settings, chats, OR consultations tab */}
         {activeTab !== "settings" &&
           activeTab !== "chats" &&
           activeTab !== "consultations" && (
@@ -383,7 +364,6 @@ const SpecialistDashboard = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                {/* Specialization filter (only show on specialist/pending tabs) */}
                 {(activeTab === "pending" ||
                   activeTab === "list" ||
                   activeTab === "transactions") && (
@@ -401,7 +381,6 @@ const SpecialistDashboard = () => {
                   </select>
                 )}
 
-                {/* Transaction-specific filters */}
                 {activeTab === "transactions" && (
                   <>
                     <select
@@ -454,8 +433,6 @@ const SpecialistDashboard = () => {
             </div>
           )}
 
-        {/* Conditional Rendering based on activeTab */}
-
         {activeTab === "pending" && (
           <PendingTable applications={filteredPending} />
         )}
@@ -463,7 +440,6 @@ const SpecialistDashboard = () => {
           <SpecialistTable specialists={filteredSpecialists} />
         )}
 
-        {/* NEW TAB CONTENT FOR USER MANAGEMENT */}
         {activeTab === "users" && (
           <UserTable
             users={filteredUsers}
@@ -626,25 +602,19 @@ const SpecialistDashboard = () => {
 
       {/* View User Modal */}
       {viewingUser && (
-        <Modal title="User Details" onClose={() => setViewingUser(null)}>
+        <Modal title="Patient PhilHealth Details" onClose={() => setViewingUser(null)}>
           <div id="modal-body">
             <p>
-              <strong>User Type:</strong> {viewingUser.userType}
+              <strong>Patient Number:</strong> {viewingUser.patient_number}
             </p>
             <p>
-              <strong>First Name:</strong> {viewingUser.firstName}
+              <strong>Patient Name:</strong> {viewingUser.patient_name}
             </p>
             <p>
-              <strong>Last Name:</strong> {viewingUser.lastName}
+              <strong>PhilHealth Number:</strong> {viewingUser.philhealth_number || 'N/A'}
             </p>
             <p>
-              <strong>Email:</strong> {viewingUser.email}
-            </p>
-            <p>
-              <strong>Mobile:</strong> {viewingUser.mobileNumber}
-            </p>
-            <p>
-              <strong>Subscription:</strong> {viewingUser.subscription}
+              <strong>Date Updated:</strong> {viewingUser.date_updated}
             </p>
           </div>
           <div className="modal-actions">
@@ -662,11 +632,10 @@ const SpecialistDashboard = () => {
       {deletingUser && (
         <Modal title="Confirm Deletion" onClose={() => setDeletingUser(null)}>
           <div id="modal-body">
-            <p>Are you sure you want to delete this user?</p>
+            <p>Are you sure you want to delete this patient record?</p>
             <p>
               <strong>
-                {deletingUser.firstName} {deletingUser.lastName} (
-                {deletingUser.email})
+                {deletingUser.patient_name} ({deletingUser.patient_number})
               </strong>
             </p>
             <p>This action cannot be undone.</p>
@@ -682,7 +651,7 @@ const SpecialistDashboard = () => {
               className="action-btn btn-danger"
               onClick={handleDeleteUser}
             >
-              Delete User
+              Delete Record
             </button>
           </div>
         </Modal>

@@ -79,6 +79,18 @@ export default function Login() {
     setError("");
     setIsLoading(true);
 
+    // Mock Admin Frontend Testing
+    if (
+      formData.email === dummyCredentials.admin.email &&
+      formData.password === dummyCredentials.admin.password
+    ) {
+      localStorage.setItem("userRole", "admin");
+      localStorage.setItem("admin_token", "mock_admin_token_123"); 
+      setIsLoading(false);
+      navigate("/admin"); 
+      return;
+    }
+
     try {
       const result = await loginWithAPI(formData.email, formData.password);
 

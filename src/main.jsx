@@ -12,6 +12,7 @@ import MyAccount from "./Nurse/MyAccount.jsx";
 import ManageAppointments from "./Nurse/ManageAppointments.jsx";
 import Messages from "./Nurse/Messages.jsx";
 import SpecialistDashboard from "./Admin/Specialistdashboard/SpecialistDashboard.jsx";
+import TicketDetails from "./Admin/TicketDetails/TicketDetails.jsx";
 import PatientDashboard from "./Patient/jsx/PatientDashboard.jsx";
 import Appointments from "./Patient/jsx/Appointments.jsx";
 import PatientMessages from "./Patient/jsx/Messages.jsx";
@@ -36,10 +37,14 @@ createRoot(document.getElementById("root")).render(
         <Route path="/login" element={<Login />} />
         <Route path="/registration" element={<Registration />} />
 
+        {/* ADMIN ROUTES */}
+        <Route path="/admin" element={<SpecialistDashboard />} />
+        <Route path="/admin/specialist-dashboard" element={<SpecialistDashboard />} />
+        <Route path="/admin/ticket/:id" element={<TicketDetails />} />
+
         {/* SPECIALISTS ROUTES */}
         <Route path="/specialist-login" element={<SpecialistLogin />} />
         <Route path="/specialist-registration" element={<SpecialistRegistration />} />
-        <Route path="/admin/specialist-dashboard" element={<SpecialistDashboard />} />
         <Route path="/specialist-dashboard" element={<SpecialistDashboard2 />} />
 
         {/* NURSE ROUTES */}

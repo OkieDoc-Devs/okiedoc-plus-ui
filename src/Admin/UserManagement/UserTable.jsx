@@ -6,11 +6,10 @@ import './UserTable.css';
 const ReadOnlyRow = ({ user, onView, onEdit, onDelete }) => {
   return (
     <tr>
-      <td>{user.firstName}</td>
-      <td>{user.lastName}</td>
-      <td>{user.email}</td>
-      <td>{user.mobileNumber}</td>
-      <td>{user.subscription}</td>
+      <td style={{ fontWeight: 'bold' }}>{user.patient_number}</td>
+      <td>{user.patient_name}</td>
+      <td>{user.philhealth_number || 'N/A'}</td>
+      <td>{user.date_updated}</td>
       <td className="user-table-actions">
         <button className="action-btn btn-view" onClick={() => onView(user)}>View</button>
         <button className="action-btn btn-edit" onClick={() => onEdit(user)}>Edit</button>
@@ -20,55 +19,42 @@ const ReadOnlyRow = ({ user, onView, onEdit, onDelete }) => {
   );
 };
 
-/**
- * A row component that is editable.
- */
 const EditableRow = ({ user, editableUserData, onUserDataChange, onSave, onCancel }) => {
   return (
     <tr className="editable-row">
       <td>
         <input
           type="text"
-          name="firstName"
-          value={editableUserData.firstName}
+          name="patient_number"
+          value={editableUserData.patient_number || ''}
           onChange={onUserDataChange}
-          placeholder="First Name"
+          placeholder="Patient Number"
         />
       </td>
       <td>
         <input
           type="text"
-          name="lastName"
-          value={editableUserData.lastName}
+          name="patient_name"
+          value={editableUserData.patient_name || ''}
           onChange={onUserDataChange}
-          placeholder="Last Name"
-        />
-      </td>
-      <td>
-        <input
-          type="email"
-          name="email"
-          value={editableUserData.email}
-          onChange={onUserDataChange}
-          placeholder="Email Address"
+          placeholder="Patient Name"
         />
       </td>
       <td>
         <input
           type="text"
-          name="mobileNumber"
-          value={editableUserData.mobileNumber}
+          name="philhealth_number"
+          value={editableUserData.philhealth_number || ''}
           onChange={onUserDataChange}
-          placeholder="Mobile Number"
+          placeholder="PhilHealth Number"
         />
       </td>
       <td>
         <input
-          type="text"
-          name="subscription"
-          value={editableUserData.subscription}
+          type="date"
+          name="date_updated"
+          value={editableUserData.date_updated || ''}
           onChange={onUserDataChange}
-          placeholder="Subscription"
         />
       </td>
       <td className="user-table-actions">
@@ -102,23 +88,26 @@ const UserTable = ({ users = [], onUpdate, onView, onDelete }) => {
   };
 
   const handleSaveEdit = () => {
-    onUpdate(editableUserData);
+    const updatedData = {
+        ...editableUserData,
+        date_updated: new Date().toISOString().split('T')[0]
+    };
+    onUpdate(updatedData);
     setEditingRowId(null);
     setEditableUserData(null);
   };
 
   return (
     <div id="user-management" className="tab-content active">
-      <h2>User Management (Patients & Nurses)</h2>
+      <h2>Patient Records</h2>
       <div className="table-wrapper">
         <table className="dashboard-table user-table">
           <thead>
             <tr>
-              <th>First Name</th>
-              <th>Last Name</th>
-              <th>Email Address</th>
-              <th>Mobile Number</th>
-              <th>Subscription</th>
+              <th>Patient Number</th>
+              <th>Patient Name</th>
+              <th>PhilHealth Number</th>
+              <th>Date Updated</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -146,11 +135,11 @@ const UserTable = ({ users = [], onUpdate, onView, onDelete }) => {
               ))
             ) : (
               <tr>
-                <td colSpan="6" style={{ padding: 0, border: 'none' }}>
+                <td colSpan="5" style={{ padding: 0, border: 'none' }}>
                   <EmptyState 
                     type="users" 
-                    message="No Users Found" 
-                    subMessage="There are currently no registered patients or nurses matching your search criteria."
+                    message="No Patient Records Found" 
+                    subMessage="There are currently no patients with PhilHealth records matching your search criteria."
                   />
                 </td>
               </tr>

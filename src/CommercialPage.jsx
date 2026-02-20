@@ -1,5 +1,6 @@
 import "./Commercial.css";
 import { useNavigate } from "react-router";
+import { useState } from "react";
 import nurseDocImage from "./assets/NurseDoc.png";
 import phoneImage from "./assets/phoneImage.png";
 import doc1 from "./assets/doc1.jpg";
@@ -9,6 +10,81 @@ import doc4 from "./assets/doc4.jpg";
 
 function CommercialPage() {
   const navigate = useNavigate();
+  const [showCallbackModal, setShowCallbackModal] = useState(false);
+  const [callbackForm, setCallbackForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    contactNumber: "",
+    philHealthNumber: "",
+    contactMethod: "",
+  });
+  const [callbackErrors, setCallbackErrors] = useState({});
+  const [toast, setToast] = useState({ visible: false, message: "", type: "" });
+
+  const showToast = (message, type = "error") => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => setToast({ visible: false, message: "", type: "" }), 4000);
+  };
+
+  const handleCallbackChange = (e) => {
+    const { name, value } = e.target;
+    setCallbackForm((prev) => ({ ...prev, [name]: value }));
+    if (callbackErrors[name]) {
+      setCallbackErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handlePhilHealthChange = (e) => {
+    let value = e.target.value.replace(/[^0-9]/g, "");
+    if (value.length > 12) value = value.slice(0, 12);
+    let formatted = value;
+    if (value.length > 2) formatted = value.slice(0, 2) + "-" + value.slice(2);
+    if (value.length > 11)
+      formatted = value.slice(0, 2) + "-" + value.slice(2, 11) + "-" + value.slice(11);
+    setCallbackForm((prev) => ({ ...prev, philHealthNumber: formatted }));
+    if (callbackErrors.philHealthNumber) {
+      setCallbackErrors((prev) => ({ ...prev, philHealthNumber: "" }));
+    }
+  };
+
+  const handleCallbackSubmit = async (e) => {
+    e.preventDefault();
+    const errors = {};
+    if (!callbackForm.firstName.trim()) errors.firstName = "Required";
+    if (!callbackForm.lastName.trim()) errors.lastName = "Required";
+    if (!callbackForm.email.trim()) errors.email = "Required";
+    else if (!/\S+@\S+\.\S+/.test(callbackForm.email)) errors.email = "Invalid email";
+    if (!callbackForm.contactNumber.trim()) errors.contactNumber = "Required";
+    if (!callbackForm.contactMethod) errors.contactMethod = "Please select a contact method";
+    if (Object.keys(errors).length > 0) {
+      setCallbackErrors(errors);
+      return;
+    }
+    try {
+      const response = await fetch("http://localhost:1337/api/callback-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: callbackForm.firstName,
+          lastName: callbackForm.lastName,
+          email: callbackForm.email,
+          contactNumber: callbackForm.contactNumber,
+          philHealthNumber: callbackForm.philHealthNumber || null,
+          contactMethod: callbackForm.contactMethod,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Submission failed");
+      showToast("Your callback request has been submitted!", "success");
+    } catch (err) {
+      showToast(err.message || "Something went wrong. Please try again.", "error");
+    } finally {
+      setShowCallbackModal(false);
+      setCallbackForm({ firstName: "", lastName: "", email: "", contactNumber: "", philHealthNumber: "", contactMethod: "" });
+      setCallbackErrors({});
+    }
+  };
 
   const doctors = [
     {
@@ -126,12 +202,20 @@ function CommercialPage() {
                 <p className="cta-text">
                   Get connected to a doctor right away.
                 </p>
-                <button
-                  className="consult-now-btn"
-                  onClick={() => navigate("/loading")}
-                >
-                  Consult Now
-                </button>
+                <div className="cta-buttons">
+                  <button
+                    className="consult-now-btn"
+                    onClick={() => navigate("/loading")}
+                  >
+                    Consult Now
+                  </button>
+                  <button
+                    className="callback-request-btn"
+                    onClick={() => setShowCallbackModal(true)}
+                  >
+                    Callback Request
+                  </button>
+                </div>
               </div>
               <div className="phone-mockup">
                 <img
@@ -230,6 +314,113 @@ function CommercialPage() {
           </div>
         </section>
       </main>
+      {showCallbackModal && (
+        <div className="callback-overlay" onClick={() => setShowCallbackModal(false)}>
+          <div className="callback-modal" onClick={(e) => e.stopPropagation()}>
+            <form className="callback-form" onSubmit={handleCallbackSubmit} noValidate>
+              <div className="callback-row">
+                <div className="callback-field">
+                  <input
+                    type="text"
+                    name="firstName"
+                    placeholder="First Name"
+                    value={callbackForm.firstName}
+                    onChange={handleCallbackChange}
+                    className={callbackErrors.firstName ? "cb-input cb-input-error" : "cb-input"}
+                  />
+                  {callbackErrors.firstName && <span className="cb-error">{callbackErrors.firstName}</span>}
+                </div>
+                <div className="callback-field">
+                  <input
+                    type="text"
+                    name="lastName"
+                    placeholder="Last Name"
+                    value={callbackForm.lastName}
+                    onChange={handleCallbackChange}
+                    className={callbackErrors.lastName ? "cb-input cb-input-error" : "cb-input"}
+                  />
+                  {callbackErrors.lastName && <span className="cb-error">{callbackErrors.lastName}</span>}
+                </div>
+              </div>
+              <div className="callback-field">
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email Address"
+                  value={callbackForm.email}
+                  onChange={handleCallbackChange}
+                  className={callbackErrors.email ? "cb-input cb-input-error" : "cb-input"}
+                />
+                {callbackErrors.email && <span className="cb-error">{callbackErrors.email}</span>}
+              </div>
+              <div className="callback-field">
+                <input
+                  type="tel"
+                  name="contactNumber"
+                  placeholder="Contact Number"
+                  value={callbackForm.contactNumber}
+                  onChange={handleCallbackChange}
+                  className={callbackErrors.contactNumber ? "cb-input cb-input-error" : "cb-input"}
+                />
+                {callbackErrors.contactNumber && <span className="cb-error">{callbackErrors.contactNumber}</span>}
+              </div>
+              <div className="callback-field">
+                <input
+                  type="text"
+                  name="philHealthNumber"
+                  placeholder="Philhealth ID Number (Optional)"
+                  value={callbackForm.philHealthNumber}
+                  onChange={handlePhilHealthChange}
+                  maxLength={14}
+                  className="cb-input"
+                />
+              </div>
+              <div className="callback-field">
+                <div className="cb-radio-group">
+                  <label className="cb-radio-label">
+                    <input
+                      type="radio"
+                      name="contactMethod"
+                      value="mobile"
+                      checked={callbackForm.contactMethod === "mobile"}
+                      onChange={handleCallbackChange}
+                    />
+                    Call via Mobile
+                  </label>
+                  <label className="cb-radio-label">
+                    <input
+                      type="radio"
+                      name="contactMethod"
+                      value="viber"
+                      checked={callbackForm.contactMethod === "viber"}
+                      onChange={handleCallbackChange}
+                    />
+                    Call via Viber
+                  </label>
+                  <label className="cb-radio-label">
+                    <input
+                      type="radio"
+                      name="contactMethod"
+                      value="viber-video"
+                      checked={callbackForm.contactMethod === "viber-video"}
+                      onChange={handleCallbackChange}
+                    />
+                    Video Call via Viber
+                  </label>
+                </div>
+                {callbackErrors.contactMethod && <span className="cb-error">{callbackErrors.contactMethod}</span>}
+              </div>
+              <button type="submit" className="cb-submit-btn">Submit</button>
+            </form>
+          </div>
+        </div>
+      )}
+      {toast.visible && (
+        <div className={`cb-toast cb-toast--${toast.type}`}>
+          <span>{toast.message}</span>
+          <button className="cb-toast__close" onClick={() => setToast({ visible: false, message: "", type: "" })}>✕</button>
+        </div>
+      )}
     </div>
   );
 }

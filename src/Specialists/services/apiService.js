@@ -52,7 +52,7 @@ async function apiRequest(endpoint, options = {}) {
  * @returns {Promise<object>} Login response with user data
  */
 export async function loginSpecialist(email, password) {
-  return apiRequest("/api/auth/login", {
+  return apiRequest("/api/v1/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
@@ -63,7 +63,7 @@ export async function loginSpecialist(email, password) {
  * @returns {Promise<object>} Logout response
  */
 export async function logoutSpecialist() {
-  return apiRequest("/api/auth/logout", {
+  return apiRequest("/api/v1/auth/logout", {
     method: "POST",
   });
 }
@@ -73,7 +73,7 @@ export async function logoutSpecialist() {
  * @returns {Promise<object>} Current user data
  */
 export async function getCurrentUser() {
-  return apiRequest("/api/auth/me");
+  return apiRequest("/api/v1/auth/me");
 }
 
 // ==========================================
@@ -85,7 +85,7 @@ export async function getCurrentUser() {
  * @returns {Promise<object>} Dashboard data object
  */
 export async function fetchDashboard() {
-  const data = await apiRequest("/api/specialist/dashboard");
+  const data = await apiRequest("/api/v1/specialist/dashboard");
   return data;
 }
 
@@ -98,7 +98,7 @@ export async function fetchDashboard() {
  * @returns {Promise<object>} Profile data
  */
 export async function fetchProfile() {
-  const data = await apiRequest("/api/specialist/profile");
+  const data = await apiRequest("/api/v1/specialist/profile");
   return data.specialist;
 }
 
@@ -108,7 +108,7 @@ export async function fetchProfile() {
  * @returns {Promise<object>} Updated profile
  */
 export async function updateProfile(profileData) {
-  const data = await apiRequest("/api/specialist/profile", {
+  const data = await apiRequest("/api/v1/specialist/profile", {
     method: "PUT",
     body: JSON.stringify(profileData),
   });
@@ -124,7 +124,7 @@ export async function uploadAvatar(file) {
   const formData = new FormData();
   formData.append("avatar", file);
 
-  const response = await fetch(`${API_BASE_URL}/api/specialist/avatar`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/specialist/avatar`, {
     method: "POST",
     credentials: "include",
     body: formData,
@@ -142,7 +142,7 @@ export async function uploadAvatar(file) {
  * @returns {Promise<object>} Delete response
  */
 export async function deleteAvatar() {
-  return apiRequest("/api/specialist/avatar", {
+  return apiRequest("/api/v1/specialist/avatar", {
     method: "DELETE",
   });
 }
@@ -154,7 +154,7 @@ export async function deleteAvatar() {
  * @returns {Promise<object>} Response
  */
 export async function changePassword(currentPassword, newPassword) {
-  return apiRequest("/api/specialist/change-password", {
+  return apiRequest("/api/v1/specialist/change-password", {
     method: "PUT",
     body: JSON.stringify({ currentPassword, newPassword }),
   });
@@ -176,9 +176,8 @@ export async function fetchTickets(options = {}) {
   if (options.skip) params.append("skip", options.skip);
 
   const queryString = params.toString();
-  const endpoint = `/api/specialist/tickets${
-    queryString ? `?${queryString}` : ""
-  }`;
+  const endpoint = `/api/v1/specialist/tickets${queryString ? `?${queryString}` : ""
+    }`;
 
   return apiRequest(endpoint);
 }
@@ -189,7 +188,7 @@ export async function fetchTickets(options = {}) {
  * @returns {Promise<object>} Ticket data
  */
 export async function fetchTicket(ticketId) {
-  const data = await apiRequest(`/api/specialist/tickets/${ticketId}`);
+  const data = await apiRequest(`/api/v1/specialist/tickets/${ticketId}`);
   return data.ticket;
 }
 
@@ -200,7 +199,7 @@ export async function fetchTicket(ticketId) {
  * @returns {Promise<object>} Updated ticket
  */
 export async function updateTicket(ticketId, updateData) {
-  const data = await apiRequest(`/api/specialist/tickets/${ticketId}`, {
+  const data = await apiRequest(`/api/v1/specialist/tickets/${ticketId}`, {
     method: "PUT",
     body: JSON.stringify(updateData),
   });
@@ -215,7 +214,7 @@ export async function updateTicket(ticketId, updateData) {
  */
 export async function updateTicketConsultation(ticketId, consultationData) {
   const data = await apiRequest(
-    `/api/specialist/tickets/${ticketId}/consultation`,
+    `/api/v1/specialist/tickets/${ticketId}/consultation`,
     {
       method: "PUT",
       body: JSON.stringify(consultationData),
@@ -232,7 +231,7 @@ export async function updateTicketConsultation(ticketId, consultationData) {
  */
 export async function passTicketBackToNurse(ticketId, notes = "") {
   const data = await apiRequest(
-    `/api/specialist/tickets/${ticketId}/pass-back`,
+    `/api/v1/specialist/tickets/${ticketId}/pass-back`,
     {
       method: "POST",
       body: JSON.stringify({ notes }),
@@ -249,7 +248,7 @@ export async function passTicketBackToNurse(ticketId, notes = "") {
  */
 export async function completeConsultation(ticketId, completionData) {
   const data = await apiRequest(
-    `/api/specialist/tickets/${ticketId}/complete`,
+    `/api/v1/specialist/tickets/${ticketId}/complete`,
     {
       method: "POST",
       body: JSON.stringify(completionData),
@@ -274,9 +273,8 @@ export async function fetchSchedule(month, year) {
   if (year !== undefined) params.append("year", year);
 
   const queryString = params.toString();
-  const endpoint = `/api/specialist/schedule${
-    queryString ? `?${queryString}` : ""
-  }`;
+  const endpoint = `/api/v1/specialist/schedule${queryString ? `?${queryString}` : ""
+    }`;
 
   const data = await apiRequest(endpoint);
   return data.schedules;
@@ -288,7 +286,7 @@ export async function fetchSchedule(month, year) {
  * @returns {Promise<object>} Schedule entry
  */
 export async function updateSchedule(scheduleData) {
-  const data = await apiRequest("/api/specialist/schedule", {
+  const data = await apiRequest("/api/v1/specialist/schedule", {
     method: "POST",
     body: JSON.stringify(scheduleData),
   });
@@ -301,7 +299,7 @@ export async function updateSchedule(scheduleData) {
  * @returns {Promise<object>} Delete response
  */
 export async function deleteSchedule(scheduleId) {
-  return apiRequest(`/api/specialist/schedule/${scheduleId}`, {
+  return apiRequest(`/api/v1/specialist/schedule/${scheduleId}`, {
     method: "DELETE",
   });
 }
@@ -315,7 +313,7 @@ export async function deleteSchedule(scheduleId) {
  * @returns {Promise<Array>} Notifications array
  */
 export async function fetchNotifications() {
-  const data = await apiRequest("/api/specialist/notifications");
+  const data = await apiRequest("/api/v1/specialist/notifications");
   return data.notifications;
 }
 
@@ -325,7 +323,7 @@ export async function fetchNotifications() {
  * @returns {Promise<object>} Response
  */
 export async function markNotificationRead(notificationId) {
-  return apiRequest(`/api/specialist/notifications/${notificationId}/read`, {
+  return apiRequest(`/api/v1/specialist/notifications/${notificationId}/read`, {
     method: "PUT",
   });
 }
@@ -339,7 +337,7 @@ export async function markNotificationRead(notificationId) {
  * @returns {Promise<Array>} Services array
  */
 export async function fetchServices() {
-  const data = await apiRequest("/api/specialist/services");
+  const data = await apiRequest("/api/v1/specialist/services");
   return data.services;
 }
 
@@ -350,7 +348,7 @@ export async function fetchServices() {
  * @returns {Promise<object>} Updated service
  */
 export async function updateService(serviceName, fee) {
-  const data = await apiRequest("/api/specialist/services", {
+  const data = await apiRequest("/api/v1/specialist/services", {
     method: "PUT",
     body: JSON.stringify({ serviceName, fee }),
   });
@@ -373,9 +371,8 @@ export async function fetchTransactions(options = {}) {
   if (options.status) params.append("status", options.status);
 
   const queryString = params.toString();
-  const endpoint = `/api/specialist/transactions${
-    queryString ? `?${queryString}` : ""
-  }`;
+  const endpoint = `/api/v1/specialist/transactions${queryString ? `?${queryString}` : ""
+    }`;
 
   return apiRequest(endpoint);
 }
@@ -390,7 +387,7 @@ export async function fetchTransactions(options = {}) {
  * @returns {Promise<object>} Updated account details
  */
 export async function updatePaymentAccount(accountData) {
-  return apiRequest("/api/specialist/payment-account", {
+  return apiRequest("/api/v1/specialist/payment-account", {
     method: "PUT",
     body: JSON.stringify(accountData),
   });
@@ -405,7 +402,7 @@ export async function updatePaymentAccount(accountData) {
  * @returns {Promise<object>} Test response
  */
 export async function testConnection() {
-  return apiRequest("/api/specialist/test");
+  return apiRequest("/api/v1/specialist/test");
 }
 
 // Export API base URL for other uses

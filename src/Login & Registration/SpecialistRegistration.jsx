@@ -2,7 +2,7 @@ import "./auth.css";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import authService from "../Specialists/authService";
+
 
 export default function SpecialistRegistration() {
   const navigate = useNavigate();
@@ -12,10 +12,9 @@ export default function SpecialistRegistration() {
     email: "",
     password: "",
     confirmPassword: "",
-    specialty: "",
+    primarySpecialty: "",
     licenseNumber: "",
-    experience: "",
-    phone: "",
+    mobileNumber: "",
   });
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState("");
@@ -33,51 +32,82 @@ export default function SpecialistRegistration() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
     setSuccess("");
 
-    const { isValid, errors: validationErrors } =
-      authService.validateSpecialistData({
-        ...formData,
-        experience: formData.experience ? Number(formData.experience) : "",
-      });
+    const newErrors = {};
+    if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
+    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+    if (!formData.primarySpecialty.trim()) newErrors.primarySpecialty = "Medical specialty is required";
+    if (!formData.licenseNumber.trim()) newErrors.licenseNumber = "License number is required";
+    if (!formData.mobileNumber.trim()) newErrors.mobileNumber = "Mobile number is required";
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters long";
+    }
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
 
-    if (!isValid) {
-      setErrors(validationErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      window.scrollTo(0, 0);
       return;
     }
 
-    const result = authService.registerSpecialist({
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      password: formData.password,
-      specialty: formData.specialty,
-      licenseNumber: formData.licenseNumber,
-      experience: Number(formData.experience),
-      phone: formData.phone,
-    });
-
-    if (result.success) {
-      setSuccess("Registration successful! Redirecting to specialist login...");
-      setFormData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-        specialty: "",
-        licenseNumber: "",
-        experience: "",
-        phone: "",
+    try {
+      const response = await fetch("http://localhost:1337/api/v1/specialist/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName: `${formData.firstName} ${formData.lastName}`.trim(),
+          email: formData.email,
+          mobileNumber: formData.mobileNumber,
+          password: formData.password,
+          licenseNumber: formData.licenseNumber,
+          primarySpecialty: formData.primarySpecialty,
+        }),
       });
-      setTimeout(() => navigate("/specialist-login"), 1500);
-      return;
-    }
 
-    setErrors({ email: result.error || "Registration failed." });
+      const result = await response.json();
+
+      if (response.ok) {
+        setSuccess("Registration successful! Redirecting to specialist login...");
+        window.scrollTo(0, 0);
+        setFormData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          primarySpecialty: "",
+          licenseNumber: "",
+          mobileNumber: "",
+        });
+        setTimeout(() => navigate("/specialist-login"), 2000);
+      } else {
+        setErrors({ email: result.message || "Registration failed." });
+        // Handle specific error structure from backend if needed
+        if (result.emailAlreadyInUse) {
+          setErrors({ email: result.emailAlreadyInUse.message || "Email already in use/Application submitted." });
+        }
+        window.scrollTo(0, 0);
+      }
+    } catch (error) {
+      console.error("Registration failed:", error);
+      setErrors({ email: "Network error. Please try again later." });
+      window.scrollTo(0, 0);
+    }
   };
 
   return (
@@ -147,19 +177,19 @@ export default function SpecialistRegistration() {
             <span className="error-message">{errors.email}</span>
           )}
 
-          <label className="login-label" htmlFor="specialty">
+          <label className="login-label" htmlFor="primarySpecialty">
             Medical Specialty
           </label>
           <input
-            className={`login-input ${errors.specialty ? "error" : ""}`}
-            id="specialty"
+            className={`login-input ${errors.primarySpecialty ? "error" : ""}`}
+            id="primarySpecialty"
             type="text"
             placeholder="e.g. Cardiology, Pediatrics"
-            value={formData.specialty}
+            value={formData.primarySpecialty}
             onChange={handleInputChange}
           />
-          {errors.specialty && (
-            <span className="error-message">{errors.specialty}</span>
+          {errors.primarySpecialty && (
+            <span className="error-message">{errors.primarySpecialty}</span>
           )}
 
           <label className="login-label" htmlFor="licenseNumber">
@@ -177,33 +207,22 @@ export default function SpecialistRegistration() {
             <span className="error-message">{errors.licenseNumber}</span>
           )}
 
-          <label className="login-label" htmlFor="experience">
-            Years of Experience
-          </label>
-          <input
-            className={`login-input ${errors.experience ? "error" : ""}`}
-            id="experience"
-            type="number"
-            min="0"
-            placeholder="e.g. 5"
-            value={formData.experience}
-            onChange={handleInputChange}
-          />
-          {errors.experience && (
-            <span className="error-message">{errors.experience}</span>
-          )}
 
-          <label className="login-label" htmlFor="phone">
-            Mobile Number (optional)
+
+          <label className="login-label" htmlFor="mobileNumber">
+            Mobile Number
           </label>
           <input
-            className="login-input"
-            id="phone"
+            className={`login-input ${errors.mobileNumber ? "error" : ""}`}
+            id="mobileNumber"
             type="tel"
             placeholder="+63 912 345 6789"
-            value={formData.phone}
+            value={formData.mobileNumber}
             onChange={handleInputChange}
           />
+          {errors.mobileNumber && (
+            <span className="error-message">{errors.mobileNumber}</span>
+          )}
 
           <label className="login-label" htmlFor="password">
             Password

@@ -4,17 +4,16 @@ import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const registerPatient = async (formData) => {
-  const response = await fetch("http://localhost:1337/api/auth/register", {
+  const response = await fetch("http://localhost:1337/api/v1/auth/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      firstName: formData.firstName,
-      lastName: formData.lastName,
+      fullName: `${formData.firstName} ${formData.lastName}`.trim(),
       email: formData.email,
       password: formData.password,
-      birthday: formData.birthday,
+      dateOfBirth: formData.birthday,
       gender: formData.gender,
       mobileNumber: formData.mobileNumber,
     }),
@@ -127,20 +126,15 @@ export default function Registration() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      window.scrollTo(0, 0);
       return;
     }
 
     try {
       const result = await registerPatient(formData);
       if (result.success) {
-        setSuccess("Registration successful! Redirecting to login...");
-        const userData = {
-          id: result.user.id,
-          email: result.user.email,
-          userType: result.user.userType,
-          globalId: result.user.globalId,
-        };
-        localStorage.setItem("currentUser", JSON.stringify(userData));
+        setSuccess(result.message || "Registration successful! Redirecting to login...");
+        window.scrollTo(0, 0);
         setFormData({
           firstName: "",
           lastName: "",
@@ -156,6 +150,7 @@ export default function Registration() {
     } catch (error) {
       console.error("Registration failed:", error);
       setErrors({ email: error.message || "Registration failed." });
+      window.scrollTo(0, 0);
     }
   };
 

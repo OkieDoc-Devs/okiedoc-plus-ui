@@ -8,7 +8,7 @@ import {
   FaFacebookF,
 } from "react-icons/fa";
 import "./SpecialistAuth.css";
-
+import authService from "./authService.js";
 const SpecialistLogin = () => {
   const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
@@ -21,25 +21,14 @@ const SpecialistLogin = () => {
   });
 
   useEffect(() => {
-    if (!localStorage.getItem("specialist@okiedocplus.com")) {
-      localStorage.setItem(
-        "specialist@okiedocplus.com",
-        JSON.stringify({
-          fName: "John",
-          lName: "Smith",
-          password: "specialistOkDoc123",
-        })
-      );
-      console.log("Dummy credential added:", {
-        email: "specialist@okiedocplus.com",
-        password: "specialistOkDoc123",
-      });
-    }
-
-    const current = localStorage.getItem("currentSpecialistEmail");
-    if (current) {
-      navigate("/specialist-dashboard");
-    }
+    // Check if user is already logged in
+    const checkSession = async () => {
+      await authService.initialize();
+      if (authService.isLoggedIn() && authService.isSpecialist()) {
+        navigate(authService.getRedirectPath("specialist"));
+      }
+    };
+    checkSession();
   }, [navigate]);
 
   const handleInputChange = (e) => {
@@ -49,7 +38,7 @@ const SpecialistLogin = () => {
     });
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     const { email, password } = formData;
 
@@ -58,39 +47,26 @@ const SpecialistLogin = () => {
       return;
     }
 
-    if (
-      email.trim() === "specialist@okiedocplus.com" &&
-      password === "specialistOkDoc123"
-    ) {
-      localStorage.setItem("currentSpecialistEmail", "specialist@okiedocplus.com");
-      alert("Welcome, Dr. John Smith 👋");
-      navigate("/specialist-dashboard");
-      return;
-    }
+    try {
+      const result = await authService.loginSpecialist(email.trim(), password);
 
-    let user = localStorage.getItem(email.trim());
-    if (!user) {
-      alert("No account found with this email.");
-      return;
+      if (result.success) {
+        alert("Welcome, Dr. " + (result.user.fullName?.split(' ')[1] || result.user.fullName || "") + " 👋");
+        navigate(result.redirect || "/specialist-dashboard");
+      } else {
+        alert(result.error || "Invalid credentials.");
+      }
+    } catch (error) {
+      alert("An error occurred during login. Please try again.");
+      console.error(error);
     }
-
-    user = JSON.parse(user);
-    if (user.password !== password) {
-      alert("Invalid password.");
-      return;
-    }
-
-    localStorage.setItem("currentSpecialistEmail", email.trim());
-    alert(
-      "Welcome, Dr. " + (user.fName || "") + " " + (user.lName || "") + " 👋"
-    );
-    navigate("/specialist-dashboard");
   };
 
-  const handleSignUp = (e) => {
+  const handleSignUp = async (e) => {
     e.preventDefault();
     const { firstName, lastName, email, password, confirmPassword } = formData;
 
+    // Basic frontend validation before making the API call
     if (
       !firstName.trim() ||
       !lastName.trim() ||
@@ -102,13 +78,13 @@ const SpecialistLogin = () => {
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    if (!authService.validateEmail(email.trim())) {
       alert("Please enter a valid email.");
       return;
     }
 
-    if (password.length < 3) {
-      alert("Password must be at least 3 characters.");
+    if (!authService.validatePassword(password)) {
+      alert("Password must be at least 6 characters.");
       return;
     }
 
@@ -117,21 +93,16 @@ const SpecialistLogin = () => {
       return;
     }
 
-    if (localStorage.getItem(email.trim().toLowerCase())) {
-      alert("An account with this email already exists.");
-      return;
+    try {
+      // In a real scenario, you'd call an authService.registerSpecialist() here.
+      // For MSW QA, we'll alert the user that registration is mock-only.
+      alert("Registration successful! Redirecting to login so you can use your mock QA credentials.");
+      setIsSignUp(false);
+      setFormData({ ...formData, password: "", confirmPassword: "" });
+    } catch (error) {
+      alert("An error occurred during registration.");
+      console.error(error);
     }
-
-    const user = {
-      fName: firstName.trim(),
-      lName: lastName.trim(),
-      password: password,
-    };
-    localStorage.setItem(email.trim().toLowerCase(), JSON.stringify(user));
-
-    localStorage.setItem("currentSpecialistEmail", email.trim().toLowerCase());
-    alert("Account created successfully! Redirecting to your dashboard...");
-    navigate("/specialist-dashboard");
   };
 
   return (

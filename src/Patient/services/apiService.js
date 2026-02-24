@@ -15,7 +15,7 @@ const API_BASE_URL =
  */
 export async function fetchPatientProfile() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/patient/profile`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/patient/profile`, {
       credentials: "include",
       headers: {
         "Content-Type": "application/json",

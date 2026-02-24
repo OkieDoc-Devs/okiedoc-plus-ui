@@ -346,11 +346,10 @@ export default function ManageAppointment() {
 
       try {
         const response = await fetch(
-          `${
-            import.meta.env.MODE === "production"
-              ? "https://your-production-url.com"
-              : "http://localhost:1337"
-          }/api/nurse/profile`,
+          `${import.meta.env.MODE === "production"
+            ? "https://your-production-url.com"
+            : "http://localhost:1337"
+          }/api/v1/nurse/profile`,
           {
             credentials: "include",
             headers: {
@@ -403,7 +402,7 @@ export default function ManageAppointment() {
     loadDoctors();
   }, []);
 
-  useEffect(() => {}, [online]);
+  useEffect(() => { }, [online]);
 
   const handleLogout = async () => {
     try {
@@ -757,8 +756,7 @@ export default function ManageAppointment() {
       setEmailError("");
       addNotification(
         "New Ticket",
-        `Ticket ${(createdTicket || newTicket).id} created via ${
-          newTicket.source
+        `Ticket ${(createdTicket || newTicket).id} created via ${newTicket.source
         }`
       );
 
@@ -1096,8 +1094,8 @@ export default function ManageAppointment() {
                         {ticket.claimedBy === nurseId
                           ? "Already Claimed"
                           : ticket.claimedBy
-                          ? "Re-Claim Ticket"
-                          : "Claim Ticket"}
+                            ? "Re-Claim Ticket"
+                            : "Claim Ticket"}
                       </button>
                     </div>
                   </div>
@@ -1181,7 +1179,7 @@ export default function ManageAppointment() {
                     <label>Medical Records:</label>
                     <div className="view-pills-container">
                       {selectedTicket.medicalRecordsPills &&
-                      selectedTicket.medicalRecordsPills.length > 0 ? (
+                        selectedTicket.medicalRecordsPills.length > 0 ? (
                         <div className="view-pills">
                           {selectedTicket.medicalRecordsPills.map(
                             (text, index) => (
@@ -1200,7 +1198,7 @@ export default function ManageAppointment() {
                     <label>Family History:</label>
                     <div className="view-pills-container">
                       {selectedTicket.familyHistoryPills &&
-                      selectedTicket.familyHistoryPills.length > 0 ? (
+                        selectedTicket.familyHistoryPills.length > 0 ? (
                         <div className="view-pills">
                           {selectedTicket.familyHistoryPills.map(
                             (text, index) => (
@@ -1219,7 +1217,7 @@ export default function ManageAppointment() {
                     <label>Allergies:</label>
                     <div className="view-pills-container">
                       {selectedTicket.allergiesPills &&
-                      selectedTicket.allergiesPills.length > 0 ? (
+                        selectedTicket.allergiesPills.length > 0 ? (
                         <div className="view-pills">
                           {selectedTicket.allergiesPills.map((text, index) => (
                             <div key={index} className="view-pill">
@@ -1454,7 +1452,7 @@ export default function ManageAppointment() {
                 <h3>Review of Systems</h3>
                 <div className="info-grid">
                   {selectedTicket.ros &&
-                  Object.values(selectedTicket.ros).flat().length > 0 ? (
+                    Object.values(selectedTicket.ros).flat().length > 0 ? (
                     Object.values(selectedTicket.ros)
                       .flat()
                       .map((item, idx) => (
@@ -1491,7 +1489,7 @@ export default function ManageAppointment() {
                   />
                   <div style={{ textAlign: "center" }}>
                     {selectedTicket.painMap &&
-                    selectedTicket.painMap.length > 0 ? (
+                      selectedTicket.painMap.length > 0 ? (
                       selectedTicket.painMap.map((area, idx) => (
                         <div key={idx} className="info-item">
                           <span>{area}</span>
@@ -2208,7 +2206,7 @@ export default function ManageAppointment() {
                           value={newTicketData.preferredTime}
                           min={
                             newTicketData.preferredDate ===
-                            new Date().toISOString().split("T")[0]
+                              new Date().toISOString().split("T")[0]
                               ? new Date().toTimeString().slice(0, 5)
                               : undefined
                           }
@@ -2296,19 +2294,19 @@ export default function ManageAppointment() {
                               hasHMO: e.target.checked,
                               hmo: e.target.checked
                                 ? prev.hmo || {
-                                    company: "",
-                                    memberId: "",
-                                    expirationDate: "",
-                                    loaCode: "",
-                                    eLOAFile: null,
-                                  }
+                                  company: "",
+                                  memberId: "",
+                                  expirationDate: "",
+                                  loaCode: "",
+                                  eLOAFile: null,
+                                }
                                 : {
-                                    company: "",
-                                    memberId: "",
-                                    expirationDate: "",
-                                    loaCode: "",
-                                    eLOAFile: null,
-                                  },
+                                  company: "",
+                                  memberId: "",
+                                  expirationDate: "",
+                                  loaCode: "",
+                                  eLOAFile: null,
+                                },
                             }))
                           }
                         />{" "}
@@ -2621,8 +2619,8 @@ export default function ManageAppointment() {
                           selectedTicket.status === "Confirmed"
                             ? "#4caf50"
                             : selectedTicket.status === "Processing"
-                            ? "#2196f3"
-                            : "#ff9800",
+                              ? "#2196f3"
+                              : "#ff9800",
                       }}
                     >
                       {selectedTicket.status}

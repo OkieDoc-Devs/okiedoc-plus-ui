@@ -40,26 +40,17 @@ export default function Login() {
 
   const loginWithAPI = async (email, password) => {
     try {
-      const response = await fetch("http://localhost:1337/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await authService.loginSpecialist(email, password);
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         return {
           success: true,
-          user: data.user,
+          user: response.user,
         };
       } else {
         return {
           success: false,
-          error: data.message || "Login failed",
+          error: response.error || "Login failed",
         };
       }
     } catch (error) {
@@ -140,7 +131,9 @@ export default function Login() {
           });
         }
 
-        navigate(result.user.dashboardRoute || "/patient-dashboard");
+        const redirectPath = authService.getRedirectPath(result.user.userType || result.user.role);
+        console.log("Redirecting to:", redirectPath);
+        navigate(redirectPath);
         return;
       } else {
         setError(result.error || "Invalid email or password");
@@ -152,35 +145,6 @@ export default function Login() {
       setIsLoading(false);
     }
 
-    if (
-      formData.email === dummyCredentials.nurse.email &&
-      formData.password === dummyCredentials.nurse.password
-    ) {
-      localStorage.setItem("userRole", "nurse");
-      navigate("/nurse-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.patient.email &&
-      formData.password === dummyCredentials.patient.password
-    ) {
-      localStorage.setItem("userRole", "patient");
-      navigate("/patient-dashboard");
-      return;
-    }
-
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]",
-    );
-    const user = registeredUsers.find(
-      (u) => u.email === formData.email && u.password === formData.password,
-    );
-
-    if (user) {
-      localStorage.setItem("userRole", "patient");
-      navigate("/patient-dashboard");
-    } else {
-      setError("Invalid email or password. Please try again.");
-    }
   };
 
   return (

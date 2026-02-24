@@ -17,7 +17,7 @@ const API_BASE_URL =
  */
 export async function fetchTicketsFromAPI() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/tickets`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/nurse/tickets`, {
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
@@ -48,7 +48,7 @@ export async function fetchTicketsFromAPI() {
  */
 export async function fetchNotificationsFromAPI() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/notifications`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/nurse/notifications`, {
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
@@ -79,7 +79,7 @@ export async function fetchNotificationsFromAPI() {
  */
 export async function fetchDashboardFromAPI() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/dashboard`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/nurse/dashboard`, {
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
@@ -111,7 +111,7 @@ export async function fetchDashboardFromAPI() {
 export async function markNotificationAsRead(notificationId) {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/nurse/notifications/${notificationId}/read`,
+      `${API_BASE_URL}/api/v1/nurse/notifications/${notificationId}/read`,
       {
         method: "PUT",
         credentials: "include",
@@ -135,7 +135,7 @@ export async function markNotificationAsRead(notificationId) {
  */
 export async function fetchNurseProfile() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/profile`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/nurse/profile`, {
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
@@ -169,7 +169,7 @@ export async function fetchNurseProfile() {
  */
 export async function updateNurseProfile(profileData) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/profile`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/nurse/profile`, {
       method: "PUT",
       credentials: "include",
       headers: {
@@ -213,7 +213,7 @@ export async function uploadNurseAvatar(file) {
     const formData = new FormData();
     formData.append("avatar", file);
 
-    const response = await fetch(`${API_BASE_URL}/api/nurse/avatar`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/nurse/avatar`, {
       method: "POST",
       credentials: "include",
       body: formData,
@@ -243,7 +243,7 @@ export async function uploadNurseAvatar(file) {
  */
 export async function deleteNurseAvatar() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/avatar`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/nurse/avatar`, {
       method: "DELETE",
       credentials: "include",
       headers: {
@@ -275,7 +275,7 @@ export async function deleteNurseAvatar() {
  */
 export async function fetchDoctorsFromAPI() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/doctors`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/nurse/doctors`, {
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
@@ -307,7 +307,7 @@ export async function fetchDoctorsFromAPI() {
  */
 export async function createTicket(ticketData) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/tickets`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/nurse/tickets`, {
       method: "POST",
       credentials: "include",
       headers: {
@@ -343,7 +343,7 @@ export async function createTicket(ticketData) {
 export async function updateTicket(ticketId, updates) {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/nurse/tickets/${ticketId}`,
+      `${API_BASE_URL}/api/v1/nurse/tickets/${ticketId}`,
       {
         method: "PUT",
         credentials: "include",
@@ -380,7 +380,7 @@ export async function logoutFromAPI() {
   try {
     resetSocketAuth();
 
-    const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
       method: "POST",
       credentials: "include",
       headers: {

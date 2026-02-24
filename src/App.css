@@ -701,8 +701,9 @@ body {
   }
 
   .header {
-    padding: 0rem 1rem 0.5rem 0.5rem;
-    flex-wrap: wrap;
+    padding: 0.5rem 1rem;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
   }
 
   .text-and-buttons {
@@ -715,13 +716,13 @@ body {
 
   .button-group {
     display: flex;
-    order: 3;
     gap: 0.5rem;
+    margin-left: auto;
   }
 
   .mobile-nav-toggle {
     display: block;
-    order: 2;
+    margin-right: 1rem;
   }
 
   .mobile-nav-dropdown {
@@ -924,5 +925,1139 @@ body {
   .text-and-buttons {
     flex-direction: column;
     gap: 0.5rem;
+  }
+}
+
+/* Commercial Parts */
+.commercial-sections {
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow-x: hidden;
+  background: #f0fbfe;
+}
+
+.commercial-sections .content-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 0;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  align-items: stretch;
+  min-height: calc(100vh - 8rem);
+  overflow: hidden;
+}
+
+.commercial-sections .doctor-section {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-end;
+  padding: 0;
+  overflow: hidden;
+}
+
+.commercial-sections .doctor-image {
+  max-width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: bottom left;
+}
+
+.commercial-sections .info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  padding: 3rem 3rem 2rem 3rem;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.commercial-sections .search-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.commercial-sections .main-heading {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: #1a1a1a;
+  letter-spacing: 0.5px;
+}
+
+.commercial-sections .sub-heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: #333;
+}
+
+.commercial-sections .search-form {
+  width: 100%;
+}
+
+.commercial-sections .search-bar {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 50px;
+  padding: 0.75rem 1.5rem;
+  gap: 1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  border: none;
+}
+
+.commercial-sections .search-input {
+  flex: 1;
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #999;
+  border: none;
+  outline: none;
+  background: transparent;
+  text-align: left;
+}
+
+.commercial-sections .cta-section {
+  background-color: #ebf7ff;
+  border-radius: 24px;
+  padding: 2.5rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2rem;
+  align-items: center;
+  border: 10px solid #d7eefe;
+}
+
+.commercial-sections .cta-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  text-align: left;
+}
+
+.commercial-sections .cta-heading {
+  font-size: 2.6rem;
+  font-weight: 700;
+  margin: 0;
+  color: #1a1a1a;
+  line-height: 1.3;
+}
+
+.commercial-sections .cta-text {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  color: #000000;
+}
+
+.commercial-sections .consult-now-btn {
+  background: #4aa7ed;
+  color: white;
+  border: none;
+  padding: 1rem 2.5rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-start;
+}
+
+.commercial-sections .consult-now-btn:hover {
+  background: #3a8fd3;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(74, 167, 237, 0.3);
+}
+
+.commercial-sections .phone-mockup {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.commercial-sections .phone-image {
+  max-width: 250px;
+  height: auto;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.1));
+}
+
+.commercial-sections .doctors-listing-section {
+  width: 100%;
+  background: #f0fbfe;
+  padding: 4rem 3rem;
+  box-sizing: border-box;
+}
+
+.commercial-sections .doctors-listing-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.commercial-sections .doctors-listing-heading {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  text-align: center;
+  margin: 0 0 2.5rem 0;
+}
+
+.commercial-sections .doctors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.commercial-sections .doctor-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  display: grid;
+  grid-template-columns: 1.5fr 1.2fr auto;
+  gap: 2rem;
+  box-sizing: border-box;
+  width: 100%;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e8e8e8;
+  transition: all 0.3s ease;
+}
+
+.commercial-sections .doctor-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.commercial-sections .doctor-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.commercial-sections .doctor-avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.commercial-sections .doctor-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+}
+
+.commercial-sections .doctor-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+  font-style: italic;
+}
+
+.commercial-sections .doctor-credentials {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0;
+}
+
+.commercial-sections .consultation-types {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.3rem;
+}
+
+.commercial-sections .consultation-badge {
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.commercial-sections .consultation-badge.active {
+  color: #00b894;
+}
+
+.commercial-sections .consultation-badge.inactive {
+  color: #999;
+}
+
+.commercial-sections .schedule-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.commercial-sections .schedule-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.commercial-sections .schedule-details {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.commercial-sections .clinic-icon {
+  padding: 0.5rem;
+  background: #f0f8ff;
+  border-radius: 8px;
+  border: 1px solid #e0f0ff;
+}
+
+.commercial-sections .clinic-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.commercial-sections .clinic-type {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.commercial-sections .clinic-schedule {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0;
+}
+
+.commercial-sections .clinic-fee {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0;
+}
+
+.commercial-sections .doctor-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.commercial-sections .book-appointment-link {
+  background: none;
+  border: none;
+  color: #1a1a1a;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.commercial-sections .book-appointment-link:hover {
+  color: #4aa7ed;
+}
+
+.commercial-sections .view-profile-btn {
+  background: #4aa7ed;
+  color: white;
+  border: none;
+  padding: 0.75rem 2.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.commercial-sections .view-profile-btn:hover {
+  background: #3a8fd3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(74, 167, 237, 0.3);
+}
+
+@media (max-width: 1200px) {
+  .commercial-sections .content-wrapper {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .commercial-sections .doctor-section {
+    display: none;
+  }
+
+  .commercial-sections .info-section {
+    order: 1;
+  }
+
+  .commercial-sections .doctor-image {
+    object-fit: contain;
+    object-position: center;
+  }
+
+  .commercial-sections .doctor-card {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .commercial-sections .doctor-actions {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .commercial-sections .info-section {
+    padding: 1.5rem 1rem;
+    gap: 2rem;
+  }
+
+  .commercial-sections .main-heading {
+    font-size: 1.4rem;
+    text-align: center;
+  }
+
+  .commercial-sections .sub-heading {
+    font-size: 0.95rem;
+    text-align: center;
+  }
+
+  .commercial-sections .search-section {
+    gap: 1rem;
+  }
+
+  .commercial-sections .search-bar {
+    padding: 0.75rem 1rem;
+  }
+
+  .commercial-sections .search-input {
+    font-size: 0.85rem;
+  }
+
+  .commercial-sections .cta-section {
+    grid-template-columns: 1fr;
+    padding: 1.5rem;
+    gap: 1.5rem;
+    text-align: center;
+  }
+
+  .commercial-sections .cta-content {
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .commercial-sections .cta-heading {
+    font-size: 1.3rem;
+  }
+
+  .commercial-sections .cta-text {
+    font-size: 0.9rem;
+  }
+
+  .commercial-sections .consult-now-btn {
+    width: 100%;
+    max-width: 250px;
+  }
+
+  .commercial-sections .phone-mockup {
+    display: none;
+  }
+
+  .commercial-sections .doctor-section {
+    display: none;
+  }
+
+  .commercial-sections .doctors-listing-section {
+    padding: 2.5rem 1rem;
+  }
+
+  .commercial-sections .doctors-listing-heading {
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .commercial-sections .doctors-list {
+    gap: 1rem;
+  }
+
+  .commercial-sections .doctor-card {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+
+  .commercial-sections .doctor-info {
+    flex-direction: row;
+    text-align: left;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .commercial-sections .doctor-avatar {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+  }
+
+  .commercial-sections .doctor-details {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .commercial-sections .doctor-name {
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+
+  .commercial-sections .doctor-credentials {
+    font-size: 0.8rem;
+  }
+
+  .commercial-sections .consultation-types {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+  }
+
+  .commercial-sections .consultation-badge {
+    font-size: 0.75rem;
+  }
+
+  .commercial-sections .schedule-info {
+    text-align: left;
+    background: #f8fbfd;
+    padding: 1rem;
+    border-radius: 10px;
+  }
+
+  .commercial-sections .schedule-label {
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .commercial-sections .schedule-details {
+    justify-content: flex-start;
+  }
+
+  .commercial-sections .clinic-icon {
+    padding: 0.4rem;
+  }
+
+  .commercial-sections .clinic-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .commercial-sections .clinic-type {
+    font-size: 0.85rem;
+  }
+
+  .commercial-sections .clinic-schedule {
+    font-size: 0.8rem;
+  }
+
+  .commercial-sections .clinic-fee {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #4aa7ed;
+  }
+
+  .commercial-sections .doctor-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .commercial-sections .book-appointment-link {
+    order: 2;
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .commercial-sections .view-profile-btn {
+    order: 1;
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Carousel Styles */
+.carousel-section {
+  width: 100%;
+  background: #f0fbfe;
+  padding: 4rem 3rem 3.5rem;
+  box-sizing: border-box;
+}
+
+.carousel-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.carousel-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.carousel-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 0.5rem;
+}
+
+.carousel-subtitle {
+  font-size: 0.98rem;
+  color: #555;
+  margin: 0;
+}
+
+.carousel-shell {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.carousel-viewport {
+  overflow: hidden;
+  flex: 1;
+}
+
+.carousel-track {
+  display: flex;
+  transition: transform 0.4s ease;
+  will-change: transform;
+}
+
+.carousel-slide {
+  flex: 0 0 100%;
+  padding: 0.25rem 0;
+}
+
+.carousel-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem 2.25rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e6f1fb;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  height: 100%;
+}
+
+.carousel-card--info {
+  background: linear-gradient(135deg, #ebf7ff, #ffffff);
+}
+
+.carousel-card--specialist {
+  background: #ffffff;
+}
+
+.carousel-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: #e3f2ff;
+  color: #1a73e8;
+  align-self: flex-start;
+}
+
+.carousel-pill--accent {
+  background: #eafaf1;
+  color: #1e8449;
+}
+
+.carousel-card-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+.carousel-card-text {
+  margin: 0;
+  font-size: 0.98rem;
+  color: #444;
+}
+
+.carousel-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.5rem 1.25rem;
+}
+
+.carousel-step-item {
+  font-size: 0.9rem;
+  color: #333;
+  position: relative;
+  padding-left: 1.1rem;
+}
+
+.carousel-step-item::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #4aa7ed;
+}
+
+.carousel-doctor-card {
+  display: grid;
+  grid-template-columns: 2fr 1.4fr;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.carousel-doctor-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.carousel-doctor-avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.carousel-doctor-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.carousel-doctor-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+.carousel-doctor-credentials {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0;
+}
+
+.carousel-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.carousel-badge {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: #f2f2f2;
+  color: #666;
+}
+
+.carousel-badge--active {
+  background: #eafaf1;
+  color: #1e8449;
+}
+
+.carousel-doctor-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: flex-start;
+}
+
+.carousel-doctor-schedule-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0;
+  color: #333;
+}
+
+.carousel-doctor-schedule {
+  font-size: 0.85rem;
+  color: #555;
+  margin: 0;
+}
+
+.carousel-doctor-fee {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4aa7ed;
+  margin: 0 0 0.5rem;
+}
+
+.carousel-doctor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.carousel-primary-btn {
+  background: #4aa7ed;
+  color: #ffffff;
+  border: none;
+  padding: 0.6rem 1.6rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.carousel-primary-btn:hover {
+  background: #3a8fd3;
+  box-shadow: 0 4px 12px rgba(74, 167, 237, 0.3);
+}
+
+.carousel-secondary-link {
+  background: transparent;
+  border: none;
+  color: #1a1a1a;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.4rem 0.5rem;
+}
+
+.carousel-arrow {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #4aa7ed;
+  font-size: 1.4rem;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.carousel-arrow:hover {
+  background: #f0f8ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 167, 237, 0.3);
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 1.75rem;
+}
+
+.carousel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: none;
+  background: #c8d9ec;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.carousel-dot--active {
+  width: 20px;
+  background: #4aa7ed;
+}
+
+/* Callback Modal Styles */
+.callback-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.callback-modal {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.callback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.callback-row {
+  display: flex;
+  gap: 0.85rem;
+}
+
+.callback-row .callback-field {
+  flex: 1;
+}
+
+.callback-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cb-input {
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  border: 1.5px solid #d0d0d0;
+  border-radius: 50px;
+  font-size: 0.95rem;
+  color: #333;
+  outline: none;
+  transition: border-color 0.2s ease;
+  font-family: inherit;
+  background: white;
+}
+
+.cb-input::placeholder {
+  color: #aaa;
+}
+
+.cb-input:focus {
+  border-color: #4aa7ed;
+}
+
+.cb-input-error {
+  border-color: #e74c3c;
+}
+
+.cb-error {
+  font-size: 0.78rem;
+  color: #e74c3c;
+  padding-left: 0.5rem;
+}
+
+.cb-radio-group {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  padding: 0.25rem 0.5rem;
+  align-items: center;
+}
+
+.cb-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: #333;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cb-radio-label input[type="radio"] {
+  accent-color: #4aa7ed;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.cb-submit-btn {
+  width: 100%;
+  padding: 0.85rem;
+  background: white;
+  color: #333;
+  border: 1.5px solid #d0d0d0;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  margin-top: 0.25rem;
+}
+
+.cb-submit-btn:hover {
+  border-color: #4aa7ed;
+  color: #4aa7ed;
+}
+
+/* Toast notification */
+.cb-toast {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  animation: cb-toast-in 0.3s ease;
+  max-width: 360px;
+}
+
+.cb-toast--error {
+  background-color: #fdecea;
+  border-left: 4px solid #e74c3c;
+  color: #922b21;
+}
+
+.cb-toast--success {
+  background-color: #eafaf1;
+  border-left: 4px solid #27ae60;
+  color: #1e8449;
+}
+
+.cb-toast__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  color: inherit;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.cb-toast__close:hover {
+  opacity: 1;
+}
+
+@keyframes cb-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .carousel-section {
+    padding: 3rem 1.5rem 2.75rem;
+  }
+
+  .carousel-card {
+    padding: 1.75rem 1.5rem;
+  }
+
+  .carousel-doctor-card {
+    grid-template-columns: 1.7fr 1.5fr;
+    gap: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .carousel-section {
+    padding: 2.5rem 1rem 2.25rem;
+  }
+
+  .carousel-title {
+    font-size: 1.3rem;
+  }
+
+  .carousel-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .carousel-shell {
+    gap: 0.5rem;
+  }
+
+  .carousel-arrow {
+    width: 34px;
+    height: 34px;
+    font-size: 1.2rem;
+  }
+
+  .carousel-card {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .carousel-card-title {
+    font-size: 1.2rem;
+  }
+
+  .carousel-card-text {
+    font-size: 0.9rem;
+  }
+
+  .carousel-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .carousel-doctor-card {
+    grid-template-columns: 1fr;
+  }
+
+  .carousel-doctor-avatar {
+    width: 60px;
+    height: 60px;
+  }
+
+  .carousel-doctor-name {
+    font-size: 1rem;
+  }
+
+  .carousel-doctor-credentials {
+    font-size: 0.8rem;
+  }
+
+  .carousel-doctor-schedule-label {
+    font-size: 0.8rem;
+  }
+
+  .carousel-doctor-schedule,
+  .carousel-doctor-fee {
+    font-size: 0.8rem;
+  }
+
+  .carousel-primary-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .carousel-doctor-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

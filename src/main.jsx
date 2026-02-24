@@ -24,15 +24,13 @@ import PatientLayout from "./Patient/jsx/PatientLayout.jsx";
 import SpecialistDashboard2 from "./Specialists/SpecialistDashboard.jsx";
 import SpecialistLogin from "./Login & Registration/SpecialistLogin.jsx";
 import SpecialistRegistration from "./Login & Registration/SpecialistRegistration.jsx";
-import CommercialPage from "./CommercialPage.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
         {/* MAIN ROUTES */}
-        <Route path="/" element={<CommercialPage />} />
-        <Route path="/loading" element={<App />} />
+        <Route path="/" element={<App />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registration" element={<Registration />} />
 

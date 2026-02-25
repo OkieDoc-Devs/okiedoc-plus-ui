@@ -4,6 +4,7 @@ body {
   background-attachment: fixed;
   margin: 0;
   font-family: "Inter", Arial, sans-serif;
+  overflow-x: hidden;
 }
 
 
@@ -1056,6 +1057,14 @@ body {
   color: #000000;
 }
 
+.commercial-sections .cta-buttons {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  align-self: flex-start;
+}
+
 .commercial-sections .consult-now-btn {
   background: #4aa7ed;
   color: white;
@@ -1066,13 +1075,32 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  align-self: flex-start;
+  white-space: nowrap;
 }
 
 .commercial-sections .consult-now-btn:hover {
   background: #3a8fd3;
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(74, 167, 237, 0.3);
+}
+
+.commercial-sections .callback-request-btn {
+  background: white;
+  color: #4aa7ed;
+  border: 2px solid #4aa7ed;
+  padding: 1rem 2.5rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.commercial-sections .callback-request-btn:hover {
+  background: #f0f8ff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(74, 167, 237, 0.2);
 }
 
 .commercial-sections .phone-mockup {
@@ -1802,51 +1830,74 @@ body {
   justify-content: center;
   z-index: 1000;
   padding: 1rem;
+  overflow: hidden;
 }
 
 .callback-modal {
   background: white;
   border-radius: 20px;
-  padding: 2rem;
+  padding: 1.5rem;
   width: 100%;
-  max-width: 520px;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-width: 480px;
+  box-sizing: border-box;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+
+.callback-modal__close {
+  position: absolute;
+  top: 0.85rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: #aaa;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.25rem;
+  transition: color 0.2s ease;
+}
+
+.callback-modal__close:hover {
+  color: #333;
 }
 
 .callback-form {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.55rem;
+  margin-top: 1.75rem;
 }
 
 .callback-row {
   display: flex;
-  gap: 0.85rem;
+  gap: 0.55rem;
+  align-items: flex-end;
 }
 
 .callback-row .callback-field {
   flex: 1;
+  min-width: 0;
 }
 
 .callback-field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
 }
 
 .cb-input {
   width: 100%;
-  padding: 0.75rem 1.25rem;
+  padding: 0.6rem 1rem;
   border: 1.5px solid #d0d0d0;
   border-radius: 50px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: #333;
   outline: none;
   transition: border-color 0.2s ease;
   font-family: inherit;
   background: white;
+  box-sizing: border-box;
 }
 
 .cb-input::placeholder {
@@ -1865,6 +1916,51 @@ body {
   font-size: 0.78rem;
   color: #e74c3c;
   padding-left: 0.5rem;
+  text-align: left;
+  display: block;
+}
+
+.cb-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.92rem;
+  color: #333;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cb-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 2px solid #aaa;
+  border-radius: 4px;
+  background: #e0e0e0;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.cb-checkbox:checked {
+  background: #4aa7ed;
+  border-color: #4aa7ed;
+}
+
+.cb-checkbox:checked::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 6px;
+  height: 10px;
+  border: 2px solid white;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
 }
 
 .cb-radio-group {
@@ -1887,10 +1983,35 @@ body {
 }
 
 .cb-radio-label input[type="radio"] {
-  accent-color: #4aa7ed;
+  appearance: none;
+  -webkit-appearance: none;
   width: 16px;
   height: 16px;
+  min-width: 16px;
+  border: 2px solid #aaa;
+  border-radius: 50%;
+  background: #e0e0e0;
   cursor: pointer;
+  position: relative;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.cb-radio-label input[type="radio"]:checked {
+  background: #4aa7ed;
+  border-color: #4aa7ed;
+}
+
+.cb-radio-label input[type="radio"]:checked::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: white;
 }
 
 .cb-submit-btn {

@@ -50,3 +50,22 @@
   border-color: var(--primary-blue, #4AA7ED);
   box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.2);
 }
+
+.user-table .status-badge {
+  color: #333 !important;
+  background-color: #e9ecef;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  display: inline-block;
+}
+
+.user-table .status-badge.active {
+  background-color: #d1e7dd;
+  color: #0f5132 !important;
+}
+
+.user-table .status-badge.inactive {
+  background-color: #f8d7da;
+  color: #842029 !important;
+}

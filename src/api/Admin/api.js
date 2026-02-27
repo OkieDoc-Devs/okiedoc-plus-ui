@@ -75,22 +75,31 @@ const MOCK_USERS = [
   { 
     id: 'p1', 
     patient_number: 'PT-884920', 
-    patient_name: 'John Doe', 
+    first_name: 'John', 
+    surname: 'Doe',
+    email: 'john.doe@example.com',
     philhealth_number: '12-3456789-0', 
+    subscription_type: 'Active',
     date_updated: '2026-02-19' 
   },
   { 
     id: 'p2', 
     patient_number: 'PT-884921', 
-    patient_name: 'Jane Smith', 
+    first_name: 'Jane', 
+    surname: 'Smith',
+    email: 'jane.smith@example.com',
     philhealth_number: '98-7654321-0', 
+    subscription_type: 'None',
     date_updated: '2026-02-18' 
   },
   { 
     id: 'p3', 
     patient_number: 'PT-884922', 
-    patient_name: 'Robert Brown', 
+    first_name: 'Robert', 
+    surname: 'Brown',
+    email: 'robert.b@example.com',
     philhealth_number: '45-1234567-8', 
+    subscription_type: 'HMO-Pending',
     date_updated: '2026-02-15' 
   }
 ];

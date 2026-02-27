@@ -7,8 +7,15 @@ const ReadOnlyRow = ({ user, onView, onEdit, onDelete }) => {
   return (
     <tr>
       <td style={{ fontWeight: 'bold' }}>{user.patient_number}</td>
-      <td>{user.patient_name}</td>
+      <td>{user.first_name}</td>
+      <td>{user.surname}</td>
+      <td>{user.email}</td>
       <td>{user.philhealth_number || 'N/A'}</td>
+      <td>
+        <span className={`status-badge ${user.subscription_type === 'Active' ? 'active' : 'inactive'}`}>
+            {user.subscription_type || 'None'}
+        </span>
+      </td>
       <td>{user.date_updated}</td>
       <td className="user-table-actions">
         <button className="action-btn btn-view" onClick={() => onView(user)}>View</button>
@@ -28,16 +35,34 @@ const EditableRow = ({ user, editableUserData, onUserDataChange, onSave, onCance
           name="patient_number"
           value={editableUserData.patient_number || ''}
           onChange={onUserDataChange}
-          placeholder="Patient Number"
+          placeholder="Patient ID"
         />
       </td>
       <td>
         <input
           type="text"
-          name="patient_name"
-          value={editableUserData.patient_name || ''}
+          name="first_name"
+          value={editableUserData.first_name || ''}
           onChange={onUserDataChange}
-          placeholder="Patient Name"
+          placeholder="First Name"
+        />
+      </td>
+      <td>
+        <input
+          type="text"
+          name="surname"
+          value={editableUserData.surname || ''}
+          onChange={onUserDataChange}
+          placeholder="Surname"
+        />
+      </td>
+      <td>
+        <input
+          type="email"
+          name="email"
+          value={editableUserData.email || ''}
+          onChange={onUserDataChange}
+          placeholder="Email Address"
         />
       </td>
       <td>
@@ -48,6 +73,18 @@ const EditableRow = ({ user, editableUserData, onUserDataChange, onSave, onCance
           onChange={onUserDataChange}
           placeholder="PhilHealth Number"
         />
+      </td>
+      <td>
+        <select 
+          name="subscription_type" 
+          value={editableUserData.subscription_type || 'None'} 
+          onChange={onUserDataChange}
+          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+        >
+          <option value="None">None</option>
+          <option value="Active">Active</option>
+          <option value="HMO-Pending">HMO-Pending</option>
+        </select>
       </td>
       <td>
         <input
@@ -105,8 +142,11 @@ const UserTable = ({ users = [], onUpdate, onView, onDelete }) => {
           <thead>
             <tr>
               <th>Patient Number</th>
-              <th>Patient Name</th>
+              <th>First Name</th>
+              <th>Surname</th>
+              <th>Email</th>
               <th>PhilHealth Number</th>
+              <th>Subscription</th>
               <th>Date Updated</th>
               <th>Actions</th>
             </tr>
@@ -135,11 +175,11 @@ const UserTable = ({ users = [], onUpdate, onView, onDelete }) => {
               ))
             ) : (
               <tr>
-                <td colSpan="5" style={{ padding: 0, border: 'none' }}>
+                <td colSpan="8" style={{ padding: 0, border: 'none' }}>
                   <EmptyState 
                     type="users" 
                     message="No Patient Records Found" 
-                    subMessage="There are currently no patients with PhilHealth records matching your search criteria."
+                    subMessage="There are currently no patients matching your search criteria."
                   />
                 </td>
               </tr>

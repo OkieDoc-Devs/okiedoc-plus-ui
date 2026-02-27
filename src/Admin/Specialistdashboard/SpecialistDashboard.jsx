@@ -151,8 +151,8 @@ const SpecialistDashboard = () => {
         console.error("Failed to fetch dashboard data from backend:", error);
         if (!users || users.length === 0) {
           setUsers([
-            { id: 'p1', patient_number: 'PT-884920', patient_name: 'John Doe', philhealth_number: '12-3456789-0', date_updated: '2026-02-19' },
-            { id: 'p2', patient_number: 'PT-884921', patient_name: 'Jane Smith', philhealth_number: '98-7654321-0', date_updated: '2026-02-18' }
+            { id: 'p1', patient_number: 'PT-884920', first_name: 'John', surname: 'Doe', email: 'john.doe@example.com', philhealth_number: '12-3456789-0', subscription_type: 'Active', date_updated: '2026-02-19' },
+            { id: 'p2', patient_number: 'PT-884921', first_name: 'Jane', surname: 'Smith', email: 'jane.smith@example.com', philhealth_number: '98-7654321-0', subscription_type: 'None', date_updated: '2026-02-18' }
           ]);
         }
       }
@@ -236,7 +236,7 @@ const SpecialistDashboard = () => {
   const filteredUsers = (users || []).filter((user) => {
     const lowerSearchTerm = searchTerm.toLowerCase();
     const searchString =
-      `${user.patient_number || ""} ${user.patient_name || ""} ${user.philhealth_number || ""} ${user.date_updated || ""}`.toLowerCase();
+      `${user.patient_number || ""} ${user.first_name || ""} ${user.surname || ""} ${user.email || ""} ${user.subscription_type || ""} ${user.philhealth_number || ""} ${user.date_updated || ""}`.toLowerCase();
     const matchesSearch = !searchTerm || searchString.includes(lowerSearchTerm);
     return matchesSearch;
   });
@@ -602,20 +602,15 @@ const SpecialistDashboard = () => {
 
       {/* View User Modal */}
       {viewingUser && (
-        <Modal title="Patient PhilHealth Details" onClose={() => setViewingUser(null)}>
+        <Modal title="Patient Directory Details" onClose={() => setViewingUser(null)}>
           <div id="modal-body">
-            <p>
-              <strong>Patient Number:</strong> {viewingUser.patient_number}
-            </p>
-            <p>
-              <strong>Patient Name:</strong> {viewingUser.patient_name}
-            </p>
-            <p>
-              <strong>PhilHealth Number:</strong> {viewingUser.philhealth_number || 'N/A'}
-            </p>
-            <p>
-              <strong>Date Updated:</strong> {viewingUser.date_updated}
-            </p>
+            <p><strong>Patient Number:</strong> {viewingUser.patient_number}</p>
+            <p><strong>First Name:</strong> {viewingUser.first_name}</p>
+            <p><strong>Surname:</strong> {viewingUser.surname}</p>
+            <p><strong>Email:</strong> {viewingUser.email}</p>
+            <p><strong>PhilHealth Number:</strong> {viewingUser.philhealth_number || 'N/A'}</p>
+            <p><strong>Subscription Type:</strong> {viewingUser.subscription_type || 'None'}</p>
+            <p><strong>Date Updated:</strong> {viewingUser.date_updated}</p>
           </div>
           <div className="modal-actions">
             <button
@@ -635,7 +630,7 @@ const SpecialistDashboard = () => {
             <p>Are you sure you want to delete this patient record?</p>
             <p>
               <strong>
-                {deletingUser.patient_name} ({deletingUser.patient_number})
+                {deletingUser.first_name} {deletingUser.surname} ({deletingUser.patient_number})
               </strong>
             </p>
             <p>This action cannot be undone.</p>

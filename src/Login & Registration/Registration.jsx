@@ -2,28 +2,59 @@ import "./auth.css";
 import { useNavigate } from "react-router";
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FiUpload } from "react-icons/fi";
 
-const registerPatient = async (formData) => {
+const registerPatient = async (formData, files) => {
+  const data = {
+    firstName: formData.firstName,
+    lastName: formData.lastName,
+    email: formData.email,
+    password: formData.password,
+    birthday: formData.birthday,
+    gender: formData.gender,
+    mobileNumber: formData.mobileNumber,
+    philHealthNumber: formData.philHealthNumber || null,
+  };
+
+  // Convert files to base64
+  if (files.philHealthId) {
+    const base64 = await fileToBase64(files.philHealthId);
+    data.philHealthIdImage = base64;
+  }
+  if (files.seniorCitizenId) {
+    const base64 = await fileToBase64(files.seniorCitizenId);
+    data.seniorCitizenIdImage = base64;
+  }
+  if (files.pwdId) {
+    const base64 = await fileToBase64(files.pwdId);
+    data.pwdIdImage = base64;
+  }
+
   const response = await fetch("http://localhost:1337/api/auth/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      password: formData.password,
-      birthday: formData.birthday,
-      gender: formData.gender,
-      mobileNumber: formData.mobileNumber,
-      philHealthNumber: formData.philHealthNumber || null,
-    }),
+    body: JSON.stringify(data),
   });
 
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message || "Registration failed");
-  return data;
+  const res = await response.json();
+  if (!response.ok) throw new Error(res.message || "Registration failed");
+  return res;
+};
+
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsArrayBuffer(file);
+    reader.onload = () => {
+      const bytes = new Uint8Array(reader.result);
+      const binary = bytes.reduce((acc, byte) => acc + String.fromCharCode(byte), "");
+      const base64 = btoa(binary);
+      resolve(base64);
+    };
+    reader.onerror = reject;
+  });
 };
 
 export default function Registration() {
@@ -45,6 +76,11 @@ export default function Registration() {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState({
+    philHealthId: null,
+    seniorCitizenId: null,
+    pwdId: null,
+  });
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -123,6 +159,42 @@ export default function Registration() {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
+  const handleFileUpload = (e, idType) => {
+    const file = e.target.files[0];
+    if (file) {
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      const allowedTypes = ["image/png", "image/jpeg", "image/jpg"];
+      
+      if (!allowedTypes.includes(file.type)) {
+        setErrors((prev) => ({
+          ...prev,
+          [idType]: "Only PNG, JPEG, and JPG files are allowed",
+        }));
+        return;
+      }
+      
+      if (file.size > maxSize) {
+        setErrors((prev) => ({
+          ...prev,
+          [idType]: "File size must be less than 5MB",
+        }));
+        return;
+      }
+      
+      setUploadedFiles((prev) => ({
+        ...prev,
+        [idType]: file,
+      }));
+      
+      if (errors[idType]) {
+        setErrors((prev) => ({
+          ...prev,
+          [idType]: "",
+        }));
+      }
+    }
+  };
+
   const isPasswordValid = (password) => {
     return password.length > 0;
   };
@@ -170,7 +242,7 @@ export default function Registration() {
     }
 
     try {
-      const result = await registerPatient(formData);
+      const result = await registerPatient(formData, uploadedFiles);
       if (result.success) {
         setSuccess("Registration successful! Redirecting to login...");
         const userData = {
@@ -190,6 +262,11 @@ export default function Registration() {
           gender: "",
           mobileNumber: "",
           philHealthNumber: "",
+        });
+        setUploadedFiles({
+          philHealthId: null,
+          seniorCitizenId: null,
+          pwdId: null,
         });
         setTimeout(() => navigate("/login"), 2000);
       }
@@ -319,14 +396,19 @@ export default function Registration() {
               <span className="error-message">{errors.mobileNumber}</span>
             )}
 
-            <label className="login-label" htmlFor="philHealthNumber">
+            <label style={{marginBottom:"0%"}} className="login-label" htmlFor="philHealthNumber">
               PhilHealth Number <span style={{ color: "#999", fontSize: "0.9em" }}>(Optional)</span>
             </label>
+            <div>
+              <p style={{color: "#999", fontSize: "0.9em", margin:"0%" }}>
+                PhilHealth ID information is subject to verification and approval
+              </p>
+            </div>
             <input
               className={`login-input ${errors.philHealthNumber ? "error" : ""}`}
               id="philHealthNumber"
               type="text"
-              placeholder="XX-XXXXXXXXX-X"
+              placeholder="PhilHealth ID Number"
               value={formData.philHealthNumber}
               onChange={handlePhilHealthChange}
               maxLength="14"
@@ -334,6 +416,159 @@ export default function Registration() {
             {errors.philHealthNumber && (
               <span className="error-message">{errors.philHealthNumber}</span>
             )}
+
+            <div style={{ marginTop: "5px", marginBottom: "16px" }}>
+              <h3 style={{ fontSize: "1.1em", marginBottom: "12px", color: "#333" }}>
+                Upload ID Documents
+              </h3>
+              
+              <label style={{
+                display: "inline-block",
+                width: "100%",
+                marginBottom: "12px"
+              }}>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  onChange={(e) => handleFileUpload(e, "philHealthId")}
+                  style={{ display: "none" }}
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.previousElementSibling.click();
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "14px",
+                    backgroundColor: "#42a5f5",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontSize: "1em",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-start",
+                    gap: "8px",
+                    transition: "background-color 0.3s"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1e88e5"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#42a5f5"}
+                >
+                  <FiUpload size={20} />
+                  <span>Upload PhilHealth ID</span>
+                </button>
+              </label>
+              {uploadedFiles.philHealthId && (
+                <p style={{ color: "#4caf50", fontSize: "0.9em", margin: "4px 0" }}>
+                  ✓ {uploadedFiles.philHealthId.name}
+                </p>
+              )}
+              {errors.philHealthId && (
+                <span className="error-message">{errors.philHealthId}</span>
+              )}
+
+              <label style={{
+                display: "inline-block",
+                width: "100%",
+                marginBottom: "12px"
+              }}>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  onChange={(e) => handleFileUpload(e, "seniorCitizenId")}
+                  style={{ display: "none" }}
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.previousElementSibling.click();
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "14px",
+                    backgroundColor: "#42a5f5",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontSize: "1em",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-start",
+                    gap: "8px",
+                    transition: "background-color 0.3s"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1e88e5"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#42a5f5"}
+                >
+                  <FiUpload size={20} />
+                  <span>Upload Senior Citizen ID</span>
+                </button>
+              </label>
+              {uploadedFiles.seniorCitizenId && (
+                <p style={{ color: "#4caf50", fontSize: "0.9em", margin: "4px 0" }}>
+                  ✓ {uploadedFiles.seniorCitizenId.name}
+                </p>
+              )}
+              {errors.seniorCitizenId && (
+                <span className="error-message">{errors.seniorCitizenId}</span>
+              )}
+
+              <label style={{
+                display: "inline-block",
+                width: "100%",
+                marginBottom: "12px"
+              }}>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  onChange={(e) => handleFileUpload(e, "pwdId")}
+                  style={{ display: "none" }}
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.previousElementSibling.click();
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "14px",
+                    backgroundColor: "#42a5f5",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontSize: "1em",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-start",
+                    gap: "8px",
+                    transition: "background-color 0.3s"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1e88e5"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#42a5f5"}
+                >
+                  <FiUpload size={20} />
+                  <span>Upload PWD ID</span>
+                </button>
+              </label>
+              {uploadedFiles.pwdId && (
+                <p style={{ color: "#4caf50", fontSize: "0.9em", margin: "4px 0" }}>
+                  ✓ {uploadedFiles.pwdId.name}
+                </p>
+              )}
+              {errors.pwdId && (
+                <span className="error-message">{errors.pwdId}</span>
+              )}
+            </div>
 
             <label className="login-label" htmlFor="password">
               Password

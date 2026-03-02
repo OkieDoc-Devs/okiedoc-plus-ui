@@ -27,7 +27,14 @@ export default function Login() {
       email: "specialist@okiedocplus.com",
       password: "specialistOkDoc123",
     },
-    admin: { email: "admin@okiedoc.com", password: "admin123" },
+    admin: {
+      email: "admin@okiedoc.com", 
+      password: "admin123" 
+    },
+    nurseAdmin: { 
+      email: "nurseadmin@okiedocplus.com", 
+      password: "nurseAdmin123" 
+    },
   };
 
   const handleInputChange = (e) => {
@@ -111,6 +118,13 @@ export default function Login() {
           }),
         );
 
+        if (result.user.userType === "nurse_admin") {
+          sessionStorage.setItem("isNurseAdminLoggedIn", "true");
+          localStorage.setItem("userRole", "nurse_admin");
+          navigate("/nurse-admin-dashboard");
+          return;
+        }
+
         if (result.user.userType === "nurse") {
           const firstName =
             result.user.firstName ||
@@ -153,6 +167,14 @@ export default function Login() {
     }
 
     if (
+      formData.email === dummyCredentials.nurseAdmin.email &&
+      formData.password === dummyCredentials.nurseAdmin.password
+    ) {
+      sessionStorage.setItem("isNurseAdminLoggedIn", "true");
+      localStorage.setItem("userRole", "nurse_admin");
+      navigate("/nurse-admin-dashboard");
+      return;
+    } else if (
       formData.email === dummyCredentials.nurse.email &&
       formData.password === dummyCredentials.nurse.password
     ) {

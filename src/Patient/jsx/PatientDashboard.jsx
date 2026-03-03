@@ -10,6 +10,9 @@ import Billing from "./Billing";
 import MyAccount from "./MyAccount";
 import ConsultationHistory from "./ConsultationHistory";
 import { fetchPatientProfile } from "../services/apiService";
+import appointmentService from "../services/appointmentService";
+import { fetchLabResults } from "../services/labResultsService";
+import { fetchMedicalRecords } from "../services/medicalRecordsService";
 import {
   FaCalendarAlt,
   FaPills,
@@ -76,6 +79,8 @@ const PatientDashboard = () => {
 
   // State for home appointments
   const [homeAppointments, setHomeAppointments] = useState([]);
+  const [recentLabResults, setRecentLabResults] = useState([]);
+  const [currentMedications, setCurrentMedications] = useState([]);
 
   // Shows Global ID
   useEffect(() => {
@@ -266,16 +271,39 @@ const PatientDashboard = () => {
   // Load appointments from localStorage on component mount
   useEffect(() => {
     loadHomeAppointments();
+    loadDashboardData();
   }, []);
 
   // Debug: Monitor homeAppointments changes
   useEffect(() => {
-    console.log("homeAppointments state changed:", homeAppointments);
-    console.log("homeAppointments length:", homeAppointments.length);
+    // console.log("homeAppointments state changed:", homeAppointments);
   }, [homeAppointments]);
 
-  const loadHomeAppointments = () => {
-    // Fetch home appointments from backend * AS TO DO
+  const loadHomeAppointments = async () => {
+    try {
+      const appointments = await appointmentService.getAllAppointments();
+      // Filter for active or pending appointments for the dashboard
+      const active = appointments.filter(app => app.status !== 'Completed' && app.status !== 'Cancelled').slice(0, 3);
+      setHomeAppointments(active);
+    } catch (error) {
+      console.error("Failed to load home appointments", error);
+    }
+  };
+
+  const loadDashboardData = async () => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+      const userId = currentUser?.id;
+      if (userId) {
+        const labs = await fetchLabResults(userId);
+        setRecentLabResults(labs.slice(0, 3)); // Show top 3
+        
+        const records = await fetchMedicalRecords(userId);
+        setCurrentMedications(records.medications || []);
+      }
+    } catch (error) {
+      console.error("Failed to load dashboard data", error);
+    }
   };
 
   // Refresh appointments when new ones are added
@@ -466,13 +494,6 @@ const PatientDashboard = () => {
                         </div>
                       ) : (
                         homeAppointments.map((appointment) => {
-                          console.log(
-                            "Rendering appointment:",
-                            appointment.title,
-                            appointment.status,
-                            "ID:",
-                            appointment.id,
-                          );
                           return (
                             <div
                               key={appointment.id}
@@ -551,7 +572,19 @@ const PatientDashboard = () => {
                     <div className="patient-card-header">
                       <h3 className="patient-card-title">Lab Test Results</h3>
                     </div>
-                    <div className="patient-lab-results-list"><p>No lab results available.</p></div>
+                    <div className="patient-lab-results-list">
+                      {recentLabResults.length > 0 ? (
+                        recentLabResults.map((result) => (
+                          <div key={result.id} className="patient-lab-result-item">
+                            <div className="patient-result-icon"><FaFileAlt /></div>
+                            <div className="patient-result-name">{result.name}</div>
+                            <div className="patient-result-date">{result.date}</div>
+                          </div>
+                        ))
+                      ) : (
+                        <p>No lab results available.</p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Medications Card */}
@@ -559,7 +592,19 @@ const PatientDashboard = () => {
                     <div className="patient-card-header">
                       <h3 className="patient-card-title">Medications</h3>
                     </div>
-                    <div className="patient-medications-list"><p>No medications prescribed.</p></div>
+                    <div className="patient-medications-list">
+                      {currentMedications.length > 0 ? (
+                        currentMedications.map((med) => (
+                          <div key={med.id} className="patient-medication-item">
+                            <div className="patient-medication-icon"><FaPills /></div>
+                            <div className="patient-medication-name">{med.name}</div>
+                            <div className="patient-medication-dosage">{med.description || med.dosage}</div>
+                          </div>
+                        ))
+                      ) : (
+                        <p>No medications prescribed.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
 

@@ -22,6 +22,7 @@ import {
 import { useNavigate } from "react-router";
 import "../css/AppointmentBooking.css";
 import "../css/PatientDashboard.css";
+import appointmentService from "../services/appointmentService";
 import HotlineBooking from "./HotlineBooking";
 
 const Appointments = ({ onAppointmentAdded }) => {
@@ -52,6 +53,7 @@ const Appointments = ({ onAppointmentAdded }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   // Authentication check disabled - users can book without login
   useEffect(() => {
@@ -62,7 +64,16 @@ const Appointments = ({ onAppointmentAdded }) => {
   // Available specialists
   const [specialists, setSpecialists] = useState([]);
   useEffect(() => {
-    // Fetch specialists from the backend * AS TO DO
+    const fetchSpecialists = async () => {
+      try {
+        const data = await appointmentService.getSpecialists();
+        setSpecialists(data || []);
+      } catch (error) {
+        console.error("Failed to fetch specialists:", error);
+        // Optionally, show an error to the user
+      }
+    };
+    fetchSpecialists();
   }, []);
 
   // Get unique specializations for dropdown
@@ -96,11 +107,23 @@ const Appointments = ({ onAppointmentAdded }) => {
 
   // Load appointments from localStorage on component mount
   useEffect(() => {
-    // Fetch appointments from backend * AS TO DO
+    loadAppointments();
   }, []);
 
-  const loadAppointments = () => {
-    // Reload appointments from backend * AS TO DO
+  const loadAppointments = async () => {
+    setIsLoading(true);
+    try {
+      const data = await appointmentService.getAllAppointments();
+      // NOTE: You might need to map the data from your backend
+      // to match the structure expected by the component.
+      setAppointments(data || []);
+    } catch (error) {
+      console.error("Failed to load appointments:", error);
+      // Optionally, show an error to the user
+    }
+    finally {
+      setIsLoading(false);
+    }
   };
 
   const handleViewAppointmentDetails = (appointment) => {
@@ -336,9 +359,7 @@ const Appointments = ({ onAppointmentAdded }) => {
     setIsSubmitting(true);
 
     try {
-      // Replace with actual API call * AS TO DO
-
-      // Create new appointment ticket with all form details
+      // This object structure should match what your backend API expects.
       const newAppointment = {
         title: `Consultation - ${appointmentForm.preferredSpecialist}`,
         status: "Pending",
@@ -368,12 +389,15 @@ const Appointments = ({ onAppointmentAdded }) => {
         createdAt: new Date().toISOString(),
       };
 
-      // Send appointment to backend * AS TO DO
+      await appointmentService.addAppointment(newAppointment);
 
       // Notify parent component to refresh appointments
       if (onAppointmentAdded) {
         console.log("Calling onAppointmentAdded callback");
         onAppointmentAdded();
+      } else {
+        // Fallback to reloading appointments directly
+        loadAppointments();
       }
 
       // Show success message
@@ -385,7 +409,9 @@ const Appointments = ({ onAppointmentAdded }) => {
       closeBookingModal();
     } catch (error) {
       console.error("Error creating appointment:", error);
-      alert("There was an error creating your appointment. Please try again.");
+      alert(
+        `There was an error creating your appointment: ${error.message}. Please try again.`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -454,7 +480,15 @@ const Appointments = ({ onAppointmentAdded }) => {
       </div>
 
       <div className="patient-appointments-section">
-        {appointments.length === 0 ? (
+        {isLoading ? (
+          <div className="patient-loading-state">
+            <div className="patient-loading-spinner"></div>
+            <h3 className="patient-loading-title">Loading Appointments...</h3>
+            <p className="patient-loading-subtitle">
+              Please wait while we fetch your data.
+            </p>
+          </div>
+        ) : appointments.length === 0 ? (
           <div className="patient-empty-state">
             <FaCalendarAlt className="patient-empty-icon" />
             <h3 className="patient-empty-title">No Appointments Yet</h3>

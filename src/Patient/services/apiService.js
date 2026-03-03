@@ -1,53 +1,35 @@
-/**
- * API Service Module
- * Handles API communication for the Patient module
- */
-
-const API_BASE_URL =
-  import.meta.env.MODE === "production"
-    ? "https://your-production-url.com"
-    : "http://localhost:1337";
-
-/**
- * Fetch patient profile from API
- * @returns {Promise<Object>} Patient profile data
- * @throws {Error} If API request fails
- */
-export async function fetchPatientProfile() {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/patient/profile`, {
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    let payload = data?.data ?? data;
-
-    if (Array.isArray(payload)) {
-      payload = payload[0] || {};
-    }
-
-    if (payload?.patient) {
-      payload = payload.patient;
-    }
-
-    if (payload?.profile) {
-      payload = payload.profile;
-    }
-
-    if (data?.success) {
-      return payload || {};
-    }
-
-    return payload || {};
-  } catch (error) {
-    console.error("Error fetching patient profile:", error);
-    throw error;
-  }
-}
+import axios from 'axios';
+ 
+ const API_BASE_URL = "http://localhost:8080/api";
+ 
+ const api = axios.create({
+   baseURL: API_BASE_URL,
+ });
+ 
+ export const fetchPatientProfile = async () => {
+   try {
+     const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+     const userId = currentUser?.id;
+     if (!userId) throw new Error("No user ID found");
+     
+     const response = await api.get(`/patient/profile/${userId}`);
+     return response.data;
+   } catch (error) {
+     console.error("Error fetching profile:", error);
+     return null;
+   }
+ };
+ 
+ export const updatePatientProfile = async (profileData) => {
+   const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+   const userId = currentUser?.id;
+   const response = await api.put(`/patient/profile/`, profileData);
+   return response.data;
+ };
+ 
+ export const changePassword = async (passwordData) => {
+   const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+   const userId = currentUser?.id;
+   const response = await api.post(`/auth/change-password/`, passwordData);
+   return response.data;
+ };

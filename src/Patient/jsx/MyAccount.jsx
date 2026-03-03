@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaUser, FaCamera, FaLock, FaSave, FaTimes } from 'react-icons/fa';
-import { fetchPatientProfile } from '../services/apiService';
+import { fetchPatientProfile, updatePatientProfile, changePassword } from '../services/apiService';
 
 const MyAccount = ({ 
   profileImage: propsProfileImage, 
@@ -128,14 +128,18 @@ const MyAccount = ({
     }
   };
 
-  const handleSaveProfile = () => {
-    // Save profile data logic here
-    console.log('Saving profile:', profileData);
-    setIsEditing(false);
-    // You can add API call here to save to backend
+  const handleSaveProfile = async () => {
+    try {
+      await updatePatientProfile(profileData);
+      alert("Profile updated successfully!");
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      alert("Failed to update profile.");
+    }
   };
 
-  const handleSavePassword = () => {
+  const handleSavePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       alert('New passwords do not match');
       return;
@@ -144,14 +148,19 @@ const MyAccount = ({
       alert('Password must be at least 6 characters long');
       return;
     }
-    // Save password logic here
-    console.log('Changing password');
-    setPasswordData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    });
-    // You can add API call here to change password
+    
+    try {
+      await changePassword(passwordData);
+      alert("Password changed successfully!");
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      alert("Failed to change password. Please check your current password.");
+    }
   };
 
   const handleCancel = () => {

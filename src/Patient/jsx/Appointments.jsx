@@ -101,6 +101,12 @@ const Appointments = ({ onAppointmentAdded }) => {
     },
   ];
 
+  const paymentMethods = [
+    { value: "credit_card", label: "Credit / Debit Card", icon: <FaCreditCard /> },
+    { value: "gcash", label: "GCash", icon: <FaCreditCard /> },
+    { value: "maya", label: "Maya", icon: <FaCreditCard /> },
+  ];
+
   // State for appointments
   const [appointments, setAppointments] = useState([]);
   const [showAppointmentDetails, setShowAppointmentDetails] = useState(false);
@@ -395,10 +401,9 @@ const Appointments = ({ onAppointmentAdded }) => {
       if (onAppointmentAdded) {
         console.log("Calling onAppointmentAdded callback");
         onAppointmentAdded();
-      } else {
-        // Fallback to reloading appointments directly
-        loadAppointments();
       }
+      // Always reload appointments to reflect changes locally
+      loadAppointments();
 
       // Show success message
       alert(

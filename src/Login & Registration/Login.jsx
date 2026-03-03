@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import authService from "../Specialists/authService";
 import { loginAdmin } from "../api/Admin/api.js";
+import { dummyPatientCredentials, patientDummyData } from "../api/Patient/test.js";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -18,10 +19,6 @@ export default function Login() {
     nurse: {
       email: "nurse@okiedocplus.com",
       password: "nurseOkDoc123",
-    },
-    patient: {
-      email: "patient@okiedocplus.com",
-      password: "patientOkDoc123",
     },
     specialist: {
       email: "specialist@okiedocplus.com",
@@ -47,7 +44,7 @@ export default function Login() {
 
   const loginWithAPI = async (email, password) => {
     try {
-      const response = await fetch("http://localhost:8080/api/auth/login", {
+      const response = await fetch("http://localhost:1337/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -182,10 +179,11 @@ export default function Login() {
       navigate("/nurse-dashboard");
       return;
     } else if (
-      formData.email === dummyCredentials.patient.email &&
-      formData.password === dummyCredentials.patient.password
+      formData.email === dummyPatientCredentials.email &&
+      formData.password === dummyPatientCredentials.password
     ) {
       localStorage.setItem("userRole", "patient");
+      localStorage.setItem("currentUser", JSON.stringify(patientDummyData));
       navigate("/patient");
       return;
     }

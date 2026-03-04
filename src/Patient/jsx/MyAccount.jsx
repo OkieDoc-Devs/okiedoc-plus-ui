@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaUser, FaCamera, FaLock, FaSave, FaTimes } from 'react-icons/fa';
 import { fetchPatientProfile, updatePatientProfile, changePassword } from '../services/apiService';
+import '../css/MyAccount.css';
 
 const MyAccount = ({ 
   profileImage: propsProfileImage, 

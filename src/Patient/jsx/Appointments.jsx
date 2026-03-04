@@ -8,8 +8,6 @@ import {
   FaUserCheck,
   FaPlay,
   FaComments,
-  FaUpload,
-  FaFileAlt,
   FaTimes,
   FaPhone,
   FaVideo,
@@ -21,16 +19,11 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router";
 import "../css/AppointmentBooking.css";
-import "../css/PatientDashboard.css";
 import appointmentService from "../services/appointmentService";
 import HotlineBooking from "./HotlineBooking";
 
-const Appointments = ({ onAppointmentAdded }) => {
+const Appointments = ({ onAppointmentAdded, onOpenChat }) => {
   const navigate = useNavigate();
-  const [activeTicket, setActiveTicket] = useState(null);
-  const [chatMessage, setChatMessage] = useState("");
-  const [chatMessages, setChatMessages] = useState([]);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [appointmentForm, setAppointmentForm] = useState({
@@ -180,42 +173,10 @@ const Appointments = ({ onAppointmentAdded }) => {
     }
   };
 
-  const handleSendMessage = () => {
-    if (chatMessage.trim()) {
-      const newMessage = {
-        id: Date.now(),
-        text: chatMessage,
-        sender: "patient",
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      setChatMessages([...chatMessages, newMessage]);
-      setChatMessage("");
-    }
-  };
-
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
-    const newFiles = files.map((file) => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      file: file,
-    }));
-    setUploadedFiles([...uploadedFiles, ...newFiles]);
-  };
-
   const openChat = (appointment) => {
-    setActiveTicket(appointment);
-    // Initialize with sample messages for this appointment
-    // Fetch chat history for the appointment * AS TO DO 
-    setChatMessages([]);
-  };
-
-  const closeChat = () => {
-    setActiveTicket(null);
-    setChatMessages([]);
-    setChatMessage("");
+    if (onOpenChat) {
+      onOpenChat(appointment.specialist);
+    }
   };
 
   // Handle booking modal
@@ -571,129 +532,6 @@ const Appointments = ({ onAppointmentAdded }) => {
           ))
         )}
       </div>
-
-      {/* Chat Modal for Active Appointments */}
-      {activeTicket && (
-        <div className="patient-chat-modal-overlay" onClick={closeChat}>
-          <div
-            className="patient-chat-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="patient-chat-header">
-              <div className="patient-chat-ticket-info">
-                <h3 className="patient-chat-ticket-title">
-                  {activeTicket.title}
-                </h3>
-                <p className="patient-chat-ticket-specialist">
-                  {activeTicket.specialist}
-                </p>
-              </div>
-              <button className="patient-chat-close-btn" onClick={closeChat}>
-                <FaTimes />
-              </button>
-            </div>
-
-            <div className="patient-chat-messages">
-              {chatMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`patient-message ${
-                    message.sender === "patient"
-                      ? "patient-message-patient"
-                      : "patient-message-nurse"
-                  }`}
-                >
-                  <div className="patient-message-content">
-                    <p className="patient-message-text">{message.text}</p>
-                    <span className="patient-message-time">
-                      {message.timestamp}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="patient-document-upload">
-              <div className="patient-upload-header">
-                <h4 className="patient-upload-title">Upload Documents</h4>
-                <p className="patient-upload-subtitle">
-                  Share files with your specialist
-                </p>
-              </div>
-
-              <div className="patient-file-upload-area">
-                <input
-                  type="file"
-                  id="patient-file-upload"
-                  multiple
-                  onChange={handleFileUpload}
-                  style={{ display: "none" }}
-                />
-                <label
-                  htmlFor="patient-file-upload"
-                  className="patient-file-label"
-                >
-                  <FaUpload className="patient-upload-icon" />
-                  <span className="patient-upload-text">
-                    Choose files to upload
-                  </span>
-                  <span className="patient-upload-hint">
-                    PDF, DOC, JPG, PNG up to 10MB
-                  </span>
-                </label>
-              </div>
-
-              {uploadedFiles.length > 0 && (
-                <div className="patient-uploaded-files">
-                  <h5 className="patient-files-title">Uploaded Files:</h5>
-                  {uploadedFiles.map((file) => (
-                    <div key={file.id} className="patient-file-item">
-                      <FaFileAlt className="patient-file-icon" />
-                      <div className="patient-file-info">
-                        <span className="patient-file-name">{file.name}</span>
-                        <span className="patient-file-size">
-                          ({(file.size / 1024).toFixed(1)} KB)
-                        </span>
-                      </div>
-                      <button
-                        className="patient-file-remove"
-                        onClick={() =>
-                          setUploadedFiles((prev) =>
-                            prev.filter((f) => f.id !== file.id)
-                          )
-                        }
-                      >
-                        <FaTimes />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <form
-              className="patient-chat-input-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
-            >
-              <div className="patient-chat-input-container">
-                <input
-                  type="text"
-                  className="patient-chat-input"
-                  placeholder="Type your message..."
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                />
-                <button type="submit" className="patient-chat-send-btn">
-                  Send
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Appointment Booking Modal */}
       {showBookingModal && (

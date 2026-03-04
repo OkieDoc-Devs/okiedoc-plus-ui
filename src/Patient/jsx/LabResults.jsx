@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchLabResults } from '../services/labResultsService';
 import { FaFileAlt, FaFlask, FaDownload } from 'react-icons/fa';
-import '../css/PatientDashboard.css';
+import '../css/LabResults.css';
 
 const LabResults = () => {
   const [labResults, setLabResults] = useState([]);

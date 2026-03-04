@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchMedicalRecords, deleteMedicalItem, saveMedicalItem } from '../services/medicalRecordsService';
+import '../css/MedicalRecords.css';
 import { 
   FaUserMd, 
   FaCheckCircle, 

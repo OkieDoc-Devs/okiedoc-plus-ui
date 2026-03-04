@@ -90,7 +90,7 @@ export const dummyConversations = [
   {
     id: "convo-01",
     name: "Dr. Smith",
-    avatar: "https://i.pravatar.cc/150?img=68", // Placeholder avatar
+    avatar: "#", // Placeholder avatar
     isOnline: true,
     timestamp: "10:30 AM",
     lastMessage: "See you then!",
@@ -102,7 +102,7 @@ export const dummyConversations = [
   {
     id: "convo-02",
     name: "Dr. Jones",
-    avatar: "https://i.pravatar.cc/150?img=60", // Placeholder avatar
+    avatar: "#", // Placeholder avatar
     isOnline: false,
     timestamp: "Yesterday",
     lastMessage: "Please upload the results when you can.",
@@ -115,7 +115,7 @@ export const dummyConversations = [
   {
     id: "convo-03",
     name: "Nurse Triage",
-    avatar: "https://i.pravatar.cc/150?img=1", // Placeholder avatar
+    avatar: "#", // Placeholder avatar
     isOnline: true,
     timestamp: "1:15 PM",
     lastMessage: "I'm connecting you with a specialist now.",
@@ -135,7 +135,7 @@ export const dummyMessages = {
       sender: "d",
       text: "Hello! Just confirming our appointment for tomorrow at 10:00 AM.",
       timestamp: "10:28 AM",
-      avatar: "https://i.pravatar.cc/150?img=68",
+      avatar: "#",
       senderName: "Dr. Smith",
     },
     {
@@ -151,7 +151,7 @@ export const dummyMessages = {
       sender: "d",
       text: "Great. Is there anything you'd like to discuss beforehand?",
       timestamp: "10:29 AM",
-      avatar: "https://i.pravatar.cc/150?img=68",
+      avatar: "#",
       senderName: "Dr. Smith",
     },
     {
@@ -169,7 +169,7 @@ export const dummyMessages = {
       sender: "d",
       text: "Please upload the results when you can.",
       timestamp: "Yesterday",
-      avatar: "https://i.pravatar.cc/150?img=60",
+      avatar: "#",
       senderName: "Dr. Jones",
     },
   ],
@@ -180,7 +180,7 @@ export const dummyMessages = {
       sender: "n",
       text: "Hello, thank you for contacting OkieDoc+. How can I help you today?",
       timestamp: "1:10 PM",
-      avatar: "https://i.pravatar.cc/150?img=1",
+      avatar: "#",
       senderName: "Nurse",
     },
     {
@@ -196,7 +196,7 @@ export const dummyMessages = {
       sender: "n",
       text: "I'm connecting you with a specialist now.",
       timestamp: "1:15 PM",
-      avatar: "https://i.pravatar.cc/150?img=1",
+      avatar: "#",
       senderName: "Nurse",
     },
   ],

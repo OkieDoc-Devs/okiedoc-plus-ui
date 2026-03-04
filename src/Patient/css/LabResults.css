@@ -1,0 +1,113 @@
+/* Lab results styles extracted from PatientDashboard.css */
+
+.patient-lab-results-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.patient-lab-result-card {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.patient-lab-result-card h3 {
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* mobile lab results list */
+.patient-mobile-lab-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.patient-mobile-lab-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.patient-mobile-lab-icon {
+  font-size: 1.5rem;
+  color: #1877f2;
+  flex-shrink: 0;
+}
+
+.patient-mobile-lab-content {
+  flex: 1;
+}
+
+.patient-mobile-lab-test {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #2c3e50;
+  margin-bottom: 0.25rem;
+}
+
+.patient-mobile-lab-date {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.patient-mobile-lab-status {
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.patient-mobile-lab-status.available {
+  background: #d4edda;
+  color: #155724;
+}
+
+.patient-mobile-lab-status.not-available {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* list item styles used by LabResults.jsx */
+.patient-lab-result-list-item {
+  display: flex;
+  align-items: center;
+  background-color: #fdfdfd;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid #e9ecef;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.patient-lab-result-list-item:hover {
+  border-color: #dee2e6;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
+}
+
+.patient-lab-result-list-item .patient-lab-result-info {
+  flex: 1;
+}
+
+.patient-lab-result-list-item .patient-lab-result-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.patient-lab-result-list-item .patient-lab-result-date {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.patient-lab-result-list-item .patient-result-status.patient-not-available {
+  font-weight: 500;
+  background-color: #e9ecef;
+  color: #6c757d;
+}

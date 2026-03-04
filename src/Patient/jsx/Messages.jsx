@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import "../css/PatientDashboard.css";
+import "../css/Messages.css";
 import {
   FaUser,
   FaTimes,
@@ -9,7 +9,6 @@ import {
   FaPlus,
   FaFileAlt,
   FaSpinner,
-  FaComments,
 } from "react-icons/fa";
 import {
   useChat,
@@ -20,7 +19,8 @@ import {
 } from "../services/chatService";
 import SpecialistCall from "../../Specialists/SpecialistCall.jsx";
 
-const Messages = () => {
+const Messages = ({ initialTarget, onChatOpened }) => {
+  const [initialLoading, setInitialLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -32,6 +32,7 @@ const Messages = () => {
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const chatMessagesRef = useRef(null);
   const fileInputRef = useRef(null);
+  const hasLoadedOnce = useRef(false);
 
   const CHARACTER_LIMIT = 500;
 
@@ -81,6 +82,48 @@ const Messages = () => {
     getAllUsers,
     loadConversations,
   } = useChat({ currentUserId, currentUserType: "p" });
+
+  useEffect(() => {
+    if (chatLoading) {
+      hasLoadedOnce.current = true;
+    }
+    // Only set initialLoading to false once we've gone through a loading cycle
+    if (hasLoadedOnce.current && !chatLoading) {
+      setInitialLoading(false);
+    }
+  }, [chatLoading]);
+
+  useEffect(() => {
+    if (initialTarget && !chatLoading) {
+      const specialistName = initialTarget.name;
+      const conversation = conversations.find((c) => c.name === specialistName);
+
+      const findAndStartConversation = async (name) => {
+        try {
+          const users = await searchUsers(name);
+          if (users && users.length > 0) {
+            const specialistUser = users.find(
+              (u) =>
+                (u.name === name || u.Display_Name === name) &&
+                (u.User_Type === "specialist" || u.User_Type_Code === "s" || u.userType === "d" || u.userType === "n")
+            );
+            if (specialistUser) {
+              await startConversation("direct", specialistUser.id || specialistUser.Id);
+            }
+          }
+        } finally {
+          onChatOpened();
+        }
+      };
+
+      if (conversation) {
+        openConversation(conversation);
+        onChatOpened();
+      } else {
+        findAndStartConversation(specialistName);
+      }
+    }
+  }, [initialTarget, conversations, openConversation, onChatOpened, searchUsers, startConversation, chatLoading]);
 
   useEffect(() => {
     if (chatMessagesRef.current && activeConversation) {
@@ -271,7 +314,7 @@ const Messages = () => {
 
   return (
     <div className="patient-messages-container">
-      {chatLoading && conversations.length === 0 ? (
+      {initialLoading || (chatLoading && conversations.length === 0) ? (
         <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div className="patient-loading-state">
             <div className="patient-loading-spinner"></div>

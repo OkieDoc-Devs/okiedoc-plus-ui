@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchConsultationHistory, fetchPendingApprovals, fetchConsultationSummary } from '../services/consultationHistoryService';
+import '../css/ConsultationHistory.css';
 import {
   FaEye,
   FaDownload,

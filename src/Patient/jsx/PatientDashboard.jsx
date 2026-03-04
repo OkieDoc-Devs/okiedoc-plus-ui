@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { logoutPatient } from "../services/auth";
 import { useNavigate } from "react-router";
 import MedicalRecords from "./MedicalRecords";
@@ -22,10 +22,7 @@ import {
   FaCreditCard,
   FaUserCheck,
   FaPlay,
-  FaComments,
-  FaTimes,
-  FaUpload,
-  FaPhone,
+  FaComments, FaPhone,
   FaVideo,
   FaPhoneAlt,
 } from "react-icons/fa";
@@ -33,11 +30,8 @@ import {
 const PatientDashboard = () => {
   const [_globalId, setGlobalId] = useState("");
   const [activePage, setActivePage] = useState("home");
+  const [chatTarget, setChatTarget] = useState(null);
   const [profileImage, setProfileImage] = useState(null);
-  const [activeTicket, setActiveTicket] = useState(null);
-  const [chatMessages, setChatMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [showAppointmentDetails, setShowAppointmentDetails] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
@@ -81,6 +75,8 @@ const PatientDashboard = () => {
   const [homeAppointments, setHomeAppointments] = useState([]);
   const [recentLabResults, setRecentLabResults] = useState([]);
   const [currentMedications, setCurrentMedications] = useState([]);
+  const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
+  const [isLoadingDashboardData, setIsLoadingDashboardData] = useState(true);
 
   // Shows Global ID
   useEffect(() => {
@@ -280,6 +276,7 @@ const PatientDashboard = () => {
   }, [homeAppointments]);
 
   const loadHomeAppointments = async () => {
+    setIsLoadingAppointments(true);
     try {
       const appointments = await appointmentService.getAllAppointments();
       // Filter for active or pending appointments for the dashboard
@@ -287,10 +284,13 @@ const PatientDashboard = () => {
       setHomeAppointments(active);
     } catch (error) {
       console.error("Failed to load home appointments", error);
+    } finally {
+      setIsLoadingAppointments(false);
     }
   };
 
   const loadDashboardData = async () => {
+    setIsLoadingDashboardData(true);
     try {
       const currentUser = JSON.parse(localStorage.getItem("currentUser"));
       const userId = currentUser?.id;
@@ -303,6 +303,8 @@ const PatientDashboard = () => {
       }
     } catch (error) {
       console.error("Failed to load dashboard data", error);
+    } finally {
+      setIsLoadingDashboardData(false);
     }
   };
 
@@ -312,54 +314,18 @@ const PatientDashboard = () => {
     loadHomeAppointments();
   };
 
-  // Chat functions
   const openChat = (appointment) => {
-    setActiveTicket(appointment);
-    // Initialize with sample messages for this appointment
-    //  Fetch chat history for the appointment * AS TO DO
-    setChatMessages([]);
+    handleOpenChat(appointment.specialist);
   };
 
-  const closeChat = () => {
-    setActiveTicket(null);
-    setChatMessages([]);
-    setNewMessage("");
-  };
+  const handleOpenChat = useCallback((specialistName) => {
+    setChatTarget({ name: specialistName });
+    setActivePage("messages");
+  }, []);
 
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (newMessage.trim() && activeTicket) {
-      const message = {
-        id: Date.now(),
-        sender: "patient",
-        message: newMessage.trim(),
-        timestamp: new Date().toLocaleTimeString(),
-        type: "text",
-      };
-      setChatMessages((prev) => [...prev, message]);
-      setNewMessage("");
-    }
-  };
-
-  const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const newFiles = files.map((file) => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      file: file,
-    }));
-    setUploadedFiles((prev) => [...prev, ...newFiles]);
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
+  const onChatOpened = useCallback(() => {
+    setChatTarget(null);
+  }, []);
 
   // Add class to body for App.css override
   useEffect(() => {
@@ -481,7 +447,11 @@ const PatientDashboard = () => {
                   </div>
                   <div className="patient-home-section">
                     <div className="patient-home-tickets-container">
-                      {homeAppointments.length === 0 ? (
+                      {isLoadingAppointments ? (
+                        <div className="patient-loading-box">
+                          <div className="patient-loading-box-spinner"></div>
+                        </div>
+                      ) : homeAppointments.length === 0 ? (
                         <div className="patient-empty-state">
                           <FaCalendarAlt className="patient-empty-icon" />
                           <h3 className="patient-empty-title">
@@ -572,19 +542,25 @@ const PatientDashboard = () => {
                     <div className="patient-card-header">
                       <h3 className="patient-card-title">Lab Test Results</h3>
                     </div>
-                    <div className="patient-lab-results-list">
-                      {recentLabResults.length > 0 ? (
-                        recentLabResults.map((result) => (
-                          <div key={result.id} className="patient-lab-result-item">
-                            <div className="patient-result-icon"><FaFileAlt /></div>
-                            <div className="patient-result-name">{result.name}</div>
-                            <div className="patient-result-date">{result.date}</div>
-                          </div>
-                        ))
-                      ) : (
-                        <p>No lab results available.</p>
-                      )}
-                    </div>
+                    {isLoadingDashboardData ? (
+                      <div className="patient-loading-box">
+                        <div className="patient-loading-box-spinner"></div>
+                      </div>
+                    ) : (
+                      <div className="patient-lab-results-list">
+                        {recentLabResults.length > 0 ? (
+                          recentLabResults.map((result) => (
+                            <div key={result.id} className="patient-lab-result-item">
+                              <div className="patient-result-icon"><FaFileAlt /></div>
+                              <div className="patient-result-name">{result.name}</div>
+                              <div className="patient-result-date">{result.date}</div>
+                            </div>
+                          ))
+                        ) : (
+                          <p>No lab results available.</p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Medications Card */}
@@ -592,167 +568,41 @@ const PatientDashboard = () => {
                     <div className="patient-card-header">
                       <h3 className="patient-card-title">Medications</h3>
                     </div>
-                    <div className="patient-medications-list">
-                      {currentMedications.length > 0 ? (
-                        currentMedications.map((med) => (
-                          <div key={med.id} className="patient-medication-item">
-                            <div className="patient-medication-icon"><FaPills /></div>
-                            <div className="patient-medication-name">{med.name}</div>
-                            <div className="patient-medication-dosage">{med.description || med.dosage}</div>
-                          </div>
-                        ))
-                      ) : (
-                        <p>No medications prescribed.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Chat Modal */}
-                {activeTicket && (
-                  <div
-                    className="patient-chat-modal-overlay"
-                    onClick={closeChat}
-                  >
-                    <div
-                      className="patient-chat-modal"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="patient-chat-header">
-                        <div className="patient-chat-ticket-info">
-                          <h3 className="patient-chat-ticket-title">
-                            {activeTicket.title}
-                          </h3>
-                          <p className="patient-chat-ticket-specialist">
-                            {activeTicket.specialist}
-                          </p>
-                        </div>
-                        <button
-                          className="patient-chat-close-btn"
-                          onClick={closeChat}
-                        >
-                          <FaTimes />
-                        </button>
+                    {isLoadingDashboardData ? (
+                      <div className="patient-loading-box">
+                        <div className="patient-loading-box-spinner"></div>
                       </div>
-
-                      <div className="patient-chat-messages">
-                        {chatMessages.map((message) => (
-                          <div
-                            key={message.id}
-                            className={`patient-message ${
-                              message.sender === "patient"
-                                ? "patient-message-patient"
-                                : "patient-message-nurse"
-                            }`}
-                          >
-                            <div className="patient-message-content">
-                              <p className="patient-message-text">
-                                {message.message}
-                              </p>
-                              <span className="patient-message-time">
-                                {message.timestamp}
-                              </span>
+                    ) : (
+                      <div className="patient-medications-list">
+                        {currentMedications.length > 0 ? (
+                          currentMedications.map((med) => (
+                            <div key={med.id} className="patient-medication-item">
+                              <div className="patient-medication-icon"><FaPills /></div>
+                              <div className="patient-medication-name">{med.name}</div>
+                              <div className="patient-medication-dosage">{med.description || med.dosage}</div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="patient-document-upload">
-                        <div className="patient-upload-header">
-                          <h4 className="patient-upload-title">
-                            Upload Documents
-                          </h4>
-                          <p className="patient-upload-subtitle">
-                            Share files with your specialist
-                          </p>
-                        </div>
-
-                        <div className="patient-file-upload-area">
-                          <input
-                            type="file"
-                            id="file-upload"
-                            multiple
-                            onChange={handleFileUpload}
-                            style={{ display: "none" }}
-                          />
-                          <label
-                            htmlFor="file-upload"
-                            className="patient-file-label"
-                          >
-                            <FaUpload className="patient-upload-icon" />
-                            <span className="patient-upload-text">
-                              Choose files to upload
-                            </span>
-                            <span className="patient-upload-hint">
-                              PDF, DOC, JPG, PNG up to 10MB
-                            </span>
-                          </label>
-                        </div>
-
-                        {uploadedFiles.length > 0 && (
-                          <div className="patient-uploaded-files">
-                            <h5 className="patient-files-title">
-                              Uploaded Files:
-                            </h5>
-                            {uploadedFiles.map((file) => (
-                              <div key={file.id} className="patient-file-item">
-                                <FaFileAlt className="patient-file-icon" />
-                                <div className="patient-file-info">
-                                  <span className="patient-file-name">
-                                    {file.name}
-                                  </span>
-                                  <span className="patient-file-size">
-                                    {formatFileSize(file.size)}
-                                  </span>
-                                </div>
-                                <button
-                                  className="patient-file-remove"
-                                  onClick={() =>
-                                    setUploadedFiles((prev) =>
-                                      prev.filter((f) => f.id !== file.id),
-                                    )
-                                  }
-                                >
-                                  <FaTimes />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
+                          ))
+                        ) : (
+                          <p>No medications prescribed.</p>
                         )}
                       </div>
-
-                      <form
-                        className="patient-chat-input-form"
-                        onSubmit={handleSendMessage}
-                      >
-                        <div className="patient-chat-input-container">
-                          <input
-                            type="text"
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            placeholder="Type your message..."
-                            className="patient-chat-input"
-                          />
-                          <button
-                            type="submit"
-                            className="patient-chat-send-btn"
-                          >
-                            Send
-                          </button>
-                        </div>
-                      </form>
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
             </>
         );
 
       case "appointments":
-        return <Appointments onAppointmentAdded={refreshAppointments} />;
+        return <Appointments onAppointmentAdded={refreshAppointments} onOpenChat={handleOpenChat} />;
       case "messages":
-        return <Messages />;
+        return (
+          <Messages
+            initialTarget={chatTarget}
+            onChatOpened={onChatOpened}
+          />
+        );
       case "medical-records":
         return <MedicalRecords />;
       case "lab-results":

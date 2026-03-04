@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { fetchBillingTickets, payBillingTicket } from '../services/billingService';
 import { FaCreditCard, FaFileInvoiceDollar, FaDownload, FaCheckCircle, FaEnvelope } from 'react-icons/fa';
-import { FaPesoSign } from 'react-icons/fa6'
+import { FaPesoSign } from 'react-icons/fa6';
+import '../css/Billing.css';
 
 const Billing = () => {
   const [tickets, setTickets] = useState([]);

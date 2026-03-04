@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router';
 import { fetchBillingTickets, payBillingTicket } from '../services/billingService';
 import { FaCreditCard, FaFileInvoiceDollar, FaDownload, FaCheckCircle, FaEnvelope } from 'react-icons/fa';
 import { FaPesoSign } from 'react-icons/fa6';
@@ -10,6 +11,8 @@ const Billing = () => {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [paidTicket, setPaidTicket] = useState(null);
+  const location = useLocation();
+  const highlightedAppointmentId = location.state?.appointmentId;
 
   useEffect(() => {
     const loadData = async () => {
@@ -81,7 +84,11 @@ const Billing = () => {
           <h3>Additional Requests</h3>
           {tickets.length > 0 ? (
             tickets.map((ticket) => (
-              <div key={ticket.id} className="patient-bill-item">
+              <div 
+                key={ticket.id} 
+                className={`patient-bill-item ${ticket.appointmentId === highlightedAppointmentId ? 'highlighted' : ''}`}
+                id={`bill-${ticket.id}`}
+              >
                 <FaFileInvoiceDollar className="patient-bill-icon" />
                 <div className="patient-bill-info">
                   <span className="patient-bill-description">{ticket.service}</span>

@@ -17,12 +17,12 @@ import {
   FaExclamationTriangle,
   FaCalendarAlt,
 } from "react-icons/fa";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import "../css/AppointmentBooking.css";
 import appointmentService from "../services/appointmentService";
 import HotlineBooking from "./HotlineBooking";
 
-const Appointments = ({ onAppointmentAdded, onOpenChat }) => {
+const Appointments = ({ onAppointmentAdded }) => {
   const navigate = useNavigate();
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
@@ -174,9 +174,9 @@ const Appointments = ({ onAppointmentAdded, onOpenChat }) => {
   };
 
   const openChat = (appointment) => {
-    if (onOpenChat) {
-      onOpenChat(appointment.specialist);
-    }
+    navigate("/patient/messages", {
+      state: { chatTarget: { name: appointment.specialist, id: appointment.specialistId } },
+    });
   };
 
   // Handle booking modal
@@ -385,7 +385,7 @@ const Appointments = ({ onAppointmentAdded, onOpenChat }) => {
 
   // Handle payment
   const handlePayment = (appointment) => {
-    alert("TBA");
+    navigate("/patient/consultation_billing", { state: { appointmentId: appointment.id } });
   };
 
   const closePaymentModal = () => {
@@ -1070,8 +1070,8 @@ const Appointments = ({ onAppointmentAdded, onOpenChat }) => {
 
       {/* Appointment Details Modal */}
       {showAppointmentDetails && selectedAppointment && (
-        <div className="patient-appointment-details-overlay">
-          <div className="patient-appointment-details-modal">
+        <div className="patient-appointment-details-overlay" onClick={closeAppointmentDetails}>
+          <div className="patient-appointment-details-modal" onClick={(e) => e.stopPropagation()}>
             <div className="patient-appointment-details-header">
               <h2>Appointment Details</h2>
               <button

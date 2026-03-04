@@ -1838,6 +1838,11 @@ html:has(body.patient-dashboard-active) {
   gap: 1rem;
 }
 
+.patient-bill-item.highlighted {
+  background-color: #fff9db;
+  border-left: 4px solid #ffc107;
+}
+
 .patient-bill-icon {
   font-size: 1.2rem;
   color: #007bff;
@@ -3844,6 +3849,16 @@ html:has(body.patient-dashboard-active) {
   transform: translateY(-1px);
 }
 
+.patient-payment-btn:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.patient-chat-btn:hover {
+  background: #0891d4;
+  transform: translateY(-1px);
+}
+
 .patient-payment-btn {
   background: #28a745;
   color: white;
@@ -5466,4 +5481,124 @@ html:has(body.patient-dashboard-active) {
   font-size: 1.2rem;
   flex-shrink: 0;
   margin-top: 0.1rem;
+}
+
+/* Appointment Details Modal */
+.patient-appointment-details-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.patient-appointment-details-modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  animation: fadeInScale 0.3s ease-out;
+}
+
+.patient-appointment-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
+}
+
+.patient-appointment-details-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.patient-appointment-details-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.patient-appointment-details-close:hover {
+  background-color: #e9ecef;
+  color: #dc3545;
+}
+
+.patient-appointment-details-content {
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.patient-appointment-details-section {
+  margin-bottom: 1.5rem;
+}
+
+.patient-appointment-details-section:last-child {
+  margin-bottom: 0;
+}
+
+.patient-appointment-details-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.patient-appointment-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.patient-appointment-details-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.patient-appointment-details-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #6c757d;
+}
+
+.patient-appointment-details-value {
+  font-size: 0.95rem;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

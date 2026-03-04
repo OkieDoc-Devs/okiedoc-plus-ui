@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { logoutPatient } from "../services/auth";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router-dom";
 import MedicalRecords from "./MedicalRecords";
 import Appointments from "./Appointments";
 import Messages from "./Messages";
@@ -26,11 +26,11 @@ import {
   FaVideo,
   FaPhoneAlt,
 } from "react-icons/fa";
+import { FaTimes } from "react-icons/fa";
 
 const PatientDashboard = () => {
   const [_globalId, setGlobalId] = useState("");
   const [activePage, setActivePage] = useState("home");
-  const [chatTarget, setChatTarget] = useState(null);
   const [profileImage, setProfileImage] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [showAppointmentDetails, setShowAppointmentDetails] = useState(false);
@@ -53,6 +53,7 @@ const PatientDashboard = () => {
   });
   const [activeProfileTab, setActiveProfileTab] = useState("profile");
   const navigate = useNavigate();
+  const location = useLocation();
 
   const parseNameParts = (value) => {
     if (!value || typeof value !== "string") {
@@ -270,6 +271,19 @@ const PatientDashboard = () => {
     loadDashboardData();
   }, []);
 
+  // Sync activePage with URL path
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.includes("/appointments")) setActivePage("appointments");
+    else if (path.includes("/messages")) setActivePage("messages");
+    else if (path.includes("/medical_records")) setActivePage("medical-records");
+    else if (path.includes("/lab_results")) setActivePage("lab-results");
+    else if (path.includes("/consultation_billing")) setActivePage("billing");
+    else if (path.includes("/consultation_history")) setActivePage("consultation-history");
+    else if (path.includes("/account")) setActivePage("my-account");
+    else setActivePage("home");
+  }, [location]);
+
   // Debug: Monitor homeAppointments changes
   useEffect(() => {
     // console.log("homeAppointments state changed:", homeAppointments);
@@ -315,17 +329,17 @@ const PatientDashboard = () => {
   };
 
   const openChat = (appointment) => {
-    handleOpenChat(appointment.specialist);
+    navigate("/patient/messages", { state: { chatTarget: { name: appointment.specialist, id: appointment.specialistId } } });
   };
 
-  const handleOpenChat = useCallback((specialistName) => {
-    setChatTarget({ name: specialistName });
-    setActivePage("messages");
-  }, []);
+  const handlePayment = (appointment) => {
+    navigate("/patient/consultation_billing", { state: { appointmentId: appointment.id } });
+  };
 
-  const onChatOpened = useCallback(() => {
-    setChatTarget(null);
-  }, []);
+  const closeAppointmentDetails = () => {
+    setShowAppointmentDetails(false);
+    setSelectedAppointment(null);
+  };
 
   // Add class to body for App.css override
   useEffect(() => {
@@ -504,7 +518,7 @@ const PatientDashboard = () => {
                                 <div className="patient-home-ticket-actions">
                                   {appointment.status === "Active" && (
                                     <button
-                                      className="patient-home-chat-btn"
+                                      className="patient-chat-btn"
                                       onClick={() => openChat(appointment)}
                                     >
                                       <FaComments className="patient-home-action-icon" />
@@ -512,13 +526,16 @@ const PatientDashboard = () => {
                                     </button>
                                   )}
                                   {appointment.status === "For Payment" && (
-                                    <button className="patient-home-payment-btn">
+                                    <button
+                                      className="patient-payment-btn"
+                                      onClick={() => handlePayment(appointment)}
+                                    >
                                       <FaCreditCard className="patient-home-action-icon" />
                                       Pay
                                     </button>
                                   )}
                                   <button
-                                    className="patient-home-view-btn"
+                                    className="patient-view-details-btn"
                                     onClick={() =>
                                       handleViewAppointmentDetails(appointment)
                                     }
@@ -590,19 +607,130 @@ const PatientDashboard = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Appointment Details Modal */}
+              {showAppointmentDetails && selectedAppointment && (
+                <div className="patient-appointment-details-overlay" onClick={closeAppointmentDetails}>
+                  <div className="patient-appointment-details-modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="patient-appointment-details-header">
+                      <h2>Appointment Details</h2>
+                      <button
+                        className="patient-appointment-details-close"
+                        onClick={closeAppointmentDetails}
+                      >
+                        <FaTimes />
+                      </button>
+                    </div>
+                    <div className="patient-appointment-details-content">
+                      <div className="patient-appointment-details-section">
+                        <h3 className="patient-appointment-details-title">
+                          Appointment Information
+                        </h3>
+                        <div className="patient-appointment-details-grid">
+                          <div className="patient-appointment-details-item">
+                            <span className="patient-appointment-details-label">
+                              Title:
+                            </span>
+                            <span className="patient-appointment-details-value">
+                              {selectedAppointment.title}
+                            </span>
+                          </div>
+                          <div className="patient-appointment-details-item">
+                            <span className="patient-appointment-details-label">
+                              Status:
+                            </span>
+                            <span className="patient-appointment-details-value">
+                              {selectedAppointment.status}
+                            </span>
+                          </div>
+                          <div className="patient-appointment-details-item">
+                            <span className="patient-appointment-details-label">
+                              Specialist:
+                            </span>
+                            <span className="patient-appointment-details-value">
+                              {selectedAppointment.specialist}
+                            </span>
+                          </div>
+                          <div className="patient-appointment-details-item">
+                            <span className="patient-appointment-details-label">
+                              Specialty:
+                            </span>
+                            <span className="patient-appointment-details-value">
+                              {selectedAppointment.specialty}
+                            </span>
+                          </div>
+                          <div className="patient-appointment-details-item">
+                            <span className="patient-appointment-details-label">
+                              Date:
+                            </span>
+                            <span className="patient-appointment-details-value">
+                              {selectedAppointment.date}
+                            </span>
+                          </div>
+                          <div className="patient-appointment-details-item">
+                            <span className="patient-appointment-details-label">
+                              Time:
+                            </span>
+                            <span className="patient-appointment-details-value">
+                              {selectedAppointment.time}
+                            </span>
+                          </div>
+                          <div className="patient-appointment-details-item">
+                            <span className="patient-appointment-details-label">
+                              Consultation Type:
+                            </span>
+                            <span className="patient-appointment-details-value">
+                              {selectedAppointment.consultationType}
+                            </span>
+                          </div>
+                          <div className="patient-appointment-details-item">
+                            <span className="patient-appointment-details-label">
+                              Consultation Channel:
+                            </span>
+                            <span className="patient-appointment-details-value">
+                              {selectedAppointment.consultationChannel}
+                            </span>
+                          </div>
+                          <div className="patient-appointment-details-item">
+                            <span className="patient-appointment-details-label">
+                              Booking Method:
+                            </span>
+                            <span className="patient-appointment-details-value">
+                              {selectedAppointment.bookingMethod}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {selectedAppointment.medicalDetails && (
+                        <div className="patient-appointment-details-section">
+                          <h3 className="patient-appointment-details-title">
+                            Medical Information
+                          </h3>
+                          <div className="patient-appointment-details-grid">
+                            <div className="patient-appointment-details-item">
+                              <span className="patient-appointment-details-label">
+                                Chief Complaint:
+                              </span>
+                              <span className="patient-appointment-details-value">
+                                {selectedAppointment.medicalDetails.chiefComplaint || "General Consultation"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             </>
         );
 
       case "appointments":
-        return <Appointments onAppointmentAdded={refreshAppointments} onOpenChat={handleOpenChat} />;
+        return <Appointments onAppointmentAdded={refreshAppointments} />;
       case "messages":
-        return (
-          <Messages
-            initialTarget={chatTarget}
-            onChatOpened={onChatOpened}
-          />
-        );
+        return <Messages />;
       case "medical-records":
         return <MedicalRecords />;
       case "lab-results":

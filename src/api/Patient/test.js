@@ -28,6 +28,7 @@ export const patientDummyData = {
   appointments: [
     {
       id: "appt-001",
+      specialistId: "spec-01",
       specialist: "Dr. Smith",
       specialty: "Cardiology",
       date: "2026-03-10",
@@ -38,6 +39,7 @@ export const patientDummyData = {
     },
     {
       id: "appt-002",
+      specialistId: "spec-02",
       specialist: "Dr. Jones",
       specialty: "Dermatology",
       date: "2026-03-15",
@@ -48,6 +50,7 @@ export const patientDummyData = {
     },
     {
       id: "appt-003",
+      specialistId: "spec-03",
       specialist: "Dr. Strange",
       specialty: "Neurology",
       date: "2026-03-20",
@@ -58,6 +61,7 @@ export const patientDummyData = {
     },
     {
       id: "appt-004",
+      specialistId: "spec-04",
       specialist: "Dr. Quinn",
       specialty: "Pediatrics",
       date: "2026-03-22",
@@ -89,6 +93,7 @@ export const patientDummyData = {
 export const dummyConversations = [
   {
     id: "convo-01",
+    userId: "spec-01",
     name: "Dr. Smith",
     avatar: "#", // Placeholder avatar
     isOnline: true,
@@ -101,6 +106,7 @@ export const dummyConversations = [
   },
   {
     id: "convo-02",
+    userId: "spec-02",
     name: "Dr. Jones",
     avatar: "#", // Placeholder avatar
     isOnline: false,
@@ -114,6 +120,7 @@ export const dummyConversations = [
   },
   {
     id: "convo-03",
+    userId: "user-nurse-01",
     name: "Nurse Triage",
     avatar: "#", // Placeholder avatar
     isOnline: true,
@@ -124,6 +131,20 @@ export const dummyConversations = [
     unreadCount: 0,
     role: "Nurse",
     otherUserType: "n",
+  },
+  {
+    id: "convo-04",
+    userId: "spec-03",
+    name: "Dr. Strange",
+    avatar: "#", // Placeholder avatar
+    isOnline: true,
+    timestamp: "Now",
+    lastMessage: "I've reviewed your case.",
+    lastMessageSentByMe: false,
+    lastMessageSenderName: "Dr. Strange",
+    unreadCount: 1,
+    role: "Neurology",
+    otherUserType: "d",
   },
 ];
 
@@ -200,6 +221,17 @@ export const dummyMessages = {
       senderName: "Nurse",
     },
   ],
+  "convo-04": [
+    {
+      id: "msg-04-01",
+      isSent: false,
+      sender: "d",
+      text: "I've reviewed your case. We need to schedule a follow-up.",
+      timestamp: "Now",
+      avatar: "#",
+      senderName: "Dr. Strange",
+    },
+  ],
 };
 
 export const dummyUsers = [
@@ -272,18 +304,21 @@ export const dummyLabResults = [
 export const dummyBillingTickets = [
   {
     id: 'bill-001',
+    appointmentId: 'appt-004',
     service: 'Medical Certificate',
     amount: 150.00,
     status: 'For Payment',
   },
   {
     id: 'bill-002',
+    appointmentId: 'appt-005',
     service: 'Doctor\'s Note for School',
     amount: 100.00,
     status: 'For Payment',
   },
   {
     id: 'bill-003',
+    appointmentId: 'appt-002',
     service: 'Lab Test Interpretation',
     amount: 250.00,
     status: 'Completed',

@@ -18,14 +18,14 @@ const PatientLayout = ({ children }) => {
   // Get active page from URL
   const getActivePageFromPath = () => {
     const path = location.pathname;
-    if (path === "/patient") return "home";
-    if (path === "/patient/appointments") return "appointments";
-    if (path === "/patient/messages") return "messages";
-    if (path === "/patient/medical_records") return "medical-records";
-    if (path === "/patient/lab_results") return "lab-results";
-    if (path === "/patient/consultation_billing") return "billing";
-    if (path === "/patient/consultation_history") return "consultation-history";
-    if (path === "/patient/account") return "account";
+    if (path === "/patient" || path === "/patient/") return "home";
+    if (path.startsWith("/patient/appointments")) return "appointments";
+    if (path.startsWith("/patient/messages")) return "messages";
+    if (path.startsWith("/patient/medical_records")) return "medical-records";
+    if (path.startsWith("/patient/lab_results")) return "lab-results";
+    if (path.startsWith("/patient/consultation_billing")) return "billing";
+    if (path.startsWith("/patient/consultation_history")) return "consultation-history";
+    if (path.startsWith("/patient/account")) return "account";
     return "home";
   };
 

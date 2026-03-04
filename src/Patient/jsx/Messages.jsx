@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import "../css/Messages.css";
 import {
   FaUser,
@@ -19,7 +20,7 @@ import {
 } from "../services/chatService";
 import SpecialistCall from "../../Specialists/SpecialistCall.jsx";
 
-const Messages = ({ initialTarget, onChatOpened }) => {
+const Messages = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
@@ -33,6 +34,8 @@ const Messages = ({ initialTarget, onChatOpened }) => {
   const chatMessagesRef = useRef(null);
   const fileInputRef = useRef(null);
   const hasLoadedOnce = useRef(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const CHARACTER_LIMIT = 500;
 
@@ -93,37 +96,59 @@ const Messages = ({ initialTarget, onChatOpened }) => {
     }
   }, [chatLoading]);
 
-  useEffect(() => {
-    if (initialTarget && !chatLoading) {
-      const specialistName = initialTarget.name;
-      const conversation = conversations.find((c) => c.name === specialistName);
-
-      const findAndStartConversation = async (name) => {
-        try {
-          const users = await searchUsers(name);
-          if (users && users.length > 0) {
-            const specialistUser = users.find(
-              (u) =>
-                (u.name === name || u.Display_Name === name) &&
-                (u.User_Type === "specialist" || u.User_Type_Code === "s" || u.userType === "d" || u.userType === "n")
-            );
-            if (specialistUser) {
-              await startConversation("direct", specialistUser.id || specialistUser.Id);
-            }
-          }
-        } finally {
-          onChatOpened();
-        }
-      };
-
-      if (conversation) {
-        openConversation(conversation);
-        onChatOpened();
-      } else {
-        findAndStartConversation(specialistName);
-      }
+  const onChatOpened = useCallback(() => {
+    // Clean the state to avoid re-triggering on refresh or back navigation
+    if (location.state?.chatTarget) {
+      const { chatTarget, ...restState } = location.state;
+      navigate(location.pathname, { state: restState, replace: true });
     }
-  }, [initialTarget, conversations, openConversation, onChatOpened, searchUsers, startConversation, chatLoading]);
+  }, [location, navigate]);
+
+  useEffect(() => {
+    const initialTarget = location.state?.chatTarget;
+    if (!initialTarget || chatLoading) {
+      return;
+    }
+
+    const { id: specialistId, name: specialistName } = initialTarget;
+
+    const conversation = conversations.find(
+      (c) =>
+        (specialistId && c.userId === specialistId) || c.name === specialistName,
+    );
+
+    const findAndStartConversation = async (name, id) => {
+      try {
+        let newConvo = null;
+        if (id) {
+          newConvo = await startConversation("direct", id);
+        }
+        if (!newConvo && name) {
+          const users = await searchUsers(name);
+          const specialistUser = users?.find(
+            (u) =>
+              (u.name === name || u.Display_Name === name) &&
+              (u.User_Type === "specialist" || u.User_Type_Code === "s" || u.userType === "d" || u.userType === "n"),
+          );
+          if (specialistUser) {
+            newConvo = await startConversation("direct", specialistUser.id || specialistUser.Id);
+          }
+        }
+        if (newConvo) {
+          openConversation(newConvo);
+        }
+      } finally {
+        onChatOpened();
+      }
+    };
+
+    if (conversation) {
+      openConversation(conversation);
+      onChatOpened();
+    } else {
+      findAndStartConversation(specialistName, specialistId);
+    }
+  }, [location.state, chatLoading, conversations, openConversation, startConversation, searchUsers, onChatOpened]);
 
   useEffect(() => {
     if (chatMessagesRef.current && activeConversation) {

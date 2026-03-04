@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import authService from "../Specialists/authService";
 import { loginAdmin } from "../api/Admin/api.js";
-import { dummyPatientCredentials, patientDummyData } from "../api/Patient/test.js";
+import { login } from "../Patient/services/apiService.js";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -42,49 +42,13 @@ export default function Login() {
     }));
   };
 
-  const loginWithAPI = async (email, password) => {
-    try {
-      const response = await fetch("http://localhost:1337/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        return {
-          success: true,
-          user: data.user,
-        };
-      } else {
-        return {
-          success: false,
-          error: data.message || "Login failed",
-        };
-      }
-    } catch (error) {
-      console.error(
-        "API login failed, trying fallback credentials:",
-        error.message,
-      );
-      return {
-        success: false,
-        error: error.message || "Login failed",
-      };
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
     try {
-      const result = await loginWithAPI(formData.email, formData.password);
+      const result = await login(formData.email, formData.password);
 
       if (result.success) {
         const fullName =
@@ -177,14 +141,6 @@ export default function Login() {
     ) {
       localStorage.setItem("userRole", "nurse");
       navigate("/nurse-dashboard");
-      return;
-    } else if (
-      formData.email === dummyPatientCredentials.email &&
-      formData.password === dummyPatientCredentials.password
-    ) {
-      localStorage.setItem("userRole", "patient");
-      localStorage.setItem("currentUser", JSON.stringify(patientDummyData));
-      navigate("/patient");
       return;
     }
 

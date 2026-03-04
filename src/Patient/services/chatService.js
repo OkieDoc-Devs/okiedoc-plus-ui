@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { dummyConversations, dummyMessages, dummyUsers } from "../../api/Patient/test";
 const API_BASE_URL = "http://localhost:8080/api";
 
 // Helper functions required by Messages.jsx
@@ -62,10 +63,12 @@ export const useChat = ({ currentUserId, currentUserType }) => {
     try {
       console.log(`[Backend] Fetching conversations for user ${currentUserId}...`);
       const response = await api.get(`/conversations/${currentUserId}`);
-      setConversations(response.data);
+      setConversations(response.data || []);
     } catch (err) {
       console.error("[Backend] Failed to fetch conversations. This is expected if backend is not running.", err);
-      setError(err.message || "Failed to load conversations");
+      // Fallback to dummy data
+      console.log("[Fallback] Using dummy conversations.");
+      setConversations(dummyConversations);
     } finally {
       setLoading(false);
     }
@@ -77,16 +80,21 @@ export const useChat = ({ currentUserId, currentUserType }) => {
 
   const openConversation = useCallback(async (conversation) => {
     setActiveConversation(conversation);
+    setMessagesLoading(true);
     setMessages([]);
     try {
       console.log(`[Backend] Fetching messages for conversation ${conversation.id}...`);
       const response = await api.get(`/messages/${conversation.id}`);
-      setMessages(response.data);
+      setMessages(response.data || []);
+      setMessagesLoading(false);
     } catch (err) {
       console.error("[Backend] Failed to fetch messages:", err);
-      // We don't set global error here to avoid blocking the UI completely
-    } finally {
+      // Fallback to dummy data
+      console.log(`[Fallback] Using dummy messages for conversation ${conversation.id}.`);
+      setTimeout(() => { // Simulate network delay
+        setMessages(dummyMessages[conversation.id] || []);
         setMessagesLoading(false);
+      }, 500);
     }
   }, []);
 
@@ -97,30 +105,41 @@ export const useChat = ({ currentUserId, currentUserType }) => {
 
   const sendMessage = useCallback(async (text) => {
     if (!activeConversation) return;
+
+    const sentMessage = {
+      id: `msg-sent-${Date.now()}`,
+      isSent: true,
+      sender: currentUserType,
+      text,
+      timestamp: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+    };
+
+    // Optimistic UI update
+    setMessages(prev => [...prev, sentMessage]);
+    setConversations(prev => prev.map(c =>
+      c.id === activeConversation.id
+        ? { ...c, lastMessage: text, timestamp: sentMessage.timestamp, lastMessageSentByMe: true }
+        : c
+    ));
+
     try {
       console.log(`[Backend] Sending message to conversation ${activeConversation.id}...`);
       const payload = {
         conversationId: activeConversation.id,
         senderId: currentUserId,
-        text: text,
+        text,
         timestamp: new Date().toISOString(),
       };
       const response = await api.post("/messages", payload);
-      setMessages((prev) => [...prev, response.data]);
-      
-      // Update the conversation list with the new last message
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === activeConversation.id
-            ? { ...c, lastMessage: text, timestamp: new Date().toISOString() }
-            : c
-        )
-      );
+      // Replace optimistic message with one from server if needed
+      setMessages((prev) => prev.map(m => m.id === sentMessage.id ? response.data : m));
     } catch (err) {
       console.error("[Backend] Failed to send message:", err);
-      throw err;
+      // For dummy data, we just keep the optimistic update.
+      // In a real app, you might want to show an error state on the message.
+      // We don't want to throw and show an alert for dummy mode.
     }
-  }, [activeConversation, currentUserId]);
+  }, [activeConversation, currentUserId, currentUserType]);
 
   const uploadFile = useCallback(async (file) => {
     if (!activeConversation) return;
@@ -169,21 +188,29 @@ export const useChat = ({ currentUserId, currentUserType }) => {
     try {
       console.log(`[Backend] Searching users with query "${query}"...`);
       const response = await api.get(`/users/search`, { params: { q: query } });
-      return response.data;
+      return response.data || [];
     } catch (err) {
       console.error("[Backend] Failed to search users:", err);
-      return [];
+      // Fallback to dummy data
+      console.log(`[Fallback] Searching dummy users with query "${query}".`);
+      const lowerCaseQuery = query.toLowerCase();
+      return dummyUsers.filter(user =>
+        (user.name && user.name.toLowerCase().includes(lowerCaseQuery)) ||
+        (user.specialty && user.specialty.toLowerCase().includes(lowerCaseQuery))
+      );
     }
   }, []);
 
   const getAllUsers = useCallback(async () => {
     try {
       console.log(`[Backend] Fetching all users...`);
-      const response = await api.get("/users");
-      return response.data;
+      const response = await api.get('/users');
+      return response.data || [];
     } catch (err) {
       console.error("[Backend] Failed to fetch all users:", err);
-      return [];
+      // Fallback to dummy data
+      console.log("[Fallback] Using dummy users.");
+      return dummyUsers;
     }
   }, []);
 

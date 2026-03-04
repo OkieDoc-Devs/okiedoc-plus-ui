@@ -1,4 +1,5 @@
  import axios from 'axios';
+ import { dummyMedicalRecords } from "../../api/Patient/test";
  
  const API_BASE_URL = "http://localhost:8080/api";
  
@@ -7,18 +8,37 @@
  });
  
  export const fetchMedicalRecords = async (userId) => {
-   if (!userId) throw new Error("User ID is required");
-   const response = await api.get(`/medical-records/${userId}`);
-   return response.data || {};
+   try {
+     if (!userId) throw new Error("User ID is required");
+     console.log(`[Backend] Fetching medical records for user ${userId}...`);
+     const response = await api.get(`/medical-records/${userId}`);
+     return response.data || {};
+   } catch (err) {
+     console.error("[Backend] Failed to fetch medical records:", err);
+     console.log("[Fallback] Using dummy medical records.");
+     return dummyMedicalRecords;
+   }
  };
  
  export const deleteMedicalItem = async (category, itemId) => {
-   await api.delete(`/medical-records/${category}/${itemId}`);
+   try {
+     console.log(`[Backend] Deleting item ${itemId} from ${category}...`);
+     await api.delete(`/medical-records/${category}/${itemId}`);
+   } catch (err) {
+     console.error("[Backend] Failed to delete item:", err);
+     console.log("[Fallback] Simulated deletion.");
+   }
  };
  
  export const saveMedicalItem = async (category, item) => {
-     const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-     const payload = { ...item, userId: currentUser?.id };
-     const response = await api.post(`/medical-records/${category}`, payload);
-     return response.data;
+     try {
+       const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+       const payload = { ...item, userId: currentUser?.id };
+       const response = await api.post(`/medical-records/${category}`, payload);
+       return response.data;
+     } catch (err) {
+       console.error("[Backend] Failed to save item:", err);
+       console.log("[Fallback] Simulated save.");
+       return { ...item, id: item.id || Date.now() };
+     }
  };

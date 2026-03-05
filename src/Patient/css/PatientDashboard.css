@@ -4077,7 +4077,6 @@ html:has(body.patient-dashboard-active) {
 .patient-home-ticket-actions {
   display: flex;
   gap: 0.4rem;
-  flex-wrap: wrap;
   margin-top: auto;
 }
 

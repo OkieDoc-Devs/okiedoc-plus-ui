@@ -103,6 +103,12 @@ export const dummyConversations = [
     unreadCount: 0,
     role: "Cardiology",
     otherUserType: "d",
+    messages: [
+      { id: "msg-01-01", isSent: false, sender: "d", text: "Hello! Just confirming our appointment for tomorrow at 10:00 AM.", timestamp: "10:28 AM", avatar: "#", senderName: "Dr. Smith" },
+      { id: "msg-01-02", isSent: true, sender: "p", text: "Yes, confirmed. Thank you!", timestamp: "10:29 AM" },
+      { id: "msg-01-03", isSent: false, sender: "d", text: "Great. Is there anything you'd like to discuss beforehand?", timestamp: "10:29 AM", avatar: "#", senderName: "Dr. Smith" },
+      { id: "msg-01-04", isSent: true, sender: "p", text: "No, I think I'm all set. See you then!", timestamp: "10:30 AM" },
+    ],
   },
   {
     id: "convo-02",
@@ -117,6 +123,9 @@ export const dummyConversations = [
     unreadCount: 2,
     role: "Dermatology",
     otherUserType: "d",
+    messages: [
+      { id: "msg-02-01", isSent: false, sender: "d", text: "Please upload the results when you can.", timestamp: "Yesterday", avatar: "#", senderName: "Dr. Jones" },
+    ],
   },
   {
     id: "convo-03",
@@ -131,6 +140,11 @@ export const dummyConversations = [
     unreadCount: 0,
     role: "Nurse",
     otherUserType: "n",
+    messages: [
+      { id: "msg-03-01", isSent: false, sender: "n", text: "Hello, thank you for contacting OkieDoc+. How can I help you today?", timestamp: "1:10 PM", avatar: "#", senderName: "Nurse" },
+      { id: "msg-03-02", isSent: true, sender: "p", text: "I'd like to speak with a specialist about a persistent headache.", timestamp: "1:12 PM" },
+      { id: "msg-03-03", isSent: false, sender: "n", text: "I'm connecting you with a specialist now.", timestamp: "1:15 PM", avatar: "#", senderName: "Nurse" },
+    ],
   },
   {
     id: "convo-04",
@@ -145,94 +159,11 @@ export const dummyConversations = [
     unreadCount: 1,
     role: "Neurology",
     otherUserType: "d",
+    messages: [
+      { id: "msg-04-01", isSent: false, sender: "d", text: "I've reviewed your case. We need to schedule a follow-up.", timestamp: "Now", avatar: "#", senderName: "Dr. Strange" },
+    ],
   },
 ];
-
-export const dummyMessages = {
-  "convo-01": [
-    {
-      id: "msg-01-01",
-      isSent: false,
-      sender: "d",
-      text: "Hello! Just confirming our appointment for tomorrow at 10:00 AM.",
-      timestamp: "10:28 AM",
-      avatar: "#",
-      senderName: "Dr. Smith",
-    },
-    {
-      id: "msg-01-02",
-      isSent: true,
-      sender: "p",
-      text: "Yes, confirmed. Thank you!",
-      timestamp: "10:29 AM",
-    },
-    {
-      id: "msg-01-03",
-      isSent: false,
-      sender: "d",
-      text: "Great. Is there anything you'd like to discuss beforehand?",
-      timestamp: "10:29 AM",
-      avatar: "#",
-      senderName: "Dr. Smith",
-    },
-    {
-      id: "msg-01-04",
-      isSent: true,
-      sender: "p",
-      text: "No, I think I'm all set. See you then!",
-      timestamp: "10:30 AM",
-    },
-  ],
-  "convo-02": [
-    {
-      id: "msg-02-01",
-      isSent: false,
-      sender: "d",
-      text: "Please upload the results when you can.",
-      timestamp: "Yesterday",
-      avatar: "#",
-      senderName: "Dr. Jones",
-    },
-  ],
-  "convo-03": [
-     {
-      id: "msg-03-01",
-      isSent: false,
-      sender: "n",
-      text: "Hello, thank you for contacting OkieDoc+. How can I help you today?",
-      timestamp: "1:10 PM",
-      avatar: "#",
-      senderName: "Nurse",
-    },
-    {
-      id: "msg-03-02",
-      isSent: true,
-      sender: "p",
-      text: "I'd like to speak with a specialist about a persistent headache.",
-      timestamp: "1:12 PM",
-    },
-    {
-      id: "msg-03-03",
-      isSent: false,
-      sender: "n",
-      text: "I'm connecting you with a specialist now.",
-      timestamp: "1:15 PM",
-      avatar: "#",
-      senderName: "Nurse",
-    },
-  ],
-  "convo-04": [
-    {
-      id: "msg-04-01",
-      isSent: false,
-      sender: "d",
-      text: "I've reviewed your case. We need to schedule a follow-up.",
-      timestamp: "Now",
-      avatar: "#",
-      senderName: "Dr. Strange",
-    },
-  ],
-};
 
 export const dummyUsers = [
     ...dummySpecialists.map(s => ({...s, userType: 'd'})),

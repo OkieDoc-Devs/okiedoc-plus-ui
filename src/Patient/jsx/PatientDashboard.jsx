@@ -329,7 +329,18 @@ const PatientDashboard = () => {
   };
 
   const openChat = (appointment) => {
-    navigate("/patient/messages", { state: { chatTarget: { name: appointment.specialist, id: appointment.specialistId } } });
+    if (!appointment.specialistId) {
+      console.error("Cannot open chat: Missing specialist ID");
+      return;
+    }
+    navigate("/patient/messages", { 
+      state: { 
+        chatTarget: { 
+          name: appointment.specialist, 
+          id: appointment.specialistId 
+        } 
+      } 
+    });
   };
 
   const handlePayment = (appointment) => {

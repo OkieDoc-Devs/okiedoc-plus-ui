@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { dummyConversations, dummyMessages, dummyUsers } from "../../api/Patient/test";
+import { dummyConversations, dummyUsers } from "../../api/Patient/test";
 const API_BASE_URL = "http://localhost:8080/api";
 
 // Helper functions required by Messages.jsx
@@ -68,7 +68,7 @@ export const useChat = ({ currentUserId, currentUserType }) => {
       console.error("[Backend] Failed to fetch conversations. This is expected if backend is not running.", err);
       // Fallback to dummy data
       console.log("[Fallback] Using dummy conversations.");
-      setConversations(dummyConversations);
+      setConversations([...dummyConversations]);
     } finally {
       setLoading(false);
     }
@@ -77,6 +77,10 @@ export const useChat = ({ currentUserId, currentUserType }) => {
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
+
+  const findConversationByUserId = useCallback((userId) => {
+    return conversations.find(c => c.userId === userId);
+  }, [conversations]);
 
   const openConversation = useCallback(async (conversation) => {
     setActiveConversation(conversation);
@@ -92,7 +96,8 @@ export const useChat = ({ currentUserId, currentUserType }) => {
       // Fallback to dummy data
       console.log(`[Fallback] Using dummy messages for conversation ${conversation.id}.`);
       setTimeout(() => { // Simulate network delay
-        setMessages(dummyMessages[conversation.id] || []);
+        const fullConvo = dummyConversations.find(c => c.id === conversation.id);
+        setMessages(fullConvo?.messages || []);
         setMessagesLoading(false);
       }, 500);
     }
@@ -118,7 +123,7 @@ export const useChat = ({ currentUserId, currentUserType }) => {
     setMessages(prev => [...prev, sentMessage]);
     setConversations(prev => prev.map(c =>
       c.id === activeConversation.id
-        ? { ...c, lastMessage: text, timestamp: sentMessage.timestamp, lastMessageSentByMe: true }
+        ? { ...c, lastMessage: text, timestamp: "Just now", lastMessageSentByMe: true }
         : c
     ));
 
@@ -136,8 +141,15 @@ export const useChat = ({ currentUserId, currentUserType }) => {
     } catch (err) {
       console.error("[Backend] Failed to send message:", err);
       // For dummy data, we just keep the optimistic update.
-      // In a real app, you might want to show an error state on the message.
-      // We don't want to throw and show an alert for dummy mode.
+      // Persist to the correct conversation in our dummy data source
+      const dummyConvo = dummyConversations.find(c => c.id === activeConversation.id);
+      if (dummyConvo) {
+        dummyConvo.messages = dummyConvo.messages || [];
+        dummyConvo.messages.push(sentMessage);
+        dummyConvo.lastMessage = text;
+        dummyConvo.timestamp = "Just now";
+        dummyConvo.lastMessageSentByMe = true;
+      }
     }
   }, [activeConversation, currentUserId, currentUserType]);
 
@@ -168,6 +180,14 @@ export const useChat = ({ currentUserId, currentUserType }) => {
   }, []);
 
   const startConversation = useCallback(async (type, otherUserId) => {
+    // Check dummyConversations directly to avoid stale state issues during rapid clicks
+    // and to ensure we find conversations that might have just been added to the dummy data
+    const existingConversation = dummyConversations.find(c => c.userId === otherUserId);
+    if (existingConversation) {
+      openConversation(existingConversation);
+      return;
+    }
+
     try {
       console.log(`[Backend] Starting conversation with user ${otherUserId}...`);
       const response = await api.post("/conversations", {
@@ -180,7 +200,28 @@ export const useChat = ({ currentUserId, currentUserType }) => {
       openConversation(newConversation);
     } catch (err) {
       console.error("[Backend] Failed to start conversation:", err);
-      throw err;
+      // Fallback for dummy data
+      console.log("[Fallback] Creating dummy conversation.");
+      const otherUser = dummyUsers.find(u => u.id === otherUserId);
+      if (otherUser) {
+        const newDummyConvo = {
+          id: `convo-new-${Date.now()}-${Math.random()}`,
+          userId: otherUserId,
+          name: otherUser.name,
+          avatar: "#",
+          isOnline: true,
+          timestamp: "New",
+          lastMessage: "",
+          lastMessageSentByMe: false,
+          unreadCount: 0,
+          role: otherUser.specialty || "User",
+          otherUserType: otherUser.userType,
+          messages: [],
+        };
+        dummyConversations.unshift(newDummyConvo);
+        setConversations([...dummyConversations]);
+        openConversation(newDummyConvo);
+      }
     }
   }, [currentUserId, openConversation]);
 
@@ -231,5 +272,6 @@ export const useChat = ({ currentUserId, currentUserType }) => {
     searchUsers,
     getAllUsers,
     loadConversations,
+    findConversationByUserId,
   };
 };

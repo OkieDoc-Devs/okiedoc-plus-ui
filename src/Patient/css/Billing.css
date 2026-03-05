@@ -57,6 +57,25 @@
   background-color: #c82333;
 }
 
+.patient-download-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.patient-download-btn:hover {
+  background-color: #0056b3;
+}
+
 .patient-bill-item {
   display: flex;
   justify-content: space-between;

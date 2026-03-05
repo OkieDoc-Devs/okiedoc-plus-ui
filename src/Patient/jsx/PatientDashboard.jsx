@@ -526,14 +526,7 @@ const PatientDashboard = () => {
                                     {appointment.status}
                                   </span>
                                 </div>
-                                <div
-                                  className="patient-home-ticket-actions"
-                                  style={{
-                                    display: "flex",
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                  }}
-                                >
+                                <div className="patient-home-ticket-actions">
                                   {appointment.status === "Active" && (
                                     <button
                                       className="patient-chat-btn"

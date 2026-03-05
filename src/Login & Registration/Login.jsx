@@ -5,6 +5,7 @@ import { FaEye, FaEyeSlash } from "react-icons/fa";
 import authService from "../Specialists/authService";
 import { loginAdmin } from "../api/Admin/api.js";
 import { login } from "../Patient/services/apiService.js";
+import { mockAccount } from "../api/Patient/test";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -31,6 +32,10 @@ export default function Login() {
     nurseAdmin: { 
       email: "nurseadmin@okiedocplus.com", 
       password: "nurseAdmin123" 
+    },
+    patient: {
+      email: mockAccount.email,
+      password: mockAccount.password,
     },
   };
 
@@ -141,6 +146,13 @@ export default function Login() {
     ) {
       localStorage.setItem("userRole", "nurse");
       navigate("/nurse-dashboard");
+      return;
+    } else if (
+      formData.email === dummyCredentials.patient.email &&
+      formData.password === dummyCredentials.patient.password
+    ) {
+      localStorage.setItem("userRole", "patient");
+      navigate("/patient");
       return;
     }
 

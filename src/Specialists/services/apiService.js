@@ -1,20 +1,25 @@
 /**
  * Specialist API Service Module
  * Handles all API communication for the Specialist module
+ * Integrated with okiedoc-plus-api-new-backend (API v1)
  */
 
 const API_BASE_URL =
-  import.meta.env.MODE === "production"
+  import.meta.env.VITE_SPECIALIST_API_URL ||
+  (import.meta.env.MODE === "production"
     ? "https://your-production-url.com"
-    : "http://localhost:1337";
+    : "http://localhost:1337");
+
+const API_PREFIX = "/api/v1";
 
 /**
  * Generic API request handler
- * @param {string} endpoint - API endpoint
+ * @param {string} endpoint - API endpoint (e.g. /api/v1/auth/login)
  * @param {object} options - Fetch options
  * @returns {Promise<object>} API response data
  */
 async function apiRequest(endpoint, options = {}) {
+  const url = endpoint.startsWith("http") ? endpoint : `${API_BASE_URL}${endpoint}`;
   const defaultOptions = {
     credentials: "include",
     headers: {
@@ -22,7 +27,7 @@ async function apiRequest(endpoint, options = {}) {
     },
   };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(url, {
     ...defaultOptions,
     ...options,
     headers: {
@@ -34,7 +39,7 @@ async function apiRequest(endpoint, options = {}) {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(
-      errorData.error || `HTTP error! status: ${response.status}`
+      errorData.error || errorData.message || `HTTP error! status: ${response.status}`
     );
   }
 
@@ -42,7 +47,7 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 // ==========================================
-// Authentication
+// Authentication (new API v1)
 // ==========================================
 
 /**
@@ -52,7 +57,7 @@ async function apiRequest(endpoint, options = {}) {
  * @returns {Promise<object>} Login response with user data
  */
 export async function loginSpecialist(email, password) {
-  return apiRequest("/api/auth/login", {
+  return apiRequest(`${API_PREFIX}/auth/login`, {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
@@ -63,350 +68,350 @@ export async function loginSpecialist(email, password) {
  * @returns {Promise<object>} Logout response
  */
 export async function logoutSpecialist() {
-  return apiRequest("/api/auth/logout", {
+  return apiRequest(`${API_PREFIX}/auth/logout`, {
     method: "POST",
   });
 }
 
 /**
  * Get current authenticated user
- * @returns {Promise<object>} Current user data
+ * @returns {Promise<object>} Current user data { user }
  */
 export async function getCurrentUser() {
-  return apiRequest("/api/auth/me");
+  return apiRequest(`${API_PREFIX}/auth/me`);
+}
+
+/**
+ * Register specialist (new API: POST /api/v1/specialist/register)
+ * @param {object} data - fullName, email, mobileNumber, password, licenseNumber, primarySpecialty, subSpecialties?, prcExpiryDate?
+ * @returns {Promise<object>} { message } or throws
+ */
+export async function registerSpecialist(data) {
+  return apiRequest(`${API_PREFIX}/specialist/register`, {
+    method: "POST",
+    body: JSON.stringify({
+      fullName: [data.firstName, data.lastName].filter(Boolean).join(" ") || data.fullName,
+      email: data.email,
+      mobileNumber: data.phone || data.mobileNumber || "0000000000",
+      password: data.password,
+      licenseNumber: data.licenseNumber,
+      primarySpecialty: data.primarySpecialty || data.specialty,
+      subSpecialties: data.subSpecialties || "",
+      prcExpiryDate: data.prcExpiryDate || undefined,
+    }),
+  });
 }
 
 // ==========================================
-// Dashboard
+// Dashboard (composed from new API)
 // ==========================================
 
 /**
- * Fetch dashboard data from API (includes stats, recent tickets, etc.)
- * @returns {Promise<object>} Dashboard data object
+ * Fetch dashboard data (auth/me + my-active-tickets)
+ * @returns {Promise<object>} Dashboard data with specialist and tickets
  */
 export async function fetchDashboard() {
-  const data = await apiRequest("/api/specialist/dashboard");
-  return data;
+  const [meRes, ticketsRes] = await Promise.all([
+    apiRequest(`${API_PREFIX}/auth/me`),
+    apiRequest(`${API_PREFIX}/specialist/my-active-tickets`),
+  ]);
+  const user = meRes.user || {};
+  const tickets = ticketsRes.tickets || [];
+  return {
+    specialist: {
+      id: user.id,
+      fullName: user.fullName,
+      firstName: user.fullName?.split(" ")[0] || "",
+      lastName: user.fullName?.split(" ").slice(1).join(" ") || "",
+      email: user.email,
+      fName: user.fullName?.split(" ")[0],
+      lName: user.fullName?.split(" ").slice(1).join(" "),
+      role: user.role,
+      userType: user.role,
+      birthday: user.birthday,
+      gender: user.gender,
+      bloodType: user.bloodType,
+    },
+    tickets,
+  };
 }
 
 // ==========================================
-// Profile
+// Profile (new API v1)
 // ==========================================
 
 /**
- * Fetch specialist profile
+ * Fetch specialist profile (from auth/me; specialist-specific fields from update response or defaults)
  * @returns {Promise<object>} Profile data
  */
 export async function fetchProfile() {
-  const data = await apiRequest("/api/specialist/profile");
-  return data.specialist;
+  const data = await apiRequest(`${API_PREFIX}/auth/me`);
+  const user = data.user || {};
+  const parts = (user.fullName || "").split(" ");
+  return {
+    ...user,
+    firstName: parts[0] || "",
+    lastName: parts.slice(1).join(" ") || "",
+    fName: parts[0],
+    lName: parts.slice(1).join(" "),
+    email: user.email,
+    specialization: user.primarySpecialty,
+    subSpecialization: user.subSpecialties,
+    userType: user.role,
+  };
 }
 
 /**
  * Update specialist profile
+ * New API: PATCH /api/v1/specialist/update-profile { bio, primarySpecialty, subSpecialties, s2Number, ptrNumber, birthday }
  * @param {object} profileData - Profile data to update
  * @returns {Promise<object>} Updated profile
  */
 export async function updateProfile(profileData) {
-  const data = await apiRequest("/api/specialist/profile", {
-    method: "PUT",
-    body: JSON.stringify(profileData),
+  const body = {
+    bio: profileData.bio,
+    primarySpecialty: profileData.specialization || profileData.primarySpecialty,
+    subSpecialties: profileData.subSpecialization ?? profileData.subSpecialties ?? "",
+    s2Number: profileData.s2Number,
+    ptrNumber: profileData.ptrNumber,
+    birthday: profileData.birthday,
+  };
+  const data = await apiRequest(`${API_PREFIX}/specialist/update-profile`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
   });
-  return data.specialist;
+  return { ...profileData, ...(data.data || {}) };
 }
 
 /**
- * Upload avatar image
- * @param {File} file - Image file to upload
- * @returns {Promise<object>} Upload response with avatar URL
+ * Upload avatar image (not in new API - no-op)
  */
 export async function uploadAvatar(file) {
-  const formData = new FormData();
-  formData.append("avatar", file);
-
-  const response = await fetch(`${API_BASE_URL}/api/specialist/avatar`, {
-    method: "POST",
-    credentials: "include",
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  return response.json();
+  console.warn("Avatar upload not implemented in new API");
+  return { url: null };
 }
 
 /**
- * Delete avatar image
- * @returns {Promise<object>} Delete response
+ * Delete avatar image (not in new API - no-op)
  */
 export async function deleteAvatar() {
-  return apiRequest("/api/specialist/avatar", {
-    method: "DELETE",
-  });
+  console.warn("Avatar delete not implemented in new API");
+  return {};
 }
 
 /**
- * Change password
- * @param {string} currentPassword - Current password
- * @param {string} newPassword - New password
- * @returns {Promise<object>} Response
+ * Change password (not in new API - no-op)
  */
 export async function changePassword(currentPassword, newPassword) {
-  return apiRequest("/api/specialist/change-password", {
-    method: "PUT",
-    body: JSON.stringify({ currentPassword, newPassword }),
-  });
+  console.warn("Change password not implemented in new API");
+  throw new Error("Change password is not available in the current API.");
 }
 
 // ==========================================
-// Tickets
+// Tickets (new API v1)
 // ==========================================
 
 /**
  * Fetch all tickets assigned to specialist
- * @param {object} options - Query options (status, limit, skip)
- * @returns {Promise<object>} Tickets data with pagination info
+ * GET /api/v1/specialist/my-active-tickets
+ * @param {object} options - Query options (ignored by new API; filter client-side if needed)
+ * @returns {Promise<object>} { tickets }
  */
 export async function fetchTickets(options = {}) {
-  const params = new URLSearchParams();
-  if (options.status) params.append("status", options.status);
-  if (options.limit) params.append("limit", options.limit);
-  if (options.skip) params.append("skip", options.skip);
-
-  const queryString = params.toString();
-  const endpoint = `/api/specialist/tickets${
-    queryString ? `?${queryString}` : ""
-  }`;
-
-  return apiRequest(endpoint);
+  const data = await apiRequest(`${API_PREFIX}/specialist/my-active-tickets`);
+  let tickets = data.tickets || [];
+  if (options.status) {
+    tickets = tickets.filter((t) => t.status === options.status);
+  }
+  return { tickets, count: tickets.length };
 }
 
 /**
- * Fetch single ticket details
+ * Fetch tickets available to claim (new API)
+ * GET /api/v1/specialist/view-available
+ */
+export async function fetchAvailableTickets() {
+  const data = await apiRequest(`${API_PREFIX}/specialist/view-available`);
+  return { tickets: data.data || [], count: data.count || 0 };
+}
+
+/**
+ * Claim a ticket
+ * PATCH /api/v1/specialist/claim-ticket { ticketId }
+ */
+export async function claimTicket(ticketId) {
+  return apiRequest(`${API_PREFIX}/specialist/claim-ticket`, {
+    method: "PATCH",
+    body: JSON.stringify({ ticketId: Number(ticketId) }),
+  });
+}
+
+/**
+ * Fetch single ticket (from my-active-tickets list)
  * @param {string|number} ticketId - Ticket ID
  * @returns {Promise<object>} Ticket data
  */
 export async function fetchTicket(ticketId) {
-  const data = await apiRequest(`/api/specialist/tickets/${ticketId}`);
-  return data.ticket;
+  const data = await apiRequest(`${API_PREFIX}/specialist/my-active-tickets`);
+  const tickets = data.tickets || [];
+  const ticket = tickets.find((t) => String(t.id) === String(ticketId));
+  if (!ticket) {
+    throw new Error("Ticket not found or not assigned to you.");
+  }
+  return ticket;
 }
 
 /**
- * Update ticket
+ * Update ticket (EMR fields via PATCH /api/v1/tickets/update-emr; status-only updates are no-op)
  * @param {string|number} ticketId - Ticket ID
- * @param {object} updateData - Data to update
+ * @param {object} updateData - Data to update (subjective, objective, assessment, plan, icd10Code, or status)
  * @returns {Promise<object>} Updated ticket
  */
 export async function updateTicket(ticketId, updateData) {
-  const data = await apiRequest(`/api/specialist/tickets/${ticketId}`, {
-    method: "PUT",
-    body: JSON.stringify(updateData),
+  const emrFields = ["subjective", "objective", "assessment", "plan", "icd10Code"];
+  const hasEmr = emrFields.some((f) => updateData[f] !== undefined && updateData[f] !== null);
+  if (!hasEmr && "status" in updateData) {
+    // New API has no generic status update; keep local state only
+    return fetchTicket(ticketId);
+  }
+  if (!hasEmr) return fetchTicket(ticketId);
+
+  const body = {
+    ticketId: Number(ticketId),
+    subjective: updateData.subjective,
+    objective: updateData.objective,
+    assessment: updateData.assessment,
+    plan: updateData.plan,
+    icd10Code: updateData.icd10Code,
+  };
+  await apiRequest(`${API_PREFIX}/tickets/update-emr`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
   });
-  return data.ticket;
+  return fetchTicket(ticketId);
 }
 
 /**
- * Update ticket consultation data (Assessment, Prescription, Laboratory Request)
+ * Update ticket consultation (maps to update-emr: assessment, prescription -> plan, laboratoryRequest -> plan)
  * @param {string|number} ticketId - Ticket ID
- * @param {object} consultationData - Consultation data (assessment, prescription, laboratoryRequest)
+ * @param {object} consultationData - assessment, prescription, laboratoryRequest (and optional subjective, objective, plan, icd10Code)
  * @returns {Promise<object>} Updated ticket
  */
 export async function updateTicketConsultation(ticketId, consultationData) {
-  const data = await apiRequest(
-    `/api/specialist/tickets/${ticketId}/consultation`,
-    {
-      method: "PUT",
-      body: JSON.stringify(consultationData),
-    }
-  );
-  return data.ticket;
+  const parts = [];
+  if (consultationData.prescription) parts.push(consultationData.prescription);
+  if (consultationData.laboratoryRequest) parts.push(consultationData.laboratoryRequest);
+  const plan = parts.length ? parts.join("\n\n") : consultationData.plan;
+  const body = {
+    ticketId: Number(ticketId),
+    subjective: consultationData.subjective,
+    objective: consultationData.objective,
+    assessment: consultationData.assessment,
+    plan: plan ?? consultationData.plan,
+    icd10Code: consultationData.icd10Code,
+  };
+  await apiRequest(`${API_PREFIX}/tickets/update-emr`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+  return fetchTicket(ticketId);
 }
 
 /**
- * Pass ticket back to nurse for processing
- * @param {string|number} ticketId - Ticket ID
- * @param {string} notes - Optional notes when passing back
- * @returns {Promise<object>} Updated ticket
+ * Pass ticket back to nurse (not in new API - no-op)
  */
 export async function passTicketBackToNurse(ticketId, notes = "") {
-  const data = await apiRequest(
-    `/api/specialist/tickets/${ticketId}/pass-back`,
-    {
-      method: "POST",
-      body: JSON.stringify({ notes }),
-    }
-  );
-  return data.ticket;
+  console.warn("Pass back to nurse not implemented in new API");
+  return fetchTicket(ticketId);
 }
 
 /**
- * Complete a consultation
- * @param {string|number} ticketId - Ticket ID
- * @param {object} completionData - Completion data (diagnosis, prescription, notes)
- * @returns {Promise<object>} Completed ticket
+ * Complete consultation (not in new API - no-op)
  */
 export async function completeConsultation(ticketId, completionData) {
-  const data = await apiRequest(
-    `/api/specialist/tickets/${ticketId}/complete`,
-    {
-      method: "POST",
-      body: JSON.stringify(completionData),
-    }
-  );
-  return data.ticket;
+  console.warn("Complete consultation not implemented in new API");
+  return fetchTicket(ticketId);
 }
 
 // ==========================================
-// Schedule
+// Schedule (not in new API - stubs)
 // ==========================================
 
-/**
- * Fetch specialist schedule
- * @param {number} month - Month (0-11)
- * @param {number} year - Year
- * @returns {Promise<Array>} Schedule entries
- */
 export async function fetchSchedule(month, year) {
-  const params = new URLSearchParams();
-  if (month !== undefined) params.append("month", month);
-  if (year !== undefined) params.append("year", year);
-
-  const queryString = params.toString();
-  const endpoint = `/api/specialist/schedule${
-    queryString ? `?${queryString}` : ""
-  }`;
-
-  const data = await apiRequest(endpoint);
-  return data.schedules;
+  return [];
 }
 
-/**
- * Create or update schedule entry
- * @param {object} scheduleData - Schedule data (date, time, duration, notes, isAvailable)
- * @returns {Promise<object>} Schedule entry
- */
 export async function updateSchedule(scheduleData) {
-  const data = await apiRequest("/api/specialist/schedule", {
-    method: "POST",
-    body: JSON.stringify(scheduleData),
-  });
-  return data.schedule;
+  console.warn("Schedule update not implemented in new API");
+  return scheduleData;
 }
 
-/**
- * Delete schedule entry
- * @param {string|number} scheduleId - Schedule entry ID
- * @returns {Promise<object>} Delete response
- */
 export async function deleteSchedule(scheduleId) {
-  return apiRequest(`/api/specialist/schedule/${scheduleId}`, {
-    method: "DELETE",
-  });
+  console.warn("Schedule delete not implemented in new API");
+  return {};
 }
 
 // ==========================================
-// Notifications
+// Notifications (not in new API - stubs)
 // ==========================================
 
-/**
- * Fetch notifications
- * @returns {Promise<Array>} Notifications array
- */
 export async function fetchNotifications() {
-  const data = await apiRequest("/api/specialist/notifications");
-  return data.notifications;
+  return [];
 }
 
-/**
- * Mark notification as read
- * @param {string|number} notificationId - Notification ID
- * @returns {Promise<object>} Response
- */
 export async function markNotificationRead(notificationId) {
-  return apiRequest(`/api/specialist/notifications/${notificationId}/read`, {
-    method: "PUT",
-  });
+  return {};
 }
 
 // ==========================================
-// Services & Fees
+// Services & Fees (new API: PATCH /api/v1/specialist/fees)
 // ==========================================
 
-/**
- * Fetch service fees
- * @returns {Promise<Array>} Services array
- */
 export async function fetchServices() {
-  const data = await apiRequest("/api/specialist/services");
-  return data.services;
+  return [];
 }
 
 /**
- * Update service fee
- * @param {string} serviceName - Service name
- * @param {number} fee - Fee amount
- * @returns {Promise<object>} Updated service
+ * Update fees - new API expects all four fee fields
+ * PATCH /api/v1/specialist/fees { feeInitialWithoutCert, feeInitialWithCert, feeFollowUpWithoutCert, feeFollowUpWithCert }
  */
 export async function updateService(serviceName, fee) {
-  const data = await apiRequest("/api/specialist/services", {
-    method: "PUT",
-    body: JSON.stringify({ serviceName, fee }),
+  const num = Number(fee);
+  await apiRequest(`${API_PREFIX}/specialist/fees`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      feeInitialWithoutCert: num,
+      feeInitialWithCert: num,
+      feeFollowUpWithoutCert: num,
+      feeFollowUpWithCert: num,
+    }),
   });
-  return data.service;
+  return { serviceName, fee: num };
 }
 
 // ==========================================
-// Transactions
+// Transactions (not in new API - stub)
 // ==========================================
 
-/**
- * Fetch transaction history
- * @param {object} options - Query options (startDate, endDate, status)
- * @returns {Promise<object>} Transactions with totals
- */
 export async function fetchTransactions(options = {}) {
-  const params = new URLSearchParams();
-  if (options.startDate) params.append("startDate", options.startDate);
-  if (options.endDate) params.append("endDate", options.endDate);
-  if (options.status) params.append("status", options.status);
-
-  const queryString = params.toString();
-  const endpoint = `/api/specialist/transactions${
-    queryString ? `?${queryString}` : ""
-  }`;
-
-  return apiRequest(endpoint);
+  return { transactions: [], total: 0 };
 }
 
 // ==========================================
-// Payment Account
+// Payment Account (not in new API - stub)
 // ==========================================
 
-/**
- * Update payment account details
- * @param {object} accountData - Account data (accountType, accountName, accountNumber, gcashNumber)
- * @returns {Promise<object>} Updated account details
- */
 export async function updatePaymentAccount(accountData) {
-  return apiRequest("/api/specialist/payment-account", {
-    method: "PUT",
-    body: JSON.stringify(accountData),
-  });
+  console.warn("Payment account update not implemented in new API");
+  return accountData;
 }
 
 // ==========================================
 // Test endpoint
 // ==========================================
 
-/**
- * Test API connection
- * @returns {Promise<object>} Test response
- */
 export async function testConnection() {
-  return apiRequest("/api/specialist/test");
+  return apiRequest(`${API_PREFIX}/auth/me`).then(() => ({ ok: true }));
 }
 
-// Export API base URL for other uses
 export { API_BASE_URL };

@@ -24,17 +24,19 @@ class AuthService {
     if (this.isInitialized) return;
 
     try {
-      // Try to restore session from API
+      // Try to restore session from API (new API returns { user })
       const response = await api.getCurrentUser();
-      if (response.success && response.user) {
-        this.currentUser = response.user;
+      if (response && response.user) {
+        const user = response.user;
+        const userWithType = { ...user, userType: user.role || "specialist" };
+        this.currentUser = userWithType;
         localStorage.setItem(
           STORAGE_KEYS.currentUser,
-          JSON.stringify(response.user)
+          JSON.stringify(userWithType)
         );
         localStorage.setItem(
           STORAGE_KEYS.userType,
-          response.user.userType || "specialist"
+          userWithType.userType || "specialist"
         );
       }
     } catch (error) {
@@ -55,17 +57,19 @@ class AuthService {
     try {
       const response = await api.loginSpecialist(email, password);
 
-      if (response.success) {
-        this.currentUser = response.user;
+      if (response.success !== false && response.user) {
+        const user = response.user;
+        const userWithType = { ...user, userType: user.role || "specialist" };
+        this.currentUser = userWithType;
         localStorage.setItem(
           STORAGE_KEYS.currentUser,
-          JSON.stringify(response.user)
+          JSON.stringify(userWithType)
         );
         localStorage.setItem(STORAGE_KEYS.userType, "specialist");
 
         return {
           success: true,
-          user: response.user,
+          user: userWithType,
           redirect: response.redirect || "/specialist-dashboard",
         };
       }
@@ -98,6 +102,23 @@ class AuthService {
     }
 
     return { success: true };
+  }
+
+  /**
+   * Register specialist (uses new API v1)
+   * @param {object} data - firstName, lastName, email, password, specialty, licenseNumber, phone
+   * @returns {Promise<object>} { success, error? }
+   */
+  async registerSpecialist(data) {
+    try {
+      await api.registerSpecialist(data);
+      return { success: true };
+    } catch (error) {
+      const message =
+        error.message ||
+        (error.code === 409 ? "This email is already registered. Please wait for admin approval or contact support." : "Registration failed.");
+      return { success: false, error: message };
+    }
   }
 
   /**
@@ -225,11 +246,11 @@ class AuthService {
       errors.confirmPassword = "Passwords do not match";
     }
 
-    if (!data.specialization?.trim()) {
+    if (!data.specialization?.trim() && !data.specialty?.trim()) {
       errors.specialization = "Medical specialty is required";
     }
 
-    if (!data.prcNumber?.trim()) {
+    if (!data.prcNumber?.trim() && !data.licenseNumber?.trim()) {
       errors.prcNumber = "PRC license number is required";
     }
 

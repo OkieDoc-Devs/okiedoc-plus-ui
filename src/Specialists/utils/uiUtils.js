@@ -7,10 +7,11 @@
  */
 export const getStatusBadgeClass = (status) => {
   const s = (status || "").toLowerCase();
-  if (s === "confirmed" || s === "processing" || s === "completed") {
-    return "status-confirmed";
-  }
-  if (s === "pending") return "status-pending";
+  if (s === "awaiting" || s === "confirmed") return "status-awaiting";
+  if (s === "in progress" || s === "active") return "status-in-progress";
+  if (s === "completed") return "status-completed";
+  if (s === "triage complete" || s === "processing") return "status-triage";
+  if (s === "available") return "status-available";
   return "status-pending";
 };
 

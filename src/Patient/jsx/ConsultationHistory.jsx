@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { fetchPatientMedicalHistory } from "../services/apiService";
 import {
   FaEye,
   FaDownload,
@@ -23,48 +24,44 @@ const ConsultationHistory = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState([]);
 
-  // Sample consultation data
-  const consultations = [
-    {
-      id: 1,
-      ticketNumber: "CONS-2024-001",
-      date: "2024-01-15",
-      time: "10:30 AM",
-      specialist: "Dr. Sarah Johnson",
-      nurse: "Nurse Emily Davis",
-      status: "Completed",
-      chiefComplaint: "Chest pain and shortness of breath",
-      duration: "45 minutes",
-      rating: 4.5,
-    },
-    {
-      id: 2,
-      ticketNumber: "CONS-2024-002",
-      date: "2024-01-10",
-      time: "2:15 PM",
-      specialist: "Dr. Michael Chen",
-      nurse: "Nurse James Wilson",
-      status: "Incomplete",
-      chiefComplaint: "Fever and body aches",
-      duration: "Cancelled",
-      rating: null,
-    },
-    {
-      id: 3,
-      ticketNumber: "CONS-2024-003",
-      date: "2024-01-05",
-      time: "9:00 AM",
-      specialist: "Dr. Lisa Rodriguez",
-      nurse: "Nurse Maria Garcia",
-      status: "Completed",
-      chiefComplaint: "Headache and dizziness",
-      duration: "30 minutes",
-      rating: 4.8,
-    },
-  ];
+  const [consultations, setConsultations] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchPatientMedicalHistory();
+        if (data && data.history) {
+          // Map backend history schema to local component state expectations
+          const mappedHistory = data.history.map(t => ({
+            id: t.ticketNumber,
+            ticketNumber: t.ticketNumber,
+            date: t.visitDate ? new Date(t.visitDate).toLocaleDateString() : 'Unknown Date',
+            time: t.visitDate ? new Date(t.visitDate).toLocaleTimeString() : '',
+            specialist: t.specialistName,
+            nurse: 'Assigned Nurse', // Can be enriched from backend later
+            status: t.status === 'completed' ? 'Completed' : 'Incomplete',
+            chiefComplaint: t.chiefComplaint,
+            duration: 'Consultation ended',
+            rating: null,
+            rawRecord: t
+          }));
+          setConsultations(mappedHistory);
+        } else {
+          setConsultations([]);
+        }
+      } catch (err) {
+        console.error("Failed to load medical history:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadHistory();
+  }, []);
 
   // Sample EMR data for consultation summary
-  const getConsultationSummary = (consultationId) => {
+  const getConsultationSummary = () => {
     return {
       medicalTeam: {
         assignedNurse: "Nurse Emily Davis",
@@ -108,7 +105,7 @@ const ConsultationHistory = () => {
   };
 
   // Sample medical documents
-  const getMedicalDocuments = (consultationId) => {
+  const getMedicalDocuments = () => {
     return {
       provided: [
         {
@@ -246,86 +243,93 @@ const ConsultationHistory = () => {
 
       {/* Consultations List */}
       <div className="patient-consultations-list">
-        {consultations.map((consultation) => (
-          <div key={consultation.id} className="patient-consultation-card">
-            <div className="patient-consultation-header">
-              <div className="patient-consultation-info">
-                <h3 className="patient-consultation-ticket">
-                  {consultation.ticketNumber}
-                </h3>
-                <div className="patient-consultation-datetime">
-                  <span className="patient-consultation-date">
-                    {consultation.date}
-                  </span>
-                  <span className="patient-consultation-time">
-                    {consultation.time}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '20px' }}>Loading history...</div>
+        ) : consultations.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '20px' }}>No consultation history found.</div>
+        ) : (
+          consultations.map((consultation) => (
+            <div key={consultation.id} className="patient-consultation-card">
+
+              <div className="patient-consultation-header">
+                <div className="patient-consultation-info">
+                  <h3 className="patient-consultation-ticket">
+                    {consultation.ticketNumber}
+                  </h3>
+                  <div className="patient-consultation-datetime">
+                    <span className="patient-consultation-date">
+                      {consultation.date}
+                    </span>
+                    <span className="patient-consultation-time">
+                      {consultation.time}
+                    </span>
+                  </div>
+                </div>
+                <div className="patient-consultation-status">
+                  {getStatusIcon(consultation.status)}
+                  <span
+                    className={`patient-status-text ${getStatusClass(
+                      consultation.status
+                    )}`}
+                  >
+                    {consultation.status}
                   </span>
                 </div>
               </div>
-              <div className="patient-consultation-status">
-                {getStatusIcon(consultation.status)}
-                <span
-                  className={`patient-status-text ${getStatusClass(
-                    consultation.status
-                  )}`}
+
+              <div className="patient-consultation-details">
+                <div className="patient-consultation-team">
+                  <div className="patient-team-member">
+                    <FaUserMd className="patient-team-icon" />
+                    <span className="patient-team-label">Specialist:</span>
+                    <span className="patient-team-name">
+                      {consultation.specialist}
+                    </span>
+                  </div>
+                  <div className="patient-team-member">
+                    <FaUserNurse className="patient-team-icon" />
+                    <span className="patient-team-label">Nurse:</span>
+                    <span className="patient-team-name">
+                      {consultation.nurse}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="patient-consultation-complaint">
+                  <strong>Chief Complaint:</strong> {consultation.chiefComplaint}
+                </div>
+
+                <div className="patient-consultation-meta">
+                  <span className="patient-duration">
+                    Duration: {consultation.duration}
+                  </span>
+                  {consultation.rating && (
+                    <span className="patient-rating">
+                      Rating: {consultation.rating}/5
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="patient-consultation-actions">
+                <button
+                  className="patient-view-btn"
+                  onClick={() => handleViewSummary(consultation)}
                 >
-                  {consultation.status}
-                </span>
+                  <FaEye className="patient-btn-icon" />
+                  View Summary
+                </button>
+                <button
+                  className="patient-share-btn"
+                  onClick={() => handleShareRecords(consultation)}
+                >
+                  <FaShare className="patient-btn-icon" />
+                  Share Records
+                </button>
               </div>
             </div>
-
-            <div className="patient-consultation-details">
-              <div className="patient-consultation-team">
-                <div className="patient-team-member">
-                  <FaUserMd className="patient-team-icon" />
-                  <span className="patient-team-label">Specialist:</span>
-                  <span className="patient-team-name">
-                    {consultation.specialist}
-                  </span>
-                </div>
-                <div className="patient-team-member">
-                  <FaUserNurse className="patient-team-icon" />
-                  <span className="patient-team-label">Nurse:</span>
-                  <span className="patient-team-name">
-                    {consultation.nurse}
-                  </span>
-                </div>
-              </div>
-
-              <div className="patient-consultation-complaint">
-                <strong>Chief Complaint:</strong> {consultation.chiefComplaint}
-              </div>
-
-              <div className="patient-consultation-meta">
-                <span className="patient-duration">
-                  Duration: {consultation.duration}
-                </span>
-                {consultation.rating && (
-                  <span className="patient-rating">
-                    Rating: {consultation.rating}/5
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="patient-consultation-actions">
-              <button
-                className="patient-view-btn"
-                onClick={() => handleViewSummary(consultation)}
-              >
-                <FaEye className="patient-btn-icon" />
-                View Summary
-              </button>
-              <button
-                className="patient-share-btn"
-                onClick={() => handleShareRecords(consultation)}
-              >
-                <FaShare className="patient-btn-icon" />
-                Share Records
-              </button>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Consultation Summary Modal */}
@@ -346,7 +350,7 @@ const ConsultationHistory = () => {
 
             <div className="patient-modal-body">
               {(() => {
-                const summary = getConsultationSummary(selectedConsultation.id);
+                const summary = getConsultationSummary();
                 return (
                   <>
                     {/* Medical Team */}
@@ -504,9 +508,7 @@ const ConsultationHistory = () => {
                       <div className="patient-documents-section">
                         <h5>Provided Documents</h5>
                         <div className="patient-documents-list">
-                          {getMedicalDocuments(
-                            selectedConsultation.id
-                          ).provided.map((doc, index) => (
+                          {getMedicalDocuments().provided.map((doc, index) => (
                             <div key={index} className="patient-document-item">
                               <FaFilePdf className="patient-document-icon" />
                               <div className="patient-document-info">
@@ -530,9 +532,7 @@ const ConsultationHistory = () => {
 
                         <h5>Requested Documents</h5>
                         <div className="patient-documents-list">
-                          {getMedicalDocuments(
-                            selectedConsultation.id
-                          ).requested.map((doc, index) => (
+                          {getMedicalDocuments().requested.map((doc, index) => (
                             <div
                               key={index}
                               className="patient-document-item patient-requested-document"

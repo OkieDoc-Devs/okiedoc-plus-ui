@@ -144,7 +144,7 @@ const Messages = () => {
     if (showNewChatModal) {
       handleUserSearch("");
     }
-  }, [showNewChatModal]);
+  }, [showNewChatModal, handleUserSearch]);
 
   useEffect(() => {
     if (!showNewChatModal) return;
@@ -385,9 +385,8 @@ const Messages = () => {
         )}
 
         <div
-          className={`nurse-messenger-container ${
-            activeConversation ? "has-active-chat" : ""
-          }`}
+          className={`nurse-messenger-container ${activeConversation ? "has-active-chat" : ""
+            }`}
         >
           <div className="nurse-conversations-sidebar">
             <div className="nurse-conversations-header">
@@ -417,9 +416,8 @@ const Messages = () => {
                 filteredConversations.map((conversation) => (
                   <div
                     key={conversation.id}
-                    className={`nurse-conversation-item ${
-                      activeConversation?.id === conversation.id ? "active" : ""
-                    } ${conversation.unreadCount > 0 ? "unread" : ""}`}
+                    className={`nurse-conversation-item ${activeConversation?.id === conversation.id ? "active" : ""
+                      } ${conversation.unreadCount > 0 ? "unread" : ""}`}
                     onClick={() => openChat(conversation)}
                   >
                     <div className="nurse-conversation-avatar">
@@ -432,9 +430,8 @@ const Messages = () => {
                         <FaUser className="nurse-avatar-icon" />
                       )}
                       <div
-                        className={`nurse-online-indicator ${
-                          conversation.isOnline ? "online" : "offline"
-                        }`}
+                        className={`nurse-online-indicator ${conversation.isOnline ? "online" : "offline"
+                          }`}
                       ></div>
                     </div>
 
@@ -450,12 +447,12 @@ const Messages = () => {
                       <div className="nurse-conversation-preview">
                         <p className="nurse-conversation-message">
                           {conversation.lastMessage &&
-                          conversation.lastMessage !== "No messages yet"
+                            conversation.lastMessage !== "No messages yet"
                             ? conversation.lastMessageSentByMe
                               ? "You: "
                               : conversation.lastMessageSenderName
-                              ? `${conversation.lastMessageSenderName}: `
-                              : ""
+                                ? `${conversation.lastMessageSenderName}: `
+                                : ""
                             : ""}
                           {conversation.lastMessage}
                         </p>
@@ -494,9 +491,8 @@ const Messages = () => {
                       <FaUser className="nurse-avatar-icon" />
                     )}
                     <div
-                      className={`nurse-online-indicator ${
-                        activeConversation.isOnline ? "online" : "offline"
-                      }`}
+                      className={`nurse-online-indicator ${activeConversation.isOnline ? "online" : "offline"
+                        }`}
                     ></div>
                   </div>
                   <div className="nurse-chat-user-details">
@@ -547,11 +543,10 @@ const Messages = () => {
                 {chatMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={`nurse-message ${
-                      message.isSent
+                    className={`nurse-message ${message.isSent
                         ? "nurse-message-sent"
                         : "nurse-message-received"
-                    } nurse-message-type-${message.sender}`}
+                      } nurse-message-type-${message.sender}`}
                   >
                     {message.sender === "system" ? (
                       <div className="nurse-system-message">
@@ -582,7 +577,7 @@ const Messages = () => {
                             className={`nurse-message-content nurse-message-content-${message.sender}`}
                           >
                             {message.messageType === "file" ||
-                            message.messageType === "image" ? (
+                              message.messageType === "image" ? (
                               <div className="nurse-message-media-wrapper">
                                 {message.messageType === "image" ? (
                                   <div className="nurse-image-container">

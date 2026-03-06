@@ -1,23 +1,8 @@
-/**
- * Chat Service Module
- * Handles all Chat API communication including WebSocket real-time features
- */
-
-const API_BASE_URL =
-  import.meta.env.MODE === "production"
-    ? "https://your-production-url.com"
-    : "http://localhost:1337";
+import socketClient from "../../utils/socketClient";
+import { apiRequest, API_BASE_URL } from "../../api/apiClient";
 
 function getSocket() {
-  if (typeof window !== "undefined" && window.io && window.io.socket) {
-    return window.io.socket;
-  }
-  console.log("[Chat] getSocket - no socket available", {
-    hasWindow: typeof window !== "undefined",
-    hasIo: typeof window !== "undefined" && !!window.io,
-    hasSocket: typeof window !== "undefined" && window.io && !!window.io.socket,
-  });
-  return null;
+  return socketClient;
 }
 
 export function isSocketConnected() {
@@ -36,9 +21,13 @@ let authRetryCount = 0;
 const MAX_AUTH_RETRIES = 3;
 
 function reconnectSocket() {
-  if (typeof window !== "undefined" && window.io && window.io.socket) {
+  const socket = getSocket();
+  if (socket && !socket.isConnected()) {
     console.log("[Chat] Reconnecting socket to refresh session...");
-    window.io.socket.reconnect();
+    // Sails.io client method for forced reconnect if underlying socket disconnected
+    if (socket._raw?.io?.connect) {
+      socket._raw.io.connect();
+    }
   }
 }
 
@@ -113,203 +102,177 @@ export function resetSocketAuth() {
   socketAuthUserId = null;
   authRetryCount = 0;
 
-  if (typeof window !== "undefined" && window.io && window.io.socket) {
-    window.io.socket.disconnect();
+  const socket = getSocket();
+  if (socket && socket.isConnected()) {
+    if (socket._raw?.disconnect) {
+      socket._raw.disconnect();
+    }
     setTimeout(() => {
-      if (window.io && window.io.socket) {
-        window.io.socket.reconnect();
-      }
+      reconnectSocket();
     }, 100);
   }
 }
 
 export async function createConversation(conversationData) {
-  const response = await fetch(`${API_BASE_URL}/api/chat/conversations`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(conversationData),
-  });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(
-      errorData.message || `HTTP error! status: ${response.status}`
-    );
+  try {
+    const data = await apiRequest("/api/chat/conversations", {
+      method: "POST",
+      body: JSON.stringify(conversationData),
+    });
+    return data.conversation || data;
+  } catch (error) {
+    console.error("Error creating conversation:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.conversation || data;
 }
 
 export async function getConversations() {
-  const response = await fetch(`${API_BASE_URL}/api/chat/conversations`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-  });
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const data = await apiRequest("/api/chat/conversations");
+    return data.conversations || data || [];
+  } catch (error) {
+    console.error("Error fetching conversations:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.conversations || data || [];
 }
 
 export async function getConversationById(conversationId) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}`,
-    {
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const data = await apiRequest(`/api/chat/conversations/${conversationId}`);
+    return data.conversation || data;
+  } catch (error) {
+    console.error("Error fetching conversation by ID:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.conversation || data;
 }
 
 export async function addParticipant(conversationId, userId) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/participants`,
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    }
-  );
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(
-      errorData.message || `HTTP error! status: ${response.status}`
+  try {
+    return await apiRequest(
+      `/api/chat/conversations/${conversationId}/participants`,
+      {
+        method: "POST",
+        body: JSON.stringify({ userId }),
+      }
     );
+  } catch (error) {
+    console.error("Error adding participant:", error);
+    throw error;
   }
-  return response.json();
 }
 
 export async function removeParticipant(conversationId, participantId) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/participants/${participantId}`,
-    {
-      method: "DELETE",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    return await apiRequest(
+      `/api/chat/conversations/${conversationId}/participants/${participantId}`,
+      {
+        method: "DELETE",
+      }
+    );
+  } catch (error) {
+    console.error("Error removing participant:", error);
+    throw error;
   }
-  return response.json();
 }
 
 export async function leaveConversation(conversationId) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/leave`,
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    return await apiRequest(
+      `/api/chat/conversations/${conversationId}/leave`,
+      {
+        method: "POST",
+      }
+    );
+  } catch (error) {
+    console.error("Error leaving conversation:", error);
+    throw error;
   }
-  return response.json();
 }
 
 export async function getMessages(conversationId, options = {}) {
-  const params = new URLSearchParams();
-  if (options.limit) params.append("limit", options.limit);
-  if (options.beforeId) params.append("beforeId", options.beforeId);
-  if (options.afterId) params.append("afterId", options.afterId);
-  const queryString = params.toString();
-  const url = `${API_BASE_URL}/api/chat/conversations/${conversationId}/messages${
-    queryString ? `?${queryString}` : ""
-  }`;
-  const response = await fetch(url, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-  });
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const params = new URLSearchParams();
+    if (options.limit) params.append("limit", options.limit);
+    if (options.beforeId) params.append("beforeId", options.beforeId);
+    if (options.afterId) params.append("afterId", options.afterId);
+    const queryString = params.toString();
+    const url = `/api/chat/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ""
+      }`;
+
+    const data = await apiRequest(url);
+    return data.messages || data || [];
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.messages || data || [];
 }
 
 export async function sendMessage(conversationId, content, replyToId = null) {
-  const body = { content };
-  if (replyToId) body.replyToId = replyToId;
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/messages`,
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(
-      errorData.message || `HTTP error! status: ${response.status}`
+  try {
+    const body = { content };
+    if (replyToId) body.replyToId = replyToId;
+    const data = await apiRequest(
+      `/api/chat/conversations/${conversationId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      }
     );
+    return data.message || data;
+  } catch (error) {
+    console.error("Error sending message:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.message || data;
 }
 
 export async function uploadFile(conversationId, file, caption = "") {
-  const formData = new FormData();
-  formData.append("file", file);
-  if (caption) formData.append("caption", caption);
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/messages/upload`,
-    {
-      method: "POST",
-      credentials: "include",
-      body: formData,
-    }
-  );
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(
-      errorData.message || `HTTP error! status: ${response.status}`
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (caption) formData.append("caption", caption);
+
+    const data = await apiRequest(
+      `/api/chat/conversations/${conversationId}/messages/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
     );
+    return data.message || data;
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.message || data;
 }
 
 export async function deleteMessage(conversationId, messageId) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/messages/${messageId}`,
-    {
-      method: "DELETE",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    return await apiRequest(
+      `/api/chat/conversations/${conversationId}/messages/${messageId}`,
+      {
+        method: "DELETE",
+      }
+    );
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    throw error;
   }
-  return response.json();
 }
 
 export async function markAsRead(conversationId, messageId = null) {
-  const body = messageId ? { messageId } : {};
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/read`,
-    {
-      method: "PUT",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const body = messageId ? { messageId } : {};
+    return await apiRequest(
+      `/api/chat/conversations/${conversationId}/read`,
+      {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }
+    );
+  } catch (error) {
+    console.error("Error marking as read:", error);
+    throw error;
   }
-  return response.json();
 }
 
 export function sendTypingIndicator(conversationId, isTyping = true) {
@@ -318,37 +281,33 @@ export function sendTypingIndicator(conversationId, isTyping = true) {
     socket.post(
       `/api/chat/conversations/${conversationId}/typing`,
       { isTyping },
-      () => {}
+      () => { }
     );
   }
 }
 
 export async function searchUsers(query) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/users/search?q=${encodeURIComponent(query)}`,
-    {
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const data = await apiRequest(
+      `/api/chat/users/search?q=${encodeURIComponent(query)}`
+    );
+    return data.users || data || [];
+  } catch (error) {
+    console.error("Error searching users:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.users || data || [];
 }
 
 export async function getAllChatUsers() {
-  const response = await fetch(`${API_BASE_URL}/api/chat/users`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-  });
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const data = await apiRequest("/api/chat/users");
+    return data.users || data || [];
+  } catch (error) {
+    console.error("Error fetching all chat users:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.users || data || [];
 }
+
 
 export function subscribeToConversation(conversationId, callback) {
   const socket = getSocket();
@@ -395,7 +354,7 @@ export function setupChatSocketListeners(handlers) {
   });
   if (!socket) {
     console.info("[Chat] Socket not available - event listeners not set up");
-    return () => {};
+    return () => { };
   }
 
   const {
@@ -412,22 +371,22 @@ export function setupChatSocketListeners(handlers) {
 
   const wrappedOnMessage = onMessage
     ? (data) => {
-        const messageId =
-          data.message?.Message_ID || data.message?.Id || data.message?.id;
-        if (messageId && processedMessageIds.has(messageId)) {
-          console.log(
-            "[Chat] Skipping duplicate message event for ID:",
-            messageId
-          );
-          return;
-        }
-        if (messageId) {
-          processedMessageIds.add(messageId);
-          setTimeout(() => processedMessageIds.delete(messageId), 5000);
-        }
-        console.log("[Chat] Received message event:", data);
-        onMessage(data);
+      const messageId =
+        data.message?.Message_ID || data.message?.Id || data.message?.id;
+      if (messageId && processedMessageIds.has(messageId)) {
+        console.log(
+          "[Chat] Skipping duplicate message event for ID:",
+          messageId
+        );
+        return;
       }
+      if (messageId) {
+        processedMessageIds.add(messageId);
+        setTimeout(() => processedMessageIds.delete(messageId), 5000);
+      }
+      console.log("[Chat] Received message event:", data);
+      onMessage(data);
+    }
     : null;
 
   if (wrappedOnMessage) {
@@ -677,14 +636,14 @@ export function transformConversationForUI(conversation, currentUserId) {
     otherUserTypeRaw?.length === 1
       ? otherUserTypeRaw.toLowerCase()
       : otherUserTypeRaw?.toLowerCase().startsWith("nurse")
-      ? "n"
-      : otherUserTypeRaw?.toLowerCase().startsWith("spec")
-      ? "s"
-      : otherUserTypeRaw?.toLowerCase().startsWith("patient")
-      ? "p"
-      : otherUserTypeRaw?.toLowerCase().startsWith("admin")
-      ? "a"
-      : "p";
+        ? "n"
+        : otherUserTypeRaw?.toLowerCase().startsWith("spec")
+          ? "s"
+          : otherUserTypeRaw?.toLowerCase().startsWith("patient")
+            ? "p"
+            : otherUserTypeRaw?.toLowerCase().startsWith("admin")
+              ? "a"
+              : "p";
 
   return {
     id: conversationId,
@@ -699,8 +658,8 @@ export function transformConversationForUI(conversation, currentUserId) {
     lastMessageSenderName: lastMessageSenderName,
     timestamp: formatMessageTime(
       conversation.Updated_At ||
-        conversation.updatedAt ||
-        conversation.createdAt
+      conversation.updatedAt ||
+      conversation.createdAt
     ),
     unreadCount: conversation.unreadCount || 0,
     otherUserType: otherUserType,
@@ -721,15 +680,14 @@ export function transformConversationForUI(conversation, currentUserId) {
       ? otherParticipant.avatar.startsWith("http") ||
         otherParticipant.avatar.startsWith("blob:")
         ? otherParticipant.avatar
-        : `${API_BASE_URL}${
-            otherParticipant.avatar.startsWith("/") ? "" : "/"
-          }${otherParticipant.avatar}`
+        : `${API_BASE_URL}${otherParticipant.avatar.startsWith("/") ? "" : "/"
+        }${otherParticipant.avatar}`
       : null,
     raw: conversation,
   };
 }
 
-export function transformMessageForUI(message, currentUserId, currentUserType) {
+export function transformMessageForUI(message, currentUserId) {
   const senderId =
     message.Sender_ID ||
     message.Sender_Id ||
@@ -748,14 +706,14 @@ export function transformMessageForUI(message, currentUserId, currentUserType) {
     senderType?.length === 1
       ? senderType.toLowerCase()
       : senderType?.toLowerCase().startsWith("nurse")
-      ? "n"
-      : senderType?.toLowerCase().startsWith("spec")
-      ? "s"
-      : senderType?.toLowerCase().startsWith("patient")
-      ? "p"
-      : senderType?.toLowerCase().startsWith("admin")
-      ? "a"
-      : "p";
+        ? "n"
+        : senderType?.toLowerCase().startsWith("spec")
+          ? "s"
+          : senderType?.toLowerCase().startsWith("patient")
+            ? "p"
+            : senderType?.toLowerCase().startsWith("admin")
+              ? "a"
+              : "p";
 
   const getFullUrl = (url) => {
     if (!url) return null;
@@ -765,11 +723,11 @@ export function transformMessageForUI(message, currentUserId, currentUserType) {
 
   const senderAvatar = getFullUrl(
     message.Sender_Avatar ||
-      message.sender_avatar ||
-      message.sender?.avatar ||
-      message.sender?.Avatar ||
-      message.sender?.Profile_Image ||
-      null
+    message.sender_avatar ||
+    message.sender?.avatar ||
+    message.sender?.Avatar ||
+    message.sender?.Profile_Image ||
+    null
   );
   const senderName =
     message.sender?.Display_Name ||

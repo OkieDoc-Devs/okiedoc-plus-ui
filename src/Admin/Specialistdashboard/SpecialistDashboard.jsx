@@ -21,8 +21,6 @@ import {
   getTransactions,
   getConsultations,
   getPatientAndNurseUsers,
-  updateUser,
-  deleteUser,
   logoutAdmin,
 } from "../../api/Admin/api.js";
 
@@ -103,45 +101,39 @@ const SpecialistDashboard = () => {
 
         const processedSpecialists = (specialistsArray || []).map(
           (spec, index) => {
-            const nameParts = (spec.name || "").split(" ");
-            const firstName =
-              nameParts.length > 1
-                ? nameParts.slice(0, -1).join(" ")
-                : spec.name || "";
-            const lastName = nameParts.length > 1 ? nameParts.slice(-1)[0] : "";
             return {
               ...spec,
-              firstName: firstName,
-              lastName: lastName,
+              name: `${spec.firstName || ''} ${spec.lastName || ''}`.trim(),
               details: {
                 s2: { number: spec.s2Number || "S2-FETCHED", imageUrl: S2 },
                 ptr: { number: spec.ptrNumber || "PTR-FETCHED", imageUrl: PTR },
                 prcId: {
-                  number: spec.prcIdNumber || "PRC-FETCHED",
+                  number: spec.prcLicenseNumber || "PRC-FETCHED",
                   imageUrl: PRC,
                 },
                 eSig: esig,
                 profilePicture: index % 2 === 0 ? MaleAvatar : FemaleAvatar,
-                specializations: [spec.specialization || "Unknown"],
+                specializations: spec.specialization ? [spec.specialization] : ["Unknown"],
                 subspecializations: ["Sub-specialty Placeholder"],
               },
             };
           },
         );
 
-        const processedPending = (pendingArray || []).map((app, index) => ({
-          ...app,
-          details: {
-            ...(app.details || {}),
-            s2: { number: app.s2Number || "S2-PENDING", imageUrl: S2 },
-            ptr: { number: app.ptrNumber || "PTR-PENDING", imageUrl: PTR },
-            prcId: { number: app.prcIdNumber || "PRC-PENDING", imageUrl: PRC },
-            eSig: esig,
-            profilePicture: index % 2 === 0 ? FemaleAvatar : MaleAvatar,
-            specializations: app.specializations || [],
-            subspecializations: app.subspecializations || [],
-          },
-        }));
+        const processedPending = (pendingArray || []).map((app, index) => {
+          return {
+            ...app,
+            // Keep app properties mapped by api.js, simply provide fallback images
+            details: {
+              ...(app.details || {}),
+              s2: { ...(app.details?.s2 || {}), imageUrl: app.details?.s2?.imageUrl || S2 },
+              ptr: { ...(app.details?.ptr || {}), imageUrl: app.details?.ptr?.imageUrl || PTR },
+              prcId: { ...(app.details?.prcId || {}), imageUrl: app.details?.prcId?.imageUrl || PRC },
+              eSig: app.details?.eSig || esig,
+              profilePicture: app.details?.profilePicture || (index % 2 === 0 ? FemaleAvatar : MaleAvatar),
+            },
+          };
+        });
 
         setSpecialists(processedSpecialists);
         setPendingApplications(processedPending);
@@ -176,7 +168,7 @@ const SpecialistDashboard = () => {
     };
 
     fetchAndProcessData();
-  }, []);
+  }, [users]);
 
   const handleFeeToggle = (feeName) =>
     setSystemFees((prev) => ({
@@ -260,6 +252,22 @@ const SpecialistDashboard = () => {
 
   const filteredConsultations = consultations || [];
 
+  const handleCreateStaff = async (staffData) => {
+    try {
+      const { createStaff } = await import("../../api/Admin/api.js");
+      await createStaff(staffData);
+      alert(`${staffData.role} account created successfully!`);
+      // Refresh user list
+      const usersData = await import("../../api/Admin/api.js").then(m => m.getPatientAndNurseUsers());
+      const usersArray = Array.isArray(usersData) ? usersData : (usersData?.users || usersData?.data || []);
+      setUsers(usersArray);
+    } catch (error) {
+      console.error(error);
+      alert(error.message || `Failed to create ${staffData.role}.`);
+      throw error; // Re-throw so UserTable modal knows it failed
+    }
+  };
+
   const handleUpdateUser = async (updatedUser) => {
     // Simulate API call
     try {
@@ -270,7 +278,7 @@ const SpecialistDashboard = () => {
         ),
       );
       alert("User updated successfully! (Simulated)");
-    } catch (error) {
+    } catch {
       alert("Failed to update user. (Simulated)");
     }
   };
@@ -285,8 +293,117 @@ const SpecialistDashboard = () => {
       );
       alert("User deleted successfully! (Simulated)");
       setDeletingUser(null); // Close confirmation modal
-    } catch (error) {
+    } catch {
       alert("Failed to delete user. (Simulated)");
+    }
+  };
+
+  const handleApproveSpecialist = async (specialistId) => {
+    try {
+      await import("../../api/Admin/api.js").then(module => module.approveSpecialist({
+        specialistId,
+        action: 'approve'
+      }));
+      alert(`Specialist approved!`);
+      // Re-fetch pending applications
+      const pendingData = await getPendingApplications();
+      const pendingArray = Array.isArray(pendingData) ? pendingData : (pendingData?.applications || pendingData?.data || []);
+      const processedPending = pendingArray.map((app, index) => {
+        return {
+          ...app,
+          details: {
+            ...(app.details || {}),
+            s2: { ...(app.details?.s2 || {}), imageUrl: app.details?.s2?.imageUrl || S2 },
+            ptr: { ...(app.details?.ptr || {}), imageUrl: app.details?.ptr?.imageUrl || PTR },
+            prcId: { ...(app.details?.prcId || {}), imageUrl: app.details?.prcId?.imageUrl || PRC },
+            eSig: app.details?.eSig || esig,
+            profilePicture: app.details?.profilePicture || (index % 2 === 0 ? FemaleAvatar : MaleAvatar),
+          },
+        };
+      });
+      setPendingApplications(processedPending);
+
+      // Re-fetch active specialists
+      const specialistsData = await import("../../api/Admin/api.js").then(m => m.getSpecialists());
+      const specialistsArray = Array.isArray(specialistsData) ? specialistsData : (specialistsData?.specialists || specialistsData?.data || []);
+      const processedSpecialists = specialistsArray.map((spec, index) => {
+        return {
+          ...spec,
+          name: `${spec.firstName || ''} ${spec.lastName || ''}`.trim(),
+          details: {
+            s2: { number: spec.s2Number || "S2-FETCHED", imageUrl: S2 },
+            ptr: { number: spec.ptrNumber || "PTR-FETCHED", imageUrl: PTR },
+            prcId: {
+              number: spec.prcLicenseNumber || "PRC-FETCHED",
+              imageUrl: PRC,
+            },
+            eSig: esig,
+            profilePicture: index % 2 === 0 ? MaleAvatar : FemaleAvatar,
+            specializations: spec.specialization ? [spec.specialization] : ["Unknown"],
+            subspecializations: ["Sub-specialty Placeholder"],
+          },
+        };
+      });
+      setSpecialists(processedSpecialists);
+
+    } catch (error) {
+      console.error(error);
+      alert("Failed to approve specialist.");
+    }
+  };
+
+  const handleDenySpecialist = async (specialistId, reason) => {
+    try {
+      await import("../../api/Admin/api.js").then(module => module.approveSpecialist({
+        specialistId,
+        action: 'deny',
+        reason
+      }));
+      alert(`Specialist denied!`);
+      // Re-fetch pending applications
+      const pendingData = await getPendingApplications();
+      const pendingArray = Array.isArray(pendingData) ? pendingData : (pendingData?.applications || pendingData?.data || []);
+      const processedPending = pendingArray.map((app, index) => {
+        return {
+          ...app,
+          details: {
+            ...(app.details || {}),
+            s2: { ...(app.details?.s2 || {}), imageUrl: app.details?.s2?.imageUrl || S2 },
+            ptr: { ...(app.details?.ptr || {}), imageUrl: app.details?.ptr?.imageUrl || PTR },
+            prcId: { ...(app.details?.prcId || {}), imageUrl: app.details?.prcId?.imageUrl || PRC },
+            eSig: app.details?.eSig || esig,
+            profilePicture: app.details?.profilePicture || (index % 2 === 0 ? FemaleAvatar : MaleAvatar),
+          },
+        };
+      });
+      setPendingApplications(processedPending);
+
+      // Re-fetch active specialists
+      const specialistsData = await import("../../api/Admin/api.js").then(m => m.getSpecialists());
+      const specialistsArray = Array.isArray(specialistsData) ? specialistsData : (specialistsData?.specialists || specialistsData?.data || []);
+      const processedSpecialists = specialistsArray.map((spec, index) => {
+        return {
+          ...spec,
+          name: `${spec.firstName || ''} ${spec.lastName || ''}`.trim(),
+          details: {
+            s2: { number: spec.s2Number || "S2-FETCHED", imageUrl: S2 },
+            ptr: { number: spec.ptrNumber || "PTR-FETCHED", imageUrl: PTR },
+            prcId: {
+              number: spec.prcLicenseNumber || "PRC-FETCHED",
+              imageUrl: PRC,
+            },
+            eSig: esig,
+            profilePicture: index % 2 === 0 ? MaleAvatar : FemaleAvatar,
+            specializations: spec.specialization ? [spec.specialization] : ["Unknown"],
+            subspecializations: ["Sub-specialty Placeholder"],
+          },
+        };
+      });
+      setSpecialists(processedSpecialists);
+
+    } catch (error) {
+      console.error(error);
+      alert("Failed to deny specialist.");
     }
   };
 
@@ -387,19 +504,19 @@ const SpecialistDashboard = () => {
                 {(activeTab === "pending" ||
                   activeTab === "list" ||
                   activeTab === "transactions") && (
-                  <select
-                    value={filterSpecialization}
-                    onChange={(e) => setFilterSpecialization(e.target.value)}
-                    disabled={allSpecializations.length === 0}
-                  >
-                    <option value="">Filter by Specialization</option>
-                    {allSpecializations.map((spec) => (
-                      <option key={spec} value={spec}>
-                        {spec}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                    <select
+                      value={filterSpecialization}
+                      onChange={(e) => setFilterSpecialization(e.target.value)}
+                      disabled={allSpecializations.length === 0}
+                    >
+                      <option value="">Filter by Specialization</option>
+                      {allSpecializations.map((spec) => (
+                        <option key={spec} value={spec}>
+                          {spec}
+                        </option>
+                      ))}
+                    </select>
+                  )}
 
                 {/* Transaction-specific filters */}
                 {activeTab === "transactions" && (
@@ -457,7 +574,7 @@ const SpecialistDashboard = () => {
         {/* Conditional Rendering based on activeTab */}
 
         {activeTab === "pending" && (
-          <PendingTable applications={filteredPending} />
+          <PendingTable applications={filteredPending} onApprove={handleApproveSpecialist} onDeny={handleDenySpecialist} />
         )}
         {activeTab === "list" && (
           <SpecialistTable specialists={filteredSpecialists} />
@@ -470,6 +587,7 @@ const SpecialistDashboard = () => {
             onView={setViewingUser}
             onUpdate={handleUpdateUser}
             onDelete={setDeletingUser}
+            onCreateStaff={handleCreateStaff}
           />
         )}
 

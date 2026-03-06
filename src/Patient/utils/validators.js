@@ -3,34 +3,31 @@
  * This module provides form validation and data validation functions
  */
 
-import { 
-  PROFILE_VALIDATION_RULES, 
+import {
+  PROFILE_VALIDATION_RULES,
   PASSWORD_VALIDATION_RULES,
-  FILE_UPLOAD_CONFIG 
+  FILE_UPLOAD_CONFIG
 } from '../constants';
+
+import {
+  isValidEmail as sharedIsValidEmail,
+  isValidPhone as sharedIsValidPhone,
+  validateFileUploadBase
+} from '../../utils/validation';
 
 /**
  * Validate email format
  * @param {string} email - Email to validate
  * @returns {boolean} True if email is valid
  */
-export const isValidEmail = (email) => {
-  if (!email) return false;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
+export const isValidEmail = sharedIsValidEmail;
 
 /**
  * Validate phone number format
  * @param {string} phone - Phone number to validate
  * @returns {boolean} True if phone is valid
  */
-export const isValidPhone = (phone) => {
-  if (!phone) return false;
-  const phoneRegex = /^[\d\s\-()+]+$/;
-  const cleanedPhone = phone.replace(/\D/g, '');
-  return phoneRegex.test(phone) && cleanedPhone.length >= 10;
-};
+export const isValidPhone = (phone) => sharedIsValidPhone(phone, false);
 
 /**
  * Validate password strength
@@ -40,35 +37,35 @@ export const isValidPhone = (phone) => {
 export const validatePassword = (password) => {
   const errors = [];
   const rules = PASSWORD_VALIDATION_RULES;
-  
+
   if (!password) {
     return { isValid: false, errors: ['Password is required'] };
   }
-  
+
   if (password.length < rules.minLength) {
     errors.push(`Password must be at least ${rules.minLength} characters long`);
   }
-  
+
   if (password.length > rules.maxLength) {
     errors.push(`Password must not exceed ${rules.maxLength} characters`);
   }
-  
+
   if (rules.requireUppercase && !/[A-Z]/.test(password)) {
     errors.push('Password must contain at least one uppercase letter');
   }
-  
+
   if (rules.requireLowercase && !/[a-z]/.test(password)) {
     errors.push('Password must contain at least one lowercase letter');
   }
-  
+
   if (rules.requireNumber && !/\d/.test(password)) {
     errors.push('Password must contain at least one number');
   }
-  
+
   if (rules.requireSpecialChar && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
     errors.push('Password must contain at least one special character');
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors
@@ -96,28 +93,28 @@ export const validateDateOfBirth = (dob, minAge = 0, maxAge = 150) => {
   if (!dob) {
     return { isValid: false, error: 'Date of birth is required' };
   }
-  
+
   const birthDate = new Date(dob);
   const today = new Date();
-  
+
   if (isNaN(birthDate.getTime())) {
     return { isValid: false, error: 'Invalid date format' };
   }
-  
+
   if (birthDate > today) {
     return { isValid: false, error: 'Date of birth cannot be in the future' };
   }
-  
+
   const age = Math.floor((today - birthDate) / (365.25 * 24 * 60 * 60 * 1000));
-  
+
   if (age < minAge) {
     return { isValid: false, error: `Age must be at least ${minAge} years` };
   }
-  
+
   if (age > maxAge) {
     return { isValid: false, error: `Age cannot exceed ${maxAge} years` };
   }
-  
+
   return { isValid: true };
 };
 
@@ -127,31 +124,10 @@ export const validateDateOfBirth = (dob, minAge = 0, maxAge = 150) => {
  * @returns {Object} Validation result
  */
 export const validateFileUpload = (file) => {
-  if (!file) {
-    return { isValid: false, error: 'No file selected' };
-  }
-  
-  // Check file size
-  if (file.size > FILE_UPLOAD_CONFIG.MAX_FILE_SIZE) {
-    const maxSizeMB = FILE_UPLOAD_CONFIG.MAX_FILE_SIZE / (1024 * 1024);
-    return { isValid: false, error: `File size must not exceed ${maxSizeMB}MB` };
-  }
-  
-  // Check file type
-  const fileExtension = `.${file.name.split('.').pop().toLowerCase()}`;
-  if (!FILE_UPLOAD_CONFIG.ALLOWED_EXTENSIONS.includes(fileExtension)) {
-    return { 
-      isValid: false, 
-      error: `File type not allowed. Allowed types: ${FILE_UPLOAD_CONFIG.ALLOWED_EXTENSIONS.join(', ')}` 
-    };
-  }
-  
-  // Check MIME type
-  if (!FILE_UPLOAD_CONFIG.ALLOWED_MIME_TYPES.includes(file.type)) {
-    return { isValid: false, error: 'Invalid file type' };
-  }
-  
-  return { isValid: true };
+  return validateFileUploadBase(file, {
+    maxSize: FILE_UPLOAD_CONFIG.MAX_FILE_SIZE,
+    allowedTypes: FILE_UPLOAD_CONFIG.ALLOWED_MIME_TYPES
+  });
 };
 
 /**
@@ -161,16 +137,16 @@ export const validateFileUpload = (file) => {
  */
 export const validateAppointmentForm = (formData) => {
   const errors = {};
-  
+
   // Required field validations
   if (!formData.chiefComplaint || !formData.chiefComplaint.trim()) {
     errors.chiefComplaint = 'Chief complaint is required';
   }
-  
+
   if (!formData.symptoms || !formData.symptoms.trim()) {
     errors.symptoms = 'Symptoms description is required';
   }
-  
+
   if (!formData.preferredDate) {
     errors.preferredDate = 'Preferred date is required';
   } else {
@@ -178,42 +154,42 @@ export const validateAppointmentForm = (formData) => {
     const selectedDate = new Date(formData.preferredDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     if (selectedDate < today) {
       errors.preferredDate = 'Date cannot be in the past';
     }
   }
-  
+
   if (!formData.preferredTime) {
     errors.preferredTime = 'Preferred time is required';
   }
-  
+
   if (!formData.specialization) {
     errors.specialization = 'Specialization is required';
   }
-  
+
   if (!formData.consultationChannel) {
     errors.consultationChannel = 'Consultation channel is required';
   }
-  
+
   // HMO validation (if HMO fields are filled)
   if (formData.hmoCompany) {
     if (!formData.hmoMemberId) {
       errors.hmoMemberId = 'HMO member ID is required';
     }
-    
+
     if (!formData.hmoExpirationDate) {
       errors.hmoExpirationDate = 'HMO expiration date is required';
     } else {
       const expirationDate = new Date(formData.hmoExpirationDate);
       const today = new Date();
-      
+
       if (expirationDate < today) {
         errors.hmoExpirationDate = 'HMO has expired';
       }
     }
   }
-  
+
   return {
     isValid: Object.keys(errors).length === 0,
     errors
@@ -228,7 +204,7 @@ export const validateAppointmentForm = (formData) => {
 export const validateProfileForm = (profileData) => {
   const errors = {};
   const rules = PROFILE_VALIDATION_RULES;
-  
+
   // First name validation
   if (!profileData.firstName || !profileData.firstName.trim()) {
     errors.firstName = 'First name is required';
@@ -237,7 +213,7 @@ export const validateProfileForm = (profileData) => {
   } else if (!rules.firstName.pattern.test(profileData.firstName)) {
     errors.firstName = 'First name can only contain letters and spaces';
   }
-  
+
   // Last name validation
   if (!profileData.lastName || !profileData.lastName.trim()) {
     errors.lastName = 'Last name is required';
@@ -246,21 +222,21 @@ export const validateProfileForm = (profileData) => {
   } else if (!rules.lastName.pattern.test(profileData.lastName)) {
     errors.lastName = 'Last name can only contain letters and spaces';
   }
-  
+
   // Email validation
   if (!profileData.email) {
     errors.email = 'Email is required';
   } else if (!isValidEmail(profileData.email)) {
     errors.email = 'Invalid email format';
   }
-  
+
   // Phone validation
   if (!profileData.phone) {
     errors.phone = 'Phone number is required';
   } else if (!isValidPhone(profileData.phone)) {
     errors.phone = 'Invalid phone number format';
   }
-  
+
   // Date of birth validation
   if (profileData.dateOfBirth) {
     const dobValidation = validateDateOfBirth(profileData.dateOfBirth);
@@ -268,7 +244,7 @@ export const validateProfileForm = (profileData) => {
       errors.dateOfBirth = dobValidation.error;
     }
   }
-  
+
   return {
     isValid: Object.keys(errors).length === 0,
     errors

@@ -81,10 +81,6 @@ export default function Notifications() {
     }
   };
 
-  const handleTabClick = (tab) => {
-    if (tab === "notifications") {
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -144,7 +140,6 @@ export default function Notifications() {
           </button>
           <button
             className="nav-tab active"
-            onClick={() => handleTabClick("notifications")}
           >
             Notifications ({notifications.filter((n) => n.unread).length})
           </button>
@@ -171,9 +166,8 @@ export default function Notifications() {
           {notifications.map((notification) => (
             <div
               key={notification.id}
-              className={`notification-item ${
-                notification.unread ? "unread" : ""
-              }`}
+              className={`notification-item ${notification.unread ? "unread" : ""
+                }`}
               onClick={() => notification.unread && markAsRead(notification.id)}
               style={{ cursor: notification.unread ? "pointer" : "default" }}
             >

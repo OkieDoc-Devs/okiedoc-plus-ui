@@ -252,8 +252,8 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         }
       },
 
-      onRead: () => {},
-      onMessageDeleted: () => {},
+      onRead: () => { },
+      onMessageDeleted: () => { },
     });
 
     return () => {
@@ -279,7 +279,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
           setMessages(transformed);
         }
         setHasMoreMessages(data.length >= (options.limit || 50));
-        markAsRead(conversationId).catch(() => {});
+        markAsRead(conversationId).catch(() => { });
         return transformed;
       } catch (err) {
         setError(err.message);
@@ -328,9 +328,9 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
             return [...prev, transformedMsg];
           });
 
-          markAsRead(currentActive?.id).catch(() => {});
+          markAsRead(currentActive?.id).catch(() => { });
         },
-        onTyping: () => {},
+        onTyping: () => { },
         onRead: (data) => {
           const currentActive = activeConversationRef.current;
           if (data.conversationId === currentActive?.id) {
@@ -349,10 +349,10 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
               prev.map((msg) =>
                 msg.id === data.messageId
                   ? {
-                      ...msg,
-                      isDeleted: true,
-                      text: "This message was deleted",
-                    }
+                    ...msg,
+                    isDeleted: true,
+                    text: "This message was deleted",
+                  }
                   : msg
               )
             );
@@ -560,6 +560,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
     try {
       return await searchUsers(query);
     } catch (err) {
+      console.error("Error searching users:", err);
       return [];
     }
   }, []);
@@ -568,6 +569,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
     try {
       return await getAllChatUsers();
     } catch (err) {
+      console.error("Error getting all users:", err);
       return [];
     }
   }, []);
@@ -577,10 +579,12 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
   }, [currentUserId, loadConversations]);
 
   useEffect(() => {
+    const currentTypingTimeouts = typingUsersTimeoutRef.current;
+
     return () => {
       if (cleanupRef.current) cleanupRef.current();
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      Object.values(typingUsersTimeoutRef.current).forEach(clearTimeout);
+      Object.values(currentTypingTimeouts).forEach(clearTimeout);
     };
   }, []);
 

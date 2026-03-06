@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  FaUserMd, 
-  FaCheckCircle, 
-  FaStethoscope, 
-  FaPlus, 
-  FaTrash, 
+import {
+  FaUserMd,
+  FaCheckCircle,
+  FaStethoscope,
+  FaPlus,
+  FaTrash,
   FaEdit,
   FaPills,
   FaCut,
@@ -55,7 +55,7 @@ const MedicalRecords = () => {
   const handleInputChange = (category, field, value) => {
     setMedicalData(prev => ({
       ...prev,
-      [category]: prev[category].map(item => 
+      [category]: prev[category].map(item =>
         item.id === editingItem ? { ...item, [field]: value } : item
       )
     }));
@@ -94,7 +94,7 @@ const MedicalRecords = () => {
     }
   };
 
-  const handleSaveItem = (category) => {
+  const handleSaveItem = () => {
     setEditingItem(null);
     setEditingCategory('');
   };
@@ -124,9 +124,9 @@ const MedicalRecords = () => {
     switch (category) {
       case 'activeDiseases':
       case 'pastDiseases':
-        return [...baseFields, 
-          { name: 'severity', label: 'Severity', type: 'select', options: ['Mild', 'Moderate', 'Severe'] },
-          { name: 'status', label: 'Status', type: 'select', options: ['Active', 'Inactive', 'Resolved'] }
+        return [...baseFields,
+        { name: 'severity', label: 'Severity', type: 'select', options: ['Mild', 'Moderate', 'Severe'] },
+        { name: 'status', label: 'Status', type: 'select', options: ['Active', 'Inactive', 'Resolved'] }
         ];
       case 'medications':
         return [
@@ -178,7 +178,7 @@ const MedicalRecords = () => {
             <h3>{categoryInfo.label}</h3>
             <span className="patient-item-count">({items.length})</span>
           </div>
-          <button 
+          <button
             className="patient-add-category-btn"
             onClick={() => handleAddItem(category)}
             disabled={isEditing}
@@ -238,14 +238,14 @@ const MedicalRecords = () => {
                       ))}
                     </div>
                     <div className="patient-edit-actions">
-                      <button 
+                      <button
                         className="patient-save-btn"
                         onClick={() => handleSaveItem(category)}
                       >
                         <FaSave />
                         Save
                       </button>
-                      <button 
+                      <button
                         className="patient-cancel-btn"
                         onClick={() => handleCancelEdit(category)}
                       >
@@ -263,13 +263,13 @@ const MedicalRecords = () => {
                       {item.status && <span className="patient-item-status">{item.status}</span>}
                     </div>
                     <div className="patient-item-actions">
-                      <button 
+                      <button
                         className="patient-edit-btn"
                         onClick={() => handleEditItem(item, category)}
                       >
                         <FaEdit />
                       </button>
-                      <button 
+                      <button
                         className="patient-delete-btn"
                         onClick={() => handleDeleteItem(item.id, category)}
                       >
@@ -289,7 +289,7 @@ const MedicalRecords = () => {
   return (
     <div className="patient-page-content">
       <h2>Medical Records</h2>
-      
+
       <div className="patient-unified-medical-form">
         {categories.map(category => renderCategorySection(category.key))}
       </div>

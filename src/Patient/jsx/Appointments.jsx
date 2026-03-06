@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   FaUserMd,
   FaCalendarPlus,
@@ -20,20 +20,18 @@ import {
   FaExclamationTriangle,
   FaCalendarAlt,
 } from "react-icons/fa";
-import { useNavigate } from "react-router";
 import "../css/AppointmentBooking.css";
 import "../css/PatientDashboard.css";
-import HotlineBooking from "./HotlineBooking";
+import BookConsultation from "./BookConsultation";
 import appointmentService from "../services/appointmentService";
+import { fetchPatientActiveTickets, cancelTicket, uploadPaymentProof, uploadLOA, payTicket, verifyTicketPayment } from "../services/apiService";
 
 const Appointments = ({ onAppointmentAdded }) => {
-  const navigate = useNavigate();
   const [activeTicket, setActiveTicket] = useState(null);
   const [chatMessage, setChatMessage] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // Always true - login check disabled
   const [appointmentForm, setAppointmentForm] = useState({
     chiefComplaint: "",
     symptoms: "",
@@ -54,12 +52,16 @@ const Appointments = ({ onAppointmentAdded }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentFile, setPaymentFile] = useState(null);
+
+  const paymentMethods = [
+    { value: "credit_card", label: "Credit / Debit Card", icon: <FaCreditCard /> },
+    { value: "ewallet", label: "E-Wallet (GCash/Maya)", icon: <FaPhone /> },
+    { value: "hmo", label: "HMO / Corporate LOA", icon: <FaFileAlt /> },
+  ];
 
   // Authentication check disabled - users can book without login
-  useEffect(() => {
-    // Login check disabled - always allow booking
-    setIsLoggedIn(true);
-  }, []);
+
 
   // Available specialists
   const specialists = [
@@ -79,8 +81,8 @@ const Appointments = ({ onAppointmentAdded }) => {
   // Filter specialists based on selected specialization
   const availableSpecialists = appointmentForm.specialization
     ? specialists.filter(
-        (specialist) => specialist.specialty === appointmentForm.specialization
-      )
+      (specialist) => specialist.specialty === appointmentForm.specialization
+    )
     : [];
 
   // Consultation channels
@@ -100,17 +102,128 @@ const Appointments = ({ onAppointmentAdded }) => {
   const [appointments, setAppointments] = useState([]);
   const [showAppointmentDetails, setShowAppointmentDetails] = useState(false);
 
+  const loadAppointments = useCallback(async (newTicket = null) => {
+    if (newTicket) {
+      setAppointments(prev => [newTicket, ...prev]);
+      if (onAppointmentAdded) {
+        onAppointmentAdded(newTicket);
+      }
+      return;
+    }
+
+    try {
+      const activeTicketsRes = await fetchPatientActiveTickets();
+      const activeArr = activeTicketsRes.activeTickets || activeTicketsRes.data || (Array.isArray(activeTicketsRes) ? activeTicketsRes : []);
+      const mapped = activeArr.map(t => {
+        console.log("Status map processing ticket:", t);
+        let displayStatus = 'Pending';
+        if (t.status === 'active' || (t.status === 'for_payment' && t.paymentStatus === 'paid')) {
+          displayStatus = 'Active';
+        } else if (t.status === 'triage' || t.status === 'assigned' || t.status === 'processing') {
+          displayStatus = 'Processing';
+        } else if (t.status === 'for_payment') {
+          displayStatus = 'For Payment';
+        } else if (t.status === 'confirmed' || t.status === 'completed') {
+          displayStatus = 'Confirmed';
+        } else if (t.status === 'pending' || t.status === 'unclaimed') {
+          displayStatus = 'Pending';
+        } else {
+          displayStatus = t.status || 'Unknown';
+        }
+
+        const specialistFirstName = t.specialist?.user?.firstName || '';
+        const specialistLastName = t.specialist?.user?.lastName || '';
+        const computedSpecialistName = t.specialistName ||
+          (specialistFirstName || specialistLastName ? `${specialistFirstName} ${specialistLastName}`.trim() : "Unassigned");
+
+        return {
+          id: t.id || t.ticketNumber,
+          title: `Ticket #${t.ticketNumber || t.id} - ${t.chiefComplaint || 'Consultation'}`,
+          status: displayStatus,
+          specialist: computedSpecialistName,
+          specialty: t.specialty || t.specialist?.specialization || "General",
+          date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'TBD',
+          time: t.createdAt ? new Date(t.createdAt).toLocaleTimeString() : 'TBD',
+          description: t.chiefComplaint || t.symptoms || "",
+          consultationChannel: t.consultationChannel || t.channel || "Platform Chat",
+          consultationType: t.consultationType || "Teleconsultation",
+          bookingMethod: t.bookingMethod || "Online",
+          medicalDetails: {
+            chiefComplaint: t.chiefComplaint || "",
+            symptoms: t.symptoms || "",
+            otherSymptoms: t.otherSymptoms || ""
+          },
+          hmoDetails: {
+            company: t.hmoProvider || t.hmoCompany || "",
+            memberId: t.hmoMemberId || "",
+            expirationDate: t.hmoExpirationDate || "",
+            loaCode: t.loaCode || ""
+          }
+        };
+      });
+      setAppointments(mapped);
+    } catch (error) {
+      console.error("Failed to load active tickets:", error);
+    }
+  }, [onAppointmentAdded]);
+
   // Load appointments from localStorage on component mount
   useEffect(() => {
-    loadAppointments();
+    const initializeAppointments = async () => {
+      await loadAppointments();
+    };
+
+    initializeAppointments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadAppointments = () => {
-    // Initialize dummy tickets if none exist
-    appointmentService.initializeDummyTickets();
-    const savedAppointments = appointmentService.getAllAppointments();
-    console.log("Appointments loaded:", savedAppointments);
-    setAppointments(savedAppointments);
+  // Poll for "For Payment" auto-verification
+  useEffect(() => {
+    const checkPendingPayments = async () => {
+      // Find tickets that are specifically "For Payment"
+      const pendingPaymentTickets = appointments.filter(a => a.status === 'For Payment');
+
+      if (pendingPaymentTickets.length > 0) {
+        let hasUpdates = false;
+
+        // Check each pending payment tickets statuses
+        for (const ticket of pendingPaymentTickets) {
+          try {
+            console.log(`Auto-verifying ticket ${ticket.id}...`);
+            const result = await verifyTicketPayment(ticket.id);
+            if (result.status === 'active' || (result.status === 'for_payment' && result.paymentStatus === 'paid')) {
+              hasUpdates = true;
+            }
+          } catch (err) {
+            console.error(`Auto-verification failed for ${ticket.id}:`, err);
+          }
+        }
+
+        // If at least one ticket was verified as paid, reload the entire list
+        if (hasUpdates) {
+          console.log('Auto-verification detected fresh payments! Reloading...');
+          await loadAppointments();
+        }
+      }
+    };
+
+    // Only run if appointments have been loaded
+    if (appointments.length > 0) {
+      checkPendingPayments();
+    }
+  }, [appointments.length, loadAppointments, appointments]); // Dependencies to fire only when total number of appointments change or initially loaded
+
+
+  const handleCancel = async (appointment) => {
+    if (!window.confirm("Are you sure you want to cancel this ticket?")) return;
+    try {
+      await cancelTicket(appointment.id);
+      alert("Ticket cancelled successfully.");
+      loadAppointments();
+    } catch (e) {
+      console.error(e);
+      alert("Failed to cancel ticket.");
+    }
   };
 
   const handleViewAppointmentDetails = (appointment) => {
@@ -211,11 +324,7 @@ const Appointments = ({ onAppointmentAdded }) => {
     setChatMessage("");
   };
 
-  // Handle booking modal
-  const handleBookAppointment = () => {
-    // Login check disabled - users can book without login
-    setShowBookingModal(true);
-  };
+
 
   const closeBookingModal = () => {
     setShowBookingModal(false);
@@ -424,16 +533,13 @@ const Appointments = ({ onAppointmentAdded }) => {
     }
   };
 
-  // Handle payment
-  const handlePayment = (appointment) => {
-    setSelectedAppointment(appointment);
-    setShowPaymentModal(true);
-  };
+
 
   const closePaymentModal = () => {
     setShowPaymentModal(false);
     setSelectedAppointment(null);
     setPaymentMethod("");
+    setPaymentFile(null);
   };
 
   const handlePaymentSubmit = async (e) => {
@@ -444,32 +550,63 @@ const Appointments = ({ onAppointmentAdded }) => {
       return;
     }
 
+    if (!paymentFile) {
+      alert(`Please upload your ${paymentMethod === 'hmo' ? 'LOA Document' : 'Payment Proof'}`);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Simulate payment processing
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Simulate payment success/failure
-      const paymentSuccess = Math.random() > 0.2; // 80% success rate for demo
-
-      if (paymentSuccess) {
-        alert(
-          "Payment successful! You will receive a Payment Acknowledgement Receipt via email."
-        );
-        // Update appointment status to confirmed
-        console.log(
-          "Payment successful for appointment:",
-          selectedAppointment.id
-        );
+      if (paymentMethod === 'hmo') {
+        await uploadLOA(selectedAppointment.id, paymentFile);
       } else {
-        alert("Payment failed. Please try again or contact support.");
+        await uploadPaymentProof(selectedAppointment.id, paymentFile);
       }
 
+      alert(
+        "File submitted successfully! Your ticket is pending verification."
+      );
+      loadAppointments();
       closePaymentModal();
     } catch (error) {
+      console.error("Payment/LOA upload error:", error);
+      alert("There was an error processing your upload. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleXenditPayment = async (appointment) => {
+    try {
+      setIsSubmitting(true);
+      const result = await payTicket(appointment.id);
+      if (result.invoiceUrl) {
+        window.location.href = result.invoiceUrl;
+      } else {
+        alert("Failed to retrieve payment link.");
+      }
+    } catch (error) {
       console.error("Payment error:", error);
-      alert("There was an error processing your payment. Please try again.");
+      alert("Failed to initiate payment. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyPayment = async (appointment) => {
+    try {
+      setIsSubmitting(true);
+      const result = await verifyTicketPayment(appointment.id);
+      if (result.status === 'active') {
+        alert("Payment verified! Your ticket is now active.");
+        loadAppointments();
+      } else {
+        alert(result.message || "Payment not yet detected. Please wait or try again later.");
+      }
+    } catch (error) {
+      console.error("Verification error:", error);
+      alert("Failed to verify payment status. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -485,11 +622,7 @@ const Appointments = ({ onAppointmentAdded }) => {
           </p>
         </div>
         <div className="patient-book-appointment">
-          <HotlineBooking onAppointmentAdded={loadAppointments} />
-          <button className="patient-book-btn" onClick={handleBookAppointment}>
-            <FaCalendarPlus className="patient-book-icon" />
-            Book New Appointment
-          </button>
+          <BookConsultation onAppointmentAdded={loadAppointments} />
         </div>
       </div>
 
@@ -542,6 +675,15 @@ const Appointments = ({ onAppointmentAdded }) => {
                   </span>
                 </div>
                 <div className="patient-appointment-actions">
+                  {appointment.status === "Pending" && (
+                    <button
+                      className="patient-view-details-btn"
+                      style={{ backgroundColor: "#dc3545", marginRight: "10px" }}
+                      onClick={() => handleCancel(appointment)}
+                    >
+                      <FaTimes className="patient-action-icon" /> Cancel
+                    </button>
+                  )}
                   {appointment.status === "Active" && (
                     <button
                       className="patient-chat-btn"
@@ -552,13 +694,25 @@ const Appointments = ({ onAppointmentAdded }) => {
                     </button>
                   )}
                   {appointment.status === "For Payment" && (
-                    <button
-                      className="patient-payment-btn"
-                      onClick={() => handlePayment(appointment)}
-                    >
-                      <FaCreditCard className="patient-action-icon" />
-                      Pay
-                    </button>
+                    <>
+                      <button
+                        className="patient-payment-btn"
+                        disabled={isSubmitting}
+                        onClick={() => handleXenditPayment(appointment)}
+                        style={{ marginRight: "10px" }}
+                      >
+                        <FaCreditCard className="patient-action-icon" />
+                        {isSubmitting && selectedAppointment?.id === appointment.id ? "Processing..." : "Pay"}
+                      </button>
+                      <button
+                        className="patient-view-details-btn"
+                        style={{ backgroundColor: "#28a745", color: "white", marginRight: "10px" }}
+                        disabled={isSubmitting}
+                        onClick={() => handleVerifyPayment(appointment)}
+                      >
+                        <FaCheckCircle className="patient-action-icon" /> Verify
+                      </button>
+                    </>
                   )}
                   <button
                     className="patient-view-details-btn"
@@ -598,11 +752,10 @@ const Appointments = ({ onAppointmentAdded }) => {
               {chatMessages.map((message) => (
                 <div
                   key={message.id}
-                  className={`patient-message ${
-                    message.sender === "patient"
-                      ? "patient-message-patient"
-                      : "patient-message-nurse"
-                  }`}
+                  className={`patient-message ${message.sender === "patient"
+                    ? "patient-message-patient"
+                    : "patient-message-nurse"
+                    }`}
                 >
                   <div className="patient-message-content">
                     <p className="patient-message-text">{message.text}</p>
@@ -744,9 +897,8 @@ const Appointments = ({ onAppointmentAdded }) => {
                   <textarea
                     id="chiefComplaint"
                     name="chiefComplaint"
-                    className={`patient-form-textarea ${
-                      formErrors.chiefComplaint ? "patient-form-error" : ""
-                    }`}
+                    className={`patient-form-textarea ${formErrors.chiefComplaint ? "patient-form-error" : ""
+                      }`}
                     value={appointmentForm.chiefComplaint}
                     onChange={handleFormChange}
                     placeholder="Describe your main concern or reason for consultation"
@@ -768,9 +920,8 @@ const Appointments = ({ onAppointmentAdded }) => {
                   <textarea
                     id="symptoms"
                     name="symptoms"
-                    className={`patient-form-textarea ${
-                      formErrors.symptoms ? "patient-form-error" : ""
-                    }`}
+                    className={`patient-form-textarea ${formErrors.symptoms ? "patient-form-error" : ""
+                      }`}
                     value={appointmentForm.symptoms}
                     onChange={handleFormChange}
                     placeholder="Describe your symptoms in detail"
@@ -813,9 +964,8 @@ const Appointments = ({ onAppointmentAdded }) => {
                       type="date"
                       id="preferredDate"
                       name="preferredDate"
-                      className={`patient-form-input ${
-                        formErrors.preferredDate ? "patient-form-error" : ""
-                      }`}
+                      className={`patient-form-input ${formErrors.preferredDate ? "patient-form-error" : ""
+                        }`}
                       value={appointmentForm.preferredDate}
                       onChange={handleFormChange}
                       min={new Date().toISOString().split("T")[0]}
@@ -839,9 +989,8 @@ const Appointments = ({ onAppointmentAdded }) => {
                       type="time"
                       id="preferredTime"
                       name="preferredTime"
-                      className={`patient-form-input ${
-                        formErrors.preferredTime ? "patient-form-error" : ""
-                      }`}
+                      className={`patient-form-input ${formErrors.preferredTime ? "patient-form-error" : ""
+                        }`}
                       value={appointmentForm.preferredTime}
                       onChange={handleFormChange}
                       required
@@ -865,9 +1014,8 @@ const Appointments = ({ onAppointmentAdded }) => {
                   <select
                     id="specialization"
                     name="specialization"
-                    className={`patient-form-select ${
-                      formErrors.specialization ? "patient-form-error" : ""
-                    }`}
+                    className={`patient-form-select ${formErrors.specialization ? "patient-form-error" : ""
+                      }`}
                     value={appointmentForm.specialization}
                     onChange={handleFormChange}
                     required
@@ -897,9 +1045,8 @@ const Appointments = ({ onAppointmentAdded }) => {
                   <select
                     id="preferredSpecialist"
                     name="preferredSpecialist"
-                    className={`patient-form-select ${
-                      formErrors.preferredSpecialist ? "patient-form-error" : ""
-                    }`}
+                    className={`patient-form-select ${formErrors.preferredSpecialist ? "patient-form-error" : ""
+                      }`}
                     value={appointmentForm.preferredSpecialist}
                     onChange={handleFormChange}
                     disabled={!appointmentForm.specialization}
@@ -1190,11 +1337,24 @@ const Appointments = ({ onAppointmentAdded }) => {
                   </div>
                 </div>
 
+                {paymentMethod && (
+                  <div className="patient-form-group">
+                    <label className="patient-form-label">
+                      Upload {paymentMethod === 'hmo' ? 'LOA Document' : 'Payment Proof'} *
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={(e) => setPaymentFile(e.target.files[0])}
+                      style={{ display: 'block', marginTop: '10px' }}
+                    />
+                  </div>
+                )}
+
                 <div className="patient-payment-note">
                   <FaExclamationTriangle className="patient-warning-icon" />
                   <p>
-                    You will be redirected to the selected payment gateway to
-                    complete your transaction securely.
+                    Please upload the proof of your transaction or your valid HMO Letter of Authorization. It will be verified by the admin team soon.
                   </p>
                 </div>
               </div>

@@ -2,6 +2,7 @@ import "./auth.css";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { apiRequest } from "../api/apiClient";
 
 
 export default function SpecialistRegistration() {
@@ -9,13 +10,19 @@ export default function SpecialistRegistration() {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
+    middleName: "",
     email: "",
     password: "",
     confirmPassword: "",
     primarySpecialty: "",
+    subSpecialties: "",
     licenseNumber: "",
+    prcExpiryDate: "",
+    s2Number: "",
+    ptrNumber: "",
     mobileNumber: "",
   });
+  const [eSignatureFile, setESignatureFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -64,37 +71,45 @@ export default function SpecialistRegistration() {
     }
 
     try {
-      const response = await fetch("http://localhost:1337/api/v1/specialist/register", {
+      const payload = new FormData();
+      payload.append("firstName", formData.firstName);
+      payload.append("lastName", formData.lastName);
+      payload.append("middleName", formData.middleName || "");
+      payload.append("email", formData.email);
+      payload.append("mobileNumber", formData.mobileNumber);
+      payload.append("password", formData.password);
+      payload.append("licenseNumber", formData.licenseNumber);
+      payload.append("primarySpecialty", formData.primarySpecialty);
+      payload.append("subSpecialties", formData.subSpecialties || "");
+      if (formData.prcExpiryDate) payload.append("prcExpiryDate", formData.prcExpiryDate);
+      if (formData.s2Number) payload.append("s2Number", formData.s2Number);
+      if (formData.ptrNumber) payload.append("ptrNumber", formData.ptrNumber);
+      if (eSignatureFile) payload.append("eSignature", eSignatureFile);
+
+      const result = await apiRequest("/api/v1/specialist/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fullName: `${formData.firstName} ${formData.lastName}`.trim(),
-          email: formData.email,
-          mobileNumber: formData.mobileNumber,
-          password: formData.password,
-          licenseNumber: formData.licenseNumber,
-          primarySpecialty: formData.primarySpecialty,
-        }),
+        body: payload,
       });
 
-      const result = await response.json();
-
-      if (response.ok) {
-        setSuccess("Registration successful! Redirecting to specialist login...");
+      if (result.success || result.message) {
+        setSuccess("Registration successful! Your application to become a specialist has been submitted.");
         window.scrollTo(0, 0);
         setFormData({
           firstName: "",
           lastName: "",
+          middleName: "",
           email: "",
           password: "",
           confirmPassword: "",
           primarySpecialty: "",
+          subSpecialties: "",
           licenseNumber: "",
+          prcExpiryDate: "",
+          s2Number: "",
+          ptrNumber: "",
           mobileNumber: "",
         });
-        setTimeout(() => navigate("/specialist-login"), 2000);
+        setESignatureFile(null);
       } else {
         setErrors({ email: result.message || "Registration failed." });
         // Handle specific error structure from backend if needed
@@ -111,184 +126,264 @@ export default function SpecialistRegistration() {
   };
 
   return (
-    <div className="login-page-wrapper">
-      <div className="login-container">
-        <div className="header-inside-container">
-          <button
-            className="back-btn login-back-btn"
-            onClick={() => navigate("/")}
-          >
-            <span className="material-symbols-outlined">arrow_back_2</span>
-          </button>
-          <img src="/okie-doc-logo.png" alt="OkieDoc+" className="logo-image" />
-          <div style={{ width: "2.5rem" }}></div>
+    <>
+      {success && (
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
+          <div className="modal-content" style={{ backgroundColor: '#fff', padding: '40px', borderRadius: '12px', textAlign: 'center', maxWidth: '400px', width: '100%', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '64px', color: '#2ecc71', marginBottom: '15px' }}>✓</div>
+            <h3 style={{ color: '#333', marginBottom: '15px', fontSize: '24px' }}>Registration Successful</h3>
+            <p style={{ color: '#666', marginBottom: '30px', lineHeight: '1.6', fontSize: '16px' }}>{success}</p>
+            <button className="login-btn" style={{ margin: 0, width: '100%' }} onClick={() => navigate("/specialist-login")}>
+              Proceed to Login
+            </button>
+          </div>
         </div>
-        <h2 className="login-title">Specialist Registration</h2>
-        <p className="login-subtitle">
-          Join as a verified specialist and start helping patients.
-        </p>
-        <form className="login-form" onSubmit={handleSubmit}>
-          {success && (
-            <p className="auth-alert auth-alert--success">{success}</p>
-          )}
+      )}
+      <div className="login-page-wrapper">
+        <div className="login-container">
+          <div className="header-inside-container">
+            <button
+              className="back-btn login-back-btn"
+              onClick={() => navigate("/")}
+            >
+              <span className="material-symbols-outlined">arrow_back_2</span>
+            </button>
+            <img src="/okie-doc-logo.png" alt="OkieDoc+" className="logo-image" />
+            <div style={{ width: "2.5rem" }}></div>
+          </div>
+          <h2 className="login-title">Specialist Registration</h2>
+          <p className="login-subtitle">
+            Join as a verified specialist and start helping patients.
+          </p>
+          <form className="login-form" onSubmit={handleSubmit}>
 
-          <label className="login-label" htmlFor="firstName">
-            First Name
-          </label>
-          <input
-            className={`login-input ${errors.firstName ? "error" : ""}`}
-            id="firstName"
-            type="text"
-            placeholder="Enter your first name"
-            value={formData.firstName}
-            onChange={handleInputChange}
-          />
-          {errors.firstName && (
-            <span className="error-message">{errors.firstName}</span>
-          )}
-
-          <label className="login-label" htmlFor="lastName">
-            Last Name
-          </label>
-          <input
-            className={`login-input ${errors.lastName ? "error" : ""}`}
-            id="lastName"
-            type="text"
-            placeholder="Enter your last name"
-            value={formData.lastName}
-            onChange={handleInputChange}
-          />
-          {errors.lastName && (
-            <span className="error-message">{errors.lastName}</span>
-          )}
-
-          <label className="login-label" htmlFor="email">
-            Email address
-          </label>
-          <input
-            className={`login-input ${errors.email ? "error" : ""}`}
-            id="email"
-            type="email"
-            placeholder="Enter your email address"
-            value={formData.email}
-            onChange={handleInputChange}
-          />
-          {errors.email && (
-            <span className="error-message">{errors.email}</span>
-          )}
-
-          <label className="login-label" htmlFor="primarySpecialty">
-            Medical Specialty
-          </label>
-          <input
-            className={`login-input ${errors.primarySpecialty ? "error" : ""}`}
-            id="primarySpecialty"
-            type="text"
-            placeholder="e.g. Cardiology, Pediatrics"
-            value={formData.primarySpecialty}
-            onChange={handleInputChange}
-          />
-          {errors.primarySpecialty && (
-            <span className="error-message">{errors.primarySpecialty}</span>
-          )}
-
-          <label className="login-label" htmlFor="licenseNumber">
-            License Number
-          </label>
-          <input
-            className={`login-input ${errors.licenseNumber ? "error" : ""}`}
-            id="licenseNumber"
-            type="text"
-            placeholder="Enter your license number"
-            value={formData.licenseNumber}
-            onChange={handleInputChange}
-          />
-          {errors.licenseNumber && (
-            <span className="error-message">{errors.licenseNumber}</span>
-          )}
-
-
-
-          <label className="login-label" htmlFor="mobileNumber">
-            Mobile Number
-          </label>
-          <input
-            className={`login-input ${errors.mobileNumber ? "error" : ""}`}
-            id="mobileNumber"
-            type="tel"
-            placeholder="+63 912 345 6789"
-            value={formData.mobileNumber}
-            onChange={handleInputChange}
-          />
-          {errors.mobileNumber && (
-            <span className="error-message">{errors.mobileNumber}</span>
-          )}
-
-          <label className="login-label" htmlFor="password">
-            Password
-          </label>
-          <div className="login-password">
+            <label className="login-label" htmlFor="firstName">
+              First Name
+            </label>
             <input
-              className={`login-input ${errors.password ? "error" : ""}`}
-              id="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter your password"
-              value={formData.password}
+              className={`login-input ${errors.firstName ? "error" : ""}`}
+              id="firstName"
+              type="text"
+              placeholder="Enter your first name"
+              value={formData.firstName}
               onChange={handleInputChange}
             />
-            <button
-              type="button"
-              className={`password-toggle ${showPassword ? "visible" : "hidden"}`}
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? <FaEye /> : <FaEyeSlash />}
-            </button>
-          </div>
-          {errors.password && (
-            <span className="error-message">{errors.password}</span>
-          )}
+            {errors.firstName && (
+              <span className="error-message">{errors.firstName}</span>
+            )}
 
-          <label className="login-label" htmlFor="confirmPassword">
-            Confirm Password
-          </label>
-          <div className="login-password">
+            <label className="login-label" htmlFor="lastName">
+              Last Name
+            </label>
             <input
-              className={`login-input ${errors.confirmPassword ? "error" : ""}`}
-              id="confirmPassword"
-              type={showConfirmPassword ? "text" : "password"}
-              placeholder="Confirm your password"
-              value={formData.confirmPassword}
+              className={`login-input ${errors.lastName ? "error" : ""}`}
+              id="lastName"
+              type="text"
+              placeholder="Enter your last name"
+              value={formData.lastName}
               onChange={handleInputChange}
             />
-            <button
-              type="button"
-              className={`password-toggle ${showConfirmPassword ? "visible" : "hidden"}`}
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            >
-              {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
-            </button>
-          </div>
-          {errors.confirmPassword && (
-            <span className="error-message">{errors.confirmPassword}</span>
-          )}
+            {errors.lastName && (
+              <span className="error-message">{errors.lastName}</span>
+            )}
 
-          <button className="login-btn" type="submit">
-            Register
-          </button>
-          <p className="login-text">
-            Already a specialist?{" "}
-            <a className="specialist-link" href="/specialist-login">
-              Login here
-            </a>
-          </p>
-          <p className="login-text">
-            Not a specialist?{" "}
-            <a className="specialist-link" href="/registration">
-              Register as a patient
-            </a>
-          </p>
-        </form>
+            <label className="login-label" htmlFor="middleName">
+              Middle Name (Optional)
+            </label>
+            <input
+              className="login-input"
+              id="middleName"
+              type="text"
+              placeholder="Enter your middle name"
+              value={formData.middleName}
+              onChange={handleInputChange}
+            />
+
+            <label className="login-label" htmlFor="email">
+              Email address
+            </label>
+            <input
+              className={`login-input ${errors.email ? "error" : ""}`}
+              id="email"
+              type="email"
+              placeholder="Enter your email address"
+              value={formData.email}
+              onChange={handleInputChange}
+            />
+            {errors.email && (
+              <span className="error-message">{errors.email}</span>
+            )}
+
+            <label className="login-label" htmlFor="primarySpecialty">
+              Medical Specialty
+            </label>
+            <input
+              className={`login-input ${errors.primarySpecialty ? "error" : ""}`}
+              id="primarySpecialty"
+              type="text"
+              placeholder="e.g. Cardiology, Pediatrics"
+              value={formData.primarySpecialty}
+              onChange={handleInputChange}
+            />
+            {errors.primarySpecialty && (
+              <span className="error-message">{errors.primarySpecialty}</span>
+            )}
+
+            <label className="login-label" htmlFor="subSpecialties">
+              Sub-specialties (Optional, comma-separated)
+            </label>
+            <input
+              className="login-input"
+              id="subSpecialties"
+              type="text"
+              placeholder="e.g. Interventional, Electrophysiology"
+              value={formData.subSpecialties}
+              onChange={handleInputChange}
+            />
+
+            <label className="login-label" htmlFor="licenseNumber">
+              License Number
+            </label>
+            <input
+              className={`login-input ${errors.licenseNumber ? "error" : ""}`}
+              id="licenseNumber"
+              type="text"
+              placeholder="Enter your license number"
+              value={formData.licenseNumber}
+              onChange={handleInputChange}
+            />
+            {errors.licenseNumber && (
+              <span className="error-message">{errors.licenseNumber}</span>
+            )}
+
+            <label className="login-label" htmlFor="prcExpiryDate">
+              PRC Expiry Date (Optional)
+            </label>
+            <input
+              className="login-input"
+              id="prcExpiryDate"
+              type="date"
+              value={formData.prcExpiryDate}
+              onChange={handleInputChange}
+            />
+
+            <label className="login-label" htmlFor="s2Number">
+              S2 License Number (Optional)
+            </label>
+            <input
+              className="login-input"
+              id="s2Number"
+              type="text"
+              placeholder="For prescribing dangerous drugs"
+              value={formData.s2Number}
+              onChange={handleInputChange}
+            />
+
+            <label className="login-label" htmlFor="ptrNumber">
+              PTR Number (Optional)
+            </label>
+            <input
+              className="login-input"
+              id="ptrNumber"
+              type="text"
+              placeholder="Professional Tax Receipt No."
+              value={formData.ptrNumber}
+              onChange={handleInputChange}
+            />
+
+            <label className="login-label" htmlFor="eSignature">
+              E-Signature Upload (Optional)
+            </label>
+            <input
+              className="login-input"
+              id="eSignature"
+              type="file"
+              accept="image/png, image/jpeg"
+              onChange={(e) => setESignatureFile(e.target.files[0])}
+              style={{ padding: '10px' }}
+            />
+
+            <label className="login-label" htmlFor="mobileNumber">
+              Mobile Number
+            </label>
+            <input
+              className={`login-input ${errors.mobileNumber ? "error" : ""}`}
+              id="mobileNumber"
+              type="tel"
+              placeholder="+63 912 345 6789"
+              value={formData.mobileNumber}
+              onChange={handleInputChange}
+            />
+            {errors.mobileNumber && (
+              <span className="error-message">{errors.mobileNumber}</span>
+            )}
+
+            <label className="login-label" htmlFor="password">
+              Password
+            </label>
+            <div className="login-password">
+              <input
+                className={`login-input ${errors.password ? "error" : ""}`}
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={handleInputChange}
+              />
+              <button
+                type="button"
+                className={`password-toggle ${showPassword ? "visible" : "hidden"}`}
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <FaEye /> : <FaEyeSlash />}
+              </button>
+            </div>
+            {errors.password && (
+              <span className="error-message">{errors.password}</span>
+            )}
+
+            <label className="login-label" htmlFor="confirmPassword">
+              Confirm Password
+            </label>
+            <div className="login-password">
+              <input
+                className={`login-input ${errors.confirmPassword ? "error" : ""}`}
+                id="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Confirm your password"
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+              />
+              <button
+                type="button"
+                className={`password-toggle ${showConfirmPassword ? "visible" : "hidden"}`}
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <span className="error-message">{errors.confirmPassword}</span>
+            )}
+
+            <button className="login-btn" type="submit">
+              Register
+            </button>
+            <p className="login-text">
+              Already a specialist?{" "}
+              <a className="specialist-link" href="/specialist-login">
+                Login here
+              </a>
+            </p>
+            <p className="login-text">
+              Not a specialist?{" "}
+              <a className="specialist-link" href="/registration">
+                Register as a patient
+              </a>
+            </p>
+          </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

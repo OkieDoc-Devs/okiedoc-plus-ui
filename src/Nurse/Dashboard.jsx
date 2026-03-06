@@ -14,6 +14,9 @@ import {
   fetchNurseProfile,
   logoutFromAPI,
   updateTicket,
+  claimTicket,
+  triageTicket,
+  fetchDoctorsFromAPI,
 } from "./services/apiService.js";
 import { transformProfileFromAPI } from "./services/profileService.js";
 
@@ -28,6 +31,11 @@ export default function Dashboard() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showTicketDetailModal, setShowTicketDetailModal] = useState(false);
   const [ticketDetailTab, setTicketDetailTab] = useState("assessment");
+  const [doctors, setDoctors] = useState([]);
+  const [urgency, setUrgency] = useState("medium");
+  const [targetSpecialty, setTargetSpecialty] = useState("");
+  const [assignedSpecialist, setAssignedSpecialist] = useState("");
+  const [isTriaging, setIsTriaging] = useState(false);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -251,20 +259,50 @@ export default function Dashboard() {
     };
 
     loadDashboardData();
+    const interval = setInterval(loadDashboardData, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-    const onVisibilityChange = () => {
-      if (!document.hidden) {
-        console.log("Dashboard: Page became visible, reloading data");
-        loadDashboardData();
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        const data = await fetchDoctorsFromAPI();
+        setDoctors(data || []);
+      } catch (error) {
+        console.error("Dashboard: Error loading doctors:", error);
       }
     };
-
-    document.addEventListener("visibilitychange", onVisibilityChange);
-
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
+    loadDoctors();
   }, []);
+
+  const handleCompleteTriage = async (ticketId) => {
+    if (!targetSpecialty) {
+      alert("Please enter a target specialty.");
+      return;
+    }
+
+    setIsTriaging(true);
+    try {
+      const triageData = {
+        ticketId: parseInt(ticketId, 10),
+        targetSpecialty,
+        urgency,
+      };
+      if (assignedSpecialist) {
+        triageData.specialistId = parseInt(assignedSpecialist, 10);
+      }
+
+      await triageTicket(triageData);
+      alert("Ticket triaged successfully!");
+      setShowTicketDetailModal(false);
+      window.location.reload();
+    } catch (error) {
+      console.error("Error triaging ticket:", error);
+      alert("Failed to triage ticket: " + error.message);
+    } finally {
+      setIsTriaging(false);
+    }
+  };
 
   return (
     <div className="dashboard">
@@ -377,7 +415,7 @@ export default function Dashboard() {
                   <div className="ticket-assignments">
                     <p>
                       <strong>Assigned Nurse:</strong>{" "}
-                      {ticket.assignedNurse || nurseName}
+                      {ticket.assignedNurse || "Unassigned"}
                     </p>
                     <p>
                       <strong>Assigned Specialist:</strong>{" "}
@@ -410,14 +448,50 @@ export default function Dashboard() {
                     </p>
                   </div>
 
+                  {ticket.status === 'pending' && !ticket.assignedNurse && (
+                    <button
+                      className="ticket-history-btn"
+                      style={{ background: '#28a745', color: '#fff' }}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (window.confirm("Do you want to claim this ticket?")) {
+                          try {
+                            await claimTicket(ticket.id);
+                            alert("Ticket claimed successfully!");
+                            window.location.reload(); // Simple way to refresh everything
+                          } catch (err) {
+                            alert("Failed to claim ticket: " + err.message);
+                          }
+                        }
+                      }}
+                    >
+                      Claim Ticket
+                    </button>
+                  )}
+
                   <button
                     className="ticket-history-btn"
+                    style={{ marginTop: '8px' }}
                     onClick={(e) => {
                       e.stopPropagation();
                       alert("Feature in progress");
                     }}
                   >
                     Consultation Histories
+                  </button>
+                  <button
+                    className="ticket-history-btn"
+                    style={{ marginTop: '8px', background: '#0b5388', color: '#fff' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (ticket.patientId) {
+                        navigate(`/nurse-messages?userId=${ticket.patientId}`);
+                      } else {
+                        alert("No patient ID found for this ticket.");
+                      }
+                    }}
+                  >
+                    Message Patient
                   </button>
                 </div>
               </div>
@@ -516,10 +590,10 @@ export default function Dashboard() {
                           selectedTicket.status === "Confirmed"
                             ? "#2196f3"
                             : selectedTicket.status === "Completed"
-                            ? "#4caf50"
-                            : selectedTicket.status === "Processing"
-                            ? "#2196f3"
-                            : "#ff9800",
+                              ? "#4caf50"
+                              : selectedTicket.status === "Processing"
+                                ? "#2196f3"
+                                : "#ff9800",
                       }}
                     >
                       {selectedTicket.status}
@@ -536,7 +610,7 @@ export default function Dashboard() {
               >
                 <p style={{ margin: "0 0 4px" }}>
                   <strong>Assigned Nurse:</strong>{" "}
-                  {selectedTicket.assignedNurse || nurseName || "N/A"}
+                  {selectedTicket.assignedNurse || "Unassigned"}
                 </p>
                 <p style={{ margin: "0 0 4px" }}>
                   <strong>Assigned Specialist:</strong>{" "}
@@ -550,7 +624,33 @@ export default function Dashboard() {
                     selectedTicket.chiefComplaint}
                 </p>
               </div>
-              <div style={{ marginTop: 16, textAlign: "right" }}>
+              <div style={{ marginTop: 16, textAlign: "right", display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                {selectedTicket.status === 'pending' && !selectedTicket.assignedNurse && (
+                  <button
+                    className="action-btn"
+                    style={{
+                      background: "#28a745",
+                      color: "#fff",
+                      padding: "8px 20px",
+                      borderRadius: 20,
+                    }}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (window.confirm("Do you want to claim this ticket?")) {
+                        try {
+                          await claimTicket(selectedTicket.id);
+                          alert("Ticket claimed successfully!");
+                          setShowTicketDetailModal(false);
+                          window.location.reload();
+                        } catch (err) {
+                          alert("Failed to claim ticket: " + err.message);
+                        }
+                      }
+                    }}
+                  >
+                    Claim Ticket
+                  </button>
+                )}
                 <button
                   className="action-btn"
                   style={{
@@ -581,6 +681,7 @@ export default function Dashboard() {
                 "medicalHistory",
                 "laboratoryRequest",
                 "prescription",
+                ...(selectedTicket?.status === 'processing' && selectedTicket?.assignedNurse ? ["triage"] : [])
               ].map((tab) => (
                 <button
                   key={tab}
@@ -606,6 +707,7 @@ export default function Dashboard() {
                   {tab === "medicalHistory" && "Medical History"}
                   {tab === "laboratoryRequest" && "Laboratory Request"}
                   {tab === "prescription" && "Prescription"}
+                  {tab === "triage" && "Triage"}
                 </button>
               ))}
             </div>
@@ -619,6 +721,71 @@ export default function Dashboard() {
                 background: "#e8f4fc",
               }}
             >
+              {ticketDetailTab === "triage" && (
+                <div style={{ background: '#fff', padding: 20, borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                  <h3 style={{ marginBottom: 16, color: '#0b5388' }}>Triage & specialist Assignment</h3>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Target Specialty:</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Pediatrics, Cardiology"
+                      value={targetSpecialty}
+                      onChange={(e) => setTargetSpecialty(e.target.value)}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 4, border: '1px solid #ccc' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Urgency:</label>
+                    <select
+                      value={urgency}
+                      onChange={(e) => setUrgency(e.target.value)}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 4, border: '1px solid #ccc' }}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Assign specialist (Optional):</label>
+                    <select
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 4, border: '1px solid #ccc' }}
+                      value={assignedSpecialist}
+                      onChange={(e) => setAssignedSpecialist(e.target.value)}
+                    >
+                      <option value="">Select specialist</option>
+                      {doctors.map((doctor) => (
+                        <option key={doctor.id} value={doctor.id}>
+                          {doctor.name} - {doctor.specialization}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    className="action-btn"
+                    style={{
+                      width: '100%',
+                      background: '#28a745',
+                      color: '#fff',
+                      padding: '12px',
+                      fontSize: '16px',
+                      fontWeight: '700',
+                      borderRadius: 6,
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                    disabled={isTriaging}
+                    onClick={() => handleCompleteTriage(selectedTicket.id)}
+                  >
+                    {isTriaging ? "Completing Triage..." : "Complete Triage"}
+                  </button>
+                </div>
+              )}
+
               {ticketDetailTab === "assessment" && (
                 <div>
                   {selectedTicket?.assessment ? (
@@ -837,52 +1004,52 @@ export default function Dashboard() {
             >
               {(selectedTicket.status === "Confirmed" ||
                 selectedTicket.status === "Processing") && (
-                <button
-                  onClick={async () => {
-                    if (
-                      window.confirm(
-                        "Are you sure you want to mark this ticket as completed?"
-                      )
-                    ) {
-                      try {
-                        await updateTicket(selectedTicket.id, {
-                          status: "Completed",
-                        });
-                        alert("Ticket marked as completed!");
-                        setShowTicketDetailModal(false);
-                        setSelectedTicket(null);
-                        const dashboardData = await fetchDashboardFromAPI();
-                        if (dashboardData.success) {
-                          setNurseName(
-                            dashboardData.data?.nurse?.firstName || nurseName
+                  <button
+                    onClick={async () => {
+                      if (
+                        window.confirm(
+                          "Are you sure you want to mark this ticket as completed?"
+                        )
+                      ) {
+                        try {
+                          await updateTicket(selectedTicket.id, {
+                            status: "Completed",
+                          });
+                          alert("Ticket marked as completed!");
+                          setShowTicketDetailModal(false);
+                          setSelectedTicket(null);
+                          const dashboardData = await fetchDashboardFromAPI();
+                          if (dashboardData.success) {
+                            setNurseName(
+                              dashboardData.data?.nurse?.firstName || nurseName
+                            );
+                          }
+                          const ticketsData = await fetchTicketsFromAPI();
+                          if (ticketsData.success) {
+                            window.location.reload();
+                          }
+                        } catch (error) {
+                          console.error("Error completing ticket:", error);
+                          alert(
+                            error.message ||
+                            "Failed to complete ticket. Please try again."
                           );
                         }
-                        const ticketsData = await fetchTicketsFromAPI();
-                        if (ticketsData.success) {
-                          window.location.reload();
-                        }
-                      } catch (error) {
-                        console.error("Error completing ticket:", error);
-                        alert(
-                          error.message ||
-                            "Failed to complete ticket. Please try again."
-                        );
                       }
-                    }
-                  }}
-                  style={{
-                    background: "#4caf50",
-                    color: "#fff",
-                    padding: "10px 24px",
-                    borderRadius: 20,
-                    border: "none",
-                    cursor: "pointer",
-                    fontWeight: 500,
-                  }}
-                >
-                  Mark as Completed
-                </button>
-              )}
+                    }}
+                    style={{
+                      background: "#4caf50",
+                      color: "#fff",
+                      padding: "10px 24px",
+                      borderRadius: 20,
+                      border: "none",
+                      cursor: "pointer",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Mark as Completed
+                  </button>
+                )}
               <button
                 onClick={() => {
                   setShowTicketDetailModal(false);

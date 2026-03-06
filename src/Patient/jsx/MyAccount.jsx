@@ -1,18 +1,23 @@
 import React, { useState, useRef } from 'react';
 import { FaUser, FaCamera, FaLock, FaSave, FaTimes } from 'react-icons/fa';
+import { updatePatientProfile, uploadProfilePicture } from '../services/apiService';
+import { API_BASE_URL } from '../../api/apiClient';
+import ImageCropperModal from '../../components/ImageCropperModal';
 
-const MyAccount = ({ 
-  profileImage, 
-  setProfileImage, 
-  profileData, 
-  setProfileData, 
-  passwordData, 
-  setPasswordData, 
-  isEditing, 
-  setIsEditing, 
-  activeTab, 
-  setActiveTab 
+const MyAccount = ({
+  profileImage,
+  setProfileImage,
+  profileData,
+  setProfileData,
+  passwordData,
+  setPasswordData,
+  isEditing,
+  setIsEditing,
+  activeTab,
+  setActiveTab
 }) => {
+  const [cropperModalOpen, setCropperModalOpen] = useState(false);
+  const [selectedImageSrc, setSelectedImageSrc] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleInputChange = (e) => {
@@ -33,15 +38,15 @@ const MyAccount = ({
 
   // Check if password meets requirements
   const isPasswordValid = (password) => {
-    return password.length >= 6 && 
-           /[a-zA-Z]/.test(password) && 
-           /[0-9]/.test(password) &&
-           password !== passwordData.currentPassword;
+    return password.length >= 6 &&
+      /[a-zA-Z]/.test(password) &&
+      /[0-9]/.test(password) &&
+      password !== passwordData.currentPassword;
   };
 
   // Check if user is typing in password fields
   const isTypingPassword = passwordData.newPassword.length > 0 || passwordData.confirmPassword.length > 0;
-  
+
   // Check if password requirements are not met
   const shouldShowRequirements = isTypingPassword && !isPasswordValid(passwordData.newPassword);
 
@@ -50,17 +55,57 @@ const MyAccount = ({
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setProfileImage(e.target.result);
+        setSelectedImageSrc(e.target.result);
+        setCropperModalOpen(true);
       };
       reader.readAsDataURL(file);
     }
+    e.target.value = null;
   };
 
-  const handleSaveProfile = () => {
-    // Save profile data logic here
-    console.log('Saving profile:', profileData);
-    setIsEditing(false);
-    // You can add API call here to save to backend
+  const handleCropComplete = async (croppedFile) => {
+    setCropperModalOpen(false);
+    setSelectedImageSrc(null);
+    try {
+      const formData = new FormData();
+      formData.append('photo', croppedFile);
+      const response = await uploadProfilePicture(formData);
+      setProfileImage(`${API_BASE_URL}${response.profileUrl}`);
+      alert("Profile picture uploaded successfully!");
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Failed to upload profile picture.");
+    }
+  };
+
+  const handleCropCancel = () => {
+    setCropperModalOpen(false);
+    setSelectedImageSrc(null);
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      const payload = {
+        birthday: profileData.birthday,
+        gender: profileData.gender,
+        bloodType: profileData.bloodType,
+        allergies: profileData.allergies,
+        activeDiseases: profileData.activeDiseases,
+        medications: profileData.medications,
+        hmoCompany: profileData.hmoCompany,
+        hmoMemberId: profileData.hmoMemberId,
+        loaCode: profileData.loaCode,
+      };
+
+      const res = await updatePatientProfile(payload);
+      if (res) {
+        alert("Clinical profile updated successfully!");
+        setIsEditing(false);
+      }
+    } catch (err) {
+      alert("Failed to update profile. Please try again.");
+      console.error(err);
+    }
   };
 
   const handleSavePassword = () => {
@@ -90,7 +135,7 @@ const MyAccount = ({
   return (
     <div className="patient-page-content">
       <h2>My Account</h2>
-      
+
       <div className="patient-account-container">
         {/* Profile Image Section */}
         <div className="patient-profile-image-section">
@@ -102,7 +147,7 @@ const MyAccount = ({
                 <FaUser className="patient-profile-icon" />
               </div>
             )}
-            <button 
+            <button
               className="patient-upload-btn"
               onClick={() => fileInputRef.current?.click()}
               title="Upload Photo"
@@ -127,14 +172,14 @@ const MyAccount = ({
 
         {/* Tabs */}
         <div className="patient-account-tabs">
-          <button 
+          <button
             className={`patient-tab-btn ${activeTab === 'profile' ? 'patient-active' : ''}`}
             onClick={() => setActiveTab('profile')}
           >
             <FaUser className="patient-tab-icon" />
             Profile Information
           </button>
-          <button 
+          <button
             className={`patient-tab-btn ${activeTab === 'password' ? 'patient-active' : ''}`}
             onClick={() => setActiveTab('password')}
           >
@@ -226,9 +271,9 @@ const MyAccount = ({
                   <label htmlFor="dateOfBirth">Date of Birth</label>
                   <input
                     type="date"
-                    id="dateOfBirth"
-                    name="dateOfBirth"
-                    value={profileData.dateOfBirth}
+                    id="birthday"
+                    name="birthday"
+                    value={profileData.birthday}
                     onChange={handleInputChange}
                     disabled={!isEditing}
                     className={isEditing ? 'patient-editable' : 'patient-readonly'}
@@ -273,6 +318,141 @@ const MyAccount = ({
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       className={isEditing ? 'patient-editable' : 'patient-readonly'}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="patient-form-section">
+                <h4>Clinical Information</h4>
+                <div className="patient-form-row">
+                  <div className="patient-form-group">
+                    <label htmlFor="gender">Gender</label>
+                    <select
+                      id="gender"
+                      name="gender"
+                      value={profileData.gender || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className={isEditing ? 'patient-editable patient-select' : 'patient-readonly patient-select'}
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="patient-form-group">
+                    <label htmlFor="bloodType">Blood Type</label>
+                    <select
+                      id="bloodType"
+                      name="bloodType"
+                      value={profileData.bloodType || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className={isEditing ? 'patient-editable patient-select' : 'patient-readonly patient-select'}
+                    >
+                      <option value="">Select Blood Type</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="patient-form-row">
+                  <div className="patient-form-group patient-full-width">
+                    <label htmlFor="allergies">Allergies</label>
+                    <textarea
+                      id="allergies"
+                      name="allergies"
+                      value={profileData.allergies || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className={isEditing ? 'patient-editable' : 'patient-readonly'}
+                      placeholder="List any known allergies..."
+                      rows="2"
+                    />
+                  </div>
+                </div>
+                <div className="patient-form-row">
+                  <div className="patient-form-group patient-full-width">
+                    <label htmlFor="activeDiseases">Active Diseases / Conditions</label>
+                    <textarea
+                      id="activeDiseases"
+                      name="activeDiseases"
+                      value={profileData.activeDiseases || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className={isEditing ? 'patient-editable' : 'patient-readonly'}
+                      placeholder="List any ongoing medical conditions..."
+                      rows="2"
+                    />
+                  </div>
+                </div>
+                <div className="patient-form-row">
+                  <div className="patient-form-group patient-full-width">
+                    <label htmlFor="medications">Current Medications</label>
+                    <textarea
+                      id="medications"
+                      name="medications"
+                      value={profileData.medications || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className={isEditing ? 'patient-editable' : 'patient-readonly'}
+                      placeholder="List your current medications and dosages..."
+                      rows="2"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="patient-form-section">
+                <h4>HMO & Insurance</h4>
+                <div className="patient-form-row">
+                  <div className="patient-form-group">
+                    <label htmlFor="hmoCompany">HMO Provider</label>
+                    <input
+                      type="text"
+                      id="hmoCompany"
+                      name="hmoCompany"
+                      value={profileData.hmoCompany || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className={isEditing ? 'patient-editable' : 'patient-readonly'}
+                      placeholder="E.g., Maxicare, Intellicare"
+                    />
+                  </div>
+                  <div className="patient-form-group">
+                    <label htmlFor="hmoMemberId">Member ID</label>
+                    <input
+                      type="text"
+                      id="hmoMemberId"
+                      name="hmoMemberId"
+                      value={profileData.hmoMemberId || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className={isEditing ? 'patient-editable' : 'patient-readonly'}
+                      placeholder="Card Number"
+                    />
+                  </div>
+                </div>
+                <div className="patient-form-row">
+                  <div className="patient-form-group">
+                    <label htmlFor="loaCode">Default LOA Code (Optional)</label>
+                    <input
+                      type="text"
+                      id="loaCode"
+                      name="loaCode"
+                      value={profileData.loaCode || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className={isEditing ? 'patient-editable' : 'patient-readonly'}
+                      placeholder="Pre-approved LOA code if applicable"
                     />
                   </div>
                 </div>
@@ -353,6 +533,13 @@ const MyAccount = ({
           </div>
         )}
       </div>
+
+      <ImageCropperModal
+        isOpen={cropperModalOpen}
+        imageSrc={selectedImageSrc}
+        onCropComplete={handleCropComplete}
+        onCancel={handleCropCancel}
+      />
     </div>
   );
 };

@@ -26,6 +26,8 @@ import {
   fetchTicketsFromAPI,
   createTicket,
   updateTicket,
+  claimTicket as claimTicketAPI,
+  triageTicket,
   fetchNotificationsFromAPI,
   fetchDoctorsFromAPI,
   logoutFromAPI,
@@ -171,6 +173,9 @@ export default function ManageAppointment() {
   const [doctors, setDoctors] = useState([]);
   const [showTicketDetailModal, setShowTicketDetailModal] = useState(false);
   const [ticketDetailTab, setTicketDetailTab] = useState("assessment");
+  const [urgency, setUrgency] = useState("medium");
+  const [targetSpecialty, setTargetSpecialty] = useState("");
+  const [isTriaging, setIsTriaging] = useState(false);
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -345,30 +350,15 @@ export default function ManageAppointment() {
       if (!USE_API) return;
 
       try {
-        const response = await fetch(
-          `${import.meta.env.MODE === "production"
-            ? "https://your-production-url.com"
-            : "http://localhost:1337"
-          }/api/v1/nurse/profile`,
-          {
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data && data.data.id) {
-            // Store the nurse's Id (from nurses table) in localStorage
-            localStorage.setItem("nurse.id", String(data.data.id));
-            setNurseId(data.data.id);
-            console.log(
-              "ManageAppointments: Loaded nurse ID from profile:",
-              data.data.id
-            );
-          }
+        const data = await fetchNurseProfile();
+        if (data && data.id) {
+          // Store the nurse's Id (from nurses table) in localStorage
+          localStorage.setItem("nurse.id", String(data.id));
+          setNurseId(data.id);
+          console.log(
+            "ManageAppointments: Loaded nurse ID from profile:",
+            data.id
+          );
         }
       } catch (error) {
         console.error("Error loading nurse profile:", error);
@@ -431,15 +421,8 @@ export default function ManageAppointment() {
     }
 
     try {
-      const updateData = {
-        claimedBy: nurseId,
-        status: "Processing",
-      };
-
-      console.log("Sending update to API:");
-      console.log(JSON.stringify(updateData, null, 2));
-
-      const result = await updateTicket(ticketId, updateData);
+      console.log("Sending claim request to API:");
+      const result = await claimTicketAPI(ticketId);
 
       console.log("=====================================");
       console.log("TICKET CLAIMED SUCCESSFULLY");
@@ -625,6 +608,36 @@ export default function ManageAppointment() {
       setRescheduleTime("");
       alert("Appointment rescheduled locally (API unavailable)");
       addNotification("Reschedule", `Ticket ${ticketId} rescheduled locally`);
+    }
+  };
+
+  const handleCompleteTriage = async (ticketId) => {
+    if (!targetSpecialty) {
+      alert("Please enter a target specialty.");
+      return;
+    }
+
+    setIsTriaging(true);
+    try {
+      const triageData = {
+        ticketId: parseInt(ticketId, 10),
+        targetSpecialty,
+        urgency,
+      };
+
+      if (assignedSpecialist) {
+        triageData.specialistId = parseInt(assignedSpecialist, 10);
+      }
+
+      await triageTicket(triageData);
+      alert("Ticket triaged successfully!");
+      setSelectedTicket(null);
+      window.location.reload();
+    } catch (error) {
+      console.error("Error triaging ticket:", error);
+      alert("Failed to triage ticket: " + error.message);
+    } finally {
+      setIsTriaging(false);
     }
   };
 
@@ -1030,7 +1043,7 @@ export default function ManageAppointment() {
                     <div className="ticket-assignments">
                       <p>
                         <strong>Assigned Nurse:</strong>{" "}
-                        {ticket.assignedNurse || nurseName}
+                        {ticket.assignedNurse || "Unassigned"}
                       </p>
                       <p>
                         <strong>Assigned Specialist:</strong>{" "}
@@ -1370,27 +1383,69 @@ export default function ManageAppointment() {
                 className="specialist-actions"
                 style={{ marginTop: 24, marginBottom: 16 }}
               >
-                <h3 style={{ marginBottom: 8 }}>Assign Specialist</h3>
-                <label htmlFor="specialist-select" style={{ marginRight: 8 }}>
-                  Specialist:
-                </label>
-                <select
-                  id="specialist-select"
+                <h3 style={{ marginBottom: 16 }}>Triage & Assign</h3>
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: 'block', marginBottom: 4 }}>Target Specialty:</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Pediatrics, Cardiology"
+                    value={targetSpecialty}
+                    onChange={(e) => setTargetSpecialty(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 4 }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: 'block', marginBottom: 4 }}>Urgency:</label>
+                  <select
+                    value={urgency}
+                    onChange={(e) => setUrgency(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 4 }}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', marginBottom: 4 }}>Assign Specialist (Optional):</label>
+                  <select
+                    id="specialist-select"
+                    style={{
+                      width: '100%',
+                      padding: "8px 12px",
+                      borderRadius: 4,
+                    }}
+                    value={assignedSpecialist}
+                    onChange={(e) => setAssignedSpecialist(e.target.value)}
+                  >
+                    <option value="">Select Specialist</option>
+                    {doctors.map((doctor) => (
+                      <option key={doctor.id} value={doctor.id}>
+                        {doctor.name} - {doctor.specialization}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  className="action-btn"
                   style={{
-                    marginBottom: 0,
-                    padding: "6px 12px",
-                    borderRadius: 4,
+                    width: '100%',
+                    background: '#28a745',
+                    color: '#fff',
+                    padding: '10px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    borderRadius: 4
                   }}
-                  value={assignedSpecialist}
-                  onChange={(e) => setAssignedSpecialist(e.target.value)}
+                  disabled={isTriaging}
+                  onClick={() => handleCompleteTriage(selectedTicket.id)}
                 >
-                  <option value="">Select Specialist</option>
-                  {doctors.map((doctor) => (
-                    <option key={doctor.id} value={doctor.name}>
-                      {doctor.name} - {doctor.specialization}
-                    </option>
-                  ))}
-                </select>
+                  {isTriaging ? "Completing Triage..." : "Complete Triage"}
+                </button>
               </div>
               <div
                 className="reschedule-actions"
@@ -1517,7 +1572,6 @@ export default function ManageAppointment() {
                     className="action-btn edit"
                     onClick={() => {
                       updateStatus(selectedTicket.id, "Completed");
-                      setShowTicketDetails(false);
                     }}
                     style={{ backgroundColor: "#28a745" }}
                   >

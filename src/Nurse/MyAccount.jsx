@@ -1,7 +1,6 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import ReactCrop from "react-image-crop";
-import "react-image-crop/dist/ReactCrop.css";
+import ImageCropperModal from "../components/ImageCropperModal";
 import "../App.css";
 import "./NurseStyles.css";
 import {
@@ -44,6 +43,7 @@ export default function MyAccount() {
     licenseNumber: "",
     experience: "",
     department: "",
+    prcExpiryDate: "",
   });
 
   const [formData, setFormData] = useState({ ...userData });
@@ -167,11 +167,8 @@ export default function MyAccount() {
   const [uploadError, setUploadError] = useState("");
   const [uploadLoading, setUploadLoading] = useState(false);
 
-  const [showCropModal, setShowCropModal] = useState(false);
-  const [imageToCrop, setImageToCrop] = useState(null);
-  const [crop, setCrop] = useState(undefined);
-  const [completedCrop, setCompletedCrop] = useState(null);
-  const imgRef = useRef(null);
+  const [cropperModalOpen, setCropperModalOpen] = useState(false);
+  const [selectedImageSrc, setSelectedImageSrc] = useState(null);
 
   const MAX_FILE_SIZE = 2 * 1024 * 1024;
   const CROP_SIZE = 500;
@@ -183,44 +180,7 @@ export default function MyAccount() {
     }
   }, []);
 
-  const getCroppedImage = useCallback(() => {
-    if (!imgRef.current || !completedCrop) return null;
 
-    const image = imgRef.current;
-    const canvas = document.createElement("canvas");
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-
-    canvas.width = CROP_SIZE;
-    canvas.height = CROP_SIZE;
-    const ctx = canvas.getContext("2d");
-
-    ctx.drawImage(
-      image,
-      completedCrop.x * scaleX,
-      completedCrop.y * scaleY,
-      completedCrop.width * scaleX,
-      completedCrop.height * scaleY,
-      0,
-      0,
-      CROP_SIZE,
-      CROP_SIZE
-    );
-
-    return canvas.toDataURL("image/jpeg", 0.9);
-  }, [completedCrop]);
-
-  const dataURLtoFile = (dataUrl, filename) => {
-    const arr = dataUrl.split(",");
-    const mime = arr[0].match(/:(.*?);/)[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new File([u8arr], filename, { type: mime });
-  };
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -243,51 +203,28 @@ export default function MyAccount() {
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImageToCrop(reader.result);
-        setShowCropModal(true);
-        setCrop(undefined);
-        setCompletedCrop(null);
+        setSelectedImageSrc(reader.result);
+        setCropperModalOpen(true);
       };
       reader.readAsDataURL(file);
     }
+    e.target.value = "";
   };
 
-  const handleCropComplete = () => {
-    const croppedImageData = getCroppedImage();
-    if (croppedImageData) {
-      setPreviewImage(croppedImageData);
-      const croppedFile = dataURLtoFile(croppedImageData, "avatar.jpg");
-      setSelectedFile(croppedFile);
-    }
-    setShowCropModal(false);
-    setImageToCrop(null);
+  const handleCropComplete = (croppedFile) => {
+    setSelectedFile(croppedFile);
+    const objectUrl = URL.createObjectURL(croppedFile);
+    setPreviewImage(objectUrl);
+    setCropperModalOpen(false);
+    setSelectedImageSrc(null);
   };
 
   const handleCropCancel = () => {
-    setShowCropModal(false);
-    setImageToCrop(null);
-    setCompletedCrop(null);
-    const fileInput = document.getElementById("nurseProfileImage");
-    if (fileInput) fileInput.value = "";
+    setCropperModalOpen(false);
+    setSelectedImageSrc(null);
   };
 
-  const onImageLoad = useCallback((e) => {
-    const { width, height } = e.currentTarget;
-    const cropSize = Math.min(width, height) * 0.9;
-    const x = (width - cropSize) / 2;
-    const y = (height - cropSize) / 2;
 
-    const newCrop = {
-      unit: "px",
-      width: cropSize,
-      height: cropSize,
-      x,
-      y,
-    };
-
-    setCrop(newCrop);
-    setCompletedCrop(newCrop);
-  }, []);
 
   const handleImageSave = async () => {
     if (!selectedFile) {
@@ -430,7 +367,36 @@ export default function MyAccount() {
 
         <div className="profile-row">
           <label>License Number:</label>
-          <span>{userData.licenseNumber}</span>
+          {isEditing ? (
+            <input
+              type="text"
+              name="licenseNumber"
+              value={formData.licenseNumber}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.licenseNumber}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>PRC Expiry Date:</label>
+          {isEditing ? (
+            <input
+              type="date"
+              name="prcExpiryDate"
+              value={formData.prcExpiryDate ? formData.prcExpiryDate.split('T')[0] : ''}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>
+              {userData.prcExpiryDate
+                ? new Date(userData.prcExpiryDate).toLocaleDateString()
+                : "Not set"}
+            </span>
+          )}
         </div>
 
         <div className="profile-row">
@@ -534,104 +500,12 @@ export default function MyAccount() {
         </div>
       </div>
 
-      {showCropModal && imageToCrop && (
-        <div
-          className="crop-modal-overlay"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            className="crop-modal"
-            style={{
-              backgroundColor: "white",
-              borderRadius: "12px",
-              padding: "24px",
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-              overflow: "auto",
-              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
-            }}
-          >
-            <h3
-              style={{
-                marginTop: 0,
-                marginBottom: "16px",
-                textAlign: "center",
-              }}
-            >
-              Crop Your Image
-            </h3>
-            <p
-              style={{
-                color: "#666",
-                fontSize: "14px",
-                textAlign: "center",
-                marginBottom: "16px",
-              }}
-            >
-              Drag to adjust the crop area. The image will be resized to 500x500
-              pixels.
-            </p>
-            <div
-              style={{
-                maxWidth: "500px",
-                maxHeight: "500px",
-                margin: "0 auto",
-              }}
-            >
-              <ReactCrop
-                crop={crop}
-                onChange={(c) => setCrop(c)}
-                onComplete={(c) => setCompletedCrop(c)}
-                aspect={1}
-                circularCrop={false}
-              >
-                <img
-                  ref={imgRef}
-                  src={imageToCrop}
-                  alt="Crop preview"
-                  onLoad={onImageLoad}
-                  style={{ maxWidth: "100%", maxHeight: "60vh" }}
-                />
-              </ReactCrop>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: "12px",
-                marginTop: "20px",
-              }}
-            >
-              <button
-                onClick={handleCropComplete}
-                className="save-btn"
-                disabled={!completedCrop}
-                style={{ padding: "10px 24px" }}
-              >
-                Apply Crop
-              </button>
-              <button
-                onClick={handleCropCancel}
-                className="cancel-btn"
-                style={{ padding: "10px 24px" }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ImageCropperModal
+        isOpen={cropperModalOpen}
+        imageSrc={selectedImageSrc}
+        onCropComplete={handleCropComplete}
+        onCancel={handleCropCancel}
+      />
     </div>
   );
 

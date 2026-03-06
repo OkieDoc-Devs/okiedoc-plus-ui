@@ -58,12 +58,13 @@ export function transformProfileFromAPI(apiProfile) {
     firstName: firstName,
     lastName: lastName,
     email: email,
-    phone: apiProfile.phone || apiProfile.Phone || "",
+    phone: apiProfile.phone || apiProfile.mobileNumber || apiProfile.Phone || "",
     specialization:
       apiProfile.specialization || apiProfile.Specialization || "",
     licenseNumber: licenseNumber,
     experience: apiProfile.experience || apiProfile.Experience || "",
     department: apiProfile.department || apiProfile.Department || "",
+    prcExpiryDate: apiProfile.prcExpiryDate || "",
     profileImage:
       apiProfile.profileImage ||
       apiProfile.profile_image ||
@@ -79,14 +80,15 @@ export function transformProfileFromAPI(apiProfile) {
  */
 export function transformProfileToAPI(uiProfile) {
   return {
-    first_name: uiProfile.firstName,
-    last_name: uiProfile.lastName,
+    firstName: uiProfile.firstName,
+    lastName: uiProfile.lastName,
     email: uiProfile.email,
-    phone: uiProfile.phone,
+    mobileNumber: uiProfile.phone,
     specialization: uiProfile.specialization,
-    license_number: uiProfile.licenseNumber,
+    licenseNumber: uiProfile.licenseNumber,
     experience: uiProfile.experience,
     department: uiProfile.department,
+    prcExpiryDate: uiProfile.prcExpiryDate,
   };
 }
 
@@ -109,6 +111,7 @@ export function getFallbackProfile() {
     licenseNumber: "RN-12345",
     experience: "5 years",
     department: "Emergency Department",
+    prcExpiryDate: "",
   };
 }
 

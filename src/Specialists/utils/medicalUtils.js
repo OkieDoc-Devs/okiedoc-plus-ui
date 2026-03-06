@@ -9,24 +9,28 @@ export const SUB_SPECIALIZATIONS = {
     "Electrophysiology",
     "Heart Failure",
     "Pediatric Cardiology",
+    "N/A",
   ],
   Dermatology: [
     "Cosmetic Dermatology",
     "Mohs Surgery",
     "Pediatric Dermatology",
     "Dermatopathology",
+    "N/A",
   ],
   Orthopedics: [
     "Sports Medicine",
     "Spine Surgery",
     "Hand Surgery",
     "Joint Replacement",
+    "N/A",
   ],
   Pediatrics: [
     "Neonatology",
     "Pediatric Neurology",
     "Pediatric Cardiology",
     "Pediatric Endocrinology",
+    "N/A",
   ],
   "Internal Medicine": [
     "Endocrinology",
@@ -35,32 +39,37 @@ export const SUB_SPECIALIZATIONS = {
     "Nephrology",
     "Rheumatology",
     "Infectious Disease",
+    "N/A",
   ],
-  Neurology: ["Stroke", "Epilepsy", "Movement Disorders", "Neuromuscular"],
-  Ophthalmology: ["Glaucoma", "Retina", "Cornea", "Pediatric Ophthalmology"],
+  Neurology: ["Stroke", "Epilepsy", "Movement Disorders", "Neuromuscular", "N/A"],
+  Ophthalmology: ["Glaucoma", "Retina", "Cornea", "Pediatric Ophthalmology", "N/A"],
   "Obstetrics & Gynecology": [
     "Maternal-Fetal Medicine",
     "Reproductive Endocrinology",
     "Gynecologic Oncology",
     "Urogynecology",
+    "N/A",
   ],
   "Otolaryngology (ENT)": [
     "Rhinology",
     "Laryngology",
     "Otology",
     "Head & Neck Surgery",
+    "N/A",
   ],
   Psychiatry: [
     "Child & Adolescent",
     "Addiction",
     "Geriatric",
     "Consultation-Liaison",
+    "N/A",
   ],
   Urology: [
     "Endourology",
     "Urologic Oncology",
     "Pediatric Urology",
     "Female Urology",
+    "N/A",
   ],
 };
 
@@ -257,19 +266,19 @@ export const updateMedicalHistoryStatus = (request, status) => ({
  */
 export const formatMedicineDisplay = (medicine) => {
   const parts = [];
-  
+
   if (medicine.brand || medicine.generic) {
     parts.push(medicine.brand || medicine.generic);
   }
-  
+
   if (medicine.dosage) {
     parts.push(medicine.dosage);
   }
-  
+
   if (medicine.form) {
     parts.push(`/ ${medicine.form}`);
   }
-  
+
   if (medicine.quantity) {
     parts.push(`(Qty: ${medicine.quantity})`);
   }

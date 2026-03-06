@@ -473,6 +473,11 @@ html:has(body.specialist-dashboard-body) {
   color: var(--danger);
 }
 
+.status-available {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
 .action-btn {
   padding: 0.5rem 1rem;
   border: none;
@@ -770,7 +775,7 @@ html:has(body.specialist-dashboard-body) {
     font-size: 0.95rem;
   }
 
-  .ticket-row > div {
+  .ticket-row>div {
     word-break: break-word;
   }
 }
@@ -1017,7 +1022,7 @@ html:has(body.specialist-dashboard-body) {
 }
 
 .schedule-item.ticket-item {
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  background: var(--secondary);
   border-left: 4px solid var(--primary);
 }
 
@@ -1313,8 +1318,23 @@ html:has(body.specialist-dashboard-body) {
   text-align: center;
 }
 
-.status-confirmed {
+.status-awaiting {
+  background: #0aadef;
+  color: var(--white);
+}
+
+.status-in-progress {
+  background: #f5a623;
+  color: var(--white);
+}
+
+.status-completed {
   background: var(--success);
+  color: var(--white);
+}
+
+.status-triage {
+  background: #6c757d;
   color: var(--white);
 }
 
@@ -1498,7 +1518,7 @@ html:has(body.specialist-dashboard-body) {
   border-top-right-radius: 6px;
 }
 
-.tabbar button + button {
+.tabbar button+button {
   margin-left: 8px;
 }
 
@@ -2409,6 +2429,7 @@ html:has(body.specialist-dashboard-body) {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -2419,6 +2440,7 @@ html:has(body.specialist-dashboard-body) {
     opacity: 0;
     transform: translateY(20px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);

@@ -37,7 +37,7 @@ class AuthService {
           response.user.userType || "specialist"
         );
       }
-    } catch (error) {
+    } catch {
       // Session expired or not authenticated
       this.clearLocalStorage();
     }
@@ -56,6 +56,16 @@ class AuthService {
       const response = await api.loginSpecialist(email, password);
 
       if (response.success) {
+        // Enforce role validation so only specialists can use the specialist portal
+        if (response.user && response.user.role !== 'specialist') {
+          // If they aren't a specialist, log them out from the session that the generic /api/v1/auth/login just created
+          await api.logoutSpecialist().catch(() => { });
+          return {
+            success: false,
+            error: "Access denied: This login portal is for Specialists only.",
+          };
+        }
+
         this.currentUser = response.user;
         localStorage.setItem(
           STORAGE_KEYS.currentUser,

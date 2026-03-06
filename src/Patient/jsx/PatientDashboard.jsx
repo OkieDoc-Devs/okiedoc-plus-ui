@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { logoutPatient } from "../services/auth";
 import { useNavigate } from "react-router";
 import MedicalRecords from "./MedicalRecords";
@@ -9,8 +9,7 @@ import LabResults from "./LabResults";
 import Billing from "./Billing";
 import MyAccount from "./MyAccount";
 import ConsultationHistory from "./ConsultationHistory";
-import appointmentService from "../services/appointmentService";
-import { fetchPatientProfile } from "../services/apiService";
+import { fetchPatientProfile, fetchPatientActiveTickets, payTicket, verifyTicketPayment } from "../services/apiService";
 import {
   FaHome,
   FaCalendarAlt,
@@ -63,10 +62,18 @@ const PatientDashboard = () => {
     lastName: "",
     email: "",
     phone: "",
-    dateOfBirth: "",
+    birthday: "",
     address: "",
     emergencyContact: "",
     emergencyPhone: "",
+    gender: "",
+    bloodType: "",
+    allergies: "",
+    activeDiseases: "",
+    medications: "",
+    hmoCompany: "",
+    hmoMemberId: "",
+    loaCode: "",
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -75,27 +82,56 @@ const PatientDashboard = () => {
   });
   const [activeProfileTab, setActiveProfileTab] = useState("profile");
   const [showMobileProfileModal, setShowMobileProfileModal] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const navigate = useNavigate();
 
-  const parseNameParts = (value) => {
-    if (!value || typeof value !== "string") {
-      return { firstName: "", lastName: "" };
-    }
-    const parts = value.trim().split(/\s+/);
-    if (parts.length === 1) {
-      return { firstName: parts[0], lastName: "" };
-    }
-    return {
-      firstName: parts[0],
-      lastName: parts.slice(1).join(" "),
-    };
-  };
+
 
   const normalizeName = (value) =>
     typeof value === "string" ? value.trim() : "";
 
   // State for home appointments
   const [homeAppointments, setHomeAppointments] = useState([]);
+
+  const loadHomeAppointments = useCallback(async () => {
+    try {
+      const data = await fetchPatientActiveTickets();
+      if (data && data.success && data.activeTickets) {
+        const mappedTickets = data.activeTickets.map(t => {
+          const specialistFirstName = t.specialist?.user?.firstName || '';
+          const specialistLastName = t.specialist?.user?.lastName || '';
+          const computedSpecialistName = t.specialistName ||
+            (specialistFirstName || specialistLastName ? `${specialistFirstName} ${specialistLastName}`.trim() : "Unassigned");
+
+          return {
+            id: t.id || t.ticketNumber,
+            title: `Ticket #${t.ticketNumber || t.id} - ${t.chiefComplaint || 'Consultation'}`,
+            specialist: computedSpecialistName,
+            specialty: t.specialty || t.targetSpecialty || t.specialist?.specialization || 'General',
+            status: (t.status === 'active' || (t.status === 'for_payment' && t.paymentStatus === 'paid')) ? 'Active' :
+              t.status === 'for_payment' ? 'For Payment' :
+                t.status === 'processing' || t.status === 'triage' || t.status === 'assigned' ? 'Processing' :
+                  t.status === 'pending' || t.status === 'unclaimed' ? 'Pending' : 'Unknown',
+            date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'TBD',
+            time: t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD',
+            description: t.chiefComplaint || t.symptoms || "",
+            chiefComplaint: t.chiefComplaint || "",
+            symptoms: t.symptoms || "",
+            otherSymptoms: t.otherSymptoms || "",
+            consultationChannel: t.consultationChannel || t.channel || "Platform Chat",
+            rawTicket: t
+          };
+        });
+        setHomeAppointments(mappedTickets);
+      } else {
+        setHomeAppointments([]);
+      }
+    } catch (error) {
+      console.error("Failed to load appointments from real API:", error);
+      // fallback to empty or handle error UI
+      setHomeAppointments([]);
+    }
+  }, []);
 
   // Shows Global ID
   useEffect(() => {
@@ -108,31 +144,11 @@ const PatientDashboard = () => {
       try {
         const profile = await fetchPatientProfile();
 
-        const nameSource = normalizeName(
-          profile.fullName ||
-            profile.Full_Name ||
-            profile.full_name ||
-            profile.fullname ||
-            profile.Name ||
-            profile.Patient_Name ||
-            profile.patient_name ||
-            profile.displayName ||
-            profile.Display_Name ||
-            "",
-        );
-        const parsedName = parseNameParts(nameSource);
-        const computedFullName =
-          nameSource ||
-          [
-            normalizeName(
-              profile.firstName || profile.First_Name || parsedName.firstName,
-            ),
-            normalizeName(
-              profile.lastName || profile.Last_Name || parsedName.lastName,
-            ),
-          ]
-            .filter(Boolean)
-            .join(" ");
+        const firstName = profile.firstName || profile.First_Name || profile.first_name || '';
+        const lastName = profile.lastName || profile.Last_Name || profile.last_name || '';
+        const middleName = profile.middleName || profile.Middle_Name || profile.middle_name || '';
+
+        const computedFullName = `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.trim();
 
         const resolvedProfileImage =
           profile.profileImage ||
@@ -145,26 +161,22 @@ const PatientDashboard = () => {
         setProfileData((prev) => ({
           ...prev,
           fullName: computedFullName || prev.fullName,
-          firstName:
-            profile.firstName ||
-            profile.First_Name ||
-            profile.first_name ||
-            parsedName.firstName ||
-            prev.firstName,
-          lastName:
-            profile.lastName ||
-            profile.Last_Name ||
-            profile.last_name ||
-            parsedName.lastName ||
-            prev.lastName,
+          firstName: firstName || prev.firstName,
+          lastName: lastName || prev.lastName,
           email: profile.email || profile.Email || prev.email,
           phone: profile.phone || profile.Phone || prev.phone,
-          dateOfBirth:
-            profile.dateOfBirth ||
-            profile.Date_Of_Birth ||
-            profile.Birth_Date ||
-            profile.birthdate ||
-            prev.dateOfBirth,
+          birthday: (() => {
+            const rawDate = profile.birthday || profile.dateOfBirth || profile.Date_Of_Birth || profile.Birth_Date || profile.birthdate;
+            console.log("Raw profile birthday:", rawDate);
+            if (!rawDate) return prev.birthday || "";
+            // If it's already a string with a 'T', just take the YYYY-MM-DD part directly to avoid JS timezone shifts
+            if (typeof rawDate === 'string' && rawDate.includes('T')) return rawDate.split('T')[0];
+            try {
+              const parsed = new Date(rawDate);
+              // Shift to local time string that matches the UTC date representation
+              return new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+            } catch (_err) { return prev.birthday || ""; }
+          })(),
           address: profile.address || profile.Address || prev.address,
           emergencyContact:
             profile.emergencyContact ||
@@ -174,6 +186,14 @@ const PatientDashboard = () => {
             profile.emergencyPhone ||
             profile.Emergency_Phone ||
             prev.emergencyPhone,
+          gender: profile.gender || prev.gender,
+          bloodType: profile.bloodType || prev.bloodType,
+          allergies: profile.allergies || prev.allergies,
+          activeDiseases: profile.activeDiseases || prev.activeDiseases,
+          medications: profile.medications || prev.medications,
+          hmoCompany: profile.hmoCompany || prev.hmoCompany,
+          hmoMemberId: profile.hmoMemberId || prev.hmoMemberId,
+          loaCode: profile.loaCode || prev.loaCode,
         }));
 
         if (resolvedProfileImage) {
@@ -193,14 +213,14 @@ const PatientDashboard = () => {
         ) {
           setGlobalId(
             profile.globalId ||
-              profile.Global_Id ||
-              profile.Global_ID ||
-              profile.global_id ||
-              profile.Patient_ID ||
-              profile.Patient_Id ||
-              profile.patient_id ||
-              profile.Patient_Code ||
-              profile.patient_code,
+            profile.Global_Id ||
+            profile.Global_ID ||
+            profile.global_id ||
+            profile.Patient_ID ||
+            profile.Patient_Id ||
+            profile.patient_id ||
+            profile.Patient_Code ||
+            profile.patient_code,
           );
         }
       } catch (error) {
@@ -210,48 +230,30 @@ const PatientDashboard = () => {
             localStorage.getItem("currentUser") || "{}",
           );
 
-          const fallbackNameSource = normalizeName(
-            currentUser.fullName ||
-              currentUser.Full_Name ||
-              currentUser.full_name ||
-              currentUser.fullname ||
-              currentUser.Name ||
-              currentUser.Patient_Name ||
-              currentUser.patient_name ||
-              currentUser.displayName ||
-              currentUser.Display_Name ||
-              "",
-          );
-          const fallbackParsedName = parseNameParts(fallbackNameSource);
-          const fallbackFullName =
-            fallbackNameSource ||
-            [
-              normalizeName(fallbackParsedName.firstName),
-              normalizeName(fallbackParsedName.lastName),
-            ]
-              .filter(Boolean)
-              .join(" ");
+          const fbFirst = currentUser.firstName || currentUser.First_Name || '';
+          const fbLast = currentUser.lastName || currentUser.Last_Name || '';
+          const fbMiddle = currentUser.middleName || currentUser.Middle_Name || '';
+          const fallbackFullName = `${fbFirst} ${fbMiddle ? fbMiddle + ' ' : ''}${fbLast}`.trim();
 
           setProfileData((prev) => ({
             ...prev,
             fullName: fallbackFullName || prev.fullName,
-            firstName:
-              currentUser.firstName ||
-              currentUser.First_Name ||
-              fallbackParsedName.firstName ||
-              prev.firstName,
-            lastName:
-              currentUser.lastName ||
-              currentUser.Last_Name ||
-              fallbackParsedName.lastName ||
-              prev.lastName,
+            firstName: fbFirst || prev.firstName,
+            lastName: fbLast || prev.lastName,
             email: currentUser.email || currentUser.Email || prev.email,
             phone: currentUser.phone || currentUser.Phone || prev.phone,
-            dateOfBirth:
-              currentUser.dateOfBirth ||
-              currentUser.Date_Of_Birth ||
-              currentUser.Birth_Date ||
-              prev.dateOfBirth,
+            birthday: (() => {
+              const rawDate = currentUser.birthday || currentUser.dateOfBirth || currentUser.Date_Of_Birth || currentUser.Birth_Date || currentUser.birthdate;
+              console.log("Raw currentUser birthday:", rawDate);
+              if (!rawDate) return prev.birthday || "";
+              // If it's already a string with a 'T', just take the YYYY-MM-DD part directly to avoid JS timezone shifts
+              if (typeof rawDate === 'string' && rawDate.includes('T')) return rawDate.split('T')[0];
+              try {
+                const parsed = new Date(rawDate);
+                // Shift to local time string that matches the UTC date representation
+                return new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+              } catch (_err) { return prev.birthday || ""; }
+            })(),
             address: currentUser.address || currentUser.Address || prev.address,
             emergencyContact:
               currentUser.emergencyContact ||
@@ -270,8 +272,8 @@ const PatientDashboard = () => {
           ) {
             setProfileImage(
               currentUser.profileImage ||
-                currentUser.Profile_Image_URL ||
-                currentUser.avatar,
+              currentUser.Profile_Image_URL ||
+              currentUser.avatar,
             );
           }
         } catch (localError) {
@@ -288,48 +290,62 @@ const PatientDashboard = () => {
     loadHomeAppointments();
   }, []);
 
+  // Poll for "For Payment" auto-verification on the home dashboard
+  useEffect(() => {
+    const checkPendingPayments = async () => {
+      const pendingPaymentTickets = homeAppointments.filter(a => a.status === 'For Payment');
+      if (pendingPaymentTickets.length > 0) {
+        let hasUpdates = false;
+        for (const ticket of pendingPaymentTickets) {
+          try {
+            console.log(`Auto-verifying ticket ${ticket.id} on Home Dashboard...`);
+            const result = await verifyTicketPayment(ticket.id);
+            if (result.status === 'active' || (result.status === 'for_payment' && result.paymentStatus === 'paid')) {
+              hasUpdates = true;
+            }
+          } catch (err) {
+            console.error(`Auto-verification failed on home dash for ${ticket.id}:`, err);
+          }
+        }
+        if (hasUpdates) {
+          console.log('Home Dashboard auto-verification detected fresh payments! Reloading...');
+          await loadHomeAppointments();
+        }
+      }
+    };
+
+    if (homeAppointments.length > 0) {
+      checkPendingPayments();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homeAppointments, loadHomeAppointments]);
+
   // Debug: Monitor homeAppointments changes
   useEffect(() => {
     console.log("homeAppointments state changed:", homeAppointments);
     console.log("homeAppointments length:", homeAppointments.length);
   }, [homeAppointments]);
 
-  const loadHomeAppointments = () => {
-    // Initialize dummy tickets if none exist, but don't clear existing ones
-    appointmentService.initializeDummyTickets();
-    const savedAppointments = appointmentService.getAllAppointments();
-    console.log("Home appointments loaded:", savedAppointments);
-    console.log("Total appointments count:", savedAppointments.length);
-    setHomeAppointments(savedAppointments);
-  };
 
   // Refresh appointments when new ones are added
-  const refreshAppointments = () => {
-    console.log("Refreshing home appointments...");
-    loadHomeAppointments();
+  const refreshAppointments = (newTicket) => {
+    console.log("Refreshing home appointments...", newTicket);
+    if (newTicket) {
+      setHomeAppointments(prev => [newTicket, ...prev]);
+    } else {
+      loadHomeAppointments();
+    }
   };
 
   // Chat functions
   const openChat = (appointment) => {
-    setActiveTicket(appointment);
-    // Initialize with sample messages for this appointment
-    setChatMessages([
-      {
-        id: 1,
-        sender: "nurse",
-        message: `Hello! I'm here to assist you with your ${appointment.title} appointment.`,
-        timestamp: new Date().toLocaleTimeString(),
-        type: "text",
-      },
-      {
-        id: 2,
-        sender: "nurse",
-        message:
-          "Please feel free to ask any questions or share any concerns you may have.",
-        timestamp: new Date().toLocaleTimeString(),
-        type: "text",
-      },
-    ]);
+    const targetUserId = appointment.rawTicket?.specialistId || appointment.rawTicket?.nurseId;
+    if (targetUserId) {
+      navigate(`?userId=${targetUserId}`, { replace: true });
+      setActivePage("messages");
+    } else {
+      alert("No medical staff is assigned to this ticket yet.");
+    }
   };
 
   const closeChat = () => {
@@ -340,17 +356,6 @@ const PatientDashboard = () => {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (newMessage.trim() && activeTicket) {
-      const message = {
-        id: Date.now(),
-        sender: "patient",
-        message: newMessage.trim(),
-        timestamp: new Date().toLocaleTimeString(),
-        type: "text",
-      };
-      setChatMessages((prev) => [...prev, message]);
-      setNewMessage("");
-    }
   };
 
   const handleFileUpload = (e) => {
@@ -665,7 +670,7 @@ const PatientDashboard = () => {
                                   </span>
                                 </div>
                                 <div className="patient-home-ticket-actions">
-                                  {appointment.status === "Active" && (
+                                  {["Active", "Processing", "Pending"].includes(appointment.status) && (
                                     <button
                                       className="patient-home-chat-btn"
                                       onClick={() => openChat(appointment)}
@@ -675,9 +680,28 @@ const PatientDashboard = () => {
                                     </button>
                                   )}
                                   {appointment.status === "For Payment" && (
-                                    <button className="patient-home-payment-btn">
+                                    <button
+                                      className="patient-home-payment-btn"
+                                      disabled={isProcessingPayment}
+                                      onClick={async () => {
+                                        try {
+                                          setIsProcessingPayment(true);
+                                          const result = await payTicket(appointment.id);
+                                          if (result.invoiceUrl) {
+                                            window.location.href = result.invoiceUrl;
+                                          } else {
+                                            alert("Failed to retrieve payment link.");
+                                          }
+                                        } catch (error) {
+                                          console.error("Payment error:", error);
+                                          alert("Failed to initiate payment. Please try again.");
+                                        } finally {
+                                          setIsProcessingPayment(false);
+                                        }
+                                      }}
+                                    >
                                       <FaCreditCard className="patient-home-action-icon" />
-                                      Pay
+                                      {isProcessingPayment ? "Processing..." : "Pay"}
                                     </button>
                                   )}
                                   <button
@@ -860,11 +884,10 @@ const PatientDashboard = () => {
                         {chatMessages.map((message) => (
                           <div
                             key={message.id}
-                            className={`patient-message ${
-                              message.sender === "patient"
-                                ? "patient-message-patient"
-                                : "patient-message-nurse"
-                            }`}
+                            className={`patient-message ${message.sender === "patient"
+                              ? "patient-message-patient"
+                              : "patient-message-nurse"
+                              }`}
                           >
                             <div className="patient-message-content">
                               <p className="patient-message-text">
@@ -1537,57 +1560,50 @@ const PatientDashboard = () => {
 
         <div className="patient-dashboard-nav">
           <button
-            className={`patient-nav-tab ${
-              activePage === "home" ? "active" : ""
-            }`}
+            className={`patient-nav-tab ${activePage === "home" ? "active" : ""
+              }`}
             onClick={() => setActivePage("home")}
           >
             Home
           </button>
           <button
-            className={`patient-nav-tab ${
-              activePage === "appointments" ? "active" : ""
-            }`}
+            className={`patient-nav-tab ${activePage === "appointments" ? "active" : ""
+              }`}
             onClick={() => setActivePage("appointments")}
           >
             Appointments
           </button>
           <button
-            className={`patient-nav-tab ${
-              activePage === "messages" ? "active" : ""
-            }`}
+            className={`patient-nav-tab ${activePage === "messages" ? "active" : ""
+              }`}
             onClick={() => setActivePage("messages")}
           >
             Messages
           </button>
           <button
-            className={`patient-nav-tab ${
-              activePage === "medical-records" ? "active" : ""
-            }`}
+            className={`patient-nav-tab ${activePage === "medical-records" ? "active" : ""
+              }`}
             onClick={() => setActivePage("medical-records")}
           >
             Medical Records
           </button>
           <button
-            className={`patient-nav-tab ${
-              activePage === "lab-results" ? "active" : ""
-            }`}
+            className={`patient-nav-tab ${activePage === "lab-results" ? "active" : ""
+              }`}
             onClick={() => setActivePage("lab-results")}
           >
             Lab Results
           </button>
           <button
-            className={`patient-nav-tab ${
-              activePage === "billing" ? "active" : ""
-            }`}
+            className={`patient-nav-tab ${activePage === "billing" ? "active" : ""
+              }`}
             onClick={() => setActivePage("billing")}
           >
             Consultation Billing
           </button>
           <button
-            className={`patient-nav-tab ${
-              activePage === "consultation-history" ? "active" : ""
-            }`}
+            className={`patient-nav-tab ${activePage === "consultation-history" ? "active" : ""
+              }`}
             onClick={() => setActivePage("consultation-history")}
           >
             Consultation History
@@ -1663,18 +1679,16 @@ const PatientDashboard = () => {
             {/* Tabs */}
             <div className="patient-mobile-account-tabs">
               <button
-                className={`patient-mobile-tab-btn ${
-                  activeProfileTab === "profile" ? "patient-active" : ""
-                }`}
+                className={`patient-mobile-tab-btn ${activeProfileTab === "profile" ? "patient-active" : ""
+                  }`}
                 onClick={() => setActiveProfileTab("profile")}
               >
                 <FaUser className="patient-mobile-tab-icon" />
                 Profile Information
               </button>
               <button
-                className={`patient-mobile-tab-btn ${
-                  activeProfileTab === "password" ? "patient-active" : ""
-                }`}
+                className={`patient-mobile-tab-btn ${activeProfileTab === "password" ? "patient-active" : ""
+                  }`}
                 onClick={() => setActiveProfileTab("password")}
               >
                 <FaLock className="patient-mobile-tab-icon" />

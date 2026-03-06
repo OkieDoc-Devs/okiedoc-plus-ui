@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { FaUpload, FaTimes } from "react-icons/fa";
 import "./SpecialistDashboard.css";
 import authService from "./authService";
 import * as specialistApi from "./services/apiService";
+import { API_BASE_URL } from "../api/apiClient";
 import SpecialistCall from "./SpecialistCall";
 import Messages from "./Messages";
+import ImageCropperModal from "../components/ImageCropperModal";
 import {
   formatDateLabel,
   getDaysInMonth,
@@ -73,14 +75,11 @@ import {
   validateAccountDetails,
   validateScheduleData,
   validateMedicalHistoryRequest,
-  sanitizeInput,
-  validateFileUpload,
 } from "./utils";
 
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [pageTitle, setPageTitle] = useState("Dashboard");
   const [currentUser, setCurrentUser] = useState(null);
   const [userInitials, setUserInitials] = useState("DR");
 
@@ -97,16 +96,11 @@ const SpecialistDashboard = () => {
     profileImage: "",
   });
 
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-
   const [services, setServices] = useState({
-    Consultation: 100,
-    "Medical Certificate": 25,
-    "Medical Clearance": 75,
+    feeInitialWithoutCert: 0,
+    feeInitialWithCert: 0,
+    feeFollowUpWithoutCert: 0,
+    feeFollowUpWithCert: 0,
   });
 
   const [accountDetails, setAccountDetails] = useState({
@@ -136,6 +130,18 @@ const SpecialistDashboard = () => {
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [editingService, setEditingService] = useState({ name: "", fee: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState({
+    consultationType: "initial",
+    includesCertificate: false,
+    isDiscounted: false,
+  });
+
+  const [cropperModalOpen, setCropperModalOpen] = useState(false);
+  const [selectedImageSrc, setSelectedImageSrc] = useState(null);
 
   const [callState, setCallState] = useState({
     isOpen: false,
@@ -168,25 +174,64 @@ const SpecialistDashboard = () => {
     upcomingAppointments: 0,
   });
 
-  const [apiError, setApiError] = useState(null);
-
   const loadTicketsData = useCallback(async () => {
     console.log("[SpecialistDashboard] Loading tickets from API...");
     try {
-      const response = await specialistApi.fetchTickets();
-      console.log("[SpecialistDashboard] API response:", response);
-      if (response.success && response.tickets) {
+      const [activeResponse, availableResponse] = await Promise.all([
+        specialistApi.fetchMyActiveTickets().catch((e) => {
+          console.error("Error fetching active tickets:", e);
+          return { success: false, activeTickets: [] };
+        }),
+        specialistApi.fetchAvailableTickets().catch((e) => {
+          console.error("Error fetching available tickets:", e);
+          return { success: false, data: [] };
+        }),
+      ]);
+
+      let allMappedTickets = [];
+
+      if (activeResponse.success && activeResponse.activeTickets) {
         console.log(
-          `[SpecialistDashboard] Loaded ${response.tickets.length} tickets from API`,
+          `[SpecialistDashboard] Loaded ${activeResponse.activeTickets.length} active tickets from API`,
         );
-        setTickets(response.tickets);
+        const mappedActive = activeResponse.activeTickets.map(t => ({
+          id: t.id,
+          patient: t.patientName || "Unknown",
+          service: t.chiefComplaint || "Consultation",
+          when: t.createdAt ? new Date(t.createdAt).toLocaleString() : "TBD",
+          status: t.status === "confirmed" ? "Awaiting" :
+            t.status === "active" ? "In Progress" :
+              t.status === "completed" ? "Completed" :
+                t.status === "processing" ? "Triage Complete" : t.status,
+          rawTicket: t
+        }));
+        allMappedTickets = [...allMappedTickets, ...mappedActive];
+      }
+
+      if (availableResponse.success && availableResponse.data) {
+        console.log(
+          `[SpecialistDashboard] Loaded ${availableResponse.data.length} available tickets from API`,
+        );
+        const mappedAvailable = availableResponse.data.map(t => ({
+          id: t.id,
+          patient: t.patient?.patientName || "Unknown",
+          service: t.chiefComplaint || "Consultation",
+          when: t.createdAt ? new Date(t.createdAt).toLocaleString() : "TBD",
+          status: "Available",
+          rawTicket: t
+        }));
+        allMappedTickets = [...allMappedTickets, ...mappedAvailable];
+      }
+
+      if (allMappedTickets.length > 0 || (activeResponse.success || availableResponse.success)) {
+        setTickets(allMappedTickets);
         setApiError(null);
-        saveTickets(response.tickets);
+        saveTickets(allMappedTickets);
         return;
       } else {
         console.warn(
-          "[SpecialistDashboard] API response missing tickets:",
-          response,
+          "[SpecialistDashboard] API response missing activeTickets array:",
+          activeResponse,
         );
       }
     } catch (error) {
@@ -242,7 +287,7 @@ const SpecialistDashboard = () => {
     try {
       const response = await specialistApi.fetchDashboard();
       if (response.success) {
-        setDashboardStats(response.stats || dashboardStats);
+        setDashboardStats(prev => response.stats || prev);
         if (response.specialist) {
           setProfileData((prev) => ({
             ...prev,
@@ -253,7 +298,7 @@ const SpecialistDashboard = () => {
               response.specialist.specialization || prev.specialization,
             subSpecialization:
               response.specialist.subSpecialization || prev.subSpecialization,
-            profileImage: response.specialist.profileImage || prev.profileImage,
+            profileUrl: response.specialist.profileUrl || prev.profileUrl,
             prcNumber: response.specialist.prcNumber || prev.prcNumber,
           }));
 
@@ -268,8 +313,8 @@ const SpecialistDashboard = () => {
             email: response.specialist.email || prev?.email,
             specialization:
               response.specialist.specialization || prev?.specialization,
-            profileImage:
-              response.specialist.profileImage || prev?.profileImage,
+            profileUrl:
+              response.specialist.profileUrl || prev?.profileUrl,
           }));
 
           const firstName =
@@ -305,7 +350,7 @@ const SpecialistDashboard = () => {
             email: profileResponse.email || prev?.email,
             specialization:
               profileResponse.specialization || prev?.specialization,
-            profileImage: profileResponse.profileImage || prev?.profileImage,
+            profileUrl: profileResponse.profileUrl || prev?.profileUrl,
           }));
 
           const profileFirstName =
@@ -319,6 +364,28 @@ const SpecialistDashboard = () => {
             );
             setUserInitials(initials);
           }
+
+          setProfileData(prev => ({
+            ...prev,
+            firstName: profileResponse.firstName || profileResponse.fName || prev.firstName,
+            lastName: profileResponse.lastName || profileResponse.lName || prev.lastName,
+            email: profileResponse.email || prev.email,
+            phone: profileResponse.phone || profileResponse.mobileNumber || prev.phone,
+            prcNumber: profileResponse.prcNumber || prev.prcNumber,
+            specialization: profileResponse.specialization || prev.specialization,
+            subSpecialization: profileResponse.subSpecialization || prev.subSpecialization,
+            bio: profileResponse.bio || prev.bio,
+            prcImage: profileResponse.prcImage || prev.prcImage,
+            profileUrl: profileResponse.profileUrl || prev.profileUrl,
+          }));
+
+          const fees = {
+            feeInitialWithoutCert: profileResponse.feeInitialWithoutCert || 0,
+            feeInitialWithCert: profileResponse.feeInitialWithCert || 0,
+            feeFollowUpWithoutCert: profileResponse.feeFollowUpWithoutCert || 0,
+            feeFollowUpWithCert: profileResponse.feeFollowUpWithCert || 0,
+          };
+          setServices(fees);
         }
       } catch (profileError) {
         console.warn("Failed to fetch profile from API:", profileError);
@@ -335,6 +402,14 @@ const SpecialistDashboard = () => {
 
     if (!currentUser || currentUser.userType !== "specialist") {
       navigate("/specialist-login");
+      return;
+    }
+
+    if (currentUser.user.applicationStatus === "pending") {
+      navigate("/specialist-pending");
+      return;
+    } else if (currentUser.user.applicationStatus === "denied") {
+      navigate("/specialist-denied");
       return;
     }
 
@@ -358,14 +433,10 @@ const SpecialistDashboard = () => {
       specialization:
         profile.specialization || currentUser.user.specialty || "",
       subSpecialization: profile.subSpecialization || "",
-      bio:
-        profile.bio || "Board-certified specialist with years of experience.",
+      bio: profile.bio || "",
       prcImage: profile.prcImage || "",
       profileImage: profile.profileImage || "",
     }));
-
-    const savedServices = loadServicesData(currentUser.user.email);
-    setServices((prev) => ({ ...prev, ...savedServices }));
 
     const savedAccount = loadAccountData(currentUser.user.email);
     setAccountDetails((prev) => ({ ...prev, ...savedAccount }));
@@ -410,7 +481,6 @@ const SpecialistDashboard = () => {
 
   const handleNavigation = (target, title) => {
     setActiveTab(target);
-    setPageTitle(title);
     if (target === "dashboard") {
       loadTicketsData();
     }
@@ -418,33 +488,15 @@ const SpecialistDashboard = () => {
 
   const handleLogout = async () => {
     if (window.confirm("Are you sure you want to logout?")) {
-      await authService.logout();
-      navigate("/");
+      try {
+        await authService.logout();
+        navigate("/");
+      } catch (error) {
+        console.error("Logout error:", error);
+        // Fallback redirect if navigate fails
+        window.location.href = "/";
+      }
     }
-  };
-
-  const handleStartCall = (conversation) => {
-    setCallState({
-      isOpen: true,
-      callType: "audio",
-      patient: {
-        name: conversation.name,
-        avatar: conversation.avatar,
-        id: conversation.id,
-      },
-    });
-  };
-
-  const handleStartVideoCall = (conversation) => {
-    setCallState({
-      isOpen: true,
-      callType: "video",
-      patient: {
-        name: conversation.name,
-        avatar: conversation.avatar,
-        id: conversation.id,
-      },
-    });
   };
 
   const handleCloseCall = () => {
@@ -459,18 +511,22 @@ const SpecialistDashboard = () => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handlePasswordChange = (field, value) => {
-    setPasswordData((prev) => ({ ...prev, [field]: value }));
-  };
-
   const saveProfile = async () => {
-    const email = getCurrentUserEmail();
-    if (!email) return;
+    console.log("saveProfile triggered. Email check:");
+    const email = profileData.email;
+    console.log("Current Email:", email);
+    if (!email) {
+      console.warn("saveProfile aborted: No email found in profileData!");
+      setApiError("Session missing. Please refresh the page.");
+      return;
+    }
 
+    console.log("Running validations on:", profileData);
     const validation = validateSpecialistProfile(profileData);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
-      alert(firstError);
+      console.warn("Validation failed:", firstError);
+      setApiError(firstError);
       return;
     }
 
@@ -486,82 +542,32 @@ const SpecialistDashboard = () => {
 
       authService.updateCurrentUser(updatedProfile);
       setApiError(null);
+
+      const user = JSON.parse(localStorage.getItem(email) || "{}");
+      user.fName = profileData.firstName || user.fName;
+      user.lName = profileData.lastName || user.lName;
+      localStorage.setItem(email, JSON.stringify(user));
+
+      const profile = {
+        phone: profileData.phone,
+        prcNumber: profileData.prcNumber,
+        specialization: profileData.specialization,
+        subSpecialization: profileData.subSpecialization,
+        bio: profileData.bio,
+        prcImage: profileData.prcImage,
+        profileImage: profileData.profileImage,
+      };
+      saveProfileData(email, profile);
+
+      setCurrentUser(user);
+      const initials = generateUserInitials(user.fName, user.lName);
+      setUserInitials(initials);
+
+      setShowSuccessModal(true);
     } catch (error) {
-      console.warn("Failed to save profile to API, saving locally:", error);
-      setApiError("Could not save to server. Saved locally.");
+      console.warn("Failed to save profile to API:", error);
+      setApiError(error.message || "Could not save to server. Please try again.");
     }
-
-    const user = JSON.parse(localStorage.getItem(email) || "{}");
-    user.fName = profileData.firstName || user.fName;
-    user.lName = profileData.lastName || user.lName;
-    localStorage.setItem(email, JSON.stringify(user));
-
-    const profile = {
-      phone: profileData.phone,
-      prcNumber: profileData.prcNumber,
-      specialization: profileData.specialization,
-      subSpecialization: profileData.subSpecialization,
-      bio: profileData.bio,
-      prcImage: profileData.prcImage,
-      profileImage: profileData.profileImage,
-    };
-    saveProfileData(email, profile);
-
-    setCurrentUser(user);
-    const initials = generateUserInitials(user.fName, user.lName);
-    setUserInitials(initials);
-
-    alert("Profile saved successfully.");
-  };
-
-  const updatePassword = async () => {
-    const email = getCurrentUserEmail();
-    if (!email) return;
-
-    const validation = validatePasswordChange(passwordData);
-    if (!validation.isValid) {
-      const firstError = Object.values(validation.errors)[0];
-      alert(firstError);
-      return;
-    }
-
-    const { currentPassword, newPassword } = passwordData;
-
-    try {
-      await specialistApi.changePassword(currentPassword, newPassword);
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-      alert("Password updated successfully.");
-      return;
-    } catch (error) {
-      console.warn("Failed to change password via API:", error);
-      if (
-        error.message.includes("incorrect") ||
-        error.message.includes("Invalid")
-      ) {
-        alert(error.message);
-        return;
-      }
-    }
-
-    const user = JSON.parse(localStorage.getItem(email) || "{}");
-    if (!user || user.password !== currentPassword) {
-      alert("Current password is incorrect.");
-      return;
-    }
-
-    user.password = newPassword;
-    localStorage.setItem(email, JSON.stringify(user));
-
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
-    alert("Password updated successfully.");
   };
 
   const openEditServiceModal = (name, fee) => {
@@ -570,30 +576,29 @@ const SpecialistDashboard = () => {
   };
 
   const updateServiceFee = async () => {
-    const validation = validateServiceFee(editingService);
-    if (!validation.isValid) {
-      const firstError = Object.values(validation.errors)[0];
-      alert(firstError);
+    const rawFee = parseFloat(editingService.fee);
+    if (isNaN(rawFee) || rawFee < 0) {
+      alert("Please enter a valid positive number for the fee.");
       return;
     }
 
     try {
-      await specialistApi.updateService(
-        editingService.name,
-        parseFloat(editingService.fee),
-      );
+      const updatedServicesTemp = {
+        ...services,
+        [editingService.name]: rawFee,
+      };
+
+      await specialistApi.updateFees(updatedServicesTemp);
+
+      setServices(updatedServicesTemp);
+      setShowEditServiceModal(false);
+
+      // Update success state manually to alert the user of saving
+      setShowSuccessModal(true);
     } catch (error) {
       console.warn("Failed to update service fee via API:", error);
+      alert(error.message || "Failed to save fees. Please try again.");
     }
-
-    const email = getCurrentUserEmail();
-    const updatedServices = {
-      ...services,
-      [editingService.name]: parseFloat(editingService.fee),
-    };
-    setServices(updatedServices);
-    saveServicesData(email, updatedServices);
-    setShowEditServiceModal(false);
   };
 
   const saveAccountDetails = async () => {
@@ -635,22 +640,77 @@ const SpecialistDashboard = () => {
   };
 
   const updateTicketStatus = async (newStatus) => {
-    if (!selectedTicket) return;
+    if (!selectedTicketId) return;
 
     try {
-      await specialistApi.updateTicket(selectedTicket.id, {
+      await specialistApi.updateTicket(selectedTicketId, {
         status: newStatus,
       });
+      await loadTicketsData();
     } catch (error) {
       console.warn("Failed to update ticket via API:", error);
     }
+  };
 
-    const updatedTickets = tickets.map((t) =>
-      t.id === selectedTicket.id ? { ...t, status: newStatus } : t,
-    );
-    setTickets(updatedTickets);
-    saveTickets(updatedTickets);
-    setSelectedTicket({ ...selectedTicket, status: newStatus });
+  const handleStartConsultation = async () => {
+    if (!selectedTicketId) return;
+    try {
+      setIsLoading(true);
+      await specialistApi.startConsultation(selectedTicketId);
+      alert("Consultation started!");
+      await loadTicketsData();
+    } catch (error) {
+      console.error("Failed to start consultation:", error);
+      alert(error.message || "Failed to start consultation.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCompleteConsultation = async () => {
+    if (!selectedTicketId) return;
+    try {
+      setIsLoading(true);
+      await specialistApi.completeConsultation({
+        ticketId: selectedTicketId,
+        subjective: encounter.subjective,
+        objective: encounter.objective,
+        assessment: encounter.assessment,
+        plan: encounter.plan,
+        icd10Code: encounter.icd10
+      });
+      alert("Consultation completed!");
+      setSelectedTicketId(null);
+      await loadTicketsData();
+      await loadDashboardData();
+    } catch (error) {
+      console.error("Failed to complete consultation:", error);
+      alert(error.message || "Failed to complete consultation.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCropComplete = async (croppedFile) => {
+    setCropperModalOpen(false);
+    setSelectedImageSrc(null);
+    try {
+      const formData = new FormData();
+      formData.append('photo', croppedFile);
+      const response = await specialistApi.uploadProfilePicture(formData);
+
+      const newUrl = `${response.profileUrl}?t=${new Date().getTime()}`;
+      handleProfileChange("profileUrl", newUrl);
+      setCurrentUser(prev => ({ ...prev, profileUrl: newUrl }));
+      alert("Profile picture uploaded successfully!");
+    } catch (error) {
+      alert(error.message || "Failed to upload profile picture.");
+    }
+  };
+
+  const handleCropCancel = () => {
+    setCropperModalOpen(false);
+    setSelectedImageSrc(null);
   };
 
   const saveEncounter = async (updated) => {
@@ -660,6 +720,15 @@ const SpecialistDashboard = () => {
       saveEncounterData(selectedTicketId, next);
 
       try {
+        await specialistApi.updateEMR({
+          ticketId: selectedTicketId,
+          subjective: next.subjective || "",
+          objective: next.objective || "",
+          assessment: next.assessment || "",
+          plan: next.plan || "",
+          icd10Code: next.icd10 || "" // If your frontend has this, otherwise empty
+        });
+
         const assessment = next.assessment || "";
         const prescription = JSON.stringify(next.medicines || []);
         const laboratoryRequest = JSON.stringify(next.labRequests || []);
@@ -672,6 +741,29 @@ const SpecialistDashboard = () => {
       } catch (error) {
         console.warn("Failed to save consultation data to API:", error);
       }
+    }
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!selectedTicketId) return;
+    try {
+      setIsLoading(true);
+      await specialistApi.generateInvoice({
+        ticketId: selectedTicketId,
+        consultationType: invoiceForm.consultationType,
+        includesCertificate: invoiceForm.includesCertificate,
+        isDiscounted: invoiceForm.isDiscounted,
+      });
+      alert("Invoice generated and ticket moved to For Payment!");
+      setShowInvoiceModal(false);
+      setShowTicketModal(false);
+      await loadTicketsData();
+      await loadDashboardData();
+    } catch (error) {
+      console.error("Failed to generate invoice:", error);
+      alert(error.message || "Failed to generate invoice.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -816,7 +908,6 @@ const SpecialistDashboard = () => {
     const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
     const days = [];
     const today = new Date();
-    const isCurrentMonth = isToday(currentYear, currentMonth, today.getDate());
 
     for (let i = 0; i < firstDay; i++) {
       days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
@@ -848,11 +939,9 @@ const SpecialistDashboard = () => {
       days.push(
         <div
           key={day}
-          className={`calendar-day ${
-            hasSchedule || hasTickets ? "has-schedule" : ""
-          } ${isTodayDate ? "today" : ""} ${isPast ? "past" : ""} ${
-            hasTickets ? "has-tickets" : ""
-          }`}
+          className={`calendar-day ${hasSchedule || hasTickets ? "has-schedule" : ""
+            } ${isTodayDate ? "today" : ""} ${isPast ? "past" : ""} ${hasTickets ? "has-tickets" : ""
+            }`}
           onClick={() => !isPast && setSelectedDate(day)}
         >
           <span className="day-number">{day}</span>
@@ -1057,21 +1146,20 @@ const SpecialistDashboard = () => {
             <div style={{ fontWeight: 700 }}>Tickets</div>
           </div>
           <div style={{ padding: "12px 10px" }}>
-            <div className="filters two-col" style={{ marginRight: "0" }}>
+            <div className="filters two-col" style={{ marginRight: "0", gridTemplateColumns: "1fr 1fr 1fr" }}>
               {[
                 "All Tickets",
-                "Pending",
-                "Confirmed",
-                "Processing",
+                "Available",
+                "Awaiting",
+                "In Progress",
                 "Completed",
               ].map((label) => (
                 <div
                   key={label}
-                  className={`filter-item ${
-                    ticketFilter === (label === "All Tickets" ? "All" : label)
-                      ? "active"
-                      : ""
-                  }`}
+                  className={`filter-item ${ticketFilter === (label === "All Tickets" ? "All" : label)
+                    ? "active"
+                    : ""
+                    }`}
                   onClick={() =>
                     setTicketFilter(label === "All Tickets" ? "All" : label)
                   }
@@ -1088,9 +1176,8 @@ const SpecialistDashboard = () => {
               filteredTickets.map((t) => (
                 <div
                   key={t.id}
-                  className={`sidebar-ticket ${
-                    selectedTicketId === t.id ? "active" : ""
-                  }`}
+                  className={`sidebar-ticket ${selectedTicketId === t.id ? "active" : ""
+                    }`}
                   onClick={() => setSelectedTicketId(t.id)}
                 >
                   <div className="name">{t.patient}</div>
@@ -1113,15 +1200,38 @@ const SpecialistDashboard = () => {
                     >
                       {t.status}
                     </span>
-                    <button
-                      className="edit-btn small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        viewTicket(t.id);
-                      }}
-                    >
-                      Details
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {t.status === "Available" && (
+                        <button
+                          className="btn-primary small"
+                          style={{ padding: "4px 8px", fontSize: "12px" }}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              setIsLoading(true);
+                              await specialistApi.claimTicket(t.id);
+                              alert("Ticket claimed successfully!");
+                              await loadTicketsData();
+                            } catch (err) {
+                              alert(err.message || "Failed to claim ticket.");
+                            } finally {
+                              setIsLoading(false);
+                            }
+                          }}
+                        >
+                          Claim
+                        </button>
+                      )}
+                      <button
+                        className="edit-btn small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          viewTicket(t.id);
+                        }}
+                      >
+                        Details
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -1490,73 +1600,67 @@ const SpecialistDashboard = () => {
                     alert("Encounter saved.");
                   }}
                 >
-                  Save Encounter
+                  Save Progress
                 </button>
                 {(() => {
                   const t = tickets.find((x) => x.id === selectedTicketId);
-                  const status = t?.status || t?.Status || "";
-                  const isDisabled =
-                    status === "Completed" || status === "Processing";
+                  const statusRaw = (t?.status || t?.Status || "").toLowerCase();
 
                   return (
-                    <button
-                      className={`btn-secondary soap-passback${
-                        isDisabled ? " is-disabled" : ""
-                      }`}
-                      disabled={isDisabled}
-                      onClick={async () => {
-                        if (!selectedTicketId) return;
+                    <div className="consultation-controls" style={{ display: 'flex', gap: '10px', marginLeft: '10px' }}>
+                      {statusRaw === "awaiting" && (
+                        <button
+                          className="btn-primary"
+                          style={{ backgroundColor: "#0aadef" }}
+                          onClick={handleStartConsultation}
+                        >
+                          Start Consultation
+                        </button>
+                      )}
 
-                        const ticket = tickets.find(
-                          (x) => x.id === selectedTicketId,
-                        );
-                        const ticketStatus =
-                          ticket?.status || ticket?.Status || "";
+                      {statusRaw === "in progress" && (
+                        <>
+                          <button
+                            className="btn-primary"
+                            style={{ backgroundColor: "#10b981" }}
+                            onClick={handleCompleteConsultation}
+                          >
+                            Finish & Complete
+                          </button>
+                          <button
+                            className="btn-secondary"
+                            onClick={async () => {
+                              const notes = prompt("Add notes for passing back:");
+                              if (notes === null) return;
+                              await specialistApi.passTicketBackToNurse(selectedTicketId, notes);
+                              alert("Passed back to nurse.");
+                              await loadTicketsData();
+                            }}
+                          >
+                            Pass Back
+                          </button>
+                        </>
+                      )}
 
-                        console.log("[Pass Back] Ticket:", ticket);
-                        console.log("[Pass Back] Status:", ticketStatus);
+                      {(statusRaw === "processing" || statusRaw === "triage complete") && (
+                        <button
+                          className="btn-primary"
+                          style={{ backgroundColor: "#10b981" }}
+                          onClick={() => {
+                            setSelectedTicketId(selectedTicketId);
+                            setShowInvoiceModal(true);
+                          }}
+                        >
+                          Generate Invoice
+                        </button>
+                      )}
 
-                        if (ticketStatus === "Completed") {
-                          alert("Cannot pass back a completed ticket.");
-                          return;
-                        }
-                        if (ticketStatus === "Processing") {
-                          alert(
-                            "This ticket has already been passed back to the nurse.",
-                          );
-                          return;
-                        }
-
-                        const notes = prompt(
-                          "Add notes (optional) when passing back to nurse:",
-                        );
-                        if (notes === null) return;
-
-                        try {
-                          await saveEncounter({});
-
-                          await specialistApi.passTicketBackToNurse(
-                            selectedTicketId,
-                            notes || "",
-                          );
-                          alert("Ticket passed back to nurse successfully!");
-
-                          await loadTicketsData();
-                          await loadDashboardData();
-                          setSelectedTicket(null);
-                          setSelectedTicketId(null);
-                          setShowTicketModal(false);
-                        } catch (error) {
-                          console.error("Error passing ticket back:", error);
-                          alert(
-                            error.message ||
-                              "Failed to pass ticket back to nurse. Please try again.",
-                          );
-                        }
-                      }}
-                    >
-                      Pass Back to Nurse {isDisabled ? `(${status})` : ""}
-                    </button>
+                      {statusRaw === "completed" && (
+                        <div className="completed-label" style={{ color: "#10b981", fontWeight: 700, alignSelf: 'center' }}>
+                          ✓ Consultation Completed
+                        </div>
+                      )}
+                    </div>
                   );
                 })()}
               </div>
@@ -1637,11 +1741,28 @@ const SpecialistDashboard = () => {
       <div className="profile-section">
         <h2 className="section-title">Personal Information</h2>
         <div className="profile-image-upload">
-          <img
-            src={profileData.profileImage || "/placeholder-avatar.png"}
-            alt="Profile"
-            className="profile-img"
-          />
+          {profileData.profileUrl ? (
+            <img
+              src={`${API_BASE_URL}${profileData.profileUrl}`}
+              alt="Profile"
+              className="profile-img"
+            />
+          ) : (
+            <div
+              className="profile-img"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "2.5rem",
+                fontWeight: "bold",
+                color: "#0b5388",
+                backgroundColor: "#e0f2fe",
+              }}
+            >
+              {userInitials}
+            </div>
+          )}
           <div>
             <label htmlFor="profile-photo-upload" className="upload-btn">
               <FaUpload /> Upload Photo
@@ -1649,16 +1770,18 @@ const SpecialistDashboard = () => {
             <input
               id="profile-photo-upload"
               type="file"
-              accept="image/*"
+              accept="image/png, image/jpeg"
               onChange={(e) => {
                 const file = e.target.files[0];
                 if (file) {
                   const reader = new FileReader();
-                  reader.onload = (e) => {
-                    handleProfileChange("profileImage", e.target.result);
+                  reader.onload = (evt) => {
+                    setSelectedImageSrc(evt.target.result);
+                    setCropperModalOpen(true);
                   };
                   reader.readAsDataURL(file);
                 }
+                e.target.value = null;
               }}
               style={{ display: "none" }}
             />
@@ -1774,6 +1897,11 @@ const SpecialistDashboard = () => {
               onChange={(e) => handleProfileChange("bio", e.target.value)}
             />
           </div>
+          {apiError && (
+            <div className="error-message" style={{ color: "red", marginBottom: "10px", width: "100%" }}>
+              {apiError}
+            </div>
+          )}
           <div className="full-width">
             <button type="button" className="btn-primary" onClick={saveProfile}>
               Save Changes
@@ -1782,51 +1910,7 @@ const SpecialistDashboard = () => {
         </div>
       </div>
 
-      <div className="profile-section" style={{ marginTop: "2rem" }}>
-        <h2 className="section-title">Change Password</h2>
-        <div className="form-grid">
-          <div className="input-group">
-            <label>Current Password</label>
-            <input
-              type="password"
-              value={passwordData.currentPassword}
-              onChange={(e) =>
-                handlePasswordChange("currentPassword", e.target.value)
-              }
-            />
-          </div>
-          <div className="input-group">
-            <label>New Password</label>
-            <input
-              type="password"
-              value={passwordData.newPassword}
-              onChange={(e) =>
-                handlePasswordChange("newPassword", e.target.value)
-              }
-            />
-          </div>
-          <div className="input-group">
-            <label>Confirm New Password</label>
-            <input
-              type="password"
-              value={passwordData.confirmPassword}
-              onChange={(e) =>
-                handlePasswordChange("confirmPassword", e.target.value)
-              }
-            />
-          </div>
-          <div className="full-width">
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={updatePassword}
-            >
-              Update Password
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </div >
   );
 
   const renderServices = () => (
@@ -1834,15 +1918,20 @@ const SpecialistDashboard = () => {
       <div className="services-container">
         <h2 className="section-title">Professional Fees</h2>
         <div>
-          {Object.entries(services).map(([name, fee]) => (
-            <div key={name} className="service-item">
+          {Object.entries({
+            feeInitialWithoutCert: "Initial Consultation (No Med Cert)",
+            feeInitialWithCert: "Initial Consultation (With Med Cert)",
+            feeFollowUpWithoutCert: "Follow-up Consultation (No Med Cert)",
+            feeFollowUpWithCert: "Follow-up Consultation (With Med Cert)",
+          }).map(([key, label]) => (
+            <div key={key} className="service-item">
               <div className="service-info">
-                <div className="service-name">{name}</div>
-                <div className="service-fee">₱{Number(fee).toFixed(2)}</div>
+                <div className="service-name">{label}</div>
+                <div className="service-fee">₱{Number(services[key] || 0).toFixed(2)}</div>
               </div>
               <button
                 className="edit-btn"
-                onClick={() => openEditServiceModal(name, fee)}
+                onClick={() => openEditServiceModal(key, services[key] || 0)}
               >
                 Edit
               </button>
@@ -2055,9 +2144,9 @@ const SpecialistDashboard = () => {
         </div>
         <h3 className="dashboard-title">Specialist Dashboard</h3>
         <div className="user-account">
-          {profileData.profileImage ? (
+          {profileData.profileUrl ? (
             <img
-              src={profileData.profileImage}
+              src={`${API_BASE_URL}${profileData.profileUrl}`}
               alt="Account"
               className="account-icon"
             />
@@ -2077,7 +2166,7 @@ const SpecialistDashboard = () => {
             </div>
           )}
           <span className="account-name">
-            Dr. {currentUser?.firstName || currentUser?.fName || "Specialist"}{" "}
+            {currentUser?.firstName || currentUser?.fName || "Specialist"}{" "}
             {currentUser?.lastName || currentUser?.lName || ""}
           </span>
           <div className="account-dropdown">
@@ -2140,44 +2229,115 @@ const SpecialistDashboard = () => {
 
       {showEditServiceModal && (
         <div
-          className="modal"
-          onClick={(e) =>
-            e.target.className === "modal" && setShowEditServiceModal(false)
-          }
+          onClick={() => setShowEditServiceModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999
+          }}
         >
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Edit Service Fee</h2>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              width: '90%',
+              maxWidth: '450px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div style={{
+              backgroundColor: '#0ea5e9',
+              color: 'white',
+              padding: '20px 24px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '600', color: 'white' }}>Edit Service Fee</h2>
               <span
-                className="close-modal"
                 onClick={() => setShowEditServiceModal(false)}
+                style={{ cursor: 'pointer', fontSize: '1.25rem', opacity: 0.8 }}
               >
                 <FaTimes />
               </span>
             </div>
-            <div className="input-group">
-              <label>Service Name</label>
-              <input type="text" value={editingService.name} readOnly />
-            </div>
-            <div className="input-group">
-              <label>Professional Fee (₱)</label>
-              <input
-                type="number"
-                value={editingService.fee}
-                onChange={(e) =>
-                  setEditingService((prev) => ({
-                    ...prev,
-                    fee: e.target.value,
-                  }))
-                }
-                min="0"
-                step="0.01"
-              />
-            </div>
-            <div style={{ marginTop: "1.5rem" }}>
-              <button className="btn-primary" onClick={updateServiceFee}>
-                Update Fee
-              </button>
+
+            <div style={{ padding: '24px' }}>
+              <div className="input-group" style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', color: '#4b5563', fontWeight: '500' }}>Service Type</label>
+                <input
+                  type="text"
+                  value={
+                    {
+                      feeInitialWithoutCert: "Initial Consultation (No Med Cert)",
+                      feeInitialWithCert: "Initial Consultation (With Med Cert)",
+                      feeFollowUpWithoutCert: "Follow-up Consultation (No Med Cert)",
+                      feeFollowUpWithCert: "Follow-up Consultation (With Med Cert)",
+                    }[editingService.name] || editingService.name
+                  }
+                  readOnly
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    backgroundColor: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    color: '#6b7280'
+                  }}
+                />
+              </div>
+
+              <div className="input-group" style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', color: '#4b5563', fontWeight: '500' }}>Professional Fee (₱)</label>
+                <input
+                  type="number"
+                  value={editingService.fee}
+                  onChange={(e) =>
+                    setEditingService((prev) => ({
+                      ...prev,
+                      fee: e.target.value,
+                    }))
+                  }
+                  min="0"
+                  step="0.01"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '1rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  className="btn-primary"
+                  onClick={updateServiceFee}
+                  style={{
+                    padding: '10px 24px',
+                    backgroundColor: '#0ea5e9',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Update Fee
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2221,18 +2381,44 @@ const SpecialistDashboard = () => {
               <input value={selectedTicket.status} readOnly />
             </div>
             <div style={{ marginTop: "1.2rem", display: "flex", gap: "10px" }}>
-              <button
-                className="btn-primary"
-                onClick={() => updateTicketStatus("Confirmed")}
-              >
-                Mark Confirmed
-              </button>
-              <button
-                className="edit-btn"
-                onClick={() => updateTicketStatus("Completed")}
-              >
-                Mark Completed
-              </button>
+              {(() => {
+                const s = (selectedTicket.status || "").toLowerCase();
+                const isTriage = s === "processing" || s === "triage complete";
+                const isCompleted = s === "completed";
+
+                return (
+                  <>
+                    {!isCompleted && !isTriage && (
+                      <button
+                        className="btn-primary"
+                        onClick={() => updateTicketStatus("Confirmed")}
+                      >
+                        Mark Confirmed
+                      </button>
+                    )}
+                    {!isTriage && !isCompleted && (
+                      <button
+                        className="edit-btn"
+                        onClick={() => updateTicketStatus("Completed")}
+                      >
+                        Mark Completed
+                      </button>
+                    )}
+                    {isTriage && (
+                      <button
+                        className="btn-primary"
+                        style={{ backgroundColor: "#10b981" }}
+                        onClick={() => {
+                          setSelectedTicketId(selectedTicket.id);
+                          setShowInvoiceModal(true);
+                        }}
+                      >
+                        Generate Invoice
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -2261,8 +2447,8 @@ const SpecialistDashboard = () => {
                 value={
                   selectedDate
                     ? `${getMonthName(
-                        currentMonth,
-                      )} ${selectedDate}, ${currentYear}`
+                      currentMonth,
+                    )} ${selectedDate}, ${currentYear}`
                     : ""
                 }
                 readOnly
@@ -2433,6 +2619,64 @@ const SpecialistDashboard = () => {
         </div>
       )}
 
+      {/* Generate Invoice Modal */}
+      {showInvoiceModal && (
+        <div className="modal" onClick={() => setShowInvoiceModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Generate Invoice</h3>
+              <button className="close-modal" onClick={() => setShowInvoiceModal(false)}>
+                &times;
+              </button>
+            </div>
+            <div style={{ padding: "1.5rem" }}>
+              <div className="input-group full-width">
+                <label>Consultation Type</label>
+                <select
+                  value={invoiceForm.consultationType}
+                  onChange={(e) => setInvoiceForm(f => ({ ...f, consultationType: e.target.value }))}
+                >
+                  <option value="initial">Initial</option>
+                  <option value="follow-up">Follow-up</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "1.5rem" }}>
+                <input
+                  type="checkbox"
+                  id="invoiceCert"
+                  style={{ width: "18px", height: "18px", margin: 0 }}
+                  checked={invoiceForm.includesCertificate}
+                  onChange={(e) => setInvoiceForm(f => ({ ...f, includesCertificate: e.target.checked }))}
+                />
+                <label htmlFor="invoiceCert" style={{ margin: 0, cursor: "pointer", fontWeight: 500 }}>
+                  Includes Medical Certificate
+                </label>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "1rem" }}>
+                <input
+                  type="checkbox"
+                  id="invoiceDiscount"
+                  style={{ width: "18px", height: "18px", margin: 0 }}
+                  checked={invoiceForm.isDiscounted}
+                  onChange={(e) => setInvoiceForm(f => ({ ...f, isDiscounted: e.target.checked }))}
+                />
+                <label htmlFor="invoiceDiscount" style={{ margin: 0, cursor: "pointer", fontWeight: 500 }}>
+                  Apply Discount (Senior/PWD)
+                </label>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: "0 1.5rem 1.5rem" }}>
+              <button className="edit-btn" onClick={() => setShowInvoiceModal(false)} disabled={isLoading}>
+                Cancel
+              </button>
+              <button className="btn-primary" style={{ marginTop: 0 }} onClick={handleGenerateInvoice} disabled={isLoading}>
+                {isLoading ? "Generating..." : "Generate Invoice"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Call/Video Call Component */}
       <SpecialistCall
         isOpen={callState.isOpen}
@@ -2440,6 +2684,59 @@ const SpecialistDashboard = () => {
         callType={callState.callType}
         patient={callState.patient}
         currentUser={currentUser}
+      />
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div
+          className="modal"
+          onClick={() => setShowSuccessModal(false)}
+        >
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              padding: '40px 30px',
+              maxWidth: '450px',
+              width: '90%',
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            }}
+          >
+            <div style={{
+              color: '#16a34a',
+              fontSize: '4rem',
+              lineHeight: '1',
+              marginBottom: '20px'
+            }}>
+              ✓
+            </div>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: '15px', color: '#1f2937' }}>Profile Saved Successfully</h3>
+            <p style={{ color: '#4b5563', marginBottom: '25px', fontSize: '1.1rem', lineHeight: '1.5' }}>
+              Your specialist profile information has been securely updated in the database.
+            </p>
+            <button
+              className="btn-primary"
+              onClick={() => setShowSuccessModal(false)}
+              style={{ width: '100%', padding: '12px', fontSize: '1.1rem', marginTop: '0' }}
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ImageCropperModal
+        isOpen={cropperModalOpen}
+        imageSrc={selectedImageSrc}
+        onCropComplete={handleCropComplete}
+        onCancel={handleCropCancel}
       />
     </div>
   );

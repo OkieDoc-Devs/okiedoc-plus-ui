@@ -162,11 +162,12 @@ const VideoCall = ({ activeUser, onClose, onCallEnd, isVideoCall = true }) => {
         audioContextRef.current &&
         audioContextRef.current.state !== "closed"
       ) {
-        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current.close().catch(() => { });
         audioContextRef.current = null;
       }
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream]);
 
   useEffect(() => {
     if (stream && localVideoRef.current && isVideoCall && !isVideoOff) {
@@ -227,7 +228,7 @@ const VideoCall = ({ activeUser, onClose, onCallEnd, isVideoCall = true }) => {
       animationFrameRef.current = null;
     }
     if (audioContextRef.current && audioContextRef.current.state !== "closed") {
-      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current.close().catch(() => { });
       audioContextRef.current = null;
     }
 
@@ -374,9 +375,8 @@ const VideoCall = ({ activeUser, onClose, onCallEnd, isVideoCall = true }) => {
                   />
                   {stream && stream.getAudioTracks().length > 0 && !isMuted && (
                     <div
-                      className={`mic-indicator ${
-                        isSpeaking ? "speaking" : ""
-                      }`}
+                      className={`mic-indicator ${isSpeaking ? "speaking" : ""
+                        }`}
                       title={
                         isSpeaking
                           ? "Microphone active"

@@ -3,6 +3,8 @@
  * Centralized localStorage management for the Nurse module
  */
 
+import { API_BASE_URL } from "../../api/apiClient";
+
 /**
  * Local storage keys used throughout the application
  */
@@ -137,16 +139,6 @@ export function getNurseLastName() {
 }
 
 /**
- * Get the API base URL for constructing full image URLs
- * @returns {string} API base URL
- */
-function getAPIBaseURL() {
-  return import.meta.env.MODE === "production"
-    ? "https://your-production-url.com"
-    : "http://localhost:1337";
-}
-
-/**
  * Get the current nurse's profile image from localStorage
  * @returns {string} Profile image URL or default account icon
  */
@@ -160,7 +152,7 @@ export function getNurseProfileImage() {
   }
 
   if (profileImage.startsWith("/uploads")) {
-    return `${getAPIBaseURL()}${profileImage}`;
+    return `${API_BASE_URL}${profileImage}`;
   }
 
   return profileImage;

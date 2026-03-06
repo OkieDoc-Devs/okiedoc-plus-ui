@@ -10,6 +10,7 @@ import {
   FaSpinner,
   FaComments,
 } from "react-icons/fa";
+import { useSearchParams } from "react-router-dom";
 import { useChat } from "../services/chatService";
 import {
   isAllowedFileType,
@@ -31,6 +32,8 @@ const Messages = () => {
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const chatMessagesRef = useRef(null);
   const fileInputRef = useRef(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const userIdFromUrl = searchParams.get('userId');
 
   const CHARACTER_LIMIT = 500;
 
@@ -86,6 +89,18 @@ const Messages = () => {
     }
   }, [chatMessages, activeConversation]);
 
+  useEffect(() => {
+    if (userIdFromUrl && !chatLoading && conversations) {
+      const targetId = parseInt(userIdFromUrl, 10);
+      if (!isNaN(targetId)) {
+        handleStartNewChat(targetId);
+        searchParams.delete('userId');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userIdFromUrl, chatLoading, conversations.length, handleStartNewChat, searchParams, setSearchParams]);
+
   const handleUserSearch = useCallback(
     async (query) => {
       setIsSearchingUsers(true);
@@ -111,7 +126,7 @@ const Messages = () => {
     if (showNewChatModal) {
       handleUserSearch("");
     }
-  }, [showNewChatModal]);
+  }, [showNewChatModal, handleUserSearch]);
 
   useEffect(() => {
     if (!showNewChatModal) return;
@@ -309,9 +324,8 @@ const Messages = () => {
               filteredConversations.map((conversation) => (
                 <div
                   key={conversation.id}
-                  className={`conversation-item ${
-                    activeConversation?.id === conversation.id ? "active" : ""
-                  } ${conversation.unreadCount > 0 ? "unread" : ""}`}
+                  className={`conversation-item ${activeConversation?.id === conversation.id ? "active" : ""
+                    } ${conversation.unreadCount > 0 ? "unread" : ""}`}
                   onClick={() => openChat(conversation)}
                 >
                   <div className="conversation-avatar">
@@ -321,9 +335,8 @@ const Messages = () => {
                       <FaUser />
                     )}
                     <div
-                      className={`online-indicator ${
-                        conversation.isOnline ? "online" : "offline"
-                      }`}
+                      className={`online-indicator ${conversation.isOnline ? "online" : "offline"
+                        }`}
                     ></div>
                   </div>
 
@@ -339,7 +352,7 @@ const Messages = () => {
                     <div className="conversation-preview">
                       <p className="last-message">
                         {conversation.lastMessage &&
-                        conversation.lastMessage !== "No messages yet"
+                          conversation.lastMessage !== "No messages yet"
                           ? conversation.lastMessageSentByMe
                             ? "You: "
                             : conversation.lastMessageSenderName
@@ -394,9 +407,8 @@ const Messages = () => {
                       <FaUser />
                     )}
                     <div
-                      className={`online-indicator ${
-                        activeConversation.isOnline ? "online" : "offline"
-                      }`}
+                      className={`online-indicator ${activeConversation.isOnline ? "online" : "offline"
+                        }`}
                     ></div>
                   </div>
                   <div className="chat-user-details">
@@ -445,9 +457,8 @@ const Messages = () => {
                 {chatMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={`message ${
-                      message.isSent ? "own-message" : "other-message"
-                    } message-type-${message.sender}`}
+                    className={`message ${message.isSent ? "own-message" : "other-message"
+                      } message-type-${message.sender}`}
                   >
                     {message.sender === "system" ? (
                       <div className="system-message">
@@ -474,7 +485,7 @@ const Messages = () => {
                         <div className="message-bubble-wrapper">
                           <div className="message-content">
                             {message.messageType === "file" ||
-                            message.messageType === "image" ? (
+                              message.messageType === "image" ? (
                               <div className="message-media-wrapper">
                                 {message.messageType === "image" ? (
                                   <div className="image-container">

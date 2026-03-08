@@ -1,6 +1,6 @@
 import "./App.css";
 import { useNavigate } from "react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import nurseDocImage from "./assets/NurseDoc.png";
 import phoneImage from "./assets/phoneImage.png";
 import doc1 from "./assets/doc1.jpg";
@@ -191,22 +191,7 @@ function App() {
       },
     ];
 
-    const specialistSlides = (doctors || []).slice(0, 4).map((doctor) => ({
-      id: `doc-${doctor.id}`,
-      type: "specialist",
-      label: "Featured specialist",
-      doctor,
-    }));
-
-    const combined = [];
-    const maxLength = Math.max(howItWorksSlides.length, specialistSlides.length);
-
-    for (let i = 0; i < maxLength; i += 1) {
-      if (howItWorksSlides[i]) combined.push(howItWorksSlides[i]);
-      if (specialistSlides[i]) combined.push(specialistSlides[i]);
-    }
-
-    return combined.length ? combined : howItWorksSlides;
+    return howItWorksSlides;
   }, [doctors]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -217,6 +202,14 @@ function App() {
     const normalized = ((index % total) + total) % total;
     setCurrentIndex(normalized);
   };
+
+  // Auto-scroll carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [slides.length]);
 
   const handlePrev = () => {
     goTo(currentIndex - 1);
@@ -350,14 +343,8 @@ function App() {
           </div>
         </div>
 
-        <section className="carousel-section" aria-label="How OkieDoc+ works and featured specialists">
+        <section className="carousel-section" aria-label="How OkieDoc+ works">
           <div className="carousel-container">
-            <div className="carousel-header">
-              <h2 className="carousel-title">How OkieDoc+ works & our specialists</h2>
-              <p className="carousel-subtitle">
-                Learn how appointments work while discovering specialists you can book with today.
-              </p>
-            </div>
 
             <div className="carousel-shell">
               <button

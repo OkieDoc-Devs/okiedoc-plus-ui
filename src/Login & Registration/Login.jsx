@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import authService from "../Specialists/authService";
 import { loginAdmin } from "../api/Admin/api.js";
+import { login } from "../Patient/services/apiService.js";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -14,29 +15,6 @@ export default function Login() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const dummyCredentials = {
-    nurse: {
-      email: "nurse@okiedocplus.com",
-      password: "nurseOkDoc123",
-    },
-    patient: {
-      email: "patient@okiedocplus.com",
-      password: "patientOkDoc123",
-    },
-    specialist: {
-      email: "specialist@okiedocplus.com",
-      password: "specialistOkDoc123",
-    },
-    admin: {
-      email: "admin@okiedoc.com", 
-      password: "admin123" 
-    },
-    nurseAdmin: { 
-      email: "nurseadmin@okiedocplus.com", 
-      password: "nurseAdmin123" 
-    },
-  };
-
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({
@@ -45,49 +23,13 @@ export default function Login() {
     }));
   };
 
-  const loginWithAPI = async (email, password) => {
-    try {
-      const response = await fetch("http://localhost:1337/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        return {
-          success: true,
-          user: data.user,
-        };
-      } else {
-        return {
-          success: false,
-          error: data.message || "Login failed",
-        };
-      }
-    } catch (error) {
-      console.error(
-        "API login failed, trying fallback credentials:",
-        error.message,
-      );
-      return {
-        success: false,
-        error: error.message || "Login failed",
-      };
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
     try {
-      const result = await loginWithAPI(formData.email, formData.password);
+      const result = await login(formData.email, formData.password);
 
       if (result.success) {
         const fullName =
@@ -164,44 +106,6 @@ export default function Login() {
       setError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
-    }
-
-    if (
-      formData.email === dummyCredentials.nurseAdmin.email &&
-      formData.password === dummyCredentials.nurseAdmin.password
-    ) {
-      sessionStorage.setItem("isNurseAdminLoggedIn", "true");
-      localStorage.setItem("userRole", "nurse_admin");
-      navigate("/nurse-admin-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.nurse.email &&
-      formData.password === dummyCredentials.nurse.password
-    ) {
-      localStorage.setItem("userRole", "nurse");
-      navigate("/nurse-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.patient.email &&
-      formData.password === dummyCredentials.patient.password
-    ) {
-      localStorage.setItem("userRole", "patient");
-      navigate("/patient");
-      return;
-    }
-
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]",
-    );
-    const user = registeredUsers.find(
-      (u) => u.email === formData.email && u.password === formData.password,
-    );
-
-    if (user) {
-      localStorage.setItem("userRole", "patient");
-      navigate("/patient");
-    } else {
-      setError("Invalid email or password. Please try again.");
     }
   };
 

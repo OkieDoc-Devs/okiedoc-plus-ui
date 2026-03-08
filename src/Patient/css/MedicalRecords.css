@@ -1,0 +1,325 @@
+/* Styles for medical record sections (used in MedicalRecords.jsx) */
+
+.patient-medical-records-container {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.patient-records-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.patient-record-card {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.patient-record-card h3 {
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.patient-record-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+  gap: 15px;
+}
+
+.patient-record-icon {
+  font-size: 16px;
+  color: #007bff;
+  width: 20px;
+  text-align: center;
+}
+
+.patient-record-item:last-child {
+  border-bottom: none;
+}
+
+.patient-record-date {
+  font-weight: 500;
+  color: #333;
+}
+
+.patient-record-doctor {
+  color: #666;
+  flex: 1;
+  margin-left: 15px;
+}
+
+.patient-record-status {
+  background-color: #28a745;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.patient-diagnosis-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+  gap: 15px;
+}
+
+.patient-diagnosis-icon {
+  font-size: 16px;
+  color: #dc3545;
+  width: 20px;
+  text-align: center;
+}
+
+.patient-diagnosis-item:last-child {
+  border-bottom: none;
+}
+
+.patient-diagnosis-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.patient-diagnosis-date {
+  color: #666;
+  font-size: 14px;
+}
+
+/* Medical item editing and form styles */
+.patient-unified-medical-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.patient-category-section {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.patient-category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.patient-category-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.patient-category-icon {
+  font-size: 20px;
+  color: #007bff;
+}
+
+.patient-category-title h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.patient-item-count {
+  background: #007bff;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 30px;
+  text-align: center;
+}
+
+.patient-add-category-btn {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.patient-add-category-btn:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.patient-add-category-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.patient-btn-icon {
+  font-size: 14px;
+}
+
+.patient-category-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.patient-empty-category {
+  padding: 40px 20px;
+  text-align: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.patient-empty-category p {
+  margin: 0;
+  font-size: 16px;
+  color: #6c757d;
+}
+
+.patient-medical-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  transition: all 0.2s;
+}
+
+.patient-medical-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: #007bff;
+}
+
+.patient-medical-item.editing {
+  background-color: #fff;
+  border-color: #007bff;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+}
+
+.patient-edit-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.patient-form-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.patient-edit-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 10px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.patient-item-content {
+  flex: 1;
+}
+
+.patient-item-content h4 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.patient-item-date {
+  margin: 0 0 8px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.patient-item-description {
+  margin: 0 0 10px 0;
+  color: #555;
+  line-height: 1.4;
+}
+
+.patient-item-severity,
+.patient-item-status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-right: 8px;
+  margin-bottom: 4px;
+}
+
+.patient-item-severity {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.patient-item-status {
+  background-color: #007bff;
+  color: white;
+}
+
+.patient-item-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 15px;
+}
+
+.patient-item-actions .patient-edit-btn,
+.patient-item-actions .patient-delete-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-size: 16px;
+}
+
+.patient-item-actions .patient-edit-btn {
+  background: #007bff;
+  color: white;
+}
+
+.patient-item-actions .patient-edit-btn:hover {
+  background: #0056b3;
+}
+
+.patient-item-actions .patient-delete-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.patient-item-actions .patient-delete-btn:hover {
+  background: #c82333;
+}

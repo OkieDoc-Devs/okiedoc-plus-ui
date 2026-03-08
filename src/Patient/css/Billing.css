@@ -1,0 +1,147 @@
+/* Billing-related styles previously in PatientDashboard.css */
+
+.patient-billing-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.patient-billing-card {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.patient-billing-card h3 {
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.patient-balance-amount {
+  font-size: 32px;
+  font-weight: bold;
+  color: #dc3545;
+  margin-bottom: 15px;
+  align-items: center;
+  gap: 8px;
+}
+
+.patient-balance-icon {
+  font-size: 24px;
+}
+
+.patient-pay-now-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.patient-pay-icon {
+  font-size: 14px;
+}
+
+.patient-pay-now-btn:hover {
+  background-color: #c82333;
+}
+
+.patient-download-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.patient-download-btn:hover {
+  background-color: #0056b3;
+}
+
+.patient-bill-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid #eee;
+  gap: 1rem;
+}
+
+.patient-bill-icon {
+  font-size: 1.2rem;
+  color: #007bff;
+  flex-shrink: 0;
+}
+
+.patient-bill-item:last-child {
+  border-bottom: none;
+}
+
+.patient-bill-info {
+  display: flex;
+  flex-direction: column;
+  flex: 2;
+  justify-content: center;
+}
+
+.patient-bill-description {
+  font-weight: 500;
+  margin-bottom: 0.2rem;
+  color: #333;
+}
+
+.patient-bill-date {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.patient-bill-amount {
+  flex: 0 0 80px;
+  text-align: right;
+  font-weight: 600;
+  color: #333;
+  margin-right: 15px;
+}
+
+.patient-bill-status {
+  flex: 0 0 100px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.patient-bill-status.patient-paid {
+  background-color: #28a745;
+  color: white;
+}
+
+.patient-bill-status.patient-pending {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.patient-billing-container {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}

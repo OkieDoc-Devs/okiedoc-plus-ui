@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from 'react';
+import { fetchConsultationHistory, fetchPendingApprovals, fetchConsultationSummary } from '../services/consultationHistoryService';
+import '../css/ConsultationHistory.css';
 import {
   FaEye,
   FaDownload,
@@ -19,39 +21,38 @@ import {
 
 const ConsultationHistory = () => {
   const [selectedConsultation, setSelectedConsultation] = useState(null);
+  const [consultationSummary, setConsultationSummary] = useState(null);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [consultations, setConsultations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
-  // Fetch consultation history from the backend * AS TO DO * "USEEFFECT" BROKE SOMETHING THAT MADE THE DASHBOARD NOT COMPLETELY LOAD, MUJI PLEASE
-  // useEffect(() => {
-    // setConsultations(fetchedData);
-  // }, []);
-
-  // Sample EMR data for consultation summary
-  const getConsultationSummary = (consultationId) => {
-    // Fetch consultation summary from backend based on consultationId * AS TO DO 
-    return {
-      medicalTeam: {
-        assignedNurse: "Nurse Emily Davis",
-        assignedSpecialist: "Dr. Sarah Johnson",
-        specialistSpecialty: "Cardiology",
-      },
-      chiefComplaint: "Chest pain and shortness of breath",
-      status: "Completed",
-      medicalRecords: [],
-      ros: {
-        subjective: "",
-        objective: "",
-        assessment: "",
-        plan: "",
-      },
-      medications: [],
-      laboratory: [],
-      treatmentPlan: [],
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+        const userId = currentUser?.id;
+        if (userId) {
+          const [history, approvals] = await Promise.all([
+            fetchConsultationHistory(userId),
+            fetchPendingApprovals(userId),
+          ]);
+          setConsultations(history || []);
+          setPendingApprovals(approvals || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch consultation history:", err);
+        setError("Failed to load consultation history.");
+      } finally {
+        setLoading(false);
+      }
     };
-  };
+    loadData();
+  }, []);
 
   const getMedicalDocuments = (consultationId) => {
     // Fetch medical documents from backend based on consultationId * AS TO DO 
@@ -61,9 +62,30 @@ const ConsultationHistory = () => {
     };
   };
 
-  const handleViewSummary = (consultation) => {
+  const handleViewSummary = async (consultation) => {
     setSelectedConsultation(consultation);
+    setSummaryLoading(true);
     setShowSummaryModal(true);
+    
+    try {
+      const summary = await fetchConsultationSummary(consultation.id);
+      setConsultationSummary(summary);
+    } catch (err) {
+      console.error("Failed to fetch summary:", err);
+      // Fallback/Mock for demo if backend fails
+      setConsultationSummary({
+        medicalTeam: { assignedNurse: "N/A", assignedSpecialist: "N/A", specialistSpecialty: "N/A" },
+        chiefComplaint: consultation.chiefComplaint || "N/A",
+        status: consultation.status,
+        medicalRecords: [],
+        ros: { subjective: "", objective: "", assessment: "", plan: "" },
+        medications: [],
+        laboratory: [],
+        treatmentPlan: [],
+      });
+    } finally {
+      setSummaryLoading(false);
+    }
   };
 
   const handleDownloadDocument = (document) => {
@@ -110,6 +132,15 @@ const ConsultationHistory = () => {
       ? "patient-status-completed"
       : "patient-status-incomplete";
   };
+
+  if (loading) {
+    return (
+      <div className="patient-loading-state">
+        <div className="patient-loading-spinner"></div>
+        <h3 className="patient-loading-title">Loading History...</h3>
+      </div>
+    );
+  }
 
   return (
     <div className="patient-page-content">
@@ -274,9 +305,12 @@ const ConsultationHistory = () => {
             </div>
 
             <div className="patient-modal-body">
-              {(() => {
-                const summary = getConsultationSummary(selectedConsultation.id);
-                return (
+              {summaryLoading ? (
+                <div className="patient-loading-state">
+                  <div className="patient-loading-spinner"></div>
+                  <p>Loading summary details...</p>
+                </div>
+              ) : consultationSummary ? (
                   <>
                     {/* Medical Team */}
                     <div className="patient-summary-section">
@@ -289,18 +323,18 @@ const ConsultationHistory = () => {
                           <FaUserNurse className="patient-detail-icon" />
                           <div>
                             <strong>Assigned Nurse:</strong>{" "}
-                            {summary.medicalTeam.assignedNurse}
+                            {consultationSummary.medicalTeam?.assignedNurse}
                           </div>
                         </div>
                         <div className="patient-team-member-detail">
                           <FaUserMd className="patient-detail-icon" />
                           <div>
                             <strong>Assigned Specialist:</strong>{" "}
-                            {summary.medicalTeam.assignedSpecialist}
+                            {consultationSummary.medicalTeam?.assignedSpecialist}
                             <br />
                             <small>
                               Specialty:{" "}
-                              {summary.medicalTeam.specialistSpecialty}
+                              {consultationSummary.medicalTeam?.specialistSpecialty}
                             </small>
                           </div>
                         </div>
@@ -311,7 +345,7 @@ const ConsultationHistory = () => {
                     <div className="patient-summary-section">
                       <h4 className="patient-section-title">Chief Complaint</h4>
                       <p className="patient-complaint-text">
-                        {summary.chiefComplaint}
+                        {consultationSummary.chiefComplaint}
                       </p>
                     </div>
 
@@ -322,10 +356,10 @@ const ConsultationHistory = () => {
                       </h4>
                       <span
                         className={`patient-status-badge ${getStatusClass(
-                          summary.status
+                          consultationSummary.status
                         )}`}
                       >
-                        {summary.status}
+                        {consultationSummary.status}
                       </span>
                     </div>
 
@@ -333,7 +367,7 @@ const ConsultationHistory = () => {
                     <div className="patient-summary-section">
                       <h4 className="patient-section-title">Medical Records</h4>
                       <ul className="patient-records-list">
-                        {summary.medicalRecords.map((record, index) => (
+                        {consultationSummary.medicalRecords?.map((record, index) => (
                           <li key={index} className="patient-record-item">
                             {record}
                           </li>
@@ -348,16 +382,16 @@ const ConsultationHistory = () => {
                       </h4>
                       <div className="patient-ros-details">
                         <div className="patient-ros-item">
-                          <strong>Subjective:</strong> {summary.ros.subjective}
+                          <strong>Subjective:</strong> {consultationSummary.ros?.subjective}
                         </div>
                         <div className="patient-ros-item">
-                          <strong>Objective:</strong> {summary.ros.objective}
+                          <strong>Objective:</strong> {consultationSummary.ros?.objective}
                         </div>
                         <div className="patient-ros-item">
-                          <strong>Assessment:</strong> {summary.ros.assessment}
+                          <strong>Assessment:</strong> {consultationSummary.ros?.assessment}
                         </div>
                         <div className="patient-ros-item">
-                          <strong>Plan:</strong> {summary.ros.plan}
+                          <strong>Plan:</strong> {consultationSummary.ros?.plan}
                         </div>
                       </div>
                     </div>
@@ -369,7 +403,7 @@ const ConsultationHistory = () => {
                         Medications
                       </h4>
                       <div className="patient-medications-list">
-                        {summary.medications.map((med, index) => (
+                        {consultationSummary.medications?.map((med, index) => (
                           <div key={index} className="patient-medication-item">
                             <div className="patient-medication-name">
                               {med.name}
@@ -390,7 +424,7 @@ const ConsultationHistory = () => {
                         Laboratory
                       </h4>
                       <div className="patient-lab-list">
-                        {summary.laboratory.map((test, index) => (
+                        {consultationSummary.laboratory?.map((test, index) => (
                           <div key={index} className="patient-lab-item">
                             <div className="patient-lab-test">{test.test}</div>
                             <div className="patient-lab-status">
@@ -417,7 +451,7 @@ const ConsultationHistory = () => {
                         Treatment Plan
                       </h4>
                       <ul className="patient-treatment-list">
-                        {summary.treatmentPlan.map((item, index) => (
+                        {consultationSummary.treatmentPlan?.map((item, index) => (
                           <li key={index} className="patient-treatment-item">
                             {item}
                           </li>
@@ -487,8 +521,7 @@ const ConsultationHistory = () => {
                       </div>
                     </div>
                   </>
-                );
-              })()}
+              ) : <p>No summary available.</p>}
             </div>
 
             {/* Add close button at the bottom */}

@@ -1,25 +1,66 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { fetchBillingTickets, payBillingTicket } from '../services/billingService';
 import { FaCreditCard, FaFileInvoiceDollar, FaDownload, FaCheckCircle, FaEnvelope } from 'react-icons/fa';
-import { FaPesoSign } from 'react-icons/fa6'
+import { FaPesoSign } from 'react-icons/fa6';
+import '../css/Billing.css';
 
 const Billing = () => {
   const [tickets, setTickets] = useState([]);
-  useEffect(() => {
-    // Fetch billing tickets from backend * AS TO DO
-  }, []);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [paidTicket, setPaidTicket] = useState(null);
+  const location = useLocation();
+  const highlightedAppointmentId = location.state?.appointmentId;
 
-  const handlePay = (id) => {
-    setTickets(
-      tickets.map((ticket) =>
-        ticket.id === id ? { ...ticket, status: 'Completed' } : ticket
-      )
-    );
-    const ticket = tickets.find((t) => t.id === id);
-    setPaidTicket(ticket);
-    setShowModal(true);
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+        const userId = currentUser?.id;
+        if (userId) {
+          const data = await fetchBillingTickets(userId);
+          setTickets(data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch billing info:", err);
+        setError("Failed to load billing information.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  const handlePay = async (ticketId) => {
+    try {
+      await payBillingTicket(ticketId);
+      setTickets(
+        tickets.map((ticket) =>
+          ticket.id === ticketId ? { ...ticket, status: 'Completed' } : ticket
+        )
+      );
+      const ticket = tickets.find((t) => t.id === ticketId);
+      setPaidTicket(ticket);
+      setShowModal(true);
+    } catch (err) {
+      console.error("Payment failed:", err);
+      alert("Payment processing failed. Please try again.");
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="patient-loading-state">
+        <div className="patient-loading-spinner"></div>
+        <h3 className="patient-loading-title">Loading Billing Information...</h3>
+      </div>
+    );
+  }
+
+  if (error) return <div className="error-state"><p>{error}</p></div>;
 
   return (
     <div className="patient-page-content">
@@ -43,7 +84,11 @@ const Billing = () => {
           <h3>Additional Requests</h3>
           {tickets.length > 0 ? (
             tickets.map((ticket) => (
-              <div key={ticket.id} className="patient-bill-item">
+              <div 
+                key={ticket.id} 
+                className={`patient-bill-item ${ticket.appointmentId === highlightedAppointmentId ? 'highlighted' : ''}`}
+                id={`bill-${ticket.id}`}
+              >
                 <FaFileInvoiceDollar className="patient-bill-icon" />
                 <div className="patient-bill-info">
                   <span className="patient-bill-description">{ticket.service}</span>

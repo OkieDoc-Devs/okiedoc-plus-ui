@@ -8,8 +8,6 @@ import {
   FaUserCheck,
   FaPlay,
   FaComments,
-  FaUpload,
-  FaFileAlt,
   FaTimes,
   FaPhone,
   FaVideo,
@@ -19,17 +17,13 @@ import {
   FaExclamationTriangle,
   FaCalendarAlt,
 } from "react-icons/fa";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import "../css/AppointmentBooking.css";
-import "../css/PatientDashboard.css";
+import appointmentService from "../services/appointmentService";
 import HotlineBooking from "./HotlineBooking";
 
 const Appointments = ({ onAppointmentAdded }) => {
   const navigate = useNavigate();
-  const [activeTicket, setActiveTicket] = useState(null);
-  const [chatMessage, setChatMessage] = useState("");
-  const [chatMessages, setChatMessages] = useState([]);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [appointmentForm, setAppointmentForm] = useState({
@@ -52,6 +46,7 @@ const Appointments = ({ onAppointmentAdded }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   // Authentication check disabled - users can book without login
   useEffect(() => {
@@ -62,7 +57,16 @@ const Appointments = ({ onAppointmentAdded }) => {
   // Available specialists
   const [specialists, setSpecialists] = useState([]);
   useEffect(() => {
-    // Fetch specialists from the backend * AS TO DO
+    const fetchSpecialists = async () => {
+      try {
+        const data = await appointmentService.getSpecialists();
+        setSpecialists(data || []);
+      } catch (error) {
+        console.error("Failed to fetch specialists:", error);
+        // Optionally, show an error to the user
+      }
+    };
+    fetchSpecialists();
   }, []);
 
   // Get unique specializations for dropdown
@@ -90,17 +94,35 @@ const Appointments = ({ onAppointmentAdded }) => {
     },
   ];
 
+  const paymentMethods = [
+    { value: "credit_card", label: "Credit / Debit Card", icon: <FaCreditCard /> },
+    { value: "gcash", label: "GCash", icon: <FaCreditCard /> },
+    { value: "maya", label: "Maya", icon: <FaCreditCard /> },
+  ];
+
   // State for appointments
   const [appointments, setAppointments] = useState([]);
   const [showAppointmentDetails, setShowAppointmentDetails] = useState(false);
 
   // Load appointments from localStorage on component mount
   useEffect(() => {
-    // Fetch appointments from backend * AS TO DO
+    loadAppointments();
   }, []);
 
-  const loadAppointments = () => {
-    // Reload appointments from backend * AS TO DO
+  const loadAppointments = async () => {
+    setIsLoading(true);
+    try {
+      const data = await appointmentService.getAllAppointments();
+      // NOTE: You might need to map the data from your backend
+      // to match the structure expected by the component.
+      setAppointments(data || []);
+    } catch (error) {
+      console.error("Failed to load appointments:", error);
+      // Optionally, show an error to the user
+    }
+    finally {
+      setIsLoading(false);
+    }
   };
 
   const handleViewAppointmentDetails = (appointment) => {
@@ -151,42 +173,19 @@ const Appointments = ({ onAppointmentAdded }) => {
     }
   };
 
-  const handleSendMessage = () => {
-    if (chatMessage.trim()) {
-      const newMessage = {
-        id: Date.now(),
-        text: chatMessage,
-        sender: "patient",
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      setChatMessages([...chatMessages, newMessage]);
-      setChatMessage("");
-    }
-  };
-
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
-    const newFiles = files.map((file) => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      file: file,
-    }));
-    setUploadedFiles([...uploadedFiles, ...newFiles]);
-  };
-
   const openChat = (appointment) => {
-    setActiveTicket(appointment);
-    // Initialize with sample messages for this appointment
-    // Fetch chat history for the appointment * AS TO DO 
-    setChatMessages([]);
-  };
-
-  const closeChat = () => {
-    setActiveTicket(null);
-    setChatMessages([]);
-    setChatMessage("");
+    if (!appointment.specialistId) {
+      console.error("Cannot open chat: Missing specialist ID");
+      return;
+    }
+    navigate("/patient/messages", {
+      state: { 
+        chatTarget: { 
+          name: appointment.specialist, 
+          id: appointment.specialistId 
+        } 
+      },
+    });
   };
 
   // Handle booking modal
@@ -336,9 +335,7 @@ const Appointments = ({ onAppointmentAdded }) => {
     setIsSubmitting(true);
 
     try {
-      // Replace with actual API call * AS TO DO
-
-      // Create new appointment ticket with all form details
+      // This object structure should match what your backend API expects.
       const newAppointment = {
         title: `Consultation - ${appointmentForm.preferredSpecialist}`,
         status: "Pending",
@@ -368,13 +365,15 @@ const Appointments = ({ onAppointmentAdded }) => {
         createdAt: new Date().toISOString(),
       };
 
-      // Send appointment to backend * AS TO DO
+      await appointmentService.addAppointment(newAppointment);
 
       // Notify parent component to refresh appointments
       if (onAppointmentAdded) {
         console.log("Calling onAppointmentAdded callback");
         onAppointmentAdded();
       }
+      // Always reload appointments to reflect changes locally
+      loadAppointments();
 
       // Show success message
       alert(
@@ -385,7 +384,9 @@ const Appointments = ({ onAppointmentAdded }) => {
       closeBookingModal();
     } catch (error) {
       console.error("Error creating appointment:", error);
-      alert("There was an error creating your appointment. Please try again.");
+      alert(
+        `There was an error creating your appointment: ${error.message}. Please try again.`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -393,7 +394,7 @@ const Appointments = ({ onAppointmentAdded }) => {
 
   // Handle payment
   const handlePayment = (appointment) => {
-    alert("TBA");
+    navigate("/patient/consultation_billing", { state: { appointmentId: appointment.id } });
   };
 
   const closePaymentModal = () => {
@@ -454,7 +455,15 @@ const Appointments = ({ onAppointmentAdded }) => {
       </div>
 
       <div className="patient-appointments-section">
-        {appointments.length === 0 ? (
+        {isLoading ? (
+          <div className="patient-loading-state">
+            <div className="patient-loading-spinner"></div>
+            <h3 className="patient-loading-title">Loading Appointments...</h3>
+            <p className="patient-loading-subtitle">
+              Please wait while we fetch your data.
+            </p>
+          </div>
+        ) : appointments.length === 0 ? (
           <div className="patient-empty-state">
             <FaCalendarAlt className="patient-empty-icon" />
             <h3 className="patient-empty-title">No Appointments Yet</h3>
@@ -532,129 +541,6 @@ const Appointments = ({ onAppointmentAdded }) => {
           ))
         )}
       </div>
-
-      {/* Chat Modal for Active Appointments */}
-      {activeTicket && (
-        <div className="patient-chat-modal-overlay" onClick={closeChat}>
-          <div
-            className="patient-chat-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="patient-chat-header">
-              <div className="patient-chat-ticket-info">
-                <h3 className="patient-chat-ticket-title">
-                  {activeTicket.title}
-                </h3>
-                <p className="patient-chat-ticket-specialist">
-                  {activeTicket.specialist}
-                </p>
-              </div>
-              <button className="patient-chat-close-btn" onClick={closeChat}>
-                <FaTimes />
-              </button>
-            </div>
-
-            <div className="patient-chat-messages">
-              {chatMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`patient-message ${
-                    message.sender === "patient"
-                      ? "patient-message-patient"
-                      : "patient-message-nurse"
-                  }`}
-                >
-                  <div className="patient-message-content">
-                    <p className="patient-message-text">{message.text}</p>
-                    <span className="patient-message-time">
-                      {message.timestamp}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="patient-document-upload">
-              <div className="patient-upload-header">
-                <h4 className="patient-upload-title">Upload Documents</h4>
-                <p className="patient-upload-subtitle">
-                  Share files with your specialist
-                </p>
-              </div>
-
-              <div className="patient-file-upload-area">
-                <input
-                  type="file"
-                  id="patient-file-upload"
-                  multiple
-                  onChange={handleFileUpload}
-                  style={{ display: "none" }}
-                />
-                <label
-                  htmlFor="patient-file-upload"
-                  className="patient-file-label"
-                >
-                  <FaUpload className="patient-upload-icon" />
-                  <span className="patient-upload-text">
-                    Choose files to upload
-                  </span>
-                  <span className="patient-upload-hint">
-                    PDF, DOC, JPG, PNG up to 10MB
-                  </span>
-                </label>
-              </div>
-
-              {uploadedFiles.length > 0 && (
-                <div className="patient-uploaded-files">
-                  <h5 className="patient-files-title">Uploaded Files:</h5>
-                  {uploadedFiles.map((file) => (
-                    <div key={file.id} className="patient-file-item">
-                      <FaFileAlt className="patient-file-icon" />
-                      <div className="patient-file-info">
-                        <span className="patient-file-name">{file.name}</span>
-                        <span className="patient-file-size">
-                          ({(file.size / 1024).toFixed(1)} KB)
-                        </span>
-                      </div>
-                      <button
-                        className="patient-file-remove"
-                        onClick={() =>
-                          setUploadedFiles((prev) =>
-                            prev.filter((f) => f.id !== file.id)
-                          )
-                        }
-                      >
-                        <FaTimes />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <form
-              className="patient-chat-input-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
-            >
-              <div className="patient-chat-input-container">
-                <input
-                  type="text"
-                  className="patient-chat-input"
-                  placeholder="Type your message..."
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                />
-                <button type="submit" className="patient-chat-send-btn">
-                  Send
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Appointment Booking Modal */}
       {showBookingModal && (
@@ -1193,8 +1079,8 @@ const Appointments = ({ onAppointmentAdded }) => {
 
       {/* Appointment Details Modal */}
       {showAppointmentDetails && selectedAppointment && (
-        <div className="patient-appointment-details-overlay">
-          <div className="patient-appointment-details-modal">
+        <div className="patient-appointment-details-overlay" onClick={closeAppointmentDetails}>
+          <div className="patient-appointment-details-modal" onClick={(e) => e.stopPropagation()}>
             <div className="patient-appointment-details-header">
               <h2>Appointment Details</h2>
               <button

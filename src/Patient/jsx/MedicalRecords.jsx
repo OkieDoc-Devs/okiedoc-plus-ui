@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { fetchMedicalRecords, deleteMedicalItem, saveMedicalItem } from '../services/medicalRecordsService';
+import '../css/MedicalRecords.css';
 import { 
   FaUserMd, 
   FaCheckCircle, 
@@ -26,13 +28,29 @@ const MedicalRecords = () => {
     allergies: []
   });
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [editingCategory, setEditingCategory] = useState('');
 
-  // Fetch medical records from the backend * AS TO DO 
   useEffect(() => {
-    // Example:
-    // fetchMedicalRecords().then(data => setMedicalData(data));
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+        const userId = currentUser?.id;
+        if (userId) {
+          const data = await fetchMedicalRecords(userId);
+          setMedicalData(data || {});
+        }
+      } catch (err) {
+        console.error("Failed to fetch medical records:", err);
+        setError("Failed to load medical records. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
   }, []);
 
   const categories = [
@@ -79,20 +97,39 @@ const MedicalRecords = () => {
     setEditingCategory(category);
   };
 
-  const handleDeleteItem = (id, category) => {
+  const handleDeleteItem = async (itemId, category) => {
     if (window.confirm('Are you sure you want to delete this record?')) {
-      setMedicalData(prev => ({
-        // Call backend to delete item, then update state on success * AS TO DO 
-        ...prev,
-        [category]: prev[category].filter(item => item.id !== id)
-      }));
+      try {
+        await deleteMedicalItem(category, itemId);
+        setMedicalData(prev => ({
+          ...prev,
+          [category]: prev[category].filter(item => item.id !== itemId)
+        }));
+      } catch (err) {
+        console.error("Error deleting item:", err);
+        alert("Failed to delete item.");
+      }
     }
   };
 
-  const handleSaveItem = (category) => {
-    // Call backend to save the item (editingItem) * AS TO DO 
-    setEditingItem(null);
-    setEditingCategory('');
+  const handleSaveItem = async (category) => {
+    const itemToSave = medicalData[category].find(item => item.id === editingItem);
+    if (!itemToSave) return;
+
+    try {
+      const savedItem = await saveMedicalItem(category, itemToSave);
+      
+      // Update state with returned data (which might have a real ID now)
+      setMedicalData(prev => ({
+        ...prev,
+        [category]: prev[category].map(item => item.id === editingItem ? savedItem : item)
+      }));
+      setEditingItem(null);
+      setEditingCategory('');
+    } catch (err) {
+      console.error("Error saving item:", err);
+      alert("Failed to save item.");
+    }
   };
 
   const handleCancelEdit = (category) => {
@@ -281,6 +318,23 @@ const MedicalRecords = () => {
       </div>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="patient-loading-state">
+        <div className="patient-loading-spinner"></div>
+        <h3 className="patient-loading-title">Loading Medical Records...</h3>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="error-state">
+        <p>{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="patient-page-content">

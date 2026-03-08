@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import "../css/Messages.css";
 import {
   FaUser,
   FaTimes,
@@ -8,10 +10,9 @@ import {
   FaPlus,
   FaFileAlt,
   FaSpinner,
-  FaComments,
 } from "react-icons/fa";
-import { useChat } from "../services/chatService";
 import {
+  useChat,
   isAllowedFileType,
   getMaxFileSize,
   formatFileSize,
@@ -20,6 +21,7 @@ import {
 import SpecialistCall from "../../Specialists/SpecialistCall.jsx";
 
 const Messages = () => {
+  const [initialLoading, setInitialLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -31,6 +33,9 @@ const Messages = () => {
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const chatMessagesRef = useRef(null);
   const fileInputRef = useRef(null);
+  const hasLoadedOnce = useRef(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const CHARACTER_LIMIT = 500;
 
@@ -67,6 +72,7 @@ const Messages = () => {
     activeConversation,
     messages: chatMessages,
     loading: chatLoading,
+    messagesLoading,
     error: chatError,
     typingUsers,
     openConversation,
@@ -79,6 +85,70 @@ const Messages = () => {
     getAllUsers,
     loadConversations,
   } = useChat({ currentUserId, currentUserType: "p" });
+
+  useEffect(() => {
+    if (chatLoading) {
+      hasLoadedOnce.current = true;
+    }
+    // Only set initialLoading to false once we've gone through a loading cycle
+    if (hasLoadedOnce.current && !chatLoading) {
+      setInitialLoading(false);
+    }
+  }, [chatLoading]);
+
+  const onChatOpened = useCallback(() => {
+    // Clean the state to avoid re-triggering on refresh or back navigation
+    if (location.state?.chatTarget) {
+      const { chatTarget, ...restState } = location.state;
+      navigate(location.pathname, { state: restState, replace: true });
+    }
+  }, [location, navigate]);
+
+  useEffect(() => {
+    const initialTarget = location.state?.chatTarget;
+    if (!initialTarget || chatLoading) {
+      return;
+    }
+
+    const { id: specialistId, name: specialistName } = initialTarget;
+
+    const conversation = conversations.find(
+      (c) =>
+        (specialistId && c.userId === specialistId) || c.name === specialistName,
+    );
+
+    const findAndStartConversation = async (name, id) => {
+      try {
+        let newConvo = null;
+        if (id) {
+          newConvo = await startConversation("direct", id);
+        }
+        if (!newConvo && name) {
+          const users = await searchUsers(name);
+          const specialistUser = users?.find(
+            (u) =>
+              (u.name === name || u.Display_Name === name) &&
+              (u.User_Type === "specialist" || u.User_Type_Code === "s" || u.userType === "d" || u.userType === "n"),
+          );
+          if (specialistUser) {
+            newConvo = await startConversation("direct", specialistUser.id || specialistUser.Id);
+          }
+        }
+        if (newConvo) {
+          openConversation(newConvo);
+        }
+      } finally {
+        onChatOpened();
+      }
+    };
+
+    if (conversation) {
+      openConversation(conversation);
+      onChatOpened();
+    } else {
+      findAndStartConversation(specialistName, specialistId);
+    }
+  }, [location.state, chatLoading, conversations, openConversation, startConversation, searchUsers, onChatOpened]);
 
   useEffect(() => {
     if (chatMessagesRef.current && activeConversation) {
@@ -269,22 +339,25 @@ const Messages = () => {
 
   return (
     <div className="patient-messages-container">
-      {chatLoading && conversations.length === 0 && (
-        <div className="loading-state">
-          <FaSpinner className="patient-spinner" />
-          <p>Loading conversations...</p>
+      {initialLoading || (chatLoading && conversations.length === 0) ? (
+        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="patient-loading-state">
+            <div className="patient-loading-spinner"></div>
+            <h3 className="patient-loading-title">Loading Conversations...</h3>
+            <p className="patient-loading-subtitle">
+              Please wait while we fetch your messages.
+            </p>
+          </div>
         </div>
-      )}
-      {chatError && (
+      ) : chatError ? (
         <div className="error-state">
           <p>Error loading conversations: {chatError}</p>
           <button onClick={loadConversations}>Retry</button>
         </div>
-      )}
-
-      <div className="messages-layout">
-        <div className="conversations-sidebar">
-          <div className="conversations-header">
+      ) : (
+        <div className="messages-layout">
+          <div className="conversations-sidebar">
+            <div className="conversations-header">
             <h3>Messages</h3>
             <button
               className="new-chat-btn"
@@ -293,18 +366,18 @@ const Messages = () => {
             >
               <FaPlus />
             </button>
-          </div>
+            </div>
 
-          <div className="conversations-search-box">
+            <div className="conversations-search-box">
             <input
               type="text"
               placeholder="Search conversations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-          </div>
+            </div>
 
-          <div className="conversations-list">
+            <div className="conversations-list">
             {filteredConversations.length > 0 ? (
               filteredConversations.map((conversation) => (
                 <div
@@ -376,10 +449,10 @@ const Messages = () => {
                 </button>
               </div>
             )}
+            </div>
           </div>
-        </div>
 
-        <div className="chat-area">
+          <div className="chat-area">
           {activeConversation ? (
             <>
               <div className="chat-header">
@@ -442,7 +515,13 @@ const Messages = () => {
               </div>
 
               <div className="chat-messages" ref={chatMessagesRef}>
-                {chatMessages.map((message) => (
+                {messagesLoading ? (
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", flexDirection: "column", color: "#666" }}>
+                    <div className="patient-loading-spinner" style={{ width: "30px", height: "30px", borderWidth: "3px", marginBottom: "10px" }}></div>
+                    <p>Loading messages...</p>
+                  </div>
+                ) : (
+                  chatMessages.map((message) => (
                   <div
                     key={message.id}
                     className={`message ${
@@ -523,7 +602,8 @@ const Messages = () => {
                       </>
                     )}
                   </div>
-                ))}
+                ))
+                )}
               </div>
 
               <div className="chat-input-area">
@@ -586,8 +666,9 @@ const Messages = () => {
               <p>Select a conversation to start messaging</p>
             </div>
           )}
+          </div>
         </div>
-      </div>
+      )}
       {showNewChatModal && (
         <div className="modal" onClick={() => setShowNewChatModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

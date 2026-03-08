@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { dummyBillingTickets } from '../../api/Patient/test';
  
  const API_BASE_URL = "http://localhost:8080/api";
  
@@ -15,8 +14,7 @@ import { dummyBillingTickets } from '../../api/Patient/test';
      return response.data || [];
    } catch (err) {
      console.error("[Backend] Failed to fetch billing tickets:", err);
-     console.log("[Fallback] Using dummy billing tickets.");
-     return dummyBillingTickets;
+     throw err;
    }
  };
  
@@ -26,7 +24,6 @@ import { dummyBillingTickets } from '../../api/Patient/test';
      await api.post(`/billing/pay/`, { ticketId }); // The original endpoint seems to be missing the ID.
    } catch (err) {
      console.error("[Backend] Failed to process payment:", err);
-     console.log(`[Fallback] Simulated payment success for ticket ${ticketId}.`);
-     // In dummy mode, we resolve to allow the UI's optimistic update.
+     throw err;
    }
  };

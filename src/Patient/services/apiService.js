@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { patientDummyData, dummyPatientCredentials } from '../../api/Patient/test';
 
  const API_BASE_URL = "http://localhost:8080/api";
  
@@ -16,10 +15,6 @@ import { patientDummyData, dummyPatientCredentials } from '../../api/Patient/tes
      return { success: false, error: response.data.message || "Login failed" };
    } catch (err) {
      console.error("[Backend] Login failed:", err);
-     if (email === dummyPatientCredentials.email && password === dummyPatientCredentials.password) {
-       console.log("[Fallback] Using dummy patient credentials.");
-       return { success: true, user: patientDummyData };
-     }
      return { success: false, error: err.message || "Login failed" };
    }
  };
@@ -34,9 +29,7 @@ import { patientDummyData, dummyPatientCredentials } from '../../api/Patient/tes
      return response.data;
    } catch (err) {
      console.error("[Backend] Error fetching profile:", err);
-     console.log("[Fallback] Using dummy patient profile data.");
-     // The dashboard and MyAccount page can use this data.
-     return patientDummyData;
+     throw err;
    }
  };
  
@@ -49,8 +42,7 @@ import { patientDummyData, dummyPatientCredentials } from '../../api/Patient/tes
      return response.data;
    } catch (err) {
      console.error("[Backend] Error updating profile:", err);
-     console.log("[Fallback] Simulating successful profile update.");
-     return profileData; // Return the data to simulate a successful update
+     throw err;
    }
  };
  
@@ -63,7 +55,6 @@ import { patientDummyData, dummyPatientCredentials } from '../../api/Patient/tes
      return response.data;
    } catch (err) {
      console.error("[Backend] Error changing password:", err);
-     console.log("[Fallback] Simulating successful password change.");
-     return { success: true }; // Simulate a success response
+     throw err;
    }
  };

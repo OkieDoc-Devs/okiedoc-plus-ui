@@ -1,5 +1,4 @@
  import axios from 'axios';
- import { dummyLabResults } from "../../api/Patient/test";
  
  const API_BASE_URL = "http://localhost:8080/api";
  
@@ -15,7 +14,6 @@
      return response.data || [];
    } catch (err) {
      console.error("[Backend] Failed to fetch lab results:", err);
-     console.log("[Fallback] Using dummy lab results.");
-     return dummyLabResults;
+     throw err;
    }
  };

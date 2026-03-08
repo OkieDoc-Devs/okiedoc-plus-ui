@@ -1,5 +1,4 @@
  import axios from 'axios';
- import { dummyConsultationHistory, dummyPendingApprovals, dummyConsultationSummary } from "../../api/Patient/test";
  
  const API_BASE_URL = "http://localhost:8080/api";
  
@@ -15,8 +14,7 @@
      return response.data || [];
    } catch (err) {
      console.error("[Backend] Failed to fetch consultation history:", err);
-     console.log("[Fallback] Using dummy consultation history.");
-     return dummyConsultationHistory;
+     throw err;
    }
  };
  
@@ -28,8 +26,7 @@
      return response.data || [];
    } catch (err) {
      console.error("[Backend] Failed to fetch pending approvals:", err);
-     console.log("[Fallback] Using dummy pending approvals.");
-     return dummyPendingApprovals;
+     throw err;
    }
  };
  
@@ -40,7 +37,6 @@
      return response.data;
    } catch (err) {
      console.error("[Backend] Failed to fetch summary:", err);
-     console.log("[Fallback] Using dummy consultation summary.");
-     return dummyConsultationSummary;
+     throw err;
    }
  };

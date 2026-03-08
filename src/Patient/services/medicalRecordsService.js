@@ -1,5 +1,4 @@
  import axios from 'axios';
- import { dummyMedicalRecords } from "../../api/Patient/test";
  
  const API_BASE_URL = "http://localhost:8080/api";
  
@@ -15,8 +14,7 @@
      return response.data || {};
    } catch (err) {
      console.error("[Backend] Failed to fetch medical records:", err);
-     console.log("[Fallback] Using dummy medical records.");
-     return dummyMedicalRecords;
+     throw err;
    }
  };
  
@@ -26,7 +24,7 @@
      await api.delete(`/medical-records/${category}/${itemId}`);
    } catch (err) {
      console.error("[Backend] Failed to delete item:", err);
-     console.log("[Fallback] Simulated deletion.");
+     throw err;
    }
  };
  
@@ -38,7 +36,6 @@
        return response.data;
      } catch (err) {
        console.error("[Backend] Failed to save item:", err);
-       console.log("[Fallback] Simulated save.");
-       return { ...item, id: item.id || Date.now() };
+       throw err;
      }
  };

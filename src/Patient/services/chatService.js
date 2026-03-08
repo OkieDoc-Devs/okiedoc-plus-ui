@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { dummyConversations, dummyUsers } from "../../api/Patient/test";
 const API_BASE_URL = "http://localhost:8080/api";
 
 // Helper functions required by Messages.jsx
@@ -66,9 +65,7 @@ export const useChat = ({ currentUserId, currentUserType }) => {
       setConversations(response.data || []);
     } catch (err) {
       console.error("[Backend] Failed to fetch conversations. This is expected if backend is not running.", err);
-      // Fallback to dummy data
-      console.log("[Fallback] Using dummy conversations.");
-      setConversations([...dummyConversations]);
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -93,13 +90,8 @@ export const useChat = ({ currentUserId, currentUserType }) => {
       setMessagesLoading(false);
     } catch (err) {
       console.error("[Backend] Failed to fetch messages:", err);
-      // Fallback to dummy data
-      console.log(`[Fallback] Using dummy messages for conversation ${conversation.id}.`);
-      setTimeout(() => { // Simulate network delay
-        const fullConvo = dummyConversations.find(c => c.id === conversation.id);
-        setMessages(fullConvo?.messages || []);
-        setMessagesLoading(false);
-      }, 500);
+      setMessagesLoading(false);
+      throw err;
     }
   }, []);
 
@@ -140,16 +132,9 @@ export const useChat = ({ currentUserId, currentUserType }) => {
       setMessages((prev) => prev.map(m => m.id === sentMessage.id ? response.data : m));
     } catch (err) {
       console.error("[Backend] Failed to send message:", err);
-      // For dummy data, we just keep the optimistic update.
-      // Persist to the correct conversation in our dummy data source
-      const dummyConvo = dummyConversations.find(c => c.id === activeConversation.id);
-      if (dummyConvo) {
-        dummyConvo.messages = dummyConvo.messages || [];
-        dummyConvo.messages.push(sentMessage);
-        dummyConvo.lastMessage = text;
-        dummyConvo.timestamp = "Just now";
-        dummyConvo.lastMessageSentByMe = true;
-      }
+      // Revert optimistic update on error
+      setMessages(prev => prev.filter(m => m.id !== sentMessage.id));
+      loadConversations(); // Reload conversations to get the correct last message
     }
   }, [activeConversation, currentUserId, currentUserType]);
 
@@ -180,9 +165,7 @@ export const useChat = ({ currentUserId, currentUserType }) => {
   }, []);
 
   const startConversation = useCallback(async (type, otherUserId) => {
-    // Check dummyConversations directly to avoid stale state issues during rapid clicks
-    // and to ensure we find conversations that might have just been added to the dummy data
-    const existingConversation = dummyConversations.find(c => c.userId === otherUserId);
+    const existingConversation = conversations.find(c => c.userId === otherUserId);
     if (existingConversation) {
       openConversation(existingConversation);
       return;
@@ -200,30 +183,9 @@ export const useChat = ({ currentUserId, currentUserType }) => {
       openConversation(newConversation);
     } catch (err) {
       console.error("[Backend] Failed to start conversation:", err);
-      // Fallback for dummy data
-      console.log("[Fallback] Creating dummy conversation.");
-      const otherUser = dummyUsers.find(u => u.id === otherUserId);
-      if (otherUser) {
-        const newDummyConvo = {
-          id: `convo-new-${Date.now()}-${Math.random()}`,
-          userId: otherUserId,
-          name: otherUser.name,
-          avatar: "#",
-          isOnline: true,
-          timestamp: "New",
-          lastMessage: "",
-          lastMessageSentByMe: false,
-          unreadCount: 0,
-          role: otherUser.specialty || "User",
-          otherUserType: otherUser.userType,
-          messages: [],
-        };
-        dummyConversations.unshift(newDummyConvo);
-        setConversations([...dummyConversations]);
-        openConversation(newDummyConvo);
-      }
+      throw err;
     }
-  }, [currentUserId, openConversation]);
+  }, [currentUserId, openConversation, conversations]);
 
   const searchUsers = useCallback(async (query) => {
     try {
@@ -232,13 +194,7 @@ export const useChat = ({ currentUserId, currentUserType }) => {
       return response.data || [];
     } catch (err) {
       console.error("[Backend] Failed to search users:", err);
-      // Fallback to dummy data
-      console.log(`[Fallback] Searching dummy users with query "${query}".`);
-      const lowerCaseQuery = query.toLowerCase();
-      return dummyUsers.filter(user =>
-        (user.name && user.name.toLowerCase().includes(lowerCaseQuery)) ||
-        (user.specialty && user.specialty.toLowerCase().includes(lowerCaseQuery))
-      );
+      throw err;
     }
   }, []);
 
@@ -249,9 +205,7 @@ export const useChat = ({ currentUserId, currentUserType }) => {
       return response.data || [];
     } catch (err) {
       console.error("[Backend] Failed to fetch all users:", err);
-      // Fallback to dummy data
-      console.log("[Fallback] Using dummy users.");
-      return dummyUsers;
+      throw err;
     }
   }, []);
 

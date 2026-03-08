@@ -5,7 +5,6 @@ import { FaEye, FaEyeSlash } from "react-icons/fa";
 import authService from "../Specialists/authService";
 import { loginAdmin } from "../api/Admin/api.js";
 import { login } from "../Patient/services/apiService.js";
-import { mockAccount } from "../api/Patient/test";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,29 +14,6 @@ export default function Login() {
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  const dummyCredentials = {
-    nurse: {
-      email: "nurse@okiedocplus.com",
-      password: "nurseOkDoc123",
-    },
-    specialist: {
-      email: "specialist@okiedocplus.com",
-      password: "specialistOkDoc123",
-    },
-    admin: {
-      email: "admin@okiedoc.com", 
-      password: "admin123" 
-    },
-    nurseAdmin: { 
-      email: "nurseadmin@okiedocplus.com", 
-      password: "nurseAdmin123" 
-    },
-    patient: {
-      email: mockAccount.email,
-      password: mockAccount.password,
-    },
-  };
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -130,44 +106,6 @@ export default function Login() {
       setError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
-    }
-
-    if (
-      formData.email === dummyCredentials.nurseAdmin.email &&
-      formData.password === dummyCredentials.nurseAdmin.password
-    ) {
-      sessionStorage.setItem("isNurseAdminLoggedIn", "true");
-      localStorage.setItem("userRole", "nurse_admin");
-      navigate("/nurse-admin-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.nurse.email &&
-      formData.password === dummyCredentials.nurse.password
-    ) {
-      localStorage.setItem("userRole", "nurse");
-      navigate("/nurse-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.patient.email &&
-      formData.password === dummyCredentials.patient.password
-    ) {
-      localStorage.setItem("userRole", "patient");
-      navigate("/patient");
-      return;
-    }
-
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]",
-    );
-    const user = registeredUsers.find(
-      (u) => u.email === formData.email && u.password === formData.password,
-    );
-
-    if (user) {
-      localStorage.setItem("userRole", "patient");
-      navigate("/patient");
-    } else {
-      setError("Invalid email or password. Please try again.");
     }
   };
 

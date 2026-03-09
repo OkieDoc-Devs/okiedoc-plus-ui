@@ -102,26 +102,28 @@ const SpecialistDashboard = () => {
 
         const processedSpecialists = (specialistsArray || []).map(
           (spec, index) => {
-            const nameParts = (spec.name || "").split(" ");
-            const firstName =
-              nameParts.length > 1
-                ? nameParts.slice(0, -1).join(" ")
-                : spec.name || "";
+            const rawName = spec.Full_Name || spec.fullName || spec.full_name || spec.name || "";
+            const cleanName = rawName.trim();
+            const nameParts = cleanName ? cleanName.split(/\s+/) : [];
+            const firstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : cleanName;
             const lastName = nameParts.length > 1 ? nameParts.slice(-1)[0] : "";
+            
             return {
               ...spec,
-              firstName: firstName,
-              lastName: lastName,
+              id: spec.Id || spec.id,
+              firstName: firstName || "N/A",
+              lastName: lastName || "N/A",
+              email: spec.Email || spec.email,
               details: {
-                s2: { number: spec.s2Number || "S2-FETCHED", imageUrl: S2 },
-                ptr: { number: spec.ptrNumber || "PTR-FETCHED", imageUrl: PTR },
+                s2: { number: spec.S2_Number || "S2-FETCHED", imageUrl: S2 },
+                ptr: { number: spec.PTR_Number || "PTR-FETCHED", imageUrl: PTR },
                 prcId: {
-                  number: spec.prcIdNumber || "PRC-FETCHED",
+                  number: spec.PRC_Number || "PRC-FETCHED",
                   imageUrl: PRC,
                 },
                 eSig: esig,
                 profilePicture: index % 2 === 0 ? MaleAvatar : FemaleAvatar,
-                specializations: [spec.specialization || "Unknown"],
+                specializations: [spec.Specialization || spec.specialization || "General"],
                 subspecializations: ["Sub-specialty Placeholder"],
               },
             };
@@ -142,19 +144,86 @@ const SpecialistDashboard = () => {
           },
         }));
 
+        const processedUsers = (usersArray || []).map(user => {
+          // Check for names
+          const rawFullName = user.Full_Name || user.fullName || user.full_name || user.name || user.Name || "";
+          const cleanName = rawFullName.trim();
+          const nameParts = cleanName ? cleanName.split(/\s+/) : [];
+
+          const explicitFirstName = user.first_name || user.firstName || user.First_Name || "";
+          const explicitLastName = user.surname || user.lastName || user.last_name || user.Last_Name || "";
+
+          // === ULTRA-ROBUST DATE PARSING ===
+          const rawDate = user.Updated_At || user.updatedAt || user.updated_at || user.date_updated || user.Created_At || user.createdAt || user.created_at;
+          
+          let formattedDate = 'N/A';
+          
+          if (rawDate) {
+             let parsedDate;
+             
+             // Check if the backend sent a numeric UNIX timestamp
+             if (!isNaN(rawDate) && rawDate !== null && rawDate !== "") {
+               const timestamp = Number(rawDate);
+               // If it's in seconds (typical MySQL), multiply by 1000 for JS milliseconds
+               parsedDate = new Date(timestamp < 9999999999 ? timestamp * 1000 : timestamp);
+             } else {
+               // It's a standard string like "2026-03-09T12:00:00Z"
+               parsedDate = new Date(rawDate);
+             }
+
+             // Verify the date is valid before updating formattedDate
+             if (!isNaN(parsedDate.getTime())) {
+               formattedDate = parsedDate.toLocaleDateString('en-US', {
+                 year: 'numeric',
+                 month: 'short',
+                 day: 'numeric'
+               });
+             }
+          } else {
+             // DEV HELPER: If it hits this, the backend is not sending ANY date key
+             console.warn("Date key missing for user:", user);
+          }
+
+          // === DYNAMIC UID GENERATOR ===
+          const userTypeStr = String(user.User_Type || user.userType || user.user_type || user.type || 'p').toUpperCase();
+          const prefix = userTypeStr.startsWith('N') ? 'N' : 'P';
+          
+          const rawId = String(user.Id || user.id || 0);
+          const numericOnlyId = rawId.replace(/\D/g, '') || '0'; 
+          const paddedId = numericOnlyId.padStart(4, '0');
+          const finalUid = user.Global_Id || user.globalId || user.patient_number || `${prefix}-${paddedId}`;
+
+          return {
+            ...user,
+            id: user.Id || user.id,
+            patient_number: finalUid,
+            first_name: explicitFirstName || (nameParts.length > 0 ? nameParts[0] : 'N/A'),
+            surname: explicitLastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'N/A'),
+            email: user.Email || user.email || 'N/A',
+            philhealth_number: user.Philhealth || user.philhealth || user.philhealth_number || 'N/A',
+            subscription_type: user.Subscription || user.subscription || user.subscription_type || 'Active',
+            date_updated: formattedDate
+          };
+        });
+
+        const processedTransactions = (transactionsArray || []).map(t => ({
+           ...t,
+           id: t.Id || t.id,
+           patientName: t.Patient_Name || t.patientName || 'N/A',
+           specialistName: t.Specialist_Name || t.specialistName || 'N/A',
+           specialty: t.Specialty || t.specialty || 'General',
+           date: t.Date || t.date || (t.Created_At ? t.Created_At * 1000 : Date.now()),
+           status: t.Status || t.status || 'Completed',
+           channel: t.Channel || t.channel || 'Online'
+        }));
+
         setSpecialists(processedSpecialists);
         setPendingApplications(processedPending);
-        setTransactions(transactionsArray || []);
+        setTransactions(processedTransactions);
         setConsultations(consultationsArray || []);
-        setUsers(usersArray || []); 
+        setUsers(processedUsers); 
       } catch (error) {
         console.error("Failed to fetch dashboard data from backend:", error);
-        if (!users || users.length === 0) {
-          setUsers([
-            { id: 'p1', patient_number: 'PT-884920', first_name: 'John', surname: 'Doe', email: 'john.doe@example.com', philhealth_number: '12-3456789-0', subscription_type: 'Active', date_updated: '2026-02-19' },
-            { id: 'p2', patient_number: 'PT-884921', first_name: 'Jane', surname: 'Smith', email: 'jane.smith@example.com', philhealth_number: '98-7654321-0', subscription_type: 'None', date_updated: '2026-02-18' }
-          ]);
-        }
       }
     };
 

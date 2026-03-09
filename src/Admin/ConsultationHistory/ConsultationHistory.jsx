@@ -174,15 +174,41 @@ const ConsultationHistory = ({ consultations = [] }) => {
           </table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="ch-pagination">
-            <button onClick={() => goToPage(1)} disabled={currentPage === 1}>{"<<"}</button>
-            <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>{"<"}</button>
-            <span>Page {currentPage} of {totalPages}</span>
-            <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>{">"}</button>
-            <button onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages}>{">>"}</button>
-          </div>
-        )}
+        <div className="ch-pagination">
+          <button 
+            onClick={() => goToPage(1)} 
+            disabled={currentPage === 1}
+            title="First Page"
+          >
+            &laquo;
+          </button>
+          <button 
+            onClick={() => goToPage(currentPage - 1)} 
+            disabled={currentPage === 1}
+            title="Previous Page"
+          >
+            &lsaquo;
+          </button>
+          
+          <span style={{ margin: '0 10px' }}>
+            Page {currentPage} of {Math.max(1, totalPages)}
+          </span>
+          
+          <button 
+            onClick={() => goToPage(currentPage + 1)} 
+            disabled={currentPage >= totalPages || totalPages === 0}
+            title="Next Page"
+          >
+            &rsaquo;
+          </button>
+          <button 
+            onClick={() => goToPage(totalPages)} 
+            disabled={currentPage >= totalPages || totalPages === 0}
+            title="Last Page"
+          >
+            &raquo;
+          </button>
+        </div>
 
         {selectedConsultation && (
           <div className="ch-modal-overlay" onClick={() => setSelectedConsultation(null)}>

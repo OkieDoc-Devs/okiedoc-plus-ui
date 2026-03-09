@@ -47,6 +47,7 @@ const SpecialistTable = ({ specialists = [] }) => {
                 <th>First Name</th>
                 <th>Last Name</th>
                 <th>Email</th>
+                <th>Specialization</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -58,6 +59,7 @@ const SpecialistTable = ({ specialists = [] }) => {
                     <td>{spec.firstName || "N/A"}</td>
                     <td>{spec.lastName || "N/A"}</td>
                     <td>{spec.email || "N/A"}</td>
+                    <td>{spec.details?.specializations?.join(", ") || spec.specialization || "N/A"}</td>
                     <td>
                       <button
                         className="action-btn btn-primary"
@@ -82,7 +84,7 @@ const SpecialistTable = ({ specialists = [] }) => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: "center" }}>
+                  <td colSpan="6" style={{ textAlign: "center" }}>
                     No specialists found or matching current filters.
                   </td>
                 </tr>

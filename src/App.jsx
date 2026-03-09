@@ -527,7 +527,7 @@ function App() {
             <h3 className="featured-heading">Featured Specialists</h3>
             <hr className="featured-heading-line" />
           </div>
-          <p className="featured-subtitle">A section wherein we feature OkieDoc+ specialists</p>
+    
 
           <div className="featured-carousel-shell">
             <button

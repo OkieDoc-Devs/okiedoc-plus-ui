@@ -195,6 +195,48 @@ function App() {
   }, [doctors]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [featuredCarouselIndex, setFeaturedCarouselIndex] = useState(0);
+
+  // Dummy data: featured specialists (randomly highlighted, 4 per carousel slide)
+  const featuredSpecialists = useMemo(() => {
+    const list = [
+      { id: 1, specialty: "Pedia", fullName: "Dr. Maria Elena Cruz", writeUp: "Board-certified pediatrician with over 10 years of experience in child health and development.", image: doc4 },
+      { id: 2, specialty: "Psychiatrist", fullName: "Dr. Ana Patricia Reyes", writeUp: "Specializes in adult and adolescent mental health, anxiety, and mood disorders.", image: doc1 },
+      { id: 3, specialty: "Internal Medicine", fullName: "Dr. Juan Carlos Santos", writeUp: "Expert in preventive care and management of chronic conditions.", image: doc2 },
+      { id: 4, specialty: "Pulmonologist", fullName: "Dr. Roberto Dela Cruz", writeUp: "Focused on respiratory diseases, asthma, and sleep medicine.", image: doc3 },
+      { id: 5, specialty: "Cardiologist", fullName: "Dr. Sofia Mendoza", writeUp: "Cardiovascular care and preventive cardiology for adults.", image: doc4 },
+      { id: 6, specialty: "Pedia", fullName: "Dr. Luis Fernando Gomez", writeUp: "Pediatric care with emphasis on vaccinations and growth monitoring.", image: doc2 },
+      { id: 7, specialty: "Internal Medicine", fullName: "Dr. Carmen Villanueva", writeUp: "General internal medicine and hospital follow-ups.", image: doc1 },
+      { id: 8, specialty: "Psychiatrist", fullName: "Dr. Miguel Torres", writeUp: "Adult psychiatry and cognitive behavioral therapy.", image: doc3 },
+      { id: 9, specialty: "Pulmonologist", fullName: "Dr. Elena Bautista", writeUp: "Lung function testing and COPD management.", image: doc4 },
+      { id: 10, specialty: "Cardiologist", fullName: "Dr. Ricardo Lim", writeUp: "Interventional cardiology and heart failure care.", image: doc1 },
+      { id: 11, specialty: "Pedia", fullName: "Dr. Lady Dominique Lumidao", writeUp: "General Medicine and pediatric consultations.", image: doc1 },
+      { id: 12, specialty: "Internal Medicine", fullName: "Dr. Ciarra Isabella Liguid", writeUp: "RMT, MD with focus on holistic patient care.", image: doc3 },
+    ];
+    return list;
+  }, []);
+
+  const featuredSlides = useMemo(() => {
+    const slides = [];
+    for (let i = 0; i < featuredSpecialists.length; i += 4) {
+      slides.push(featuredSpecialists.slice(i, i + 4));
+    }
+    return slides;
+  }, [featuredSpecialists]);
+
+  const doctorsOnlineNow = useMemo(() => {
+    return [
+      { id: 101, fullName: "Dr. Carlo Miguel Matanguihan", specialty: "Family Medicine", price: "₱975.00", image: doc1 },
+      { id: 102, fullName: "Dr. Danilyn Rose Torres-Morado", specialty: "Internal Medicine, Rheumatology", price: "₱650.00", image: doc3 },
+      { id: 103, fullName: "Dr. Marie Concepcion Renacia", specialty: "General Practitioner", price: "₱600.00", image: doc4 },
+    ];
+  }, []);
+
+  const goToFeatured = (index) => {
+    if (!featuredSlides.length) return;
+    const normalized = ((index % featuredSlides.length) + featuredSlides.length) % featuredSlides.length;
+    setFeaturedCarouselIndex(normalized);
+  };
 
   const goTo = (index) => {
     const total = slides.length;
@@ -210,6 +252,15 @@ function App() {
     }, 5000);
     return () => clearInterval(interval);
   }, [slides.length]);
+
+  // Auto-scroll featured specialists carousel
+  useEffect(() => {
+    if (featuredSlides.length <= 1) return;
+    const interval = setInterval(() => {
+      setFeaturedCarouselIndex((prev) => (prev + 1) % featuredSlides.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [featuredSlides.length]);
 
   const handlePrev = () => {
     goTo(currentIndex - 1);
@@ -469,7 +520,176 @@ function App() {
           </div>
         </section>
 
-        <section className="doctors-listing-section">
+        {/* Main specialties + Featured Specialists Section */}
+        <section className="featured-section">
+          <div className="featured-heading-wrap">
+            <hr className="featured-heading-line" />
+            <h3 className="featured-heading">Featured Specialists</h3>
+            <hr className="featured-heading-line" />
+          </div>
+          <p className="featured-subtitle">A section wherein we feature OkieDoc+ specialists</p>
+
+          <div className="featured-carousel-shell">
+            <button
+              type="button"
+              className="featured-carousel-arrow featured-carousel-arrow--prev"
+              onClick={() => goToFeatured(featuredCarouselIndex - 1)}
+              aria-label="Previous featured specialists"
+            >
+              &#8249;
+            </button>
+            <div className="featured-carousel-viewport">
+              <div
+                className="featured-carousel-track"
+                style={{ transform: `translateX(-${featuredCarouselIndex * 100}%)` }}
+              >
+                {featuredSlides.map((slideGroup, slideIdx) => (
+                  <div key={slideIdx} className="featured-carousel-slide">
+                    <div className="featured-cards-row">
+                      {slideGroup.map((specialist) => (
+                        <div
+                          key={specialist.id}
+                          className="featured-card"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => navigate(`/doctor/${specialist.id}`)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              navigate(`/doctor/${specialist.id}`);
+                            }
+                          }}
+                          aria-label={`View profile of ${specialist.fullName}`}
+                        >
+                          <div className="featured-card-avatar-wrap">
+                            <img
+                              src={specialist.image}
+                              alt=""
+                              className="featured-card-avatar"
+                            />
+                          </div>
+                          <p className="featured-card-specialty">{specialist.specialty}</p>
+                          <h4 className="featured-card-name">{specialist.fullName}</h4>
+                          <p className="featured-card-writeup">{specialist.writeUp}</p>
+                          <button
+                            type="button"
+                            className="featured-card-consult-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/doctor/${specialist.id}`);
+                            }}
+                          >
+                            Consult Now
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="featured-carousel-arrow featured-carousel-arrow--next"
+              onClick={() => goToFeatured(featuredCarouselIndex + 1)}
+              aria-label="Next featured specialists"
+            >
+              &#8250;
+            </button>
+          </div>
+          <div className="featured-carousel-dots" aria-hidden="true">
+            {featuredSlides.map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                className={`featured-carousel-dot ${index === featuredCarouselIndex ? "featured-carousel-dot--active" : ""}`}
+                onClick={() => goToFeatured(index)}
+              />
+            ))}
+          </div>
+
+          <div className="featured-cta-block">
+            <h3 className="featured-cta-heading">Be part of our team!</h3>
+            <p className="featured-cta-text">
+              Know more about OkieDoc+ as a platform for specialist and proceed with hassle free registration.
+            </p>
+            <button
+              type="button"
+              className="featured-cta-register-btn"
+              onClick={() => navigate("/specialist-registration")}
+            >
+              Register as a specialist!
+            </button>
+          </div>
+        </section>
+
+        <div className="featured-online-section" aria-label="Doctors Online Now">
+          <div className="featured-online-header">
+            <div className="featured-online-title">
+              <span className="featured-online-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" fill="#EAF9F1" stroke="#2ECC71" strokeWidth="1.5" />
+                  <path d="M8 12.2l2.4 2.4L16.5 8.5" stroke="#2ECC71" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <h4 className="featured-online-heading">Doctors Online Now</h4>
+            </div>
+            <button
+              type="button"
+              className="featured-online-viewall"
+              onClick={() => {
+                const el = document.getElementById("featured-doctors-listing");
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            >
+              VIEW ALL
+            </button>
+          </div>
+
+          <div className="featured-online-cards">
+            {doctorsOnlineNow.map((doc) => (
+              <div key={doc.id} className="featured-online-card">
+                <div className="featured-online-card-top">
+                  <img className="featured-online-avatar" src={doc.image} alt="" />
+                  <div className="featured-online-meta">
+                    <div className="featured-online-name">{doc.fullName}</div>
+                    <div className="featured-online-specialty">{doc.specialty}</div>
+                  </div>
+                </div>
+                <div className="featured-online-actions">
+                  <button
+                    type="button"
+                    className="featured-online-profile"
+                    onClick={() => navigate(`/doctor/${doc.id}`)}
+                  >
+                    VIEW PROFILE
+                  </button>
+                  <button
+                    type="button"
+                    className="featured-online-consult"
+                    onClick={() => navigate(`/doctor/${doc.id}`)}
+                  >
+                    <span className="featured-online-consult-text">CONSULT NOW</span>
+                    <span className="featured-online-consult-price">{doc.price}</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className="featured-online-more"
+            onClick={() => {
+              const el = document.getElementById("featured-doctors-listing");
+              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            VIEW MORE DOCTORS
+          </button>
+        </div>
+
+        <section className="doctors-listing-section" id="featured-doctors-listing">
           <div className="doctors-listing-container">
             <h2 className="doctors-listing-heading">
               Our Available Specialists

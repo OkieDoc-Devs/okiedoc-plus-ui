@@ -24,6 +24,7 @@ import PatientLayout from "./Patient/jsx/PatientLayout.jsx";
 import SpecialistDashboard2 from "./Specialists/SpecialistDashboard.jsx";
 import SpecialistLogin from "./Login & Registration/SpecialistLogin.jsx";
 import SpecialistRegistration from "./Login & Registration/SpecialistRegistration.jsx";
+import DoctorProfile from "./DoctorProfile.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -39,6 +40,7 @@ createRoot(document.getElementById("root")).render(
         <Route path="/specialist-registration" element={<SpecialistRegistration />} />
         <Route path="/admin/specialist-dashboard" element={<SpecialistDashboard />} />
         <Route path="/specialist-dashboard" element={<SpecialistDashboard2 />} />
+        <Route path="/doctor/:id" element={<DoctorProfile />} />
 
         {/* NURSE ROUTES */}
         <Route path="/nurse-dashboard" element={<Dashboard />} />

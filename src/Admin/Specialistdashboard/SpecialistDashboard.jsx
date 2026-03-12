@@ -1,20 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import PendingTable from "./PendingTable";
-import SpecialistTable from "./SpecialistTable";
-import ConsultationHistory from "../ConsultationHistory/ConsultationHistory";
-import Modal from "../Components/Modal";
-import UserTable from "../UserManagement/UserTable.jsx";
-import "../UserManagement/UserTable.css";
+import PendingTable from './PendingTable';
+import SpecialistTable from './SpecialistTable';
+import ConsultationHistory from '../ConsultationHistory/ConsultationHistory';
+import Modal from '../Components/Modal';
+import UserTable from '../UserManagement/UserTable.jsx';
+import '../UserManagement/UserTable.css';
 
-import ChatOversight from "../ChatOversight/ChatOversight.jsx";
-import { handleExport } from "../utils/exportUtils";
-import "./SpecialistDashboard.css";
-import "../ConsultationHistory/ConsultationHistory.css";
-import "../ChatOversight/ChatOversight.css";
+import ChatOversight from '../ChatOversight/ChatOversight.jsx';
+import { handleExport } from '../utils/exportUtils';
+import './SpecialistDashboard.css';
+import '../ConsultationHistory/ConsultationHistory.css';
+import '../ChatOversight/ChatOversight.css';
 
-// Import API
 import {
   getSpecialists,
   getPendingApplications,
@@ -22,25 +21,25 @@ import {
   getConsultations,
   getPatientAndNurseUsers,
   logoutAdmin,
-} from "../../api/Admin/api.js";
+} from '../../api/Admin/api.js';
 
-import FemaleAvatar from "../../assets/Female_Avatar.png";
-import MaleAvatar from "../../assets/Male_Avatar.png";
-import S2 from "../../assets/S2.png";
-import PRC from "../../assets/PRC_Sample.jpg";
-import PTR from "../../assets/PTR.png";
-import esig from "../../assets/esig.png";
-import OkieDocLogo from "../../assets/okie-doc-logo.png";
+import FemaleAvatar from '../../assets/Female_Avatar.png';
+import MaleAvatar from '../../assets/Male_Avatar.png';
+import S2 from '../../assets/S2.png';
+import PRC from '../../assets/PRC_Sample.jpg';
+import PTR from '../../assets/PTR.png';
+import esig from '../../assets/esig.png';
+import OkieDocLogo from '../../assets/okie-doc-logo.png';
 
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState("pending");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterSpecialization, setFilterSpecialization] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterDateFrom, setFilterDateFrom] = useState("");
-  const [filterDateTo, setFilterDateTo] = useState("");
+  const [activeTab, setActiveTab] = useState('pending');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterSpecialization, setFilterSpecialization] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
 
   const [transactions, setTransactions] = useState([]);
   const [pendingApplications, setPendingApplications] = useState([]);
@@ -48,22 +47,21 @@ const SpecialistDashboard = () => {
   const [consultations, setConsultations] = useState([]);
   const [users, setUsers] = useState([]);
 
-  // State for Modals
   const [viewingUser, setViewingUser] = useState(null);
   const [deletingUser, setDeletingUser] = useState(null);
 
   const [systemFees, setSystemFees] = useState({
     doctorsFee: { isActive: true, name: "Doctor's Fee" },
-    processingFee: { isActive: true, name: "Processing Fee" },
-    convenienceFee: { isActive: true, name: "Convenience Fee" },
+    processingFee: { isActive: true, name: 'Processing Fee' },
+    convenienceFee: { isActive: true, name: 'Convenience Fee' },
   });
   const [discount, setDiscount] = useState({
-    name: "Discount",
-    type: "percentage",
+    name: 'Discount',
+    type: 'percentage',
     value: 0,
     isActive: false,
   });
-  const [notes, setNotes] = useState({ checkout: "", isActive: true });
+  const [notes, setNotes] = useState({ checkout: '', isActive: true });
 
   useEffect(() => {
     const fetchAndProcessData = async () => {
@@ -82,7 +80,6 @@ const SpecialistDashboard = () => {
           getPatientAndNurseUsers(),
         ]);
 
-        // Extract arrays from response objects if needed
         const specialistsArray = Array.isArray(specialistsData)
           ? specialistsData
           : specialistsData?.specialists || specialistsData?.data || [];
@@ -105,16 +102,18 @@ const SpecialistDashboard = () => {
               ...spec,
               name: `${spec.firstName || ''} ${spec.lastName || ''}`.trim(),
               details: {
-                s2: { number: spec.s2Number || "S2-FETCHED", imageUrl: S2 },
-                ptr: { number: spec.ptrNumber || "PTR-FETCHED", imageUrl: PTR },
+                s2: { number: spec.s2Number || 'S2-FETCHED', imageUrl: S2 },
+                ptr: { number: spec.ptrNumber || 'PTR-FETCHED', imageUrl: PTR },
                 prcId: {
-                  number: spec.prcLicenseNumber || "PRC-FETCHED",
+                  number: spec.prcLicenseNumber || 'PRC-FETCHED',
                   imageUrl: PRC,
                 },
                 eSig: esig,
                 profilePicture: index % 2 === 0 ? MaleAvatar : FemaleAvatar,
-                specializations: spec.specialization ? [spec.specialization] : ["Unknown"],
-                subspecializations: ["Sub-specialty Placeholder"],
+                specializations: spec.specialization
+                  ? [spec.specialization]
+                  : ['Unknown'],
+                subspecializations: ['Sub-specialty Placeholder'],
               },
             };
           },
@@ -123,14 +122,24 @@ const SpecialistDashboard = () => {
         const processedPending = (pendingArray || []).map((app, index) => {
           return {
             ...app,
-            // Keep app properties mapped by api.js, simply provide fallback images
             details: {
               ...(app.details || {}),
-              s2: { ...(app.details?.s2 || {}), imageUrl: app.details?.s2?.imageUrl || S2 },
-              ptr: { ...(app.details?.ptr || {}), imageUrl: app.details?.ptr?.imageUrl || PTR },
-              prcId: { ...(app.details?.prcId || {}), imageUrl: app.details?.prcId?.imageUrl || PRC },
+              s2: {
+                ...(app.details?.s2 || {}),
+                imageUrl: app.details?.s2?.imageUrl || S2,
+              },
+              ptr: {
+                ...(app.details?.ptr || {}),
+                imageUrl: app.details?.ptr?.imageUrl || PTR,
+              },
+              prcId: {
+                ...(app.details?.prcId || {}),
+                imageUrl: app.details?.prcId?.imageUrl || PRC,
+              },
               eSig: app.details?.eSig || esig,
-              profilePicture: app.details?.profilePicture || (index % 2 === 0 ? FemaleAvatar : MaleAvatar),
+              profilePicture:
+                app.details?.profilePicture ||
+                (index % 2 === 0 ? FemaleAvatar : MaleAvatar),
             },
           };
         });
@@ -139,28 +148,28 @@ const SpecialistDashboard = () => {
         setPendingApplications(processedPending);
         setTransactions(transactionsArray || []);
         setConsultations(consultationsArray || []);
-        setUsers(usersArray || []); // Set the new users state
+        setUsers(usersArray || []);
       } catch (error) {
-        console.error("Failed to fetch dashboard data from backend:", error);
+        console.error('Failed to fetch dashboard data from backend:', error);
         if (!users || users.length === 0) {
           setUsers([
             {
-              id: "p1",
-              userType: "Patient",
-              firstName: "John",
-              lastName: "Doe",
-              email: "patient@gmail.com",
-              mobileNumber: "98765485",
-              subscription: "Paid",
+              id: 'p1',
+              userType: 'Patient',
+              firstName: 'John',
+              lastName: 'Doe',
+              email: 'patient@gmail.com',
+              mobileNumber: '98765485',
+              subscription: 'Paid',
             },
             {
-              id: "n1",
-              userType: "Nurse",
-              firstName: "Leslie",
-              lastName: "Rowland",
-              email: "les@row@gmail.com",
-              mobileNumber: "97685334",
-              subscription: "Free",
+              id: 'n1',
+              userType: 'Nurse',
+              firstName: 'Leslie',
+              lastName: 'Rowland',
+              email: 'les@row@gmail.com',
+              mobileNumber: '97685334',
+              subscription: 'Free',
             },
           ]);
         }
@@ -195,7 +204,7 @@ const SpecialistDashboard = () => {
   ].sort();
 
   const filteredPending = (pendingApplications || []).filter((app) => {
-    const searchString = `${app.name || ""} ${app.email || ""}`.toLowerCase();
+    const searchString = `${app.name || ''} ${app.email || ''}`.toLowerCase();
     const matchesSearch =
       !searchTerm || searchString.includes(searchTerm.toLowerCase());
     const matchesFilter =
@@ -206,7 +215,7 @@ const SpecialistDashboard = () => {
 
   const filteredSpecialists = (specialists || []).filter((spec) => {
     const searchString =
-      `${spec.firstName || ""} ${spec.lastName || ""} ${spec.email || ""}`.toLowerCase();
+      `${spec.firstName || ''} ${spec.lastName || ''} ${spec.email || ''}`.toLowerCase();
     const matchesSearch =
       !searchTerm || searchString.includes(searchTerm.toLowerCase());
     const matchesFilter =
@@ -219,9 +228,9 @@ const SpecialistDashboard = () => {
     const lowerSearchTerm = searchTerm.toLowerCase();
     const matchesSearch =
       !searchTerm ||
-      (t.patientName || "").toLowerCase().includes(lowerSearchTerm) ||
-      (t.specialistName || "").toLowerCase().includes(lowerSearchTerm) ||
-      (t.status || "").toLowerCase().includes(lowerSearchTerm);
+      (t.patientName || '').toLowerCase().includes(lowerSearchTerm) ||
+      (t.specialistName || '').toLowerCase().includes(lowerSearchTerm) ||
+      (t.status || '').toLowerCase().includes(lowerSearchTerm);
 
     const matchesSpecialty =
       !filterSpecialization || t.specialty === filterSpecialization;
@@ -245,7 +254,7 @@ const SpecialistDashboard = () => {
   const filteredUsers = (users || []).filter((user) => {
     const lowerSearchTerm = searchTerm.toLowerCase();
     const searchString =
-      `${user.firstName || ""} ${user.lastName || ""} ${user.email || ""} ${user.mobileNumber || ""}`.toLowerCase();
+      `${user.firstName || ''} ${user.lastName || ''} ${user.email || ''} ${user.mobileNumber || ''}`.toLowerCase();
     const matchesSearch = !searchTerm || searchString.includes(lowerSearchTerm);
     return matchesSearch;
   });
@@ -254,32 +263,34 @@ const SpecialistDashboard = () => {
 
   const handleCreateStaff = async (staffData) => {
     try {
-      const { createStaff } = await import("../../api/Admin/api.js");
+      const { createStaff } = await import('../../api/Admin/api.js');
       await createStaff(staffData);
       alert(`${staffData.role} account created successfully!`);
-      // Refresh user list
-      const usersData = await import("../../api/Admin/api.js").then(m => m.getPatientAndNurseUsers());
-      const usersArray = Array.isArray(usersData) ? usersData : (usersData?.users || usersData?.data || []);
+      const usersData = await import('../../api/Admin/api.js').then((m) =>
+        m.getPatientAndNurseUsers(),
+      );
+      const usersArray = Array.isArray(usersData)
+        ? usersData
+        : usersData?.users || usersData?.data || [];
       setUsers(usersArray);
     } catch (error) {
       console.error(error);
       alert(error.message || `Failed to create ${staffData.role}.`);
-      throw error; // Re-throw so UserTable modal knows it failed
+      throw error;
     }
   };
 
   const handleUpdateUser = async (updatedUser) => {
-    // Simulate API call
     try {
-      console.log("Simulating update for user:", updatedUser);
+      console.log('Simulating update for user:', updatedUser);
       setUsers((prevUsers) =>
         prevUsers.map((user) =>
           user.id === updatedUser.id ? updatedUser : user,
         ),
       );
-      alert("User updated successfully! (Simulated)");
+      alert('User updated successfully! (Simulated)');
     } catch {
-      alert("Failed to update user. (Simulated)");
+      alert('Failed to update user. (Simulated)');
     }
   };
 
@@ -287,123 +298,159 @@ const SpecialistDashboard = () => {
     if (!deletingUser) return;
 
     try {
-      console.log("Simulating delete for user:", deletingUser);
+      console.log('Simulating delete for user:', deletingUser);
       setUsers((prevUsers) =>
         prevUsers.filter((user) => user.id !== deletingUser.id),
       );
-      alert("User deleted successfully! (Simulated)");
-      setDeletingUser(null); // Close confirmation modal
+      alert('User deleted successfully! (Simulated)');
+      setDeletingUser(null);
     } catch {
-      alert("Failed to delete user. (Simulated)");
+      alert('Failed to delete user. (Simulated)');
     }
   };
 
   const handleApproveSpecialist = async (specialistId) => {
     try {
-      await import("../../api/Admin/api.js").then(module => module.approveSpecialist({
-        specialistId,
-        action: 'approve'
-      }));
+      await import('../../api/Admin/api.js').then((module) =>
+        module.approveSpecialist({
+          specialistId,
+          action: 'approve',
+        }),
+      );
       alert(`Specialist approved!`);
-      // Re-fetch pending applications
       const pendingData = await getPendingApplications();
-      const pendingArray = Array.isArray(pendingData) ? pendingData : (pendingData?.applications || pendingData?.data || []);
+      const pendingArray = Array.isArray(pendingData)
+        ? pendingData
+        : pendingData?.applications || pendingData?.data || [];
       const processedPending = pendingArray.map((app, index) => {
         return {
           ...app,
           details: {
             ...(app.details || {}),
-            s2: { ...(app.details?.s2 || {}), imageUrl: app.details?.s2?.imageUrl || S2 },
-            ptr: { ...(app.details?.ptr || {}), imageUrl: app.details?.ptr?.imageUrl || PTR },
-            prcId: { ...(app.details?.prcId || {}), imageUrl: app.details?.prcId?.imageUrl || PRC },
+            s2: {
+              ...(app.details?.s2 || {}),
+              imageUrl: app.details?.s2?.imageUrl || S2,
+            },
+            ptr: {
+              ...(app.details?.ptr || {}),
+              imageUrl: app.details?.ptr?.imageUrl || PTR,
+            },
+            prcId: {
+              ...(app.details?.prcId || {}),
+              imageUrl: app.details?.prcId?.imageUrl || PRC,
+            },
             eSig: app.details?.eSig || esig,
-            profilePicture: app.details?.profilePicture || (index % 2 === 0 ? FemaleAvatar : MaleAvatar),
+            profilePicture:
+              app.details?.profilePicture ||
+              (index % 2 === 0 ? FemaleAvatar : MaleAvatar),
           },
         };
       });
       setPendingApplications(processedPending);
 
-      // Re-fetch active specialists
-      const specialistsData = await import("../../api/Admin/api.js").then(m => m.getSpecialists());
-      const specialistsArray = Array.isArray(specialistsData) ? specialistsData : (specialistsData?.specialists || specialistsData?.data || []);
+      const specialistsData = await import('../../api/Admin/api.js').then((m) =>
+        m.getSpecialists(),
+      );
+      const specialistsArray = Array.isArray(specialistsData)
+        ? specialistsData
+        : specialistsData?.specialists || specialistsData?.data || [];
       const processedSpecialists = specialistsArray.map((spec, index) => {
         return {
           ...spec,
           name: `${spec.firstName || ''} ${spec.lastName || ''}`.trim(),
           details: {
-            s2: { number: spec.s2Number || "S2-FETCHED", imageUrl: S2 },
-            ptr: { number: spec.ptrNumber || "PTR-FETCHED", imageUrl: PTR },
+            s2: { number: spec.s2Number || 'S2-FETCHED', imageUrl: S2 },
+            ptr: { number: spec.ptrNumber || 'PTR-FETCHED', imageUrl: PTR },
             prcId: {
-              number: spec.prcLicenseNumber || "PRC-FETCHED",
+              number: spec.prcLicenseNumber || 'PRC-FETCHED',
               imageUrl: PRC,
             },
             eSig: esig,
             profilePicture: index % 2 === 0 ? MaleAvatar : FemaleAvatar,
-            specializations: spec.specialization ? [spec.specialization] : ["Unknown"],
-            subspecializations: ["Sub-specialty Placeholder"],
+            specializations: spec.specialization
+              ? [spec.specialization]
+              : ['Unknown'],
+            subspecializations: ['Sub-specialty Placeholder'],
           },
         };
       });
       setSpecialists(processedSpecialists);
-
     } catch (error) {
       console.error(error);
-      alert("Failed to approve specialist.");
+      alert('Failed to approve specialist.');
     }
   };
 
   const handleDenySpecialist = async (specialistId, reason) => {
     try {
-      await import("../../api/Admin/api.js").then(module => module.approveSpecialist({
-        specialistId,
-        action: 'deny',
-        reason
-      }));
+      await import('../../api/Admin/api.js').then((module) =>
+        module.approveSpecialist({
+          specialistId,
+          action: 'deny',
+          reason,
+        }),
+      );
       alert(`Specialist denied!`);
-      // Re-fetch pending applications
       const pendingData = await getPendingApplications();
-      const pendingArray = Array.isArray(pendingData) ? pendingData : (pendingData?.applications || pendingData?.data || []);
+      const pendingArray = Array.isArray(pendingData)
+        ? pendingData
+        : pendingData?.applications || pendingData?.data || [];
       const processedPending = pendingArray.map((app, index) => {
         return {
           ...app,
           details: {
             ...(app.details || {}),
-            s2: { ...(app.details?.s2 || {}), imageUrl: app.details?.s2?.imageUrl || S2 },
-            ptr: { ...(app.details?.ptr || {}), imageUrl: app.details?.ptr?.imageUrl || PTR },
-            prcId: { ...(app.details?.prcId || {}), imageUrl: app.details?.prcId?.imageUrl || PRC },
+            s2: {
+              ...(app.details?.s2 || {}),
+              imageUrl: app.details?.s2?.imageUrl || S2,
+            },
+            ptr: {
+              ...(app.details?.ptr || {}),
+              imageUrl: app.details?.ptr?.imageUrl || PTR,
+            },
+            prcId: {
+              ...(app.details?.prcId || {}),
+              imageUrl: app.details?.prcId?.imageUrl || PRC,
+            },
             eSig: app.details?.eSig || esig,
-            profilePicture: app.details?.profilePicture || (index % 2 === 0 ? FemaleAvatar : MaleAvatar),
+            profilePicture:
+              app.details?.profilePicture ||
+              (index % 2 === 0 ? FemaleAvatar : MaleAvatar),
           },
         };
       });
       setPendingApplications(processedPending);
 
-      // Re-fetch active specialists
-      const specialistsData = await import("../../api/Admin/api.js").then(m => m.getSpecialists());
-      const specialistsArray = Array.isArray(specialistsData) ? specialistsData : (specialistsData?.specialists || specialistsData?.data || []);
+      const specialistsData = await import('../../api/Admin/api.js').then((m) =>
+        m.getSpecialists(),
+      );
+      const specialistsArray = Array.isArray(specialistsData)
+        ? specialistsData
+        : specialistsData?.specialists || specialistsData?.data || [];
       const processedSpecialists = specialistsArray.map((spec, index) => {
         return {
           ...spec,
           name: `${spec.firstName || ''} ${spec.lastName || ''}`.trim(),
           details: {
-            s2: { number: spec.s2Number || "S2-FETCHED", imageUrl: S2 },
-            ptr: { number: spec.ptrNumber || "PTR-FETCHED", imageUrl: PTR },
+            s2: { number: spec.s2Number || 'S2-FETCHED', imageUrl: S2 },
+            ptr: { number: spec.ptrNumber || 'PTR-FETCHED', imageUrl: PTR },
             prcId: {
-              number: spec.prcLicenseNumber || "PRC-FETCHED",
+              number: spec.prcLicenseNumber || 'PRC-FETCHED',
               imageUrl: PRC,
             },
             eSig: esig,
             profilePicture: index % 2 === 0 ? MaleAvatar : FemaleAvatar,
-            specializations: spec.specialization ? [spec.specialization] : ["Unknown"],
-            subspecializations: ["Sub-specialty Placeholder"],
+            specializations: spec.specialization
+              ? [spec.specialization]
+              : ['Unknown'],
+            subspecializations: ['Sub-specialty Placeholder'],
           },
         };
       });
       setSpecialists(processedSpecialists);
-
     } catch (error) {
       console.error(error);
-      alert("Failed to deny specialist.");
+      alert('Failed to deny specialist.');
     }
   };
 
@@ -411,155 +458,152 @@ const SpecialistDashboard = () => {
     try {
       await logoutAdmin();
     } catch (error) {
-      console.error("Admin logout API call failed:", error);
+      console.error('Admin logout API call failed:', error);
     } finally {
-      sessionStorage.removeItem("isAdminLoggedIn");
-      localStorage.removeItem("admin_token");
-      navigate("/login");
+      sessionStorage.removeItem('isAdminLoggedIn');
+      localStorage.removeItem('admin_token');
+      navigate('/login');
     }
   };
 
   return (
-    <div className="dashboard admin-dashboard">
-      <div className="dashboard-header">
-        <div className="header-center">
-          <img src={OkieDocLogo} alt="Okie-Doc+" className="logo-image" />
+    <div className='dashboard admin-dashboard'>
+      <div className='dashboard-header'>
+        <div className='header-center'>
+          <img src={OkieDocLogo} alt='Okie-Doc+' className='logo-image' />
         </div>
-        <h3 className="dashboard-title">Admin Dashboard</h3>
-        <div className="user-account">
-          <img src="/account.svg" alt="Account" className="account-icon" />
-          <span className="account-name">Admin</span>
-          <div className="account-dropdown">
+        <h3 className='dashboard-title'>Admin Dashboard</h3>
+        <div className='user-account'>
+          <img src='/account.svg' alt='Account' className='account-icon' />
+          <span className='account-name'>Admin</span>
+          <div className='account-dropdown'>
             <button
-              className="dropdown-item logout-item"
+              className='dropdown-item logout-item'
               onClick={handleLogout}
             >
               Logout
             </button>
           </div>
         </div>
-        <div className="dashboard-nav">
+        <div className='dashboard-nav'>
           <button
-            className={`nav-tab ${activeTab === "pending" ? "active" : ""}`}
-            onClick={() => setActiveTab("pending")}
+            className={`nav-tab ${activeTab === 'pending' ? 'active' : ''}`}
+            onClick={() => setActiveTab('pending')}
           >
             Pending Applications
             {filteredPending.length > 0 && (
-              <span className="badge">{filteredPending.length}</span>
+              <span className='badge'>{filteredPending.length}</span>
             )}
           </button>
           <button
-            className={`nav-tab ${activeTab === "list" ? "active" : ""}`}
-            onClick={() => setActiveTab("list")}
+            className={`nav-tab ${activeTab === 'list' ? 'active' : ''}`}
+            onClick={() => setActiveTab('list')}
           >
             OkieDoc+ Specialists
           </button>
           <button
-            className={`nav-tab ${activeTab === "users" ? "active" : ""}`}
-            onClick={() => setActiveTab("users")}
+            className={`nav-tab ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => setActiveTab('users')}
           >
             User Management
           </button>
           <button
-            className={`nav-tab ${activeTab === "transactions" ? "active" : ""}`}
-            onClick={() => setActiveTab("transactions")}
+            className={`nav-tab ${activeTab === 'transactions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('transactions')}
           >
             Transaction History
           </button>
           <button
-            className={`nav-tab ${activeTab === "chats" ? "active" : ""}`}
-            onClick={() => setActiveTab("chats")}
+            className={`nav-tab ${activeTab === 'chats' ? 'active' : ''}`}
+            onClick={() => setActiveTab('chats')}
           >
             Chat Consultations
           </button>
           <button
-            className={`nav-tab ${activeTab === "consultations" ? "active" : ""}`}
-            onClick={() => setActiveTab("consultations")}
+            className={`nav-tab ${activeTab === 'consultations' ? 'active' : ''}`}
+            onClick={() => setActiveTab('consultations')}
           >
             Consultation History
           </button>
           <button
-            className={`nav-tab ${activeTab === "settings" ? "active" : ""}`}
-            onClick={() => setActiveTab("settings")}
+            className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('settings')}
           >
             System Fee Settings
           </button>
         </div>
       </div>
 
-      <main className="dashboard-container">
-        {/* FIX: Hide main toolbar if on settings, chats, OR consultations tab */}
-        {activeTab !== "settings" &&
-          activeTab !== "chats" &&
-          activeTab !== "consultations" && (
-            <div className="toolbar">
-              <div className="filters">
+      <main className='dashboard-container'>
+        {activeTab !== 'settings' &&
+          activeTab !== 'chats' &&
+          activeTab !== 'consultations' && (
+            <div className='toolbar'>
+              <div className='filters'>
                 <input
-                  type="text"
-                  placeholder="Search..."
+                  type='text'
+                  placeholder='Search...'
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                {/* Specialization filter (only show on specialist/pending tabs) */}
-                {(activeTab === "pending" ||
-                  activeTab === "list" ||
-                  activeTab === "transactions") && (
-                    <select
-                      value={filterSpecialization}
-                      onChange={(e) => setFilterSpecialization(e.target.value)}
-                      disabled={allSpecializations.length === 0}
-                    >
-                      <option value="">Filter by Specialization</option>
-                      {allSpecializations.map((spec) => (
-                        <option key={spec} value={spec}>
-                          {spec}
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                {(activeTab === 'pending' ||
+                  activeTab === 'list' ||
+                  activeTab === 'transactions') && (
+                  <select
+                    value={filterSpecialization}
+                    onChange={(e) => setFilterSpecialization(e.target.value)}
+                    disabled={allSpecializations.length === 0}
+                  >
+                    <option value=''>Filter by Specialization</option>
+                    {allSpecializations.map((spec) => (
+                      <option key={spec} value={spec}>
+                        {spec}
+                      </option>
+                    ))}
+                  </select>
+                )}
 
-                {/* Transaction-specific filters */}
-                {activeTab === "transactions" && (
+                {activeTab === 'transactions' && (
                   <>
                     <select
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
                     >
-                      <option value="">Filter by Status</option>
-                      <option value="Pending">Pending</option>
-                      <option value="Processing">Processing</option>
-                      <option value="For Payment">For Payment</option>
-                      <option value="Confirmed">Confirmed</option>
-                      <option value="Incomplete">Incomplete</option>
-                      <option value="Completed">Completed</option>
+                      <option value=''>Filter by Status</option>
+                      <option value='Pending'>Pending</option>
+                      <option value='Processing'>Processing</option>
+                      <option value='For Payment'>For Payment</option>
+                      <option value='Confirmed'>Confirmed</option>
+                      <option value='Incomplete'>Incomplete</option>
+                      <option value='Completed'>Completed</option>
                     </select>
                     <label
-                      htmlFor="dateFrom"
-                      style={{ marginLeft: "10px", fontSize: "0.9rem" }}
+                      htmlFor='dateFrom'
+                      style={{ marginLeft: '10px', fontSize: '0.9rem' }}
                     >
                       From:
                     </label>
                     <input
-                      id="dateFrom"
-                      type="date"
+                      id='dateFrom'
+                      type='date'
                       value={filterDateFrom}
                       onChange={(e) => setFilterDateFrom(e.target.value)}
                     />
                     <label
-                      htmlFor="dateTo"
-                      style={{ marginLeft: "10px", fontSize: "0.9rem" }}
+                      htmlFor='dateTo'
+                      style={{ marginLeft: '10px', fontSize: '0.9rem' }}
                     >
                       To:
                     </label>
                     <input
-                      id="dateTo"
-                      type="date"
+                      id='dateTo'
+                      type='date'
                       value={filterDateTo}
                       onChange={(e) => setFilterDateTo(e.target.value)}
                     />
                     <button
-                      className="action-btn btn-primary"
-                      style={{ backgroundColor: "#0B5388", marginLeft: "auto" }}
+                      className='action-btn btn-primary'
+                      style={{ backgroundColor: '#0B5388', marginLeft: 'auto' }}
                       onClick={() => handleExport(filteredTransactions)}
                       disabled={filteredTransactions.length === 0}
                     >
@@ -571,17 +615,18 @@ const SpecialistDashboard = () => {
             </div>
           )}
 
-        {/* Conditional Rendering based on activeTab */}
-
-        {activeTab === "pending" && (
-          <PendingTable applications={filteredPending} onApprove={handleApproveSpecialist} onDeny={handleDenySpecialist} />
+        {activeTab === 'pending' && (
+          <PendingTable
+            applications={filteredPending}
+            onApprove={handleApproveSpecialist}
+            onDeny={handleDenySpecialist}
+          />
         )}
-        {activeTab === "list" && (
+        {activeTab === 'list' && (
           <SpecialistTable specialists={filteredSpecialists} />
         )}
 
-        {/* NEW TAB CONTENT FOR USER MANAGEMENT */}
-        {activeTab === "users" && (
+        {activeTab === 'users' && (
           <UserTable
             users={filteredUsers}
             onView={setViewingUser}
@@ -591,11 +636,11 @@ const SpecialistDashboard = () => {
           />
         )}
 
-        {activeTab === "transactions" && (
-          <div id="transactions" className="tab-content active">
+        {activeTab === 'transactions' && (
+          <div id='transactions' className='tab-content active'>
             <h2>Transaction History & Management</h2>
-            <div className="table-wrapper">
-              <table className="dashboard-table">
+            <div className='table-wrapper'>
+              <table className='dashboard-table'>
                 <thead>
                   <tr>
                     <th>Patient Name</th>
@@ -620,7 +665,7 @@ const SpecialistDashboard = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="6" style={{ textAlign: "center" }}>
+                      <td colSpan='6' style={{ textAlign: 'center' }}>
                         No transactions found.
                       </td>
                     </tr>
@@ -631,55 +676,55 @@ const SpecialistDashboard = () => {
           </div>
         )}
 
-        {activeTab === "chats" && (
-          <div className="tab-content active" id="chat-consultations-wrapper">
+        {activeTab === 'chats' && (
+          <div className='tab-content active' id='chat-consultations-wrapper'>
             <ChatOversight />
           </div>
         )}
 
-        {activeTab === "consultations" && (
+        {activeTab === 'consultations' && (
           <ConsultationHistory consultations={filteredConsultations} />
         )}
 
-        {activeTab === "settings" && (
+        {activeTab === 'settings' && (
           <div
-            id="settings"
-            className="tab-content active settings-tab-content"
+            id='settings'
+            className='tab-content active settings-tab-content'
           >
             <h2>System Fee & Discount Settings</h2>
-            <div className="settings-grid">
-              <div className="settings-card">
+            <div className='settings-grid'>
+              <div className='settings-card'>
                 <h3>System Fees</h3>
                 {Object.entries(systemFees).map(([key, fee]) => (
-                  <div className="settings-item" key={key}>
+                  <div className='settings-item' key={key}>
                     <span>{fee.name}</span>
-                    <label className="switch">
+                    <label className='switch'>
                       <input
-                        type="checkbox"
+                        type='checkbox'
                         checked={fee.isActive}
                         onChange={() => handleFeeToggle(key)}
                       />
-                      <span className="slider round"></span>
+                      <span className='slider round'></span>
                     </label>
                   </div>
                 ))}
               </div>
-              <div className="settings-card">
+              <div className='settings-card'>
                 <h3>Discount</h3>
-                <div className="settings-item">
+                <div className='settings-item'>
                   <span>Activate Discount</span>
-                  <label className="switch">
+                  <label className='switch'>
                     <input
-                      type="checkbox"
+                      type='checkbox'
                       checked={discount.isActive}
                       onChange={handleDiscountToggle}
                     />
-                    <span className="slider round"></span>
+                    <span className='slider round'></span>
                   </label>
                 </div>
                 {discount.isActive && (
                   <>
-                    <div className="settings-item">
+                    <div className='settings-item'>
                       <label>Discount Type:</label>
                       <select
                         value={discount.type}
@@ -687,14 +732,14 @@ const SpecialistDashboard = () => {
                           setDiscount({ ...discount, type: e.target.value })
                         }
                       >
-                        <option value="percentage">Percentage (%)</option>
-                        <option value="peso">Peso (₱)</option>
+                        <option value='percentage'>Percentage (%)</option>
+                        <option value='peso'>Peso (₱)</option>
                       </select>
                     </div>
-                    <div className="settings-item">
+                    <div className='settings-item'>
                       <label>Discount Value:</label>
                       <input
-                        type="number"
+                        type='number'
                         value={discount.value}
                         onChange={(e) =>
                           setDiscount({
@@ -707,32 +752,32 @@ const SpecialistDashboard = () => {
                   </>
                 )}
               </div>
-              <div className="settings-card notes-card">
+              <div className='settings-card notes-card'>
                 <h3>Checkout Notes</h3>
-                <div className="settings-item">
+                <div className='settings-item'>
                   <span>Display Notes on Checkout</span>
-                  <label className="switch">
+                  <label className='switch'>
                     <input
-                      type="checkbox"
+                      type='checkbox'
                       checked={notes.isActive}
                       onChange={handleNotesToggle}
                     />
-                    <span className="slider round"></span>
+                    <span className='slider round'></span>
                   </label>
                 </div>
                 {notes.isActive && (
-                  <div className="settings-item-full">
-                    <label htmlFor="checkout-notes-textarea">
+                  <div className='settings-item-full'>
+                    <label htmlFor='checkout-notes-textarea'>
                       Notes to Display:
                     </label>
                     <textarea
-                      id="checkout-notes-textarea"
+                      id='checkout-notes-textarea'
                       value={notes.checkout}
                       onChange={(e) =>
                         setNotes({ ...notes, checkout: e.target.value })
                       }
-                      rows="4"
-                      placeholder="Enter notes to show..."
+                      rows='4'
+                      placeholder='Enter notes to show...'
                     ></textarea>
                   </div>
                 )}
@@ -742,10 +787,9 @@ const SpecialistDashboard = () => {
         )}
       </main>
 
-      {/* View User Modal */}
       {viewingUser && (
-        <Modal title="User Details" onClose={() => setViewingUser(null)}>
-          <div id="modal-body">
+        <Modal title='User Details' onClose={() => setViewingUser(null)}>
+          <div id='modal-body'>
             <p>
               <strong>User Type:</strong> {viewingUser.userType}
             </p>
@@ -762,12 +806,26 @@ const SpecialistDashboard = () => {
               <strong>Mobile:</strong> {viewingUser.mobileNumber}
             </p>
             <p>
+              <strong>Address:</strong>{' '}
+              {[
+                viewingUser.addressLine1,
+                viewingUser.addressLine2,
+                viewingUser.barangay,
+                viewingUser.city,
+                viewingUser.province,
+                viewingUser.region,
+                viewingUser.zipCode,
+              ]
+                .filter(Boolean)
+                .join(', ') || 'N/A'}
+            </p>
+            <p>
               <strong>Subscription:</strong> {viewingUser.subscription}
             </p>
           </div>
-          <div className="modal-actions">
+          <div className='modal-actions'>
             <button
-              className="action-btn btn-primary"
+              className='action-btn btn-primary'
               onClick={() => setViewingUser(null)}
             >
               Close
@@ -776,10 +834,9 @@ const SpecialistDashboard = () => {
         </Modal>
       )}
 
-      {/* Delete User Confirmation Modal */}
       {deletingUser && (
-        <Modal title="Confirm Deletion" onClose={() => setDeletingUser(null)}>
-          <div id="modal-body">
+        <Modal title='Confirm Deletion' onClose={() => setDeletingUser(null)}>
+          <div id='modal-body'>
             <p>Are you sure you want to delete this user?</p>
             <p>
               <strong>
@@ -789,15 +846,15 @@ const SpecialistDashboard = () => {
             </p>
             <p>This action cannot be undone.</p>
           </div>
-          <div className="modal-actions">
+          <div className='modal-actions'>
             <button
-              className="action-btn btn-primary"
+              className='action-btn btn-primary'
               onClick={() => setDeletingUser(null)}
             >
               Cancel
             </button>
             <button
-              className="action-btn btn-danger"
+              className='action-btn btn-danger'
               onClick={handleDeleteUser}
             >
               Delete User

@@ -2,8 +2,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
-import "./App.css";
-import App from "./App.jsx";
 import Login from "./Login & Registration/Login.jsx";
 import Registration from "./Login & Registration/Registration.jsx";
 import Dashboard from "./Nurse/Dashboard.jsx";
@@ -19,13 +17,13 @@ import SpecialistRegistration from "./Login & Registration/SpecialistRegistratio
 import PendingVerification from "./Specialists/PendingVerification.jsx";
 import DeniedVerification from "./Specialists/DeniedVerification.jsx";
 import CommercialPage from "./CommercialPage.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<CommercialPage />} />
-        <Route path="/loading" element={<App />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registration" element={<Registration />} />
         <Route path="/specialist-login" element={<SpecialistLogin />} />
@@ -33,27 +31,33 @@ createRoot(document.getElementById("root")).render(
           path="/specialist-registration"
           element={<SpecialistRegistration />}
         />
-        <Route path="/nurse-dashboard" element={<Dashboard />} />
-        <Route path="/nurse-notifications" element={<Notifications />} />
-        <Route path="/nurse-myaccount" element={<MyAccount />} />
+        {/* Nurse Routes */}
+        <Route path="/nurse-dashboard" element={<ProtectedRoute allowedRoles={['nurse']}><Dashboard /></ProtectedRoute>} />
+        <Route path="/nurse-notifications" element={<ProtectedRoute allowedRoles={['nurse']}><Notifications /></ProtectedRoute>} />
+        <Route path="/nurse-myaccount" element={<ProtectedRoute allowedRoles={['nurse']}><MyAccount /></ProtectedRoute>} />
         <Route
           path="/nurse-manage-appointments"
-          element={<ManageAppointments />}
+          element={<ProtectedRoute allowedRoles={['nurse']}><ManageAppointments /></ProtectedRoute>}
         />
-        <Route path="/nurse-messages" element={<Messages />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/nurse-messages" element={<ProtectedRoute allowedRoles={['nurse']}><Messages /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['nurse']}><Dashboard /></ProtectedRoute>} />
 
+        {/* Admin Routes */}
         <Route
           path="/admin/specialist-dashboard"
-          element={<SpecialistDashboard />}
+          element={<ProtectedRoute allowedRoles={['admin']}><SpecialistDashboard /></ProtectedRoute>}
         />
-        <Route path="/patient-dashboard" element={<PatientDashboard />} />
+
+        {/* Patient Routes */}
+        <Route path="/patient-dashboard" element={<ProtectedRoute allowedRoles={['patient']}><PatientDashboard /></ProtectedRoute>} />
+
+        {/* Specialist Routes */}
         <Route
           path="/specialist-dashboard"
-          element={<SpecialistDashboard2 />}
+          element={<ProtectedRoute allowedRoles={['specialist']}><SpecialistDashboard2 /></ProtectedRoute>}
         />
-        <Route path="/specialist-pending" element={<PendingVerification />} />
-        <Route path="/specialist-denied" element={<DeniedVerification />} />
+        <Route path="/specialist-pending" element={<ProtectedRoute allowedRoles={['specialist']}><PendingVerification /></ProtectedRoute>} />
+        <Route path="/specialist-denied" element={<ProtectedRoute allowedRoles={['specialist']}><DeniedVerification /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   </StrictMode>

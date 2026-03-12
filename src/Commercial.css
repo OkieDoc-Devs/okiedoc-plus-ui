@@ -779,3 +779,177 @@
     font-size: 0.75rem;
   }
 }
+
+/* Navigation Bar Styles */
+.header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  text-align: left !important;
+  margin: 0 !important;
+  padding: 1rem clamp(1rem, 4vw, 2rem) !important;
+  font-family: "Inter", Arial, sans-serif !important;
+  position: relative !important;
+  background: #4aa7ed !important;
+  min-width: 0 !important;
+  z-index: 100 !important;
+  box-sizing: border-box !important;
+}
+
+.header .logo-section {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.header .logo-image {
+  height: clamp(2rem, 5vw, 3rem) !important;
+  width: auto !important;
+  filter: drop-shadow(6px 6px 0px #399eeb) !important;
+}
+
+.nav-links {
+  display: flex !important;
+  gap: clamp(12px, 2vw, 24px) !important;
+  margin: 0 !important;
+  flex-wrap: wrap !important;
+}
+
+.nav-link {
+  color: black !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  font-size: 16px !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease !important;
+  white-space: nowrap !important;
+}
+
+.nav-link:hover {
+  background: white !important;
+  color: black !important;
+}
+
+.mobile-nav-toggle {
+  display: none !important;
+  background: none !important;
+  border: none !important;
+  font-size: 1.5rem !important;
+  color: black !important;
+  cursor: pointer !important;
+  padding: 0.5rem !important;
+}
+
+.mobile-nav-dropdown {
+  display: none !important;
+}
+
+.header .button-group {
+  display: flex !important;
+  gap: clamp(0.5rem, 2vw, 1rem) !important;
+  flex-shrink: 0 !important;
+}
+
+.header .btn {
+  color: #0b5388 !important;
+  text-decoration: none !important;
+  border: 2px solid #0b5388 !important;
+  padding: 8px 18px !important;
+  font-family: "Inter", Arial, sans-serif !important;
+  font-size: 15px !important;
+  cursor: pointer !important;
+  font-weight: bold !important;
+  background: #f5f5f5 !important;
+  position: relative !important;
+  transition: all 0.3s !important;
+  overflow: hidden !important;
+  z-index: 1 !important;
+  border-radius: 20px !important;
+}
+
+.header .btn:hover {
+  color: white !important;
+}
+
+.header .btn::before {
+  content: "" !important;
+  position: absolute !important;
+  height: 100% !important;
+  width: 0% !important;
+  top: 0 !important;
+  left: -40px !important;
+  transform: skewX(45deg) !important;
+  background-color: #0b5388 !important;
+  z-index: -1 !important;
+  transition: all 1s !important;
+}
+
+.header .btn:hover::before {
+  width: 160% !important;
+}
+
+@media (max-width: 1250px) {
+  .header {
+    padding: 0.5rem 1rem !important;
+    flex-wrap: wrap !important;
+  }
+
+  .text-and-buttons {
+    display: none !important;
+  }
+
+  .header .button-group {
+    display: flex !important;
+    order: 3 !important;
+    gap: 0.5rem !important;
+  }
+
+  .mobile-nav-toggle {
+    display: block !important;
+    order: 2 !important;
+  }
+
+  .mobile-nav-dropdown {
+    display: block !important;
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: white !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    z-index: 1000 !important;
+    margin: 0.5rem !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: translateY(-10px) !important;
+    transition: all 0.3s ease !important;
+  }
+
+  .mobile-nav-dropdown.open {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) !important;
+  }
+
+  .mobile-nav-dropdown .nav-link {
+    display: block !important;
+    padding: 1rem !important;
+    border-bottom: 1px solid #f0f0f0 !important;
+    color: #333 !important;
+    text-decoration: none !important;
+    font-weight: 500 !important;
+    transition: background 0.2s !important;
+  }
+
+  .mobile-nav-dropdown .nav-link:last-child {
+    border-bottom: none !important;
+  }
+
+  .mobile-nav-dropdown .nav-link:hover {
+    background: #f8f9fa !important;
+    color: #0078d4 !important;
+  }
+}

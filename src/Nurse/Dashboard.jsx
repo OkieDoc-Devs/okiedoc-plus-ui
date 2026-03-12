@@ -40,7 +40,14 @@ export default function Dashboard() {
   const formatDate = (dateString) => {
     if (!dateString) return "";
     try {
-      const date = new Date(dateString);
+      let date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      
+      // If the string is a plain date (YYYY-MM-DD), adjust for timezone to prevent one-day-off issues
+      if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString.split('T')[0])) {
+        date = new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
+      }
+
       return date.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
@@ -575,6 +582,17 @@ export default function Dashboard() {
                   <p style={{ margin: 0 }}>
                     <strong>Birthdate:</strong>{" "}
                     {formatDate(selectedTicket.patientBirthdate) || "N/A"}
+                  </p>
+                  <p style={{ margin: "4px 0 0" }}>
+                    <strong>Address:</strong> {[
+                      selectedTicket.addressLine1,
+                      selectedTicket.addressLine2,
+                      selectedTicket.barangay,
+                      selectedTicket.city,
+                      selectedTicket.province,
+                      selectedTicket.region,
+                      selectedTicket.zipCode
+                    ].filter(Boolean).join(", ") || "N/A"}
                   </p>
                 </div>
                 <div style={{ textAlign: "right" }}>

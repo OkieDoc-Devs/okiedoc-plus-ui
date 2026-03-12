@@ -1,3 +1,4 @@
+import { useState } from "react";
 import "./Commercial.css";
 import { useNavigate } from "react-router";
 import nurseDocImage from "./assets/NurseDoc.png";
@@ -6,9 +7,25 @@ import doc1 from "./assets/doc1.jpg";
 import doc2 from "./assets/doc2.jpg";
 import doc3 from "./assets/doc3.jpg";
 import doc4 from "./assets/doc4.jpg";
+import { FaTimes } from "react-icons/fa";
 
 function CommercialPage() {
   const navigate = useNavigate();
+  const [isDropdownMenuOpen, setIsDropdownMenuOpen] = useState(false);
+
+  const navLinks = [
+    "Products",
+    "Solutions",
+    "Community",
+    "Resources",
+    "Pricing",
+    "Contact",
+    "Link",
+  ];
+
+  const toggleDropdownMenu = () => {
+    setIsDropdownMenuOpen(!isDropdownMenuOpen);
+  };
 
   const doctors = [
     {
@@ -59,23 +76,62 @@ function CommercialPage() {
 
   return (
     <div className="splash-container">
-      <header className="splash-header">
+      <header className="header">
+        <div className="logo-section">
+          <img
+            src="/okie-doc-logo.png"
+            alt="OkieDoc+"
+            className="logo-image"
+          />
+        </div>
+
         <button
-          className="sign-up-login-btn"
-          onClick={() => navigate("/loading")}
+          className="mobile-nav-toggle"
+          onClick={toggleDropdownMenu}
+          aria-label="Toggle dropdown menu"
         >
-          Sign Up/Login
+          ☰
         </button>
+
+        <div className="text-and-buttons">
+          <nav className="nav-links">
+            {navLinks.map((link) => (
+              <a key={link} href="#" className="nav-link">
+                {link}
+              </a>
+            ))}
+          </nav>
+        </div>
+
+        <div className="button-group">
+          <button className="btn" onClick={() => navigate("/login")}>
+            Login
+          </button>
+          <button className="btn" onClick={() => navigate("/registration")}>
+            Register
+          </button>
+        </div>
+
+        <div
+          className={`mobile-nav-dropdown ${isDropdownMenuOpen ? "open" : ""
+            }`}
+        >
+          {navLinks.map((link) => (
+            <a key={link} href="#" className="nav-link">
+              {link}
+            </a>
+          ))}
+        </div>
       </header>
 
-      <div className="logo-section">
+      {/* <div className="logo-section">
         <img
           src="/okie-doc-logo.png"
           alt="OkieDoc+"
           className="logo-image"
           style={{ height: "80px", maxWidth: "none", paddingLeft: "15px" }}
         />
-      </div>
+      </div> */}
 
       <main className="splash-main">
         <div>
@@ -128,7 +184,7 @@ function CommercialPage() {
                 </p>
                 <button
                   className="consult-now-btn"
-                  onClick={() => navigate("/loading")}
+                  onClick={() => navigate("/login")}
                 >
                   Consult Now
                 </button>
@@ -163,17 +219,15 @@ function CommercialPage() {
                       <p className="doctor-credentials">{doctor.credentials}</p>
                       <div className="consultation-types">
                         <span
-                          className={`consultation-badge ${
-                            doctor.onlineConsultation ? "active" : "inactive"
-                          }`}
+                          className={`consultation-badge ${doctor.onlineConsultation ? "active" : "inactive"
+                            }`}
                         >
                           {doctor.onlineConsultation ? "✓" : "✕"} Online
                           Consultation
                         </span>
                         <span
-                          className={`consultation-badge ${
-                            doctor.inPersonConsultation ? "active" : "inactive"
-                          }`}
+                          className={`consultation-badge ${doctor.inPersonConsultation ? "active" : "inactive"
+                            }`}
                         >
                           {doctor.inPersonConsultation ? "✓" : "✕"} In-Person
                           Consultation
@@ -213,13 +267,13 @@ function CommercialPage() {
                   <div className="doctor-actions">
                     <button
                       className="book-appointment-link"
-                      onClick={() => navigate("/loading")}
+                      onClick={() => navigate("/login")}
                     >
                       BOOK APPOINTMENT
                     </button>
                     <button
                       className="view-profile-btn"
-                      onClick={() => navigate("/loading")}
+                      onClick={() => navigate("/login")}
                     >
                       VIEW PROFILE
                     </button>

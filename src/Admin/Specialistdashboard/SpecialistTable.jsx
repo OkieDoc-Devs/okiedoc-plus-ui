@@ -164,6 +164,17 @@ const SpecialistTable = ({ specialists = [] }) => {
               )}
             </p>
             <p>
+              <strong>Address:</strong> {[
+                viewModalSpec.addressLine1,
+                viewModalSpec.addressLine2,
+                viewModalSpec.barangay,
+                viewModalSpec.city,
+                viewModalSpec.province,
+                viewModalSpec.region,
+                viewModalSpec.zipCode
+              ].filter(Boolean).join(", ") || "N/A"}
+            </p>
+            <p>
               <strong>PTR No.:</strong>{" "}
               {viewModalSpec.details?.ptr?.number || "N/A"}
               {viewModalSpec.details?.ptr?.imageUrl && (

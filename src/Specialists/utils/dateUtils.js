@@ -22,22 +22,15 @@ export const formatDateKey = sharedFormatDateKey;
  */
 export const parseTicketDate = (whenField) => {
   if (!whenField) return null;
-
-  const dateMatch = whenField.match(/(\w+)\s+(\d+),\s+(\d+)/);
-  if (!dateMatch) return null;
-
-  const [, monthName, dayStr, yearStr] = dateMatch;
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
-
+  const date = new Date(whenField);
+  if (isNaN(date.getTime())) return null;
   return {
-    month: monthNames.indexOf(monthName),
-    day: parseInt(dayStr),
-    year: parseInt(yearStr)
+    month: date.getMonth(),
+    day: date.getDate(),
+    year: date.getFullYear()
   };
 };
+
 
 /**
  * Check if a date is today

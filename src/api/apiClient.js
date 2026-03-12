@@ -58,6 +58,15 @@ export async function apiRequest(endpoint, options = {}) {
     }
 
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem("okiedoc_user_type");
+        localStorage.removeItem("currentUser");
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("nurse.id");
+        localStorage.removeItem("nurse.firstName");
+        window.location.href = "/login";
+      }
+
       const errorPayload =
         typeof responseData === 'object'
           ? responseData

@@ -65,6 +65,13 @@ export function transformProfileFromAPI(apiProfile) {
     experience: apiProfile.experience || apiProfile.Experience || "",
     department: apiProfile.department || apiProfile.Department || "",
     prcExpiryDate: apiProfile.prcExpiryDate || "",
+    addressLine1: apiProfile.addressLine1 || "",
+    addressLine2: apiProfile.addressLine2 || "",
+    barangay: apiProfile.barangay || "",
+    city: apiProfile.city || "",
+    province: apiProfile.province || "",
+    region: apiProfile.region || "",
+    zipCode: apiProfile.zipCode || "",
     profileImage:
       apiProfile.profileImage ||
       apiProfile.profile_image ||
@@ -89,6 +96,13 @@ export function transformProfileToAPI(uiProfile) {
     experience: uiProfile.experience,
     department: uiProfile.department,
     prcExpiryDate: uiProfile.prcExpiryDate,
+    addressLine1: uiProfile.addressLine1,
+    addressLine2: uiProfile.addressLine2,
+    barangay: uiProfile.barangay,
+    city: uiProfile.city,
+    province: uiProfile.province,
+    region: uiProfile.region,
+    zipCode: uiProfile.zipCode,
   };
 }
 

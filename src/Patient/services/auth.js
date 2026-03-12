@@ -10,5 +10,6 @@ export const logoutPatient = async () => {
     console.error("Logout failed:", error);
   } finally {
     localStorage.removeItem("currentUser");
+    localStorage.removeItem("okiedoc_user_type");
   }
 };

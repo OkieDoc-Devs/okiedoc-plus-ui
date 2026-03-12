@@ -3,12 +3,12 @@
  * Handles authentication and session management for specialists
  */
 
-import * as api from "./services/apiService.js";
+import * as api from './services/apiService.js';
 
 const STORAGE_KEYS = {
-  currentUser: "okiedoc_specialist_user",
-  userType: "okiedoc_user_type",
-  token: "okiedoc_auth_token",
+  currentUser: 'okiedoc_specialist_user',
+  userType: 'okiedoc_user_type',
+  token: 'okiedoc_auth_token',
 };
 
 class AuthService {
@@ -24,21 +24,19 @@ class AuthService {
     if (this.isInitialized) return;
 
     try {
-      // Try to restore session from API
       const response = await api.getCurrentUser();
       if (response.success && response.user) {
         this.currentUser = response.user;
         localStorage.setItem(
           STORAGE_KEYS.currentUser,
-          JSON.stringify(response.user)
+          JSON.stringify(response.user),
         );
         localStorage.setItem(
           STORAGE_KEYS.userType,
-          response.user.userType || "specialist"
+          response.user.userType || 'specialist',
         );
       }
     } catch {
-      // Session expired or not authenticated
       this.clearLocalStorage();
     }
 
@@ -56,39 +54,37 @@ class AuthService {
       const response = await api.loginSpecialist(email, password);
 
       if (response.success) {
-        // Enforce role validation so only specialists can use the specialist portal
         if (response.user && response.user.role !== 'specialist') {
-          // If they aren't a specialist, log them out from the session that the generic /api/v1/auth/login just created
-          await api.logoutSpecialist().catch(() => { });
+          await api.logoutSpecialist().catch(() => {});
           return {
             success: false,
-            error: "Access denied: This login portal is for Specialists only.",
+            error: 'Access denied: This login portal is for Specialists only.',
           };
         }
 
         this.currentUser = response.user;
         localStorage.setItem(
           STORAGE_KEYS.currentUser,
-          JSON.stringify(response.user)
+          JSON.stringify(response.user),
         );
-        localStorage.setItem(STORAGE_KEYS.userType, "specialist");
+        localStorage.setItem(STORAGE_KEYS.userType, 'specialist');
 
         return {
           success: true,
           user: response.user,
-          redirect: response.redirect || "/specialist-dashboard",
+          redirect: response.redirect || '/specialist-dashboard',
         };
       }
 
       return {
         success: false,
-        error: response.message || "Login failed",
+        error: response.message || 'Login failed',
       };
     } catch (error) {
-      console.error("Login error:", error);
+      console.error('Login error:', error);
       return {
         success: false,
-        error: error.message || "Login failed. Please try again.",
+        error: error.message || 'Login failed. Please try again.',
       };
     }
   }
@@ -101,7 +97,7 @@ class AuthService {
     try {
       await api.logoutSpecialist();
     } catch (error) {
-      console.error("Logout API error:", error);
+      console.error('Logout API error:', error);
     } finally {
       this.clearLocalStorage();
       this.currentUser = null;
@@ -118,7 +114,7 @@ class AuthService {
     if (this.currentUser) {
       return {
         user: this.currentUser,
-        userType: "specialist",
+        userType: 'specialist',
       };
     }
 
@@ -134,7 +130,7 @@ class AuthService {
         };
       }
     } catch (error) {
-      console.error("Error getting current user:", error);
+      console.error('Error getting current user:', error);
     }
 
     return null;
@@ -154,7 +150,7 @@ class AuthService {
    */
   isSpecialist() {
     const current = this.getCurrentUser();
-    return current && current.userType === "specialist";
+    return current && current.userType === 'specialist';
   }
 
   /**
@@ -165,7 +161,7 @@ class AuthService {
     this.currentUser = { ...this.currentUser, ...userData };
     localStorage.setItem(
       STORAGE_KEYS.currentUser,
-      JSON.stringify(this.currentUser)
+      JSON.stringify(this.currentUser),
     );
   }
 
@@ -185,17 +181,13 @@ class AuthService {
    */
   getRedirectPath(userType) {
     const paths = {
-      specialist: "/specialist-dashboard",
-      patient: "/patient-dashboard",
-      nurse: "/nurse-dashboard",
-      admin: "/admin/specialist-dashboard",
+      specialist: '/specialist-dashboard',
+      patient: '/patient-dashboard',
+      nurse: '/nurse-dashboard',
+      admin: '/admin/specialist-dashboard',
     };
-    return paths[userType] || "/dashboard";
+    return paths[userType] || '/dashboard';
   }
-
-  // ==========================================
-  // Validation Helpers
-  // ==========================================
 
   validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -210,37 +202,37 @@ class AuthService {
     const errors = {};
 
     if (!data.firstName?.trim()) {
-      errors.firstName = "First name is required";
+      errors.firstName = 'First name is required';
     }
 
     if (!data.lastName?.trim()) {
-      errors.lastName = "Last name is required";
+      errors.lastName = 'Last name is required';
     }
 
     if (!data.email?.trim()) {
-      errors.email = "Email is required";
+      errors.email = 'Email is required';
     } else if (!this.validateEmail(data.email)) {
-      errors.email = "Please enter a valid email address";
+      errors.email = 'Please enter a valid email address';
     }
 
     if (!data.password) {
-      errors.password = "Password is required";
+      errors.password = 'Password is required';
     } else if (!this.validatePassword(data.password)) {
-      errors.password = "Password must be at least 6 characters long";
+      errors.password = 'Password must be at least 6 characters long';
     }
 
     if (!data.confirmPassword) {
-      errors.confirmPassword = "Please confirm your password";
+      errors.confirmPassword = 'Please confirm your password';
     } else if (data.password !== data.confirmPassword) {
-      errors.confirmPassword = "Passwords do not match";
+      errors.confirmPassword = 'Passwords do not match';
     }
 
     if (!data.specialization?.trim()) {
-      errors.specialization = "Medical specialty is required";
+      errors.specialization = 'Medical specialty is required';
     }
 
     if (!data.prcNumber?.trim()) {
-      errors.prcNumber = "PRC license number is required";
+      errors.prcNumber = 'PRC license number is required';
     }
 
     return {
@@ -250,9 +242,7 @@ class AuthService {
   }
 }
 
-// Create and export singleton instance
 const authService = new AuthService();
 export default authService;
 
-// Also export the class for testing
 export { AuthService };

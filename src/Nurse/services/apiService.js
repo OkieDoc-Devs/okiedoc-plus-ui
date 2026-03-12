@@ -298,6 +298,7 @@ export async function logoutFromAPI() {
 
     if (data.success) {
       localStorage.removeItem("currentUser");
+      localStorage.removeItem("okiedoc_user_type");
       localStorage.removeItem("nurse.id");
       localStorage.removeItem("nurse.email");
       localStorage.removeItem("nurse.firstName");

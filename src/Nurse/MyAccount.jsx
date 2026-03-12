@@ -13,6 +13,7 @@ import {
   uploadNurseAvatar,
   deleteNurseAvatar,
 } from "./services/apiService.js";
+import { usePSGC } from "../hooks/usePSGC";
 import {
   transformProfileFromAPI,
   transformProfileToAPI,
@@ -21,6 +22,7 @@ import {
 
 export default function MyAccount() {
   const navigate = useNavigate();
+  const { regions, provinces, cities, barangays, fetchProvinces, fetchCities, fetchBarangays } = usePSGC();
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -44,6 +46,13 @@ export default function MyAccount() {
     experience: "",
     department: "",
     prcExpiryDate: "",
+    addressLine1: "",
+    addressLine2: "",
+    barangay: "",
+    city: "",
+    province: "",
+    region: "",
+    zipCode: "",
   });
 
   const [formData, setFormData] = useState({ ...userData });
@@ -80,6 +89,34 @@ export default function MyAccount() {
 
     loadProfile();
   }, []);
+
+  // Cascading Address Effects
+  useEffect(() => {
+    if (isEditing && formData.region && regions.length > 0) {
+      const region = regions.find(r => r.name === formData.region);
+      if (region) {
+        fetchProvinces(region.code);
+      }
+    }
+  }, [isEditing, formData.region, regions, fetchProvinces]);
+
+  useEffect(() => {
+    if (isEditing && formData.province && provinces.length > 0) {
+      const province = provinces.find(p => p.name === formData.province);
+      if (province) {
+        fetchCities(province.code);
+      }
+    }
+  }, [isEditing, formData.province, provinces, fetchCities]);
+
+  useEffect(() => {
+    if (isEditing && formData.city && cities.length > 0) {
+      const city = cities.find(c => c.name === formData.city);
+      if (city) {
+        fetchBarangays(city.code);
+      }
+    }
+  }, [isEditing, formData.city, cities, fetchBarangays]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -401,12 +438,180 @@ export default function MyAccount() {
 
         <div className="profile-row">
           <label>Experience:</label>
-          <span>{userData.experience}</span>
+          {isEditing ? (
+            <input
+              type="text"
+              name="experience"
+              value={formData.experience}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.experience}</span>
+          )}
         </div>
 
         <div className="profile-row">
           <label>Department:</label>
-          <span>{userData.department}</span>
+          {isEditing ? (
+            <input
+              type="text"
+              name="department"
+              value={formData.department}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.department}</span>
+          )}
+        </div>
+
+        {/* Address Fields */}
+        <div className="profile-row">
+          <label>Region:</label>
+          {isEditing ? (
+            <select
+              name="region"
+              value={formData.region}
+              onChange={(e) => {
+                const selectedRegion = regions.find(r => r.name === e.target.value);
+                handleInputChange(e);
+                fetchProvinces(selectedRegion?.code);
+                setFormData(prev => ({ ...prev, province: "", city: "", barangay: "" }));
+              }}
+              className="profile-input"
+            >
+              <option value="">Select Region</option>
+              {regions.map((r) => (
+                <option key={r.code} value={r.name}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span>{userData.region}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>Province:</label>
+          {isEditing ? (
+            <select
+              name="province"
+              value={formData.province}
+              onChange={(e) => {
+                const selectedProvince = provinces.find(p => p.name === e.target.value);
+                handleInputChange(e);
+                fetchCities(selectedProvince?.code);
+                setFormData(prev => ({ ...prev, city: "", barangay: "" }));
+              }}
+              className="profile-input"
+              disabled={!formData.region}
+            >
+              <option value="">Select Province</option>
+              {provinces.map((p) => (
+                <option key={p.code} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span>{userData.province}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>City / Municipality:</label>
+          {isEditing ? (
+            <select
+              name="city"
+              value={formData.city}
+              onChange={(e) => {
+                const selectedCity = cities.find(c => c.name === e.target.value);
+                handleInputChange(e);
+                fetchBarangays(selectedCity?.code);
+                setFormData(prev => ({ ...prev, barangay: "" }));
+              }}
+              className="profile-input"
+              disabled={!formData.province}
+            >
+              <option value="">Select City / Municipality</option>
+              {cities.map((c) => (
+                <option key={c.code} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span>{userData.city}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>Barangay:</label>
+          {isEditing ? (
+            <select
+              name="barangay"
+              value={formData.barangay}
+              onChange={handleInputChange}
+              className="profile-input"
+              disabled={!formData.city}
+            >
+              <option value="">Select Barangay</option>
+              {barangays.map((b) => (
+                <option key={b.code} value={b.name}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span>{userData.barangay}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>Zip Code:</label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="zipCode"
+              value={formData.zipCode}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.zipCode}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>Address Line 1:</label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="addressLine1"
+              value={formData.addressLine1}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.addressLine1}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>Address Line 2:</label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="addressLine2"
+              value={formData.addressLine2}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.addressLine2}</span>
+          )}
         </div>
       </div>
 

@@ -2,11 +2,13 @@ import "./auth.css";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { usePSGC } from "../hooks/usePSGC";
 import { apiRequest } from "../api/apiClient";
 
 
 export default function SpecialistRegistration() {
   const navigate = useNavigate();
+  const { regions, provinces, cities, barangays, fetchProvinces, fetchCities, fetchBarangays } = usePSGC();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -21,6 +23,13 @@ export default function SpecialistRegistration() {
     s2Number: "",
     ptrNumber: "",
     mobileNumber: "",
+    barangay: "",
+    city: "",
+    province: "",
+    region: "",
+    zipCode: "",
+    addressLine1: "",
+    addressLine2: "",
   });
   const [eSignatureFile, setESignatureFile] = useState(null);
   const [errors, setErrors] = useState({});
@@ -84,6 +93,13 @@ export default function SpecialistRegistration() {
       if (formData.prcExpiryDate) payload.append("prcExpiryDate", formData.prcExpiryDate);
       if (formData.s2Number) payload.append("s2Number", formData.s2Number);
       if (formData.ptrNumber) payload.append("ptrNumber", formData.ptrNumber);
+      if (formData.barangay) payload.append("barangay", formData.barangay);
+      if (formData.city) payload.append("city", formData.city);
+      if (formData.province) payload.append("province", formData.province);
+      if (formData.region) payload.append("region", formData.region);
+      if (formData.zipCode) payload.append("zipCode", formData.zipCode);
+      if (formData.addressLine1) payload.append("addressLine1", formData.addressLine1);
+      if (formData.addressLine2) payload.append("addressLine2", formData.addressLine2);
       if (eSignatureFile) payload.append("eSignature", eSignatureFile);
 
       const result = await apiRequest("/api/v1/specialist/register", {
@@ -108,6 +124,13 @@ export default function SpecialistRegistration() {
           s2Number: "",
           ptrNumber: "",
           mobileNumber: "",
+          barangay: "",
+          city: "",
+          province: "",
+          region: "",
+          zipCode: "",
+          addressLine1: "",
+          addressLine2: "",
         });
         setESignatureFile(null);
       } else {
@@ -316,6 +339,146 @@ export default function SpecialistRegistration() {
             />
             {errors.mobileNumber && (
               <span className="error-message">{errors.mobileNumber}</span>
+            )}
+
+            <label className="login-label" htmlFor="region">
+              Region
+            </label>
+            <select
+              className={`login-input ${errors.region ? "error" : ""}`}
+              id="region"
+              value={formData.region}
+              onChange={(e) => {
+                const selectedRegion = regions.find(r => r.name === e.target.value);
+                handleInputChange(e);
+                fetchProvinces(selectedRegion?.code);
+                setFormData(prev => ({ ...prev, province: "", city: "", barangay: "" }));
+              }}
+            >
+              <option value="">Select Region</option>
+              {regions.map((r) => (
+                <option key={r.code} value={r.name}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+            {errors.region && (
+              <span className="error-message">{errors.region}</span>
+            )}
+
+            <label className="login-label" htmlFor="province">
+              Province
+            </label>
+            <select
+              className={`login-input ${errors.province ? "error" : ""}`}
+              id="province"
+              value={formData.province}
+              onChange={(e) => {
+                const selectedProvince = provinces.find(p => p.name === e.target.value);
+                handleInputChange(e);
+                fetchCities(selectedProvince?.code);
+                setFormData(prev => ({ ...prev, city: "", barangay: "" }));
+              }}
+              disabled={!formData.region}
+            >
+              <option value="">Select Province</option>
+              {provinces.map((p) => (
+                <option key={p.code} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            {errors.province && (
+              <span className="error-message">{errors.province}</span>
+            )}
+
+            <label className="login-label" htmlFor="city">
+              City / Municipality
+            </label>
+            <select
+              className={`login-input ${errors.city ? "error" : ""}`}
+              id="city"
+              value={formData.city}
+              onChange={(e) => {
+                const selectedCity = cities.find(c => c.name === e.target.value);
+                handleInputChange(e);
+                fetchBarangays(selectedCity?.code);
+                setFormData(prev => ({ ...prev, barangay: "" }));
+              }}
+              disabled={!formData.province}
+            >
+              <option value="">Select City / Municipality</option>
+              {cities.map((c) => (
+                <option key={c.code} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            {errors.city && (
+              <span className="error-message">{errors.city}</span>
+            )}
+
+            <label className="login-label" htmlFor="barangay">
+              Barangay
+            </label>
+            <select
+              className={`login-input ${errors.barangay ? "error" : ""}`}
+              id="barangay"
+              value={formData.barangay}
+              onChange={handleInputChange}
+              disabled={!formData.city}
+            >
+              <option value="">Select Barangay</option>
+              {barangays.map((b) => (
+                <option key={b.code} value={b.name}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+            {errors.barangay && (
+              <span className="error-message">{errors.barangay}</span>
+            )}
+
+            <label className="login-label" htmlFor="addressLine1">
+              Address Line 1 (House No., Street)
+            </label>
+            <input
+              className={`login-input ${errors.addressLine1 ? "error" : ""}`}
+              id="addressLine1"
+              type="text"
+              placeholder="Enter your address line 1"
+              value={formData.addressLine1}
+              onChange={handleInputChange}
+            />
+            {errors.addressLine1 && (
+              <span className="error-message">{errors.addressLine1}</span>
+            )}
+
+            <label className="login-label" htmlFor="addressLine2">
+              Address Line 2 (Apartment, Suite, Unit)
+            </label>
+            <input
+              className="login-input"
+              id="addressLine2"
+              type="text"
+              placeholder="Enter your address line 2 (optional)"
+              value={formData.addressLine2}
+              onChange={handleInputChange}
+            />
+
+            <label className="login-label" htmlFor="zipCode">
+              Zip Code
+            </label>
+            <input
+              className={`login-input ${errors.zipCode ? "error" : ""}`}
+              id="zipCode"
+              type="text"
+              placeholder="Enter your zip code"
+              value={formData.zipCode}
+              onChange={handleInputChange}
+            />
+            {errors.zipCode && (
+              <span className="error-message">{errors.zipCode}</span>
             )}
 
             <label className="login-label" htmlFor="password">

@@ -8,84 +8,38 @@ import {
   downloadMedicalCertificatePDF,
   sendToEmail,
 } from "./pdfHelpers";
-import "./ConsultationHistory.css";
+import "./ConsultationHistory.css"; 
 
-const ITEMS_PER_PAGE = 10;
-
-const ConsultationHistory = ({ consultations = [] }) => {
+const ConsultationHistory = ({ consultations = [], toolbar }) => {
   const [selectedConsultation, setSelectedConsultation] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
 
-  const normalizedConsultations = useMemo(() => {
-    return consultations.map(c => ({
-      ...c,
-      status: c.status || "Completed"
-    }));
-  }, [consultations]);
-
-  // Helper to determine status badge class
-  const getStatusBadgeClass = (status) => {
-    const s = (status || "").toLowerCase();
-    switch (s) {
-      case "confirmed":
-      case "completed":
-      case "done":
-        return "ch-status-completed";
-      case "pending":
-        return "ch-status-pending";
-      case "processing":
-        return "ch-status-processing";
-      case "cancelled":
-        return "ch-status-cancelled";
-      default:
-        return "ch-status-default";
-    }
-  };
-
-  const filteredConsultations = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    return normalizedConsultations.filter(
-      (c) =>
-        (c.patientName?.toLowerCase().includes(q) || false) ||
-        (c.ticket?.toLowerCase().includes(q) || false) ||
-        (c.specialistName?.toLowerCase().includes(q) || false) ||
-        (c.status?.toLowerCase().includes(q) || false)
-    );
-  }, [normalizedConsultations, searchQuery]);
-
   const sortedConsultations = useMemo(() => {
-    const sorted = [...filteredConsultations];
-    if (sortConfig.key) {
-      sorted.sort((a, b) => {
-        const aVal = a[sortConfig.key] || "";
-        const bVal = b[sortConfig.key] || "";
+    let sortable = [...consultations];
+    if (sortConfig.key !== null) {
+      sortable.sort((a, b) => {
+        let aVal = a[sortConfig.key] || "";
+        let bVal = b[sortConfig.key] || "";
+        
+        if (sortConfig.key === 'date') {
+          aVal = new Date(aVal).getTime() || 0;
+          bVal = new Date(bVal).getTime() || 0;
+        } else if (typeof aVal === 'string') {
+          aVal = aVal.toLowerCase();
+          bVal = String(bVal).toLowerCase();
+        }
+
         if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
         if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
       });
     }
-    return sorted;
-  }, [filteredConsultations, sortConfig]);
-
-  const totalPages = Math.ceil(sortedConsultations.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const currentConsultations = sortedConsultations.slice(
-    startIndex,
-    startIndex + ITEMS_PER_PAGE
-  );
-
-  const goToPage = (page) => {
-    if (page < 1 || page > totalPages) return;
-    setCurrentPage(page);
-  };
+    return sortable;
+  }, [consultations, sortConfig]);
 
   const requestSort = (key) => {
     let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
+    if (sortConfig.key === key && sortConfig.direction === "asc") direction = "desc";
     setSortConfig({ key, direction });
   };
 
@@ -95,145 +49,168 @@ const ConsultationHistory = ({ consultations = [] }) => {
   };
 
   return (
-    <div className="tab-content active">
-      <div className="consultation-history-container">
-        <h1>Historical Ticket Table</h1>
+    <div id="consultations" className="tab-content active">
+      <div style={{ paddingBottom: '12px', borderBottom: '1px solid #e2e8f0', marginBottom: '15px' }}>
+         <h2 style={{ margin: 0, padding: 0, border: 'none' }}>Consultation History</h2>
+      </div>
+      
+      {toolbar}
 
-        <div className="ch-toolbar">
-          <input
-            type="text"
-            placeholder="Search by patient, ticket, specialist, or status..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="ch-search-input"
-          />
-        </div>
-
-        <div className="ch-table-wrapper">
-          <table className="ch-table">
-            <thead>
-              <tr>
-                <th onClick={() => requestSort("date")}>Date{getSortIndicator("date")}</th>
-                <th onClick={() => requestSort("ticket")}>Ticket ID{getSortIndicator("ticket")}</th>
-                <th onClick={() => requestSort("patientName")}>Patient Name{getSortIndicator("patientName")}</th>
-                <th>Chief Complaint</th>
-                <th onClick={() => requestSort("specialistName")}>Specialist{getSortIndicator("specialistName")}</th>
-                <th onClick={() => requestSort("status")}>Status{getSortIndicator("status")}</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentConsultations.length > 0 ? (
-                currentConsultations.map((c, idx) => (
-                  <tr key={c.id || idx}>
-                    <td>{c.date || "—"}</td>
-                    
-                    {/* TICKET ID HYPERLINK */}
-                    <td className="ch-ticket-id">
-                      <Link 
-                        to={`/admin/ticket/${c.ticket || c.id}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="ticket-link"
-                        style={{ color: '#0B5388', textDecoration: 'underline', cursor: 'pointer' }}
-                      >
-                        {c.ticket || c.id || "—"}
-                      </Link>
-                    </td>
-
-                    <td>{c.patientName || "—"}</td>
-                    <td>{c.chiefComplaint || "—"}</td>
-                    <td>{c.specialistName || "Unassigned"}</td>
-                    <td>
-                      <span className={`ch-status-badge ${getStatusBadgeClass(c.status)}`}>
-                        {c.status}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="ch-table-actions">
-                        <button className="ch-action-btn view" onClick={() => setSelectedConsultation(c)}>View</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} style={{ padding: 0, border: 'none' }}>
-                    <EmptyState 
-                      type="search" 
-                      message="No Tickets Found" 
-                      subMessage={searchQuery ? `No results found for "${searchQuery}"` : "There are no historical tickets available to display."}
-                    />
+      <div className="table-wrapper">
+        <table className="dashboard-table">
+          <thead>
+            <tr>
+              <th onClick={() => requestSort("date")} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Date{getSortIndicator("date")}
+              </th>
+              <th onClick={() => requestSort("ticket")} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Ticket ID{getSortIndicator("ticket")}
+              </th>
+              <th onClick={() => requestSort("patientName")} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Patient Name{getSortIndicator("patientName")}
+              </th>
+              <th onClick={() => requestSort("chiefComplaint")} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Chief Complaint{getSortIndicator("chiefComplaint")}
+              </th>
+              <th onClick={() => requestSort("specialistName")} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Specialist{getSortIndicator("specialistName")}
+              </th>
+              <th onClick={() => requestSort("status")} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Status{getSortIndicator("status")}
+              </th>
+              <th onClick={() => requestSort("barangay")} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Location (Brgy, City){getSortIndicator("barangay")}
+              </th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedConsultations.length > 0 ? (
+              sortedConsultations.map((c, idx) => (
+                <tr key={c.id || idx}>
+                  <td>{c.date ? new Date(c.date).toLocaleDateString() : "—"}</td>
+                  <td>
+                    <Link 
+                      to={`/admin/ticket/${c.ticket || c.id}`} 
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ color: '#0B5388', textDecoration: 'underline', cursor: 'pointer', fontWeight: '500' }}
+                    >
+                      {c.ticket || c.id || "—"}
+                    </Link>
+                  </td>
+                  <td>{c.patientName || "—"}</td>
+                  <td>{c.chiefComplaint || "—"}</td>
+                  <td>{c.specialistName || "Unassigned"}</td>
+                  <td>{c.status || "Completed"}</td>
+                  <td>{c.barangay ? `${c.barangay}, ${c.city || ''}` : "—"}</td>
+                  <td>
+                    <button className="action-btn btn-primary" onClick={() => setSelectedConsultation(c)}>
+                      View
+                    </button>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={8} style={{ padding: '30px', border: 'none', textAlign: 'center', color: '#64748b' }}>
+                  No tickets found matching your filters.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-        {totalPages > 1 && (
-          <div className="ch-pagination">
-            <button onClick={() => goToPage(1)} disabled={currentPage === 1}>{"<<"}</button>
-            <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>{"<"}</button>
-            <span>Page {currentPage} of {totalPages}</span>
-            <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>{">"}</button>
-            <button onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages}>{">>"}</button>
-          </div>
-        )}
-
-        {selectedConsultation && (
-          <div className="ch-modal-overlay" onClick={() => setSelectedConsultation(null)}>
-            <div className="ch-modal-content" onClick={(e) => e.stopPropagation()}>
-              <div className="ch-modal-header">
-                <h2>Ticket Details</h2>
-                <button onClick={() => setSelectedConsultation(null)} className="ch-modal-close-btn">✕</button>
+      {/* UX FIX: Unified Overlay for Ticket Details */}
+      {selectedConsultation && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setSelectedConsultation(null)}>
+          <div style={{ maxWidth: '800px', width: '95%', maxHeight: '90vh', overflowY: 'auto', backgroundColor: '#fff', borderRadius: '8px', padding: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '15px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#0B5388' }}>Ticket Details</h2>
+              <button onClick={() => setSelectedConsultation(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#7f8c8d' }}>✕</button>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', textAlign: 'left', backgroundColor: '#f9fbfd', padding: '20px', borderRadius: '8px', border: '1px solid #e1e8ed' }}>
+              
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ticket ID</span>
+                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '600' }}>{selectedConsultation.ticket || selectedConsultation.id}</span>
               </div>
-              <div className="ch-modal-body">
-                <div className="ch-modal-section">
-                  <h3>Patient & Ticket Info</h3>
-                  <div className="ch-info-grid">
-                    <p><strong>Ticket ID:</strong> {selectedConsultation.ticket || selectedConsultation.id}</p>
-                    <p><strong>Status:</strong> <span className={`ch-status-badge ${getStatusBadgeClass(selectedConsultation.status)}`}>{selectedConsultation.status}</span></p>
-                    <p><strong>Patient:</strong> {selectedConsultation.patientName}</p>
-                    <p><strong>Date:</strong> {selectedConsultation.date}</p>
-                    <p><strong>Assigned Specialist:</strong> {selectedConsultation.specialistName || "Unassigned"}</p>
-                  </div>
-                </div>
 
-                <div className="ch-modal-section">
-                  <h3>Medical Information</h3>
-                  <p><strong>Chief Complaint:</strong> {selectedConsultation.chiefComplaint || "N/A"}</p>
-                  <p><strong>Symptoms:</strong> {selectedConsultation.symptoms || "N/A"}</p>
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</span>
+                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '600', textTransform: 'uppercase' }}>{selectedConsultation.status}</span>
+              </div>
 
-                <div className="ch-modal-section">
-                  <h3>SOAP Notes</h3>
-                  <ul className="ch-soap-list">
-                    <li><strong>Subjective:</strong> {selectedConsultation.soap?.subjective || "N/A"}</li>
-                    <li><strong>Objective:</strong> {selectedConsultation.soap?.objective || "N/A"}</li>
-                    <li><strong>Assessment:</strong> {selectedConsultation.soap?.assessment || "N/A"}</li>
-                    <li><strong>Plan:</strong> {selectedConsultation.soap?.plan || "N/A"}</li>
-                  </ul>
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Patient Name</span>
+                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>{selectedConsultation.patientName}</span>
+              </div>
 
-                <div className="ch-modal-section">
-                  <h3>Actions</h3>
-                  <div className="ch-modal-actions">
-                    <button className="ch-modal-action-btn treatment" onClick={() => downloadTreatmentPlanPDF(selectedConsultation)}>Download Treatment Plan</button>
-                    <button className="ch-modal-action-btn prescription" onClick={() => downloadPrescriptionPDF(selectedConsultation)}>Download Prescription</button>
-                    <button className="ch-modal-action-btn lab" onClick={() => downloadLabRequestPDF(selectedConsultation)}>Download Lab Request</button>
-                    <button className="ch-modal-action-btn certificate" onClick={() => downloadMedicalCertificatePDF(selectedConsultation)}>Download Medical Certificate</button>
-                    <button className="ch-modal-action-btn email" onClick={() => sendToEmail(selectedConsultation)}>Send to Email</button>
-                  </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned Specialist</span>
+                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>{selectedConsultation.specialistName || "Unassigned"}</span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date</span>
+                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>{selectedConsultation.date ? new Date(selectedConsultation.date).toLocaleDateString() : "N/A"}</span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Location</span>
+                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>{selectedConsultation.barangay ? `${selectedConsultation.barangay}, ${selectedConsultation.city || ''}` : "N/A"}</span>
+              </div>
+
+              <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #e1e8ed', paddingTop: '15px', marginTop: '5px' }}>
+                <h3 style={{ fontSize: '14px', color: '#0B5388', textTransform: 'uppercase', margin: '0 0 15px 0' }}>Medical Information</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Chief Complaint</span>
+                  <span style={{ fontSize: '16px', color: '#2c3e50' }}>{selectedConsultation.chiefComplaint || "N/A"}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Symptoms</span>
+                  <span style={{ fontSize: '16px', color: '#2c3e50' }}>{selectedConsultation.symptoms || "N/A"}</span>
                 </div>
               </div>
+
+              <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #e1e8ed', paddingTop: '15px', marginTop: '5px' }}>
+                <h3 style={{ fontSize: '14px', color: '#0B5388', textTransform: 'uppercase', margin: '0 0 15px 0' }}>SOAP Notes</h3>
+                <ul className="ch-soap-list" style={{ padding: 0, margin: 0, listStyle: 'none', display: 'grid', gap: '10px' }}>
+                  <li style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Subjective</span>
+                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.soap?.subjective || "N/A"}</span>
+                  </li>
+                  <li style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Objective</span>
+                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.soap?.objective || "N/A"}</span>
+                  </li>
+                  <li style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assessment</span>
+                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.soap?.assessment || "N/A"}</span>
+                  </li>
+                  <li style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Plan</span>
+                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.soap?.plan || "N/A"}</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #e1e8ed', paddingTop: '15px', marginTop: '5px' }}>
+                 <h3 style={{ fontSize: '14px', color: '#0B5388', textTransform: 'uppercase', margin: '0 0 15px 0' }}>Actions</h3>
+                 <div className="ch-modal-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                   <button className="action-btn btn-primary" onClick={() => downloadTreatmentPlanPDF(selectedConsultation)}>Download Treatment Plan</button>
+                   <button className="action-btn btn-success" onClick={() => downloadPrescriptionPDF(selectedConsultation)}>Download Prescription</button>
+                   <button className="action-btn" style={{ backgroundColor: '#f1c40f', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => downloadLabRequestPDF(selectedConsultation)}>Download Lab Request</button>
+                   <button className="action-btn" style={{ backgroundColor: '#9b59b6', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => downloadMedicalCertificatePDF(selectedConsultation)}>Download Medical Certificate</button>
+                   <button className="action-btn btn-danger" onClick={() => sendToEmail(selectedConsultation)}>Send to Email</button>
+                 </div>
+              </div>
+
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

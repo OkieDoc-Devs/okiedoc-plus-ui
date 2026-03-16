@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { sanitizeInput } from '../../Specialists/utils/validationUtils';
 import EmptyState from '../Components/EmptyState';
-import Modal from '../Components/Modal';
 import './UserTable.css';
 
 const ReadOnlyRow = ({ user, onView, onEdit, onDelete }) => {
   return (
     <tr>
+      <td>{user.id}</td>
       <td>{user.firstName}</td>
       <td>{user.lastName}</td>
       <td>{user.email}</td>
       <td>{user.mobileNumber}</td>
-      <td>{user.subscription}</td>
+      <td>{user.subscription || 'Free'}</td>
+      <td>{user.barangay ? `${user.barangay}, ${user.city || ''}` : 'N/A'}</td>
       <td className="user-table-actions">
         <button className="action-btn btn-view" onClick={() => onView(user)}>View</button>
         <button className="action-btn btn-edit" onClick={() => onEdit(user)}>Edit</button>
@@ -21,56 +22,27 @@ const ReadOnlyRow = ({ user, onView, onEdit, onDelete }) => {
   );
 };
 
-/**
- * A row component that is editable.
- */
 const EditableRow = ({ editableUserData, onUserDataChange, onSave, onCancel }) => {
   return (
     <tr className="editable-row">
+      <td style={{ verticalAlign: 'middle', fontWeight: '500' }}>{editableUserData.id}</td>
       <td>
-        <input
-          type="text"
-          name="firstName"
-          value={editableUserData.firstName}
-          onChange={onUserDataChange}
-          placeholder="First Name"
-        />
+        <input type="text" name="firstName" value={editableUserData.firstName} onChange={onUserDataChange} placeholder="First Name" />
       </td>
       <td>
-        <input
-          type="text"
-          name="lastName"
-          value={editableUserData.lastName}
-          onChange={onUserDataChange}
-          placeholder="Last Name"
-        />
+        <input type="text" name="lastName" value={editableUserData.lastName} onChange={onUserDataChange} placeholder="Last Name" />
       </td>
       <td>
-        <input
-          type="email"
-          name="email"
-          value={editableUserData.email}
-          onChange={onUserDataChange}
-          placeholder="Email Address"
-        />
+        <input type="email" name="email" value={editableUserData.email} onChange={onUserDataChange} placeholder="Email Address" />
       </td>
       <td>
-        <input
-          type="text"
-          name="mobileNumber"
-          value={editableUserData.mobileNumber}
-          onChange={onUserDataChange}
-          placeholder="Mobile Number"
-        />
+        <input type="text" name="mobileNumber" value={editableUserData.mobileNumber} onChange={onUserDataChange} placeholder="Mobile Number" />
       </td>
       <td>
-        <input
-          type="text"
-          name="subscription"
-          value={editableUserData.subscription}
-          onChange={onUserDataChange}
-          placeholder="Subscription"
-        />
+        <input type="text" name="subscription" value={editableUserData.subscription} onChange={onUserDataChange} placeholder="Subscription" />
+      </td>
+      <td>
+        {editableUserData.barangay ? `${editableUserData.barangay}, ${editableUserData.city || ''}` : 'N/A'}
       </td>
       <td className="user-table-actions">
         <button className="action-btn btn-save" onClick={onSave}>Submit</button>
@@ -80,22 +52,51 @@ const EditableRow = ({ editableUserData, onUserDataChange, onSave, onCancel }) =
   );
 };
 
-const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff }) => {
+const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff, toolbar }) => {
   const [editingRowId, setEditingRowId] = useState(null);
   const [editableUserData, setEditableUserData] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [staffForm, setStaffForm] = useState({
-    firstName: "",
-    lastName: "",
-    middleName: "",
-    email: "",
-    password: "",
-    mobileNumber: "",
-    role: "nurse",
-    licenseNumber: "",
-    prcExpiryDate: ""
+    firstName: "", lastName: "", middleName: "", email: "", password: "",
+    mobileNumber: "", role: "nurse", licenseNumber: "", prcExpiryDate: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [sortConfig, setSortConfig] = useState({ key: 'firstName', direction: 'asc' });
+
+  const sortedUsers = useMemo(() => {
+    let sortable = [...users];
+    if (sortConfig.key !== null) {
+      sortable.sort((a, b) => {
+        let aVal = a[sortConfig.key];
+        let bVal = b[sortConfig.key];
+
+        if (aVal == null) aVal = '';
+        if (bVal == null) bVal = '';
+
+        if (typeof aVal === 'string') {
+          aVal = aVal.toLowerCase();
+          bVal = String(bVal).toLowerCase();
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortable;
+  }, [users, sortConfig]);
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIndicator = (key) => {
+    if (sortConfig.key !== key) return null;
+    return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
+  };
 
   const handleStaffFormChange = (e) => {
     const { name, value } = e.target;
@@ -118,15 +119,8 @@ const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff }) =>
       }
       setShowAddModal(false);
       setStaffForm({
-        firstName: "",
-        lastName: "",
-        middleName: "",
-        email: "",
-        password: "",
-        mobileNumber: "",
-        role: "nurse",
-        licenseNumber: "",
-        prcExpiryDate: ""
+        firstName: "", lastName: "", middleName: "", email: "", password: "",
+        mobileNumber: "", role: "nurse", licenseNumber: "", prcExpiryDate: ""
       });
     } catch (error) {
       alert(error.message || "Failed to create staff.");
@@ -162,27 +156,46 @@ const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff }) =>
   return (
     <>
       <div id="user-management" className="tab-content active">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2>User Management (Patients & Nurses)</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0', marginBottom: '15px' }}>
+          <h2 style={{ margin: 0, padding: 0, border: 'none' }}>User Management (Patients & Nurses)</h2>
           <button className="btn-primary" onClick={() => setShowAddModal(true)}>
             + Add Staff
           </button>
         </div>
+
+        {toolbar}
+
         <div className="table-wrapper">
           <table className="dashboard-table user-table">
             <thead>
               <tr>
-                <th>First Name</th>
-                <th>Last Name</th>
-                <th>Email Address</th>
-                <th>Mobile Number</th>
-                <th>Subscription</th>
+                <th onClick={() => requestSort('id')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  UID{getSortIndicator('id')}
+                </th>
+                <th onClick={() => requestSort('firstName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  First Name{getSortIndicator('firstName')}
+                </th>
+                <th onClick={() => requestSort('lastName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Last Name{getSortIndicator('lastName')}
+                </th>
+                <th onClick={() => requestSort('email')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Email Address{getSortIndicator('email')}
+                </th>
+                <th onClick={() => requestSort('mobileNumber')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Mobile Number{getSortIndicator('mobileNumber')}
+                </th>
+                <th onClick={() => requestSort('subscription')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Subscription{getSortIndicator('subscription')}
+                </th>
+                <th onClick={() => requestSort('barangay')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Location (Brgy, City){getSortIndicator('barangay')}
+                </th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {users.length > 0 ? (
-                users.map(user => (
+              {sortedUsers.length > 0 ? (
+                sortedUsers.map(user => (
                   <React.Fragment key={user.id}>
                     {editingRowId === user.id ? (
                       <EditableRow
@@ -203,12 +216,8 @@ const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff }) =>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" style={{ padding: 0, border: 'none' }}>
-                    <EmptyState
-                      type="users"
-                      message="No Users Found"
-                      subMessage="There are currently no registered patients or nurses matching your search criteria."
-                    />
+                  <td colSpan="8" style={{ padding: '30px', border: 'none', textAlign: 'center', color: '#64748b' }}>
+                    No users found matching your filters.
                   </td>
                 </tr>
               )}
@@ -217,62 +226,69 @@ const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff }) =>
         </div>
       </div>
 
+      {/* UX FIX: Unified Overlay for Add Staff Modal */}
       {showAddModal && (
-        <Modal title="Create New Staff" onClose={() => setShowAddModal(false)}>
-          <div id="modal-body" className="form-grid">
-            <div className="input-group full-width">
-              <label>Role</label>
-              <select name="role" value={staffForm.role} onChange={handleStaffFormChange} className="input-md">
-                <option value="nurse">Nurse</option>
-                <option value="admin">Admin</option>
-              </select>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowAddModal(false)}>
+          <div style={{ maxWidth: '600px', width: '95%', maxHeight: '90vh', overflowY: 'auto', backgroundColor: '#fff', borderRadius: '8px', padding: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '15px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#0B5388' }}>Create New Staff</h2>
+              <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#7f8c8d' }}>✕</button>
             </div>
-            <div className="input-group">
-              <label>First Name</label>
-              <input type="text" name="firstName" value={staffForm.firstName} onChange={handleStaffFormChange} className="input-md" />
+
+            <div className="form-grid" style={{ paddingRight: '10px' }}>
+              <div className="input-group full-width">
+                <label>Role</label>
+                <select name="role" value={staffForm.role} onChange={handleStaffFormChange} className="input-md">
+                  <option value="nurse">Nurse</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="input-group">
+                <label>First Name</label>
+                <input type="text" name="firstName" value={staffForm.firstName} onChange={handleStaffFormChange} className="input-md" />
+              </div>
+              <div className="input-group">
+                <label>Last Name</label>
+                <input type="text" name="lastName" value={staffForm.lastName} onChange={handleStaffFormChange} className="input-md" />
+              </div>
+              <div className="input-group">
+                <label>Middle Name (Optional)</label>
+                <input type="text" name="middleName" value={staffForm.middleName} onChange={handleStaffFormChange} className="input-md" />
+              </div>
+              <div className="input-group">
+                <label>Email Address</label>
+                <input type="email" name="email" value={staffForm.email} onChange={handleStaffFormChange} className="input-md" />
+              </div>
+              <div className="input-group">
+                <label>Mobile Number</label>
+                <input type="text" name="mobileNumber" value={staffForm.mobileNumber} onChange={handleStaffFormChange} className="input-md" />
+              </div>
+              <div className="input-group">
+                <label>Password</label>
+                <input type="password" name="password" value={staffForm.password} onChange={handleStaffFormChange} className="input-md" />
+              </div>
+              {staffForm.role === 'nurse' && (
+                <>
+                  <div className="input-group">
+                    <label>License Number</label>
+                    <input type="text" name="licenseNumber" value={staffForm.licenseNumber} onChange={handleStaffFormChange} className="input-md" />
+                  </div>
+                  <div className="input-group">
+                    <label>PRC Expiry Date</label>
+                    <input type="date" name="prcExpiryDate" value={staffForm.prcExpiryDate} onChange={handleStaffFormChange} className="input-md" />
+                  </div>
+                </>
+              )}
             </div>
-            <div className="input-group">
-              <label>Last Name</label>
-              <input type="text" name="lastName" value={staffForm.lastName} onChange={handleStaffFormChange} className="input-md" />
+            
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button className="action-btn btn-primary" onClick={() => setShowAddModal(false)} disabled={isSubmitting}>Cancel</button>
+              <button className="action-btn btn-success" onClick={submitStaffForm} disabled={isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create Staff"}
+              </button>
             </div>
-            <div className="input-group">
-              <label>Middle Name (Optional)</label>
-              <input type="text" name="middleName" value={staffForm.middleName} onChange={handleStaffFormChange} className="input-md" />
-            </div>
-            <div className="input-group">
-              <label>Email Address</label>
-              <input type="email" name="email" value={staffForm.email} onChange={handleStaffFormChange} className="input-md" />
-            </div>
-            <div className="input-group">
-              <label>Mobile Number</label>
-              <input type="text" name="mobileNumber" value={staffForm.mobileNumber} onChange={handleStaffFormChange} className="input-md" />
-            </div>
-            <div className="input-group">
-              <label>Password</label>
-              <input type="password" name="password" value={staffForm.password} onChange={handleStaffFormChange} className="input-md" />
-            </div>
-            {staffForm.role === 'nurse' && (
-              <>
-                <div className="input-group">
-                  <label>License Number</label>
-                  <input type="text" name="licenseNumber" value={staffForm.licenseNumber} onChange={handleStaffFormChange} className="input-md" />
-                </div>
-                <div className="input-group">
-                  <label>PRC Expiry Date</label>
-                  <input type="date" name="prcExpiryDate" value={staffForm.prcExpiryDate} onChange={handleStaffFormChange} className="input-md" />
-                </div>
-              </>
-            )}
           </div>
-          <div className="modal-actions" style={{ marginTop: '20px' }}>
-            <button className="action-btn btn-primary" onClick={() => setShowAddModal(false)} disabled={isSubmitting}>
-              Cancel
-            </button>
-            <button className="action-btn btn-success" onClick={submitStaffForm} disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Staff"}
-            </button>
-          </div>
-        </Modal>
+        </div>
       )}
     </>
   );

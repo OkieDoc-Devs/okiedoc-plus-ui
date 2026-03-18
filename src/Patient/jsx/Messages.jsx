@@ -14,11 +14,10 @@ import { useSearchParams } from "react-router-dom";
 import { useChat } from "../services/chatService";
 import {
   isAllowedFileType,
-  getMaxFileSize,
   formatFileSize,
   getUserTypeLabel,
 } from "../services/chatService";
-import SpecialistCall from "../../Specialists/SpecialistCall.jsx";
+import JitsiMeetCall from "../../components/VideoCall/JitsiMeetCall.jsx";
 
 const Messages = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,6 +80,7 @@ const Messages = () => {
     searchUsers,
     getAllUsers,
     loadConversations,
+    isCallActive,
   } = useChat({ currentUserId, currentUserType: "p" });
 
   useEffect(() => {
@@ -89,17 +89,28 @@ const Messages = () => {
     }
   }, [chatMessages, activeConversation]);
 
+  const startNewChatFlow = useCallback(async (userId) => {
+    try {
+      await startConversation("direct", userId);
+      setShowNewChatModal(false);
+      setUserSearchQuery("");
+      setUserSearchResults([]);
+    } catch (error) {
+      console.error("Error starting new chat:", error);
+    }
+  }, [startConversation]);
+
   useEffect(() => {
     if (userIdFromUrl && !chatLoading && conversations) {
       const targetId = parseInt(userIdFromUrl, 10);
       if (!isNaN(targetId)) {
-        handleStartNewChat(targetId);
+        startNewChatFlow(targetId);
         searchParams.delete('userId');
         setSearchParams(searchParams, { replace: true });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userIdFromUrl, chatLoading, conversations.length, handleStartNewChat, searchParams, setSearchParams]);
+  }, [userIdFromUrl, chatLoading, conversations.length, startNewChatFlow, searchParams, setSearchParams]);
 
   const handleUserSearch = useCallback(
     async (query) => {
@@ -135,17 +146,6 @@ const Messages = () => {
     }, 300);
     return () => clearTimeout(timer);
   }, [userSearchQuery, handleUserSearch, showNewChatModal]);
-
-  const handleStartNewChat = async (userId) => {
-    try {
-      await startConversation("direct", userId);
-      setShowNewChatModal(false);
-      setUserSearchQuery("");
-      setUserSearchResults([]);
-    } catch (error) {
-      console.error("Error starting new chat:", error);
-    }
-  };
 
   const openChat = (conversation) => {
     openConversation(conversation);
@@ -457,16 +457,27 @@ const Messages = () => {
                 {chatMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={`message ${message.isSent ? "own-message" : "other-message"
-                      } message-type-${message.sender}`}
+                    className={(message.sender === "system" || message.isSystem) 
+                      ? "system-message" 
+                      : `message ${message.isSent ? "own-message" : "other-message"} message-type-${message.sender}`
+                    }
                   >
-                    {message.sender === "system" ? (
-                      <div className="system-message">
+                    {message.sender === "system" || message.isSystem ? (
+                      <>
                         <p className="message-text">{message.text}</p>
                         {message.subtext && (
                           <p className="message-subtext">{message.subtext}</p>
                         )}
-                      </div>
+                        {message.text && message.text.includes("started a secure consultation call") && isCallActive && (
+                          <button 
+                            className="btn-primary join-call-btn" 
+                            style={{ marginTop: '8px', padding: '6px 12px', fontSize: '0.85rem' }}
+                            onClick={() => handleVideoCallClick()}
+                          >
+                            <FaVideo style={{ marginRight: '6px' }}/> Join Call
+                          </button>
+                        )}
+                      </>
                     ) : (
                       <>
                         {!message.isSent && (
@@ -483,6 +494,12 @@ const Messages = () => {
                         )}
 
                         <div className="message-bubble-wrapper">
+                          {/* Sender name label — shown above received messages in group chats, like Messenger */}
+                          {!message.isSent && message.senderName && (
+                            <span className="patient-message-sender-name">
+                              {message.senderName}
+                            </span>
+                          )}
                           <div className="message-content">
                             {message.messageType === "file" ||
                               message.messageType === "image" ? (
@@ -627,7 +644,7 @@ const Messages = () => {
                   <div
                     key={user.Id || user.id}
                     className="user-result-item"
-                    onClick={() => handleStartNewChat(user.Id || user.id)}
+                    onClick={() => startNewChatFlow(user.Id || user.id)}
                   >
                     <div className="user-avatar">
                       {user.avatar ? (
@@ -672,16 +689,23 @@ const Messages = () => {
       )}
 
       {showVideoCall && activeConversation && (
-        <SpecialistCall
+        <JitsiMeetCall
           isOpen={showVideoCall}
           onClose={handleCloseVideoCall}
           onCallEnd={handleCallEnd}
           callType={isVideoCall ? "video" : "audio"}
           patient={{
-            name: activeConversation.name,
-            avatar: activeConversation.avatar,
+            name: activeConversation?.name,
+            avatar: activeConversation?.avatar,
+            id: activeConversation?.id, 
           }}
-          currentUser={currentUserProfile()}
+          currentUser={{
+            id: currentUserId,
+            firstName: currentUserProfile()?.fName || currentUserProfile()?.firstName || "Patient",
+            lastName: currentUserProfile()?.lName || currentUserProfile()?.lastName || "",
+            profileUrl: currentUserProfile()?.profileUrl,
+          }}
+          ticketId={activeConversation?.id}
         />
       )}
     </div>

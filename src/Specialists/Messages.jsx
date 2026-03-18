@@ -13,10 +13,9 @@ import useChat from "../Nurse/services/useChat";
 import {
   isAllowedFileType,
   getMaxFileSize,
-  formatFileSize,
   getUserTypeLabel,
 } from "../Nurse/services/chatService";
-import SpecialistCall from "./SpecialistCall";
+import JitsiMeetCall from "../components/VideoCall/JitsiMeetCall.jsx";
 import "./SpecialistDashboard.css";
 
 const Messages = ({ currentUser }) => {
@@ -62,6 +61,7 @@ const Messages = ({ currentUser }) => {
     startConversation,
     searchUsers,
     getAllUsers,
+    isCallActive,
   } = useChat({ currentUserId, currentUserType: "s" });
 
   useEffect(() => {
@@ -406,17 +406,27 @@ const Messages = ({ currentUser }) => {
                 {chatMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={`message ${
-                      message.isSent ? "own-message" : "other-message"
-                    } message-type-${message.sender}`}
+                    className={(message.sender === "system" || message.isSystem) 
+                      ? "system-message" 
+                      : `message ${message.isSent ? "own-message" : "other-message"} message-type-${message.sender}`
+                    }
                   >
-                    {message.sender === "system" ? (
-                      <div className="system-message">
+                    {message.sender === "system" || message.isSystem ? (
+                      <>
                         <p className="message-text">{message.text}</p>
                         {message.subtext && (
                           <p className="message-subtext">{message.subtext}</p>
                         )}
-                      </div>
+                        {message.text && message.text.includes("started a secure consultation call") && isCallActive && (
+                          <button 
+                            className="btn-primary join-call-btn" 
+                            style={{ marginTop: '8px', padding: '6px 12px', fontSize: '0.85rem' }}
+                            onClick={() => handleVideoCallClick()}
+                          >
+                            <FaVideo style={{ marginRight: '6px' }}/> Join Call
+                          </button>
+                        )}
+                      </>
                     ) : (
                       <>
                         {!message.isSent && (
@@ -433,6 +443,12 @@ const Messages = ({ currentUser }) => {
                         )}
 
                         <div className="message-bubble-wrapper">
+                          {/* Sender name label — shown above received messages in group chats, like Messenger */}
+                          {!message.isSent && message.senderName && (
+                            <span className="specialist-message-sender-name">
+                              {message.senderName}
+                            </span>
+                          )}
                           <div className="message-content">
                             {message.messageType === "file" ||
                             message.messageType === "image" ? (
@@ -623,7 +639,7 @@ const Messages = ({ currentUser }) => {
       )}
 
       {showVideoCall && activeConversation && (
-        <SpecialistCall
+        <JitsiMeetCall
           isOpen={showVideoCall}
           onClose={handleCloseVideoCall}
           onCallEnd={handleCallEnd}
@@ -634,6 +650,7 @@ const Messages = ({ currentUser }) => {
             id: activeConversation?.id,
           }}
           currentUser={currentUser}
+          ticketId={activeConversation?.id}
         />
       )}
     </div>

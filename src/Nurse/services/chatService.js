@@ -1,5 +1,6 @@
 import socketClient from "../../utils/socketClient";
 import { apiRequest, API_BASE_URL } from "../../api/apiClient";
+import { connectSocket } from "../../utils/socketClient";
 
 function getSocket() {
   return socketClient;
@@ -7,12 +8,7 @@ function getSocket() {
 
 export function isSocketConnected() {
   const socket = getSocket();
-  if (!socket) return false;
-  const connected =
-    typeof socket.isConnected === "function"
-      ? socket.isConnected()
-      : socket._raw?.connected || false;
-  return connected;
+  return socket?.connected || false;
 }
 
 let socketAuthUserId = null;
@@ -22,12 +18,9 @@ const MAX_AUTH_RETRIES = 3;
 
 function reconnectSocket() {
   const socket = getSocket();
-  if (socket && !socket.isConnected()) {
+  if (socket && !socket.connected) {
     console.log("[Chat] Reconnecting socket to refresh session...");
-    // Sails.io client method for forced reconnect if underlying socket disconnected
-    if (socket._raw?.io?.connect) {
-      socket._raw.io.connect();
-    }
+    connectSocket();
   }
 }
 
@@ -42,34 +35,26 @@ export async function authenticateSocket(userId = null) {
     authRetryCount = 0;
   }
 
-  socketAuthPromise = new Promise((resolve) => {
+  socketAuthPromise = (async () => {
     const socket = getSocket();
     if (!socket) {
       console.warn("[Chat] Cannot authenticate socket - no socket available");
-      resolve(false);
-      return;
+      return false;
     }
 
-    const url = userId
-      ? `/api/chat/conversations?socketUserId=${userId}`
-      : "/api/chat/conversations";
+    try {
+      const url = userId
+        ? `/api/v1/chat/conversations?socketUserId=${userId}`
+        : "/api/v1/chat/conversations";
 
-    socket.get(url, (data, response) => {
-      console.log("[Chat] Socket auth response:", {
-        statusCode: response?.statusCode,
-        hasData: !!data,
-        userId: userId,
-        retryCount: authRetryCount,
-      });
-      if (response && response.statusCode === 200) {
-        console.log(
-          "[Chat] Socket authenticated successfully for user:",
-          userId
-        );
-        socketAuthUserId = userId;
-        authRetryCount = 0;
-        resolve(true);
-      } else if (response && response.statusCode === 401) {
+      await apiRequest(url);
+      console.log("[Chat] Socket authenticated successfully for user:", userId);
+      socketAuthUserId = userId;
+      authRetryCount = 0;
+      return true;
+    } catch (err) {
+      const status = err?.status || err?.statusCode;
+      if (status === 401 || status === 403) {
         if (authRetryCount < MAX_AUTH_RETRIES) {
           authRetryCount++;
           console.warn(
@@ -77,21 +62,20 @@ export async function authenticateSocket(userId = null) {
           );
           socketAuthPromise = null;
           reconnectSocket();
-          resolve(false);
+          return false;
         } else {
           console.warn(
             "[Chat] Socket authentication failed after max retries - user may need to re-login"
           );
           socketAuthPromise = null;
-          resolve(false);
+          return false;
         }
-      } else {
-        console.warn("[Chat] Socket authentication failed:", data);
-        socketAuthPromise = null;
-        resolve(false);
       }
-    });
-  });
+      console.warn("[Chat] Socket authentication failed:", err);
+      socketAuthPromise = null;
+      return false;
+    }
+  })();
 
   return socketAuthPromise;
 }
@@ -103,10 +87,8 @@ export function resetSocketAuth() {
   authRetryCount = 0;
 
   const socket = getSocket();
-  if (socket && socket.isConnected()) {
-    if (socket._raw?.disconnect) {
-      socket._raw.disconnect();
-    }
+  if (socket && socket.connected) {
+    socket.disconnect();
     setTimeout(() => {
       reconnectSocket();
     }, 100);
@@ -115,7 +97,7 @@ export function resetSocketAuth() {
 
 export async function createConversation(conversationData) {
   try {
-    const data = await apiRequest("/api/chat/conversations", {
+    const data = await apiRequest("/api/v1/chat/conversations", {
       method: "POST",
       body: JSON.stringify(conversationData),
     });
@@ -128,7 +110,7 @@ export async function createConversation(conversationData) {
 
 export async function getConversations() {
   try {
-    const data = await apiRequest("/api/chat/conversations");
+    const data = await apiRequest("/api/v1/chat/conversations");
     return data.conversations || data || [];
   } catch (error) {
     console.error("Error fetching conversations:", error);
@@ -138,7 +120,7 @@ export async function getConversations() {
 
 export async function getConversationById(conversationId) {
   try {
-    const data = await apiRequest(`/api/chat/conversations/${conversationId}`);
+    const data = await apiRequest(`/api/v1/chat/conversations/${conversationId}`);
     return data.conversation || data;
   } catch (error) {
     console.error("Error fetching conversation by ID:", error);
@@ -149,7 +131,7 @@ export async function getConversationById(conversationId) {
 export async function addParticipant(conversationId, userId) {
   try {
     return await apiRequest(
-      `/api/chat/conversations/${conversationId}/participants`,
+      `/api/v1/chat/conversations/${conversationId}/participants`,
       {
         method: "POST",
         body: JSON.stringify({ userId }),
@@ -164,7 +146,7 @@ export async function addParticipant(conversationId, userId) {
 export async function removeParticipant(conversationId, participantId) {
   try {
     return await apiRequest(
-      `/api/chat/conversations/${conversationId}/participants/${participantId}`,
+      `/api/v1/chat/conversations/${conversationId}/participants/${participantId}`,
       {
         method: "DELETE",
       }
@@ -178,7 +160,7 @@ export async function removeParticipant(conversationId, participantId) {
 export async function leaveConversation(conversationId) {
   try {
     return await apiRequest(
-      `/api/chat/conversations/${conversationId}/leave`,
+      `/api/v1/chat/conversations/${conversationId}/leave`,
       {
         method: "POST",
       }
@@ -196,7 +178,7 @@ export async function getMessages(conversationId, options = {}) {
     if (options.beforeId) params.append("beforeId", options.beforeId);
     if (options.afterId) params.append("afterId", options.afterId);
     const queryString = params.toString();
-    const url = `/api/chat/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ""
+    const url = `/api/v1/chat/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ""
       }`;
 
     const data = await apiRequest(url);
@@ -212,7 +194,7 @@ export async function sendMessage(conversationId, content, replyToId = null) {
     const body = { content };
     if (replyToId) body.replyToId = replyToId;
     const data = await apiRequest(
-      `/api/chat/conversations/${conversationId}/messages`,
+      `/api/v1/chat/conversations/${conversationId}/messages`,
       {
         method: "POST",
         body: JSON.stringify(body),
@@ -232,7 +214,7 @@ export async function uploadFile(conversationId, file, caption = "") {
     if (caption) formData.append("caption", caption);
 
     const data = await apiRequest(
-      `/api/chat/conversations/${conversationId}/messages/upload`,
+      `/api/v1/chat/conversations/${conversationId}/messages/upload`,
       {
         method: "POST",
         body: formData,
@@ -248,7 +230,7 @@ export async function uploadFile(conversationId, file, caption = "") {
 export async function deleteMessage(conversationId, messageId) {
   try {
     return await apiRequest(
-      `/api/chat/conversations/${conversationId}/messages/${messageId}`,
+      `/api/v1/chat/conversations/${conversationId}/messages/${messageId}`,
       {
         method: "DELETE",
       }
@@ -261,9 +243,12 @@ export async function deleteMessage(conversationId, messageId) {
 
 export async function markAsRead(conversationId, messageId = null) {
   try {
-    const body = messageId ? { messageId } : {};
+    const body = { 
+      ticketId: parseInt(conversationId, 10),
+      messageId 
+    };
     return await apiRequest(
-      `/api/chat/conversations/${conversationId}/read`,
+      `/api/v1/chat/read`,
       {
         method: "PUT",
         body: JSON.stringify(body),
@@ -278,18 +263,14 @@ export async function markAsRead(conversationId, messageId = null) {
 export function sendTypingIndicator(conversationId, isTyping = true) {
   const socket = getSocket();
   if (socket && isSocketConnected()) {
-    socket.post(
-      `/api/chat/conversations/${conversationId}/typing`,
-      { isTyping },
-      () => { }
-    );
+    socket.emit('chat:typing', { conversationId, isTyping });
   }
 }
 
 export async function searchUsers(query) {
   try {
     const data = await apiRequest(
-      `/api/chat/users/search?q=${encodeURIComponent(query)}`
+      `/api/v1/chat/users/search?q=${encodeURIComponent(query)}`
     );
     return data.users || data || [];
   } catch (error) {
@@ -300,7 +281,7 @@ export async function searchUsers(query) {
 
 export async function getAllChatUsers() {
   try {
-    const data = await apiRequest("/api/chat/users");
+    const data = await apiRequest("/api/v1/chat/users");
     return data.users || data || [];
   } catch (error) {
     console.error("Error fetching all chat users:", error);
@@ -309,37 +290,48 @@ export async function getAllChatUsers() {
 }
 
 
-export function subscribeToConversation(conversationId, callback) {
+export async function subscribeToConversation(conversationId, callback) {
   const socket = getSocket();
   console.log("[Chat] subscribeToConversation called", {
     conversationId,
     socketExists: !!socket,
     isConnected: socket ? isSocketConnected() : false,
+    socketId: socket?.id,
   });
-  if (socket && isSocketConnected()) {
-    socket.get(
-      `/api/chat/conversations/${conversationId}/subscribe`,
-      (data, response) => {
-        console.log("[Chat] Subscribed to conversation", conversationId, data);
-        if (callback) callback(data, response);
-      }
-    );
+  if (socket && isSocketConnected() && socket.id) {
+    try {
+      const data = await apiRequest(
+        `/api/v1/chat/conversations/${conversationId}/subscribe?socketId=${encodeURIComponent(socket.id)}`
+      );
+      console.log("[Chat] Subscribed to conversation", conversationId, data);
+      if (callback) callback(data);
+    } catch (err) {
+      console.error("[Chat] Failed to subscribe to conversation:", err);
+      if (callback) callback({ error: err });
+    }
   } else {
-    console.info("[Chat] Socket not available - subscription skipped");
+    console.info("[Chat] Socket not available or missing ID - subscription skipped");
     if (callback) callback({ error: "Socket not available" });
   }
 }
 
-export function unsubscribeFromConversation(conversationId, callback) {
+export async function unsubscribeFromConversation(conversationId, callback) {
   const socket = getSocket();
-  if (socket && isSocketConnected()) {
-    socket.get(
-      `/api/chat/conversations/${conversationId}/unsubscribe`,
-      (data, response) => {
-        console.log("Unsubscribed from conversation", conversationId);
-        if (callback) callback(data, response);
-      }
-    );
+  if (socket && socket.id) {
+    try {
+      const data = await apiRequest(
+        `/api/v1/chat/unsubscribe`,
+        {
+          method: "POST",
+          body: JSON.stringify({ ticketId: conversationId, socketId: socket.id }),
+        }
+      );
+      console.log("[Chat] Unsubscribed from conversation", conversationId);
+      if (callback) callback(data);
+    } catch (err) {
+      console.error("[Chat] Failed to unsubscribe:", err);
+      if (callback) callback({ error: err });
+    }
   } else {
     if (callback) callback({ error: "Socket not available" });
   }
@@ -365,6 +357,10 @@ export function setupChatSocketListeners(handlers) {
     onParticipantRemoved,
     onMessageDeleted,
     onNewConversation,
+    onTicketClaimed,
+    onSpecialistJoined,
+    onCallStarted,
+    onCallEnded,
   } = handlers;
 
   const processedMessageIds = new Set();
@@ -420,6 +416,21 @@ export function setupChatSocketListeners(handlers) {
     socket.on("chat:conversation-created", onNewConversation);
     console.log("[Chat] Listening for chat:newConversation events");
   }
+  if (onTicketClaimed) {
+    socket.on("ticket:claimed", onTicketClaimed);
+    console.log("[Chat] Listening for ticket:claimed events");
+  }
+  if (onSpecialistJoined) {
+    console.log("[Chat] Listening for ticket:specialist_joined events");
+  }
+  if (onCallStarted) {
+    socket.on("call:started", onCallStarted);
+    console.log("[Chat] Listening for call:started events");
+  }
+  if (onCallEnded) {
+    socket.on("call:ended", onCallEnded);
+    console.log("[Chat] Listening for call:ended events");
+  }
 
   return () => {
     console.log("[Chat] Cleaning up socket listeners");
@@ -450,6 +461,18 @@ export function setupChatSocketListeners(handlers) {
     if (onNewConversation) {
       socket.off("chat:newConversation", onNewConversation);
       socket.off("chat:conversation-created", onNewConversation);
+    }
+    if (onTicketClaimed) {
+      socket.off("ticket:claimed", onTicketClaimed);
+    }
+    if (onSpecialistJoined) {
+      socket.off("ticket:specialist_joined", onSpecialistJoined);
+    }
+    if (onCallStarted) {
+      socket.off("call:started", onCallStarted);
+    }
+    if (onCallEnded) {
+      socket.off("call:ended", onCallEnded);
     }
   };
 }
@@ -576,9 +599,11 @@ export function getMaxFileSize() {
 export function transformConversationForUI(conversation, currentUserId) {
   const participants = conversation.participants || [];
   const otherParticipant = participants.find(
-    (p) => (p.User_ID || p.User_Id || p.userId || p.id) !== currentUserId
+    (p) => Number(p.User_ID || p.User_Id || p.userId || p.id) !== Number(currentUserId)
   );
   const displayName =
+    conversation.name ||
+    conversation.displayName ||
     conversation.Conversation_Title ||
     conversation.Title ||
     conversation.title ||
@@ -627,6 +652,7 @@ export function transformConversationForUI(conversation, currentUserId) {
     conversation.Conversation_ID || conversation.Id || conversation.id;
 
   const otherUserTypeRaw =
+    conversation.otherUserType ||
     otherParticipant?.User_Type_Code ||
     otherParticipant?.User_Type ||
     otherParticipant?.userType ||
@@ -643,7 +669,7 @@ export function transformConversationForUI(conversation, currentUserId) {
             ? "p"
             : otherUserTypeRaw?.toLowerCase().startsWith("admin")
               ? "a"
-              : "p";
+              : otherUserTypeRaw || "p";
 
   return {
     id: conversationId,
@@ -743,14 +769,15 @@ export function transformMessageForUI(message, currentUserId) {
     timestamp: formatExactTime(message.Created_At || message.createdAt),
     rawTimestamp: message.Created_At || message.createdAt,
     isSent,
-    sender: normalizedSenderType,
+    sender: message.Is_System || message.isSystem ? "system" : normalizedSenderType,
     senderId: senderId,
     senderName: senderName,
     avatar: senderAvatar,
+    isSystem: !!(message.Is_System || message.isSystem || message.sender === 'system'),
     senderInfo: {
       id: senderId,
       name: senderName,
-      type: normalizedSenderType,
+      type: (message.Is_System || message.isSystem || message.sender === 'system') ? "system" : normalizedSenderType,
       avatar: senderAvatar,
     },
     messageType: message.Message_Type || message.type || "text",

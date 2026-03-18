@@ -48,6 +48,7 @@ export default function Login() {
         }
 
         localStorage.setItem('okiedoc_user_type', role);
+        localStorage.setItem('currentUser', JSON.stringify(result.user));
 
         const redirectPath = authService.getRedirectPath(role);
         navigate(redirectPath);

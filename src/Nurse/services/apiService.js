@@ -28,15 +28,21 @@ export async function fetchTicketsFromAPI() {
  */
 export async function fetchNotificationsFromAPI() {
   try {
-    const data = await apiRequest("/api/v1/nurse/notifications");
+    const data = await apiRequest('/api/v1/notifications');
+    const notifications = (data.notifications || []).map(n => ({
+      ...n,
+      unread: !n.isRead, // Map backend isRead to frontend-expected unread state
+    }));
 
-    if (data.success) {
+    if (data.notifications !== undefined) {
+      return notifications;
+    } else if (data.success) {
       return data.data || [];
     } else {
-      throw new Error(data.message || "Failed to load notifications");
+      throw new Error(data.message || 'Failed to load notifications');
     }
   } catch (error) {
-    console.error("Error fetching notifications from API:", error);
+    console.error('Error fetching notifications from API:', error);
     throw error;
   }
 }
@@ -68,8 +74,8 @@ export async function fetchDashboardFromAPI() {
  */
 export async function markNotificationAsRead(notificationId) {
   try {
-    await apiRequest(`/api/v1/nurse/notifications/${notificationId}/read`, {
-      method: "PUT",
+    await apiRequest(`/api/v1/notifications/${notificationId}/read`, {
+      method: "PATCH",
     });
     return true;
   } catch (error) {
@@ -254,6 +260,27 @@ export async function triageTicket(triageData) {
     });
   } catch (error) {
     console.error("Error triaging ticket:", error);
+    throw error;
+  }
+}
+
+/**
+ * Assign a specialist to a ticket via API
+ * @param {number} ticketId - Ticket ID
+ * @param {number} specialistId - Specialist user ID
+ * @returns {Promise<Object>} Assignment response
+ */
+export async function assignSpecialist(ticketId, specialistId) {
+  try {
+    return await apiRequest("/api/v1/tickets/assign-specialist", {
+      method: "PATCH",
+      body: JSON.stringify({
+        ticketId: parseInt(ticketId, 10),
+        specialistId: parseInt(specialistId, 10),
+      }),
+    });
+  } catch (error) {
+    console.error("Error assigning specialist:", error);
     throw error;
   }
 }

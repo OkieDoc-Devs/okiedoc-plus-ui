@@ -19,46 +19,50 @@ import DeniedVerification from "./Specialists/DeniedVerification.jsx";
 import CommercialPage from "./CommercialPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
+import { NotificationProvider } from "./contexts/NotificationContext.jsx";
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<CommercialPage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/registration" element={<Registration />} />
-        <Route path="/specialist-login" element={<SpecialistLogin />} />
-        <Route
-          path="/specialist-registration"
-          element={<SpecialistRegistration />}
-        />
-        {/* Nurse Routes */}
-        <Route path="/nurse-dashboard" element={<ProtectedRoute allowedRoles={['nurse']}><Dashboard /></ProtectedRoute>} />
-        <Route path="/nurse-notifications" element={<ProtectedRoute allowedRoles={['nurse']}><Notifications /></ProtectedRoute>} />
-        <Route path="/nurse-myaccount" element={<ProtectedRoute allowedRoles={['nurse']}><MyAccount /></ProtectedRoute>} />
-        <Route
-          path="/nurse-manage-appointments"
-          element={<ProtectedRoute allowedRoles={['nurse']}><ManageAppointments /></ProtectedRoute>}
-        />
-        <Route path="/nurse-messages" element={<ProtectedRoute allowedRoles={['nurse']}><Messages /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['nurse']}><Dashboard /></ProtectedRoute>} />
+    <NotificationProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<CommercialPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/registration" element={<Registration />} />
+          <Route path="/specialist-login" element={<SpecialistLogin />} />
+          <Route
+            path="/specialist-registration"
+            element={<SpecialistRegistration />}
+          />
+          {/* Nurse Routes */}
+          <Route path="/nurse-dashboard" element={<ProtectedRoute allowedRoles={['nurse']}><Dashboard /></ProtectedRoute>} />
+          <Route path="/nurse-notifications" element={<ProtectedRoute allowedRoles={['nurse']}><Notifications /></ProtectedRoute>} />
+          <Route path="/nurse-myaccount" element={<ProtectedRoute allowedRoles={['nurse']}><MyAccount /></ProtectedRoute>} />
+          <Route
+            path="/nurse-manage-appointments"
+            element={<ProtectedRoute allowedRoles={['nurse']}><ManageAppointments /></ProtectedRoute>}
+          />
+          <Route path="/nurse-messages" element={<ProtectedRoute allowedRoles={['nurse']}><Messages /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['nurse']}><Dashboard /></ProtectedRoute>} />
 
-        {/* Admin Routes */}
-        <Route
-          path="/admin/specialist-dashboard"
-          element={<ProtectedRoute allowedRoles={['admin']}><SpecialistDashboard /></ProtectedRoute>}
-        />
+          {/* Admin Routes */}
+          <Route
+            path="/admin/specialist-dashboard"
+            element={<ProtectedRoute allowedRoles={['admin']}><SpecialistDashboard /></ProtectedRoute>}
+          />
 
-        {/* Patient Routes */}
-        <Route path="/patient-dashboard" element={<ProtectedRoute allowedRoles={['patient']}><PatientDashboard /></ProtectedRoute>} />
+          {/* Patient Routes */}
+          <Route path="/patient-dashboard" element={<ProtectedRoute allowedRoles={['patient']}><PatientDashboard /></ProtectedRoute>} />
 
-        {/* Specialist Routes */}
-        <Route
-          path="/specialist-dashboard"
-          element={<ProtectedRoute allowedRoles={['specialist']}><SpecialistDashboard2 /></ProtectedRoute>}
-        />
-        <Route path="/specialist-pending" element={<ProtectedRoute allowedRoles={['specialist']}><PendingVerification /></ProtectedRoute>} />
-        <Route path="/specialist-denied" element={<ProtectedRoute allowedRoles={['specialist']}><DeniedVerification /></ProtectedRoute>} />
-      </Routes>
-    </BrowserRouter>
+          {/* Specialist Routes */}
+          <Route
+            path="/specialist-dashboard"
+            element={<ProtectedRoute allowedRoles={['specialist']}><SpecialistDashboard2 /></ProtectedRoute>}
+          />
+          <Route path="/specialist-pending" element={<ProtectedRoute allowedRoles={['specialist']}><PendingVerification /></ProtectedRoute>} />
+          <Route path="/specialist-denied" element={<ProtectedRoute allowedRoles={['specialist']}><DeniedVerification /></ProtectedRoute>} />
+        </Routes>
+      </BrowserRouter>
+    </NotificationProvider>
   </StrictMode>
 );

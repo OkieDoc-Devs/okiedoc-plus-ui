@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "css:audit:patient": "node scripts/audit-patient-css-usage.mjs",
+    "css:audit:patient:strict": "node scripts/audit-patient-css-usage.mjs --strict"
   },
   "dependencies": {
     "axios": "^1.12.2",

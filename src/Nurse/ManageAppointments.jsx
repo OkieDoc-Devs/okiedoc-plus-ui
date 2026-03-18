@@ -1,71 +1,73 @@
-import "../App.css";
-import "./NurseStyles.css";
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
-import NurseConsultationHistory from "../Patient/jsx/ConsultationHistory";
+import '../App.css';
+import './NurseStyles.css';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
+import NurseConsultationHistory from '../Patient/jsx/ConsultationHistory';
 import {
   getNurseId,
   getNurseFirstName,
   getNurseProfileImage,
-} from "./services/storageService.js";
+} from './services/storageService.js';
 import {
   filterTicketsByStatus,
   createNewTicket,
   claimTicket as claimTicketUtil,
   updateTicketStatus,
   rescheduleTicket,
-} from "./services/ticketService.js";
-import { addNotification } from "./services/notificationService.js";
+} from './services/ticketService.js';
+import { addNotification } from './services/notificationService.js';
 import {
   createInitialInvoiceData,
   initializeInvoice,
   calculateInvoiceTotal,
   generateInvoicePDF,
-} from "./services/invoiceService.js";
+} from './services/invoiceService.js';
 import {
   fetchTicketsFromAPI,
   createTicket,
   updateTicket,
   claimTicket as claimTicketAPI,
   triageTicket,
-  fetchNotificationsFromAPI,
+  assignSpecialist,
   fetchDoctorsFromAPI,
   logoutFromAPI,
-} from "./services/apiService.js";
+} from './services/apiService.js';
+import { useNotification } from '../contexts/NotificationContext';
 
 const USE_API = true;
 
 export default function ManageAppointment() {
   const [showConsultationHistory, setShowConsultationHistory] = useState(false);
   const navigate = useNavigate();
+  const { unreadCount } = useNotification();
   const [online] = useState(true);
   const [tickets, setTickets] = useState([]);
 
   useEffect(() => {
     if (!USE_API) {
-      console.log("ManageAppointments: API disabled, no data will be loaded");
+      console.log('ManageAppointments: API disabled, no data will be loaded');
       return;
     }
 
     const loadTicketsData = async () => {
       console.log(
-        "ManageAppointments: Loading tickets from API for logged-in nurse..."
+        'ManageAppointments: Loading tickets from API for logged-in nurse...',
       );
       try {
         const data = await fetchTicketsFromAPI();
-        console.log("ManageAppointments: Tickets loaded from API:", data);
+        console.log('ManageAppointments: Tickets loaded from API:', data);
         console.log(
-          "ManageAppointments: API returned",
+          'ManageAppointments: API returned',
           data?.length,
-          "tickets"
+          'tickets',
         );
         console.log(
-          "ManageAppointments: Checking claimedBy fields:",
+          'ManageAppointments: Checking claimedBy fields:',
           data?.map((t) => ({
             id: t.id,
             status: t.status,
             claimedBy: t.claimedBy,
-          }))
+          })),
         );
 
         setTickets((prevTickets) => {
@@ -73,7 +75,7 @@ export default function ManageAppointment() {
           const apiTicketIds = new Set(apiTickets.map((t) => t.id));
 
           const localOnlyTickets = prevTickets.filter(
-            (t) => !apiTicketIds.has(t.id)
+            (t) => !apiTicketIds.has(t.id),
           );
 
           const mergedApiTickets = apiTickets.map((apiTicket) => {
@@ -87,23 +89,23 @@ export default function ManageAppointment() {
 
           const mergedTickets = [...mergedApiTickets, ...localOnlyTickets];
 
-          console.log("ManageAppointments: Merged tickets count:", {
+          console.log('ManageAppointments: Merged tickets count:', {
             fromAPI: apiTickets.length,
             localOnly: localOnlyTickets.length,
             total: mergedTickets.length,
           });
 
           console.log(
-            "ManageAppointments: Sample ticket after merge:",
-            mergedTickets[0]
+            'ManageAppointments: Sample ticket after merge:',
+            mergedTickets[0],
           );
 
           return mergedTickets;
         });
       } catch (error) {
         console.error(
-          "ManageAppointments: Error loading tickets from API:",
-          error
+          'ManageAppointments: Error loading tickets from API:',
+          error,
         );
       }
     };
@@ -114,27 +116,6 @@ export default function ManageAppointment() {
     return () => clearInterval(interval);
   }, []);
 
-  const [notifications, setNotifications] = useState([]);
-  useEffect(() => {
-    const loadNotifications = async () => {
-      try {
-        const notificationsArray = await fetchNotificationsFromAPI();
-        setNotifications(notificationsArray || []);
-      } catch (error) {
-        console.error(
-          "ManageAppointments: Error loading notifications:",
-          error
-        );
-        setNotifications([]);
-      }
-    };
-
-    loadNotifications();
-
-    const interval = setInterval(loadNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceTicket, setInvoiceTicket] = useState(null);
@@ -142,39 +123,39 @@ export default function ManageAppointment() {
   const [showCreateTicketModal, setShowCreateTicketModal] = useState(false);
   const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
   const [newTicketData, setNewTicketData] = useState({
-    patientName: "",
-    email: "",
-    mobile: "",
-    patientBirthdate: "",
-    chiefComplaint: "",
-    symptoms: "",
-    otherSymptoms: "",
-    preferredDate: "",
-    preferredTime: "",
-    preferredSpecialist: "",
-    consultationChannel: "Mobile Call",
+    patientName: '',
+    email: '',
+    mobile: '',
+    patientBirthdate: '',
+    chiefComplaint: '',
+    symptoms: '',
+    otherSymptoms: '',
+    preferredDate: '',
+    preferredTime: '',
+    preferredSpecialist: '',
+    consultationChannel: 'Mobile Call',
     hasHMO: false,
     hmo: {
-      company: "",
-      memberId: "",
-      expirationDate: "",
-      loaCode: "",
+      company: '',
+      memberId: '',
+      expirationDate: '',
+      loaCode: '',
       eLOAFile: null,
     },
-    source: "platform",
+    source: 'platform',
   });
   const [specialistAvailable, setSpecialistAvailable] = useState(null);
   const [hmoVerified, setHmoVerified] = useState(null);
-  const [assignedSpecialist, setAssignedSpecialist] = useState("");
-  const [rescheduleDate, setRescheduleDate] = useState("");
-  const [rescheduleTime, setRescheduleTime] = useState("");
-  const [createTicketTab, setCreateTicketTab] = useState("medical");
-  const [emailError, setEmailError] = useState("");
+  const [assignedSpecialist, setAssignedSpecialist] = useState('');
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [createTicketTab, setCreateTicketTab] = useState('medical');
+  const [emailError, setEmailError] = useState('');
   const [doctors, setDoctors] = useState([]);
   const [showTicketDetailModal, setShowTicketDetailModal] = useState(false);
-  const [ticketDetailTab, setTicketDetailTab] = useState("assessment");
-  const [urgency, setUrgency] = useState("medium");
-  const [targetSpecialty, setTargetSpecialty] = useState("");
+  const [ticketDetailTab, setTicketDetailTab] = useState('assessment');
+  const [urgency, setUrgency] = useState('medium');
+  const [targetSpecialty, setTargetSpecialty] = useState('');
   const [isTriaging, setIsTriaging] = useState(false);
 
   const validateEmail = (email) => {
@@ -183,13 +164,13 @@ export default function ManageAppointment() {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return "";
+    if (!dateString) return '';
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
       });
     } catch {
       return dateString;
@@ -217,9 +198,9 @@ export default function ManageAppointment() {
     allergies: [],
   });
   const [textInput, setTextInput] = useState({
-    medicalRecords: "",
-    familyHistory: "",
-    allergies: "",
+    medicalRecords: '',
+    familyHistory: '',
+    allergies: '',
   });
 
   const addTextPill = (field, text) => {
@@ -235,7 +216,7 @@ export default function ManageAppointment() {
 
     setTextInput((prev) => ({
       ...prev,
-      [field]: "",
+      [field]: '',
     }));
   };
 
@@ -247,104 +228,103 @@ export default function ManageAppointment() {
   };
 
   const handleTextInputKeyPress = (e, field) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       e.preventDefault();
       addTextPill(field, textInput[field]);
     }
   };
 
   const painMapFields = [
-    "Thymus",
-    "Lung and diaphragm",
-    "Spleen",
-    "Heart",
-    "Stomach",
-    "Pancreas",
-    "Small intestine",
-    "Ovary",
-    "Colon",
-    "Kidney",
-    "Urinary bladder",
-    "Ureter",
-    "Appendix",
-    "Liver and gall bladder",
+    'Thymus',
+    'Lung and diaphragm',
+    'Spleen',
+    'Heart',
+    'Stomach',
+    'Pancreas',
+    'Small intestine',
+    'Ovary',
+    'Colon',
+    'Kidney',
+    'Urinary bladder',
+    'Ureter',
+    'Appendix',
+    'Liver and gall bladder',
   ];
   <button
-    className={createTicketTab === "painmap" ? "tab-btn active" : "tab-btn"}
-    onClick={() => setCreateTicketTab("painmap")}
-    type="button"
+    className={createTicketTab === 'painmap' ? 'tab-btn active' : 'tab-btn'}
+    onClick={() => setCreateTicketTab('painmap')}
+    type='button'
   >
     Pain Map
   </button>;
 
   const rosFields = {
     constitutional: [
-      "Chills",
-      "Fatigue",
-      "Fever",
-      "Weight gain",
-      "Weight loss",
+      'Chills',
+      'Fatigue',
+      'Fever',
+      'Weight gain',
+      'Weight loss',
     ],
-    heent: ["Hearing loss", "Sinus pressure", "Visual changes"],
-    respiratory: ["Cough", "Shortness of breath", "Wheezing"],
+    heent: ['Hearing loss', 'Sinus pressure', 'Visual changes'],
+    respiratory: ['Cough', 'Shortness of breath', 'Wheezing'],
     cardiovascular: [
-      "Chest pain",
-      "Pain while walking (Claudication)",
-      "Edema",
-      "Palpitations",
+      'Chest pain',
+      'Pain while walking (Claudication)',
+      'Edema',
+      'Palpitations',
     ],
     gastrointestinal: [
-      "Abdominal pain",
-      "Blood in stool",
-      "Constipation",
-      "Diarrhea",
-      "Heartburn",
-      "Loss of appetite",
-      "Nausea",
-      "Vomiting",
+      'Abdominal pain',
+      'Blood in stool',
+      'Constipation',
+      'Diarrhea',
+      'Heartburn',
+      'Loss of appetite',
+      'Nausea',
+      'Vomiting',
     ],
     genitourinary: [
-      "Painful urination (Dysuria)",
-      "Excessive amount of urine (Polyuria)",
-      "Urinary frequency",
+      'Painful urination (Dysuria)',
+      'Excessive amount of urine (Polyuria)',
+      'Urinary frequency',
     ],
     metabolic: [
-      "Cold intolerance",
-      "Heat intolerance",
-      "Excessive thirst (Polydipsia)",
-      "Excessive hunger (Polyphagia)",
+      'Cold intolerance',
+      'Heat intolerance',
+      'Excessive thirst (Polydipsia)',
+      'Excessive hunger (Polyphagia)',
     ],
     neurological: [
-      "Dizziness",
-      "Extremity numbness",
-      "Extremity weakness",
-      "Headaches",
-      "Seizures",
-      "Tremors",
+      'Dizziness',
+      'Extremity numbness',
+      'Extremity weakness',
+      'Headaches',
+      'Seizures',
+      'Tremors',
     ],
-    psychiatric: ["Anxiety", "Depression"],
+    psychiatric: ['Anxiety', 'Depression'],
     integumentary: [
-      "Breast discharge",
-      "Breast lump",
-      "Hives",
-      "Mole change(s)",
-      "Rash",
-      "Skin lesion",
+      'Breast discharge',
+      'Breast lump',
+      'Hives',
+      'Mole change(s)',
+      'Rash',
+      'Skin lesion',
     ],
-    musculoskeletal: ["Back pain", "Joint pain", "Joint swelling", "Neck pain"],
+    musculoskeletal: ['Back pain', 'Joint pain', 'Joint swelling', 'Neck pain'],
     hematologic: [
-      "Easily bleeds",
-      "Easily bruises",
-      "Lymphedema",
-      "Issues with blood clots",
+      'Easily bleeds',
+      'Easily bruises',
+      'Lymphedema',
+      'Issues with blood clots',
     ],
-    immunologic: ["Food allergies", "Seasonal allergies"],
+    immunologic: ['Food allergies', 'Seasonal allergies'],
   };
 
   const nurseName = getNurseFirstName();
   const [nurseId, setNurseId] = useState(null);
 
-  // Fetch nurse profile to get the correct nurse ID (from nurses table, not users table)
   useEffect(() => {
     const loadNurseProfile = async () => {
       if (!USE_API) return;
@@ -352,17 +332,15 @@ export default function ManageAppointment() {
       try {
         const data = await fetchNurseProfile();
         if (data && data.id) {
-          // Store the nurse's Id (from nurses table) in localStorage
-          localStorage.setItem("nurse.id", String(data.id));
+          localStorage.setItem('nurse.id', String(data.id));
           setNurseId(data.id);
           console.log(
-            "ManageAppointments: Loaded nurse ID from profile:",
-            data.id
+            'ManageAppointments: Loaded nurse ID from profile:',
+            data.id,
           );
         }
       } catch (error) {
-        console.error("Error loading nurse profile:", error);
-        // Fallback to getNurseId() if API fails
+        console.error('Error loading nurse profile:', error);
         const fallbackId = getNurseId();
         if (fallbackId !== null) {
           setNurseId(fallbackId);
@@ -373,101 +351,99 @@ export default function ManageAppointment() {
     loadNurseProfile();
   }, []);
 
-  // Fetch doctors on mount
   useEffect(() => {
     const loadDoctors = async () => {
       try {
         const doctorsData = await fetchDoctorsFromAPI();
         setDoctors(doctorsData || []);
       } catch (error) {
-        console.error("Error loading doctors:", error);
-        // Fallback to default doctors
+        console.error('Error loading doctors:', error);
         setDoctors([
-          { id: 1, name: "Dr. Smith", specialization: "General Medicine" },
-          { id: 2, name: "Dr. Lee", specialization: "Cardiology" },
-          { id: 3, name: "Dr. Patel", specialization: "Neurology" },
+          { id: 1, name: 'Dr. Smith', specialization: 'General Medicine' },
+          { id: 2, name: 'Dr. Lee', specialization: 'Cardiology' },
+          { id: 3, name: 'Dr. Patel', specialization: 'Neurology' },
         ]);
       }
     };
     loadDoctors();
   }, []);
 
-  useEffect(() => { }, [online]);
+  useEffect(() => {}, [online]);
 
   const handleLogout = async () => {
     try {
       await logoutFromAPI();
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error('Logout error:', error);
     }
-    navigate("/");
+    navigate('/');
   };
 
   const claimTicket = async (ticketId) => {
-    console.log("🔥 CLAIM TICKET BUTTON CLICKED! Ticket ID:", ticketId);
-    console.log("=====================================");
-    console.log("CLAIMING TICKET");
-    console.log("=====================================");
-    console.log("Ticket ID:", ticketId);
-    console.log("Nurse ID (claimedBy):", nurseId);
-    console.log("Nurse Name:", nurseName);
-    console.log("New Status: Processing");
-    console.log("USE_API:", USE_API);
+    console.log('🔥 CLAIM TICKET BUTTON CLICKED! Ticket ID:', ticketId);
+    console.log('=====================================');
+    console.log('CLAIMING TICKET');
+    console.log('=====================================');
+    console.log('Ticket ID:', ticketId);
+    console.log('Nurse ID (claimedBy):', nurseId);
+    console.log('Nurse Name:', nurseName);
+    console.log('New Status: Processing');
+    console.log('USE_API:', USE_API);
 
     if (!USE_API) {
-      console.log("ManageAppointments: API disabled, cannot claim without API");
-      alert("API is required to claim tickets. Please enable API integration.");
+      console.log('ManageAppointments: API disabled, cannot claim without API');
+      alert('API is required to claim tickets. Please enable API integration.');
       return;
     }
 
     try {
-      console.log("Sending claim request to API:");
+      console.log('Sending claim request to API:');
       const result = await claimTicketAPI(ticketId);
 
-      console.log("=====================================");
-      console.log("TICKET CLAIMED SUCCESSFULLY");
-      console.log("=====================================");
-      console.log("API Response:", result);
-      console.log("Response status:", result?.status);
-      console.log("Response claimedBy:", result?.claimedBy);
+      console.log('=====================================');
+      console.log('TICKET CLAIMED SUCCESSFULLY');
+      console.log('=====================================');
+      console.log('API Response:', result);
+      console.log('Response status:', result?.status);
+      console.log('Response claimedBy:', result?.claimedBy);
 
       setTickets((prev) => {
         const updated = claimTicketUtil(prev, ticketId, nurseId);
-        console.log("Local state updated. Finding claimed ticket...");
+        console.log('Local state updated. Finding claimed ticket...');
         const claimedTicket = updated.find((t) => t.id === ticketId);
-        console.log("Claimed ticket in local state:", claimedTicket);
+        console.log('Claimed ticket in local state:', claimedTicket);
         return updated;
       });
       addNotification(
-        "New Ticket",
-        `Ticket ${ticketId} claimed by ${nurseName}`
+        'New Ticket',
+        `Ticket ${ticketId} claimed by ${nurseName}`,
       );
     } catch (error) {
-      console.error("=====================================");
-      console.error("ERROR CLAIMING TICKET");
-      console.error("=====================================");
-      console.error("Error details:", error);
+      console.error('=====================================');
+      console.error('ERROR CLAIMING TICKET');
+      console.error('=====================================');
+      console.error('Error details:', error);
       alert(`Failed to claim ticket: ${error.message}. Please try again.`);
     }
   };
 
   const updateStatus = async (ticketId, newStatus) => {
     console.log(
-      "ManageAppointments: Updating ticket status:",
+      'ManageAppointments: Updating ticket status:',
       ticketId,
-      newStatus
+      newStatus,
     );
 
     if (!USE_API) {
-      console.log("ManageAppointments: API disabled, updating status locally");
+      console.log('ManageAppointments: API disabled, updating status locally');
       setTickets((prev) => updateTicketStatus(prev, ticketId, newStatus));
 
-      if (newStatus === "For Payment")
-        addNotification("Payment", `Invoice generated for ticket ${ticketId}`);
-      if (newStatus === "Confirmed")
+      if (newStatus === 'For Payment')
+        addNotification('Payment', `Invoice generated for ticket ${ticketId}`);
+      if (newStatus === 'Confirmed')
         addNotification(
-          "Payment Confirmation",
-          `Payment confirmed for ticket ${ticketId}`
+          'Payment Confirmation',
+          `Payment confirmed for ticket ${ticketId}`,
         );
       return;
     }
@@ -475,35 +451,35 @@ export default function ManageAppointment() {
     try {
       await updateTicket(ticketId, { status: newStatus });
       console.log(
-        "ManageAppointments: Ticket status updated successfully in API"
+        'ManageAppointments: Ticket status updated successfully in API',
       );
 
       setTickets((prev) => updateTicketStatus(prev, ticketId, newStatus));
 
-      if (newStatus === "For Payment")
-        addNotification("Payment", `Invoice generated for ticket ${ticketId}`);
-      if (newStatus === "Confirmed")
+      if (newStatus === 'For Payment')
+        addNotification('Payment', `Invoice generated for ticket ${ticketId}`);
+      if (newStatus === 'Confirmed')
         addNotification(
-          "Payment Confirmation",
-          `Payment confirmed for ticket ${ticketId}`
+          'Payment Confirmation',
+          `Payment confirmed for ticket ${ticketId}`,
         );
     } catch (error) {
       console.error(
-        "ManageAppointments: Error updating ticket status in API:",
-        error
+        'ManageAppointments: Error updating ticket status in API:',
+        error,
       );
 
       setTickets((prev) => updateTicketStatus(prev, ticketId, newStatus));
 
-      if (newStatus === "For Payment")
+      if (newStatus === 'For Payment')
         addNotification(
-          "Payment",
-          `Invoice generated locally (API unavailable)`
+          'Payment',
+          `Invoice generated locally (API unavailable)`,
         );
-      if (newStatus === "Confirmed")
+      if (newStatus === 'Confirmed')
         addNotification(
-          "Payment Confirmation",
-          `Payment confirmed locally (API unavailable)`
+          'Payment Confirmation',
+          `Payment confirmed locally (API unavailable)`,
         );
     }
   };
@@ -520,7 +496,7 @@ export default function ManageAppointment() {
       ...prev,
       items: [
         ...prev.items,
-        { name: "", description: "", quantity: 1, amount: 0 },
+        { name: '', description: '', quantity: 1, amount: 0 },
       ],
     }));
   };
@@ -534,46 +510,46 @@ export default function ManageAppointment() {
     setInvoiceData((prev) => ({
       ...prev,
       items: prev.items.map((it, i) =>
-        i === index ? { ...it, [field]: value } : it
+        i === index ? { ...it, [field]: value } : it,
       ),
     }));
   };
   const invoiceTotal = useMemo(
     () => calculateInvoiceTotal(invoiceData),
-    [invoiceData]
+    [invoiceData],
   );
 
   const sendInvoice = (e) => {
     e.preventDefault();
     if (!invoiceTicket) return;
-    updateStatus(invoiceTicket.id, "Processing");
+    updateStatus(invoiceTicket.id, 'Processing');
     setShowInvoiceModal(false);
     alert("Invoice sent to patient's email (simulated).");
   };
 
   const simulatePayment = (ticketId) => {
-    updateStatus(ticketId, "Confirmed");
+    updateStatus(ticketId, 'Confirmed');
   };
 
   const handleReschedule = async (ticketId) => {
     if (!rescheduleDate || !rescheduleTime) {
-      alert("Please select both date and time for rescheduling.");
+      alert('Please select both date and time for rescheduling.');
       return;
     }
 
-    console.log("ManageAppointments: Rescheduling ticket:", ticketId);
+    console.log('ManageAppointments: Rescheduling ticket:', ticketId);
 
     if (!USE_API) {
-      console.log("ManageAppointments: API disabled, rescheduling locally");
+      console.log('ManageAppointments: API disabled, rescheduling locally');
       setTickets((prev) =>
-        rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime)
+        rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime),
       );
-      setRescheduleDate("");
-      setRescheduleTime("");
-      alert("Appointment rescheduled successfully!");
+      setRescheduleDate('');
+      setRescheduleTime('');
+      alert('Appointment rescheduled successfully!');
       addNotification(
-        "Reschedule",
-        `Ticket ${ticketId} rescheduled to ${rescheduleDate} at ${rescheduleTime}`
+        'Reschedule',
+        `Ticket ${ticketId} rescheduled to ${rescheduleDate} at ${rescheduleTime}`,
       );
       return;
     }
@@ -583,37 +559,37 @@ export default function ManageAppointment() {
         preferredDate: rescheduleDate,
         preferredTime: rescheduleTime,
       });
-      console.log("ManageAppointments: Ticket rescheduled successfully in API");
+      console.log('ManageAppointments: Ticket rescheduled successfully in API');
 
       setTickets((prev) =>
-        rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime)
+        rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime),
       );
-      setRescheduleDate("");
-      setRescheduleTime("");
-      alert("Appointment rescheduled successfully!");
+      setRescheduleDate('');
+      setRescheduleTime('');
+      alert('Appointment rescheduled successfully!');
       addNotification(
-        "Reschedule",
-        `Ticket ${ticketId} rescheduled to ${rescheduleDate} at ${rescheduleTime}`
+        'Reschedule',
+        `Ticket ${ticketId} rescheduled to ${rescheduleDate} at ${rescheduleTime}`,
       );
     } catch (error) {
       console.error(
-        "ManageAppointments: Error rescheduling ticket in API:",
-        error
+        'ManageAppointments: Error rescheduling ticket in API:',
+        error,
       );
 
       setTickets((prev) =>
-        rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime)
+        rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime),
       );
-      setRescheduleDate("");
-      setRescheduleTime("");
-      alert("Appointment rescheduled locally (API unavailable)");
-      addNotification("Reschedule", `Ticket ${ticketId} rescheduled locally`);
+      setRescheduleDate('');
+      setRescheduleTime('');
+      alert('Appointment rescheduled locally (API unavailable)');
+      addNotification('Reschedule', `Ticket ${ticketId} rescheduled locally`);
     }
   };
 
   const handleCompleteTriage = async (ticketId) => {
     if (!targetSpecialty) {
-      alert("Please enter a target specialty.");
+      alert('Please enter a target specialty.');
       return;
     }
 
@@ -625,53 +601,57 @@ export default function ManageAppointment() {
         urgency,
       };
 
+      await triageTicket(triageData);
+
       if (assignedSpecialist) {
-        triageData.specialistId = parseInt(assignedSpecialist, 10);
+        await assignSpecialist(
+          parseInt(ticketId, 10),
+          parseInt(assignedSpecialist, 10),
+        );
       }
 
-      await triageTicket(triageData);
-      alert("Ticket triaged successfully!");
+      alert('Ticket triaged successfully!');
       setSelectedTicket(null);
       window.location.reload();
     } catch (error) {
-      console.error("Error triaging ticket:", error);
-      alert("Failed to triage ticket: " + error.message);
+      console.error('Error triaging ticket:', error);
+      alert('Failed to triage ticket: ' + error.message);
     } finally {
       setIsTriaging(false);
     }
   };
 
-  const openCreateTicket = (source = "hotline") => {
+  const openCreateTicket = (source = 'hotline') => {
     setNewTicketData({
-      patientName: "",
-      email: "",
-      mobile: "",
-      patientBirthdate: "",
-      chiefComplaint: "",
-      symptoms: "",
-      otherSymptoms: "",
-      preferredDate: "",
-      preferredTime: "",
-      preferredSpecialist: "",
+      patientName: '',
+      email: '',
+      mobile: '',
+      patientBirthdate: '',
+      chiefComplaint: '',
+      symptoms: '',
+      otherSymptoms: '',
+      preferredDate: '',
+      preferredTime: '',
+      preferredSpecialist: '',
       consultationChannel:
-        source === "hotline" ? "Mobile Call" : "Platform Chat",
+        source === 'hotline' ? 'Mobile Call' : 'Platform Chat',
       hasHMO: false,
       hmo: {
-        company: "",
-        memberId: "",
-        expirationDate: "",
-        loaCode: "",
+        company: '',
+        memberId: '',
+        expirationDate: '',
+        loaCode: '',
         eLOAFile: null,
       },
       source,
       ros: {},
       painMap: [],
-      actualChiefComplaint: "",
-      medicalRecords: "",
-      familyHistory: "",
-      allergies: "",
-      smoking: "",
-      drinking: "",
+      actualChiefComplaint: '',
+      medicalRecords: '',
+      familyHistory: '',
+      allergies: '',
+      smoking: '',
+      drinking: '',
     });
     setTextPills({
       medicalRecords: [],
@@ -679,11 +659,11 @@ export default function ManageAppointment() {
       allergies: [],
     });
     setTextInput({
-      medicalRecords: "",
-      familyHistory: "",
-      allergies: "",
+      medicalRecords: '',
+      familyHistory: '',
+      allergies: '',
     });
-    setEmailError("");
+    setEmailError('');
     setShowCreateTicketModal(true);
   };
 
@@ -692,65 +672,65 @@ export default function ManageAppointment() {
 
     if (isSubmittingTicket) {
       console.log(
-        "⚠️ Ticket submission already in progress, ignoring duplicate request"
+        '⚠️ Ticket submission already in progress, ignoring duplicate request',
       );
       return;
     }
 
     if (newTicketData.email && !validateEmail(newTicketData.email)) {
-      setEmailError("Please enter a valid email address");
-      alert("Please enter a valid email address before submitting.");
+      setEmailError('Please enter a valid email address');
+      alert('Please enter a valid email address before submitting.');
       return;
     }
 
     setIsSubmittingTicket(true);
-    console.log("🔒 Ticket submission locked");
+    console.log('🔒 Ticket submission locked');
 
     const newTicket = createNewTicket(newTicketData, textPills);
 
-    console.log("=====================================");
-    console.log("CREATING NEW TICKET");
-    console.log("=====================================");
-    console.log("Ticket Data being sent to API:");
+    console.log('=====================================');
+    console.log('CREATING NEW TICKET');
+    console.log('=====================================');
+    console.log('Ticket Data being sent to API:');
     console.log(JSON.stringify(newTicket, null, 2));
-    console.log("-------------------------------------");
-    console.log("Key fields to check:");
-    console.log("- ID:", newTicket.id);
-    console.log("- Patient Name:", newTicket.patientName);
-    console.log("- Email:", newTicket.email);
-    console.log("- Status:", newTicket.status);
-    console.log("- Created At:", newTicket.createdAt);
-    console.log("- Created At (typeof):", typeof newTicket.createdAt);
-    console.log("- Created At (Date parse):", new Date(newTicket.createdAt));
-    console.log("- Preferred Date:", newTicket.preferredDate);
-    console.log("- Preferred Time:", newTicket.preferredTime);
-    console.log("=====================================");
+    console.log('-------------------------------------');
+    console.log('Key fields to check:');
+    console.log('- ID:', newTicket.id);
+    console.log('- Patient Name:', newTicket.patientName);
+    console.log('- Email:', newTicket.email);
+    console.log('- Status:', newTicket.status);
+    console.log('- Created At:', newTicket.createdAt);
+    console.log('- Created At (typeof):', typeof newTicket.createdAt);
+    console.log('- Created At (Date parse):', new Date(newTicket.createdAt));
+    console.log('- Preferred Date:', newTicket.preferredDate);
+    console.log('- Preferred Time:', newTicket.preferredTime);
+    console.log('=====================================');
 
     if (!USE_API) {
       console.log(
-        "ManageAppointments: API disabled, cannot create ticket without API"
+        'ManageAppointments: API disabled, cannot create ticket without API',
       );
       alert(
-        "API is required to create tickets. Please enable API integration."
+        'API is required to create tickets. Please enable API integration.',
       );
       return;
     }
 
     try {
-      console.log("Sending ticket to API endpoint: POST /api/nurse/tickets");
+      console.log('Sending ticket to API endpoint: POST /api/nurse/tickets');
       const createdTicket = await createTicket(newTicket);
-      console.log("-------------------------------------");
-      console.log("TICKET CREATED SUCCESSFULLY IN API");
-      console.log("-------------------------------------");
-      console.log("Response from API:");
+      console.log('-------------------------------------');
+      console.log('TICKET CREATED SUCCESSFULLY IN API');
+      console.log('-------------------------------------');
+      console.log('Response from API:');
       console.log(JSON.stringify(createdTicket, null, 2));
-      console.log("=====================================");
+      console.log('=====================================');
 
       setTickets((prev) => {
         const ticketToAdd = createdTicket || newTicket;
         console.log(
-          "ManageAppointments: Adding ticket to state immediately:",
-          ticketToAdd.id
+          'ManageAppointments: Adding ticket to state immediately:',
+          ticketToAdd.id,
         );
         return [ticketToAdd, ...prev];
       });
@@ -762,33 +742,34 @@ export default function ManageAppointment() {
         allergies: [],
       });
       setTextInput({
-        medicalRecords: "",
-        familyHistory: "",
-        allergies: "",
+        medicalRecords: '',
+        familyHistory: '',
+        allergies: '',
       });
-      setEmailError("");
+      setEmailError('');
       addNotification(
-        "New Ticket",
-        `Ticket ${(createdTicket || newTicket).id} created via ${newTicket.source
-        }`
+        'New Ticket',
+        `Ticket ${(createdTicket || newTicket).id} created via ${
+          newTicket.source
+        }`,
       );
 
-      console.log("🔓 Ticket submission unlocked (success)");
+      console.log('🔓 Ticket submission unlocked (success)');
       setIsSubmittingTicket(false);
     } catch (error) {
-      console.error("ManageAppointments: Error creating ticket in API:", error);
+      console.error('ManageAppointments: Error creating ticket in API:', error);
       alert(`Failed to create ticket: ${error.message}. Please try again.`);
 
-      console.log("🔓 Ticket submission unlocked (error)");
+      console.log('🔓 Ticket submission unlocked (error)');
       setIsSubmittingTicket(false);
     }
   };
 
-  const pendingTickets = filterTicketsByStatus(tickets, "Pending");
+  const pendingTickets = filterTicketsByStatus(tickets, 'Pending');
   const processingTickets = filterTicketsByStatus(
     tickets,
-    "Processing",
-    nurseId
+    'Processing',
+    nurseId,
   );
 
   const handleDownloadInvoice = () => {
@@ -796,32 +777,32 @@ export default function ManageAppointment() {
   };
 
   return (
-    <div className="dashboard">
-      <div className="dashboard-header">
-        <div className="header-center">
+    <div className='dashboard'>
+      <div className='dashboard-header'>
+        <div className='header-center'>
           <img
-            src="/okie-doc-logo.png"
-            alt="Okie-Doc+"
-            className="logo-image"
+            src='/okie-doc-logo.png'
+            alt='Okie-Doc+'
+            className='logo-image'
           />
         </div>
-        <h3 className="dashboard-title">Manage Appointments</h3>
-        <div className="user-account">
+        <h3 className='dashboard-title'>Manage Appointments</h3>
+        <div className='user-account'>
           <img
             src={getNurseProfileImage()}
-            alt="Account"
-            className="account-icon"
+            alt='Account'
+            className='account-icon'
           />
-          <span className="account-name">{getNurseFirstName()}</span>
-          <div className="account-dropdown">
+          <span className='account-name'>{getNurseFirstName()}</span>
+          <div className='account-dropdown'>
             <button
-              className="dropdown-item"
-              onClick={() => navigate("/nurse-myaccount")}
+              className='dropdown-item'
+              onClick={() => navigate('/nurse-myaccount')}
             >
               My Account
             </button>
             <button
-              className="dropdown-item logout-item"
+              className='dropdown-item logout-item'
               onClick={handleLogout}
             >
               Logout
@@ -829,86 +810,86 @@ export default function ManageAppointment() {
           </div>
         </div>
 
-        <div className="dashboard-nav">
+        <div className='dashboard-nav'>
           <button
-            className="nav-tab"
-            onClick={() => navigate("/nurse-dashboard")}
+            className='nav-tab'
+            onClick={() => navigate('/nurse-dashboard')}
           >
             Dashboard
           </button>
-          <button className="nav-tab active">Manage Appointments</button>
+          <button className='nav-tab active'>Manage Appointments</button>
           <button
-            className="nav-tab"
-            onClick={() => navigate("/nurse-messages")}
+            className='nav-tab'
+            onClick={() => navigate('/nurse-messages')}
           >
             Messages
           </button>
           <button
-            className="nav-tab"
-            onClick={() => navigate("/nurse-notifications")}
+            className='nav-tab'
+            onClick={() => navigate('/nurse-notifications')}
           >
-            Notifications ({notifications.filter((n) => n.unread).length})
+            Notifications ({unreadCount})
           </button>
         </div>
       </div>
 
-      <div className="appointments-section">
+      <div className='appointments-section'>
         <div
-          className="appointments-controls"
+          className='appointments-controls'
           style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "center",
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
             gap: 12,
           }}
         >
           <button
-            className="create-appointment-btn"
-            onClick={() => openCreateTicket("hotline")}
+            className='create-appointment-btn'
+            onClick={() => openCreateTicket('hotline')}
           >
             + Create Ticket
           </button>
         </div>
 
-        <div className="tickets-container">
-          <div className="processing-tickets">
+        <div className='tickets-container'>
+          <div className='processing-tickets'>
             <h2>Processing Tickets ({processingTickets.length})</h2>
             {processingTickets.map((ticket) => (
               <div
                 key={ticket.id}
-                className="ticket-card-new"
+                className='ticket-card-new'
                 onClick={() => {
                   setSelectedTicket(ticket);
                   setShowTicketDetailModal(true);
-                  setTicketDetailTab("assessment");
+                  setTicketDetailTab('assessment');
                 }}
-                style={{ cursor: "pointer", borderLeftColor: "#2196f3" }}
+                style={{ cursor: 'pointer', borderLeftColor: '#2196f3' }}
               >
-                <div className="ticket-card-header">
-                  <span className="ticket-number">TICKET #{ticket.id}</span>
+                <div className='ticket-card-header'>
+                  <span className='ticket-number'>TICKET #{ticket.id}</span>
                 </div>
 
-                <div className="ticket-card-body">
-                  <div className="ticket-left-section">
-                    <div className="ticket-patient-details">
-                      <h4 className="ticket-section-title">PATIENT DETAILS</h4>
-                      <div className="ticket-details-grid">
-                        <div className="ticket-details-col">
+                <div className='ticket-card-body'>
+                  <div className='ticket-left-section'>
+                    <div className='ticket-patient-details'>
+                      <h4 className='ticket-section-title'>PATIENT DETAILS</h4>
+                      <div className='ticket-details-grid'>
+                        <div className='ticket-details-col'>
                           <p>
                             <strong>Name:</strong> {ticket.patientName}
                           </p>
                           <p>
-                            <strong>Age:</strong>{" "}
+                            <strong>Age:</strong>{' '}
                             {ticket.age ||
                               calculateAge(ticket.patientBirthdate) ||
-                              "N/A"}
+                              'N/A'}
                           </p>
                           <p>
-                            <strong>Birthdate:</strong>{" "}
-                            {formatDate(ticket.patientBirthdate) || "N/A"}
+                            <strong>Birthdate:</strong>{' '}
+                            {formatDate(ticket.patientBirthdate) || 'N/A'}
                           </p>
                         </div>
-                        <div className="ticket-details-col">
+                        <div className='ticket-details-col'>
                           <p>
                             <strong>Email:</strong> {ticket.email}
                           </p>
@@ -919,35 +900,35 @@ export default function ManageAppointment() {
                       </div>
                     </div>
 
-                    <div className="ticket-assignments">
+                    <div className='ticket-assignments'>
                       <p>
-                        <strong>Assigned Nurse:</strong>{" "}
+                        <strong>Assigned Nurse:</strong>{' '}
                         {ticket.assignedNurse || nurseName}
                       </p>
                       <p>
-                        <strong>Assigned Specialist:</strong>{" "}
+                        <strong>Assigned Specialist:</strong>{' '}
                         {ticket.assignedSpecialist ||
                           ticket.preferredSpecialist ||
-                          "Not specified"}
+                          'Not specified'}
                       </p>
                       <p>
-                        <strong>Consultation Type:</strong>{" "}
+                        <strong>Consultation Type:</strong>{' '}
                         {ticket.consultationType || ticket.chiefComplaint}
                       </p>
                     </div>
                   </div>
 
-                  <div className="ticket-right-section">
-                    <div className="ticket-meta">
+                  <div className='ticket-right-section'>
+                    <div className='ticket-meta'>
                       <p>
-                        <strong>Date Created:</strong>{" "}
+                        <strong>Date Created:</strong>{' '}
                         {formatDate(ticket.createdAt) || ticket.dateCreated}
                       </p>
                       <p>
-                        <strong>Status:</strong>{" "}
+                        <strong>Status:</strong>{' '}
                         <span
-                          className="ticket-status-text processing"
-                          style={{ color: "#2196f3" }}
+                          className='ticket-status-text processing'
+                          style={{ color: '#2196f3' }}
                         >
                           {ticket.status}
                         </span>
@@ -956,30 +937,30 @@ export default function ManageAppointment() {
 
                     <div
                       style={{
-                        display: "flex",
-                        flexDirection: "column",
+                        display: 'flex',
+                        flexDirection: 'column',
                         gap: 8,
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       {ticket.claimedBy ? (
                         <button
-                          className="ticket-history-btn"
+                          className='ticket-history-btn'
                           onClick={() => openInvoice(ticket)}
                         >
                           Generate Invoice
                         </button>
                       ) : (
                         <button
-                          className="ticket-history-btn"
+                          className='ticket-history-btn'
                           onClick={() => setSelectedTicket(ticket)}
                         >
                           Manage
                         </button>
                       )}
                       <button
-                        className="ticket-history-btn"
-                        style={{ background: "#4caf50" }}
+                        className='ticket-history-btn'
+                        style={{ background: '#4caf50' }}
                         onClick={() => simulatePayment(ticket.id)}
                       >
                         Simulate Payment
@@ -991,45 +972,45 @@ export default function ManageAppointment() {
             ))}
           </div>
 
-          <div className="tickets-list">
+          <div className='tickets-list'>
             <h2>Pending Tickets ({pendingTickets.length})</h2>
             {pendingTickets.map((ticket) => (
               <div
                 key={ticket.id}
-                className="ticket-card-new"
+                className='ticket-card-new'
                 onClick={() => {
                   setSelectedTicket(ticket);
                   setShowTicketDetailModal(true);
-                  setTicketDetailTab("assessment");
+                  setTicketDetailTab('assessment');
                 }}
-                style={{ cursor: "pointer", borderLeftColor: "#ff9800" }}
+                style={{ cursor: 'pointer', borderLeftColor: '#ff9800' }}
               >
-                <div className="ticket-card-header">
-                  <span className="ticket-number">TICKET #{ticket.id}</span>
+                <div className='ticket-card-header'>
+                  <span className='ticket-number'>TICKET #{ticket.id}</span>
                 </div>
 
-                <div className="ticket-card-body">
-                  <div className="ticket-left-section">
-                    <div className="ticket-patient-details">
-                      <h4 className="ticket-section-title">PATIENT DETAILS</h4>
-                      <div className="ticket-details-grid">
-                        <div className="ticket-details-col">
+                <div className='ticket-card-body'>
+                  <div className='ticket-left-section'>
+                    <div className='ticket-patient-details'>
+                      <h4 className='ticket-section-title'>PATIENT DETAILS</h4>
+                      <div className='ticket-details-grid'>
+                        <div className='ticket-details-col'>
                           <p>
-                            <strong>Name:</strong>{" "}
-                            {ticket.patientName || "Unnamed"}
+                            <strong>Name:</strong>{' '}
+                            {ticket.patientName || 'Unnamed'}
                           </p>
                           <p>
-                            <strong>Age:</strong>{" "}
+                            <strong>Age:</strong>{' '}
                             {ticket.age ||
                               calculateAge(ticket.patientBirthdate) ||
-                              "N/A"}
+                              'N/A'}
                           </p>
                           <p>
-                            <strong>Birthdate:</strong>{" "}
-                            {formatDate(ticket.patientBirthdate) || "N/A"}
+                            <strong>Birthdate:</strong>{' '}
+                            {formatDate(ticket.patientBirthdate) || 'N/A'}
                           </p>
                         </div>
-                        <div className="ticket-details-col">
+                        <div className='ticket-details-col'>
                           <p>
                             <strong>Email:</strong> {ticket.email}
                           </p>
@@ -1040,45 +1021,45 @@ export default function ManageAppointment() {
                       </div>
                     </div>
 
-                    <div className="ticket-assignments">
+                    <div className='ticket-assignments'>
                       <p>
-                        <strong>Assigned Nurse:</strong>{" "}
-                        {ticket.assignedNurse || "Unassigned"}
+                        <strong>Assigned Nurse:</strong>{' '}
+                        {ticket.assignedNurse || 'Unassigned'}
                       </p>
                       <p>
-                        <strong>Assigned Specialist:</strong>{" "}
+                        <strong>Assigned Specialist:</strong>{' '}
                         {ticket.assignedSpecialist ||
                           ticket.preferredSpecialist ||
-                          "Not specified"}
+                          'Not specified'}
                       </p>
                       <p>
-                        <strong>Chief Complaint:</strong>{" "}
+                        <strong>Chief Complaint:</strong>{' '}
                         {ticket.chiefComplaint}
                       </p>
                       <p>
                         <strong>Channel:</strong> {ticket.consultationChannel}
                       </p>
                       <p>
-                        <strong>HMO:</strong>{" "}
-                        {ticket.hasHMO ? "Yes" : ticket.hmo ? "Yes" : "No"}
+                        <strong>HMO:</strong>{' '}
+                        {ticket.hasHMO ? 'Yes' : ticket.hmo ? 'Yes' : 'No'}
                       </p>
                     </div>
                   </div>
 
-                  <div className="ticket-right-section">
-                    <div className="ticket-meta">
+                  <div className='ticket-right-section'>
+                    <div className='ticket-meta'>
                       <p>
-                        <strong>Date Created:</strong>{" "}
+                        <strong>Date Created:</strong>{' '}
                         {new Date(ticket.createdAt).toLocaleString()}
                       </p>
                       <p>
-                        <strong>Preferred:</strong>{" "}
-                        {formatDate(ticket.preferredDate)} at{" "}
+                        <strong>Preferred:</strong>{' '}
+                        {formatDate(ticket.preferredDate)} at{' '}
                         {ticket.preferredTime}
                       </p>
                       <p>
-                        <strong>Status:</strong>{" "}
-                        <span className="ticket-status-text pending">
+                        <strong>Status:</strong>{' '}
+                        <span className='ticket-status-text pending'>
                           {ticket.status}
                         </span>
                       </p>
@@ -1086,29 +1067,29 @@ export default function ManageAppointment() {
 
                     <div
                       style={{
-                        display: "flex",
-                        flexDirection: "column",
+                        display: 'flex',
+                        flexDirection: 'column',
                         gap: 8,
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
-                        className="ticket-history-btn"
+                        className='ticket-history-btn'
                         onClick={() => setSelectedTicket(ticket)}
                       >
                         Manage
                       </button>
                       <button
-                        className="ticket-history-btn"
-                        style={{ background: "#4caf50" }}
+                        className='ticket-history-btn'
+                        style={{ background: '#4caf50' }}
                         onClick={() => claimTicket(ticket.id)}
                         disabled={ticket.claimedBy === nurseId}
                       >
                         {ticket.claimedBy === nurseId
-                          ? "Already Claimed"
+                          ? 'Already Claimed'
                           : ticket.claimedBy
-                            ? "Re-Claim Ticket"
-                            : "Claim Ticket"}
+                            ? 'Re-Claim Ticket'
+                            : 'Claim Ticket'}
                       </button>
                     </div>
                   </div>
@@ -1118,18 +1099,18 @@ export default function ManageAppointment() {
           </div>
 
           {showConsultationHistory && (
-            <div className="modal-overlay">
-              <div className="ticket-modal">
-                <div className="modal-header">
+            <div className='modal-overlay'>
+              <div className='ticket-modal'>
+                <div className='modal-header'>
                   <h2>Consultation History</h2>
                   <button
                     onClick={() => setShowConsultationHistory(false)}
-                    className="close-btn"
+                    className='close-btn'
                   >
                     ×
                   </button>
                 </div>
-                <div className="modal-body">
+                <div className='modal-body'>
                   <NurseConsultationHistory />
                 </div>
               </div>
@@ -1139,67 +1120,67 @@ export default function ManageAppointment() {
       </div>
 
       {selectedTicket && !showTicketDetailModal && (
-        <div className="modal-overlay">
-          <div className="ticket-modal">
-            <div className="modal-header">
+        <div className='modal-overlay'>
+          <div className='ticket-modal'>
+            <div className='modal-header'>
               <h2>Patient Ticket Details</h2>
               <button
                 onClick={() => setSelectedTicket(null)}
-                className="close-btn"
+                className='close-btn'
               >
                 ×
               </button>
             </div>
-            <div className="modal-body">
-              <div className="patient-info">
+            <div className='modal-body'>
+              <div className='patient-info'>
                 <h3>Patient Information</h3>
-                <div className="info-grid">
-                  <div className="info-item">
+                <div className='info-grid'>
+                  <div className='info-item'>
                     <label>Name:</label>
                     <span>{selectedTicket.patientName}</span>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Email:</label>
                     <span>{selectedTicket.email}</span>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Mobile:</label>
                     <span>{selectedTicket.mobile}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="medical-info">
+              <div className='medical-info'>
                 <h3>Medical Information</h3>
-                <div className="info-grid">
-                  <div className="info-item">
+                <div className='info-grid'>
+                  <div className='info-item'>
                     <label>Chief Complaint:</label>
                     <span>{selectedTicket.chiefComplaint}</span>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Symptoms:</label>
                     <span>{selectedTicket.symptoms}</span>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Other Symptoms:</label>
-                    <span>{selectedTicket.otherSymptoms || "None"}</span>
+                    <span>{selectedTicket.otherSymptoms || 'None'}</span>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Actual Chief Complaint (Nurse):</label>
-                    <span>{selectedTicket.actualChiefComplaint || ""}</span>
+                    <span>{selectedTicket.actualChiefComplaint || ''}</span>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Medical Records:</label>
-                    <div className="view-pills-container">
+                    <div className='view-pills-container'>
                       {selectedTicket.medicalRecordsPills &&
-                        selectedTicket.medicalRecordsPills.length > 0 ? (
-                        <div className="view-pills">
+                      selectedTicket.medicalRecordsPills.length > 0 ? (
+                        <div className='view-pills'>
                           {selectedTicket.medicalRecordsPills.map(
                             (text, index) => (
-                              <div key={index} className="view-pill">
+                              <div key={index} className='view-pill'>
                                 <span>{text}</span>
                               </div>
-                            )
+                            ),
                           )}
                         </div>
                       ) : (
@@ -1207,18 +1188,18 @@ export default function ManageAppointment() {
                       )}
                     </div>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Family History:</label>
-                    <div className="view-pills-container">
+                    <div className='view-pills-container'>
                       {selectedTicket.familyHistoryPills &&
-                        selectedTicket.familyHistoryPills.length > 0 ? (
-                        <div className="view-pills">
+                      selectedTicket.familyHistoryPills.length > 0 ? (
+                        <div className='view-pills'>
                           {selectedTicket.familyHistoryPills.map(
                             (text, index) => (
-                              <div key={index} className="view-pill">
+                              <div key={index} className='view-pill'>
                                 <span>{text}</span>
                               </div>
-                            )
+                            ),
                           )}
                         </div>
                       ) : (
@@ -1226,14 +1207,14 @@ export default function ManageAppointment() {
                       )}
                     </div>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Allergies:</label>
-                    <div className="view-pills-container">
+                    <div className='view-pills-container'>
                       {selectedTicket.allergiesPills &&
-                        selectedTicket.allergiesPills.length > 0 ? (
-                        <div className="view-pills">
+                      selectedTicket.allergiesPills.length > 0 ? (
+                        <div className='view-pills'>
                           {selectedTicket.allergiesPills.map((text, index) => (
-                            <div key={index} className="view-pill">
+                            <div key={index} className='view-pill'>
                               <span>{text}</span>
                             </div>
                           ))}
@@ -1243,33 +1224,33 @@ export default function ManageAppointment() {
                       )}
                     </div>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Smoking:</label>
-                    <span>{selectedTicket.smoking || ""}</span>
+                    <span>{selectedTicket.smoking || ''}</span>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Drinking:</label>
-                    <span>{selectedTicket.drinking || ""}</span>
+                    <span>{selectedTicket.drinking || ''}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="appointment-info">
+              <div className='appointment-info'>
                 <h3>Appointment Details</h3>
-                <div className="info-grid">
-                  <div className="info-item">
+                <div className='info-grid'>
+                  <div className='info-item'>
                     <label>Preferred Date:</label>
                     <span>{formatDate(selectedTicket.preferredDate)}</span>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Preferred Time:</label>
                     <span>{selectedTicket.preferredTime}</span>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Preferred Specialist:</label>
                     <span>{selectedTicket.preferredSpecialist}</span>
                   </div>
-                  <div className="info-item">
+                  <div className='info-item'>
                     <label>Consultation Channel:</label>
                     <span>{selectedTicket.consultationChannel}</span>
                   </div>
@@ -1277,26 +1258,26 @@ export default function ManageAppointment() {
               </div>
 
               {selectedTicket.hmo && (
-                <div className="hmo-info">
+                <div className='hmo-info'>
                   <h3>HMO Information</h3>
-                  <div className="info-grid">
-                    <div className="info-item">
+                  <div className='info-grid'>
+                    <div className='info-item'>
                       <label>Company:</label>
                       <span>{selectedTicket.hmo.company}</span>
                     </div>
-                    <div className="info-item">
+                    <div className='info-item'>
                       <label>Member ID:</label>
                       <span>{selectedTicket.hmo.memberId}</span>
                     </div>
-                    <div className="info-item">
+                    <div className='info-item'>
                       <label>Expiration Date:</label>
                       <span>{selectedTicket.hmo.expirationDate}</span>
                     </div>
-                    <div className="info-item">
+                    <div className='info-item'>
                       <label>LOA Code:</label>
                       <span>{selectedTicket.hmo.loaCode}</span>
                     </div>
-                    <div className="info-item">
+                    <div className='info-item'>
                       <label>eLOA File:</label>
                       <span>{selectedTicket.hmo.eLOAFile}</span>
                     </div>
@@ -1304,26 +1285,26 @@ export default function ManageAppointment() {
                 </div>
               )}
 
-              <div className="specialist-verification">
+              <div className='specialist-verification'>
                 <h3>Specialist & HMO Verification</h3>
                 <div
                   style={{
-                    display: "flex",
+                    display: 'flex',
                     gap: 16,
                     marginBottom: 12,
-                    justifyContent: "center",
+                    justifyContent: 'center',
                   }}
                 >
                   <button
-                    className="action-btn confirm"
-                    style={{ background: "#4caf50", color: "#fff" }}
+                    className='action-btn confirm'
+                    style={{ background: '#4caf50', color: '#fff' }}
                     onClick={() => setSpecialistAvailable(true)}
                   >
                     Specialist Available
                   </button>
                   <button
-                    className="action-btn warn"
-                    style={{ background: "#ff9800", color: "#fff" }}
+                    className='action-btn warn'
+                    style={{ background: '#ff9800', color: '#fff' }}
                     onClick={() => setSpecialistAvailable(false)}
                   >
                     Specialist Unavailable
@@ -1333,21 +1314,21 @@ export default function ManageAppointment() {
                   <div
                     style={{
                       marginBottom: 12,
-                      display: "flex",
+                      display: 'flex',
                       gap: 16,
-                      justifyContent: "center",
+                      justifyContent: 'center',
                     }}
                   >
                     <button
-                      className="action-btn confirm"
-                      style={{ background: "#2196f3", color: "#fff" }}
+                      className='action-btn confirm'
+                      style={{ background: '#2196f3', color: '#fff' }}
                       onClick={() => setHmoVerified(true)}
                     >
                       Verify HMO
                     </button>
                     <button
-                      className="action-btn warn"
-                      style={{ background: "#f44336", color: "#fff" }}
+                      className='action-btn warn'
+                      style={{ background: '#f44336', color: '#fff' }}
                       onClick={() => setHmoVerified(false)}
                     >
                       Reject HMO
@@ -1355,24 +1336,24 @@ export default function ManageAppointment() {
                   </div>
                 )}
                 {specialistAvailable === true && (
-                  <div style={{ marginBottom: 12, color: "#4caf50" }}>
+                  <div style={{ marginBottom: 12, color: '#4caf50' }}>
                     Specialist is available for consultation.
                   </div>
                 )}
                 {specialistAvailable === false && (
-                  <div style={{ marginBottom: 12, color: "#ff9800" }}>
+                  <div style={{ marginBottom: 12, color: '#ff9800' }}>
                     Specialist is unavailable. Please call patient for
                     arrangement or reschedule.
                   </div>
                 )}
                 {hmoVerified === true && (
-                  <div style={{ marginBottom: 12, color: "#2196f3" }}>
+                  <div style={{ marginBottom: 12, color: '#2196f3' }}>
                     HMO verified. You may proceed to generate invoice charged to
                     HMO.
                   </div>
                 )}
                 {hmoVerified === false && (
-                  <div style={{ marginBottom: 12, color: "#f44336" }}>
+                  <div style={{ marginBottom: 12, color: '#f44336' }}>
                     HMO details cannot be verified. Please contact patient for
                     arrangement.
                   </div>
@@ -1380,48 +1361,62 @@ export default function ManageAppointment() {
               </div>
 
               <div
-                className="specialist-actions"
+                className='specialist-actions'
                 style={{ marginTop: 24, marginBottom: 16 }}
               >
                 <h3 style={{ marginBottom: 16 }}>Triage & Assign</h3>
 
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', marginBottom: 4 }}>Target Specialty:</label>
+                  <label style={{ display: 'block', marginBottom: 4 }}>
+                    Target Specialty:
+                  </label>
                   <input
-                    type="text"
-                    placeholder="e.g. Pediatrics, Cardiology"
+                    type='text'
+                    placeholder='e.g. Pediatrics, Cardiology'
                     value={targetSpecialty}
                     onChange={(e) => setTargetSpecialty(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 4 }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 4,
+                    }}
                   />
                 </div>
 
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', marginBottom: 4 }}>Urgency:</label>
+                  <label style={{ display: 'block', marginBottom: 4 }}>
+                    Urgency:
+                  </label>
                   <select
                     value={urgency}
                     onChange={(e) => setUrgency(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 4 }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 4,
+                    }}
                   >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
+                    <option value='low'>Low</option>
+                    <option value='medium'>Medium</option>
+                    <option value='high'>High</option>
                   </select>
                 </div>
 
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 4 }}>Assign Specialist (Optional):</label>
+                  <label style={{ display: 'block', marginBottom: 4 }}>
+                    Assign Specialist (Optional):
+                  </label>
                   <select
-                    id="specialist-select"
+                    id='specialist-select'
                     style={{
                       width: '100%',
-                      padding: "8px 12px",
+                      padding: '8px 12px',
                       borderRadius: 4,
                     }}
                     value={assignedSpecialist}
                     onChange={(e) => setAssignedSpecialist(e.target.value)}
                   >
-                    <option value="">Select Specialist</option>
+                    <option value=''>Select Specialist</option>
                     {doctors.map((doctor) => (
                       <option key={doctor.id} value={doctor.id}>
                         {doctor.name} - {doctor.specialization}
@@ -1431,7 +1426,7 @@ export default function ManageAppointment() {
                 </div>
 
                 <button
-                  className="action-btn"
+                  className='action-btn'
                   style={{
                     width: '100%',
                     background: '#28a745',
@@ -1439,61 +1434,61 @@ export default function ManageAppointment() {
                     padding: '10px',
                     fontSize: '16px',
                     fontWeight: '600',
-                    borderRadius: 4
+                    borderRadius: 4,
                   }}
                   disabled={isTriaging}
                   onClick={() => handleCompleteTriage(selectedTicket.id)}
                 >
-                  {isTriaging ? "Completing Triage..." : "Complete Triage"}
+                  {isTriaging ? 'Completing Triage...' : 'Complete Triage'}
                 </button>
               </div>
               <div
-                className="reschedule-actions"
+                className='reschedule-actions'
                 style={{ marginTop: 16, marginBottom: 0 }}
               >
                 <h3 style={{ marginBottom: 8 }}>Reschedule</h3>
                 <div
                   style={{
-                    display: "flex",
-                    alignItems: "center",
+                    display: 'flex',
+                    alignItems: 'center',
                     gap: 12,
-                    justifyContent: "center",
+                    justifyContent: 'center',
                   }}
                 >
-                  <label htmlFor="reschedule-date" style={{ marginRight: 4 }}>
+                  <label htmlFor='reschedule-date' style={{ marginRight: 4 }}>
                     Date:
                   </label>
                   <input
-                    id="reschedule-date"
-                    type="date"
+                    id='reschedule-date'
+                    type='date'
                     value={rescheduleDate}
                     onChange={(e) => setRescheduleDate(e.target.value)}
                     style={{
                       marginRight: 8,
-                      padding: "6px 12px",
+                      padding: '6px 12px',
                       borderRadius: 4,
                     }}
                   />
-                  <label htmlFor="reschedule-time" style={{ marginRight: 4 }}>
+                  <label htmlFor='reschedule-time' style={{ marginRight: 4 }}>
                     Time:
                   </label>
                   <input
-                    id="reschedule-time"
-                    type="time"
+                    id='reschedule-time'
+                    type='time'
                     value={rescheduleTime}
                     onChange={(e) => setRescheduleTime(e.target.value)}
                     style={{
                       marginRight: 8,
-                      padding: "6px 12px",
+                      padding: '6px 12px',
                       borderRadius: 4,
                     }}
                   />
                   <button
-                    className="action-btn"
+                    className='action-btn'
                     style={{
-                      background: "#2196f3",
-                      color: "#fff",
-                      padding: "6px 16px",
+                      background: '#2196f3',
+                      color: '#fff',
+                      padding: '6px 16px',
                       borderRadius: 4,
                     }}
                     onClick={() => handleReschedule(selectedTicket.id)}
@@ -1503,84 +1498,84 @@ export default function ManageAppointment() {
                 </div>
               </div>
 
-              <div className="ros-info" style={{ marginTop: 24 }}>
+              <div className='ros-info' style={{ marginTop: 24 }}>
                 <h3>Review of Systems</h3>
-                <div className="info-grid">
+                <div className='info-grid'>
                   {selectedTicket.ros &&
-                    Object.values(selectedTicket.ros).flat().length > 0 ? (
+                  Object.values(selectedTicket.ros).flat().length > 0 ? (
                     Object.values(selectedTicket.ros)
                       .flat()
                       .map((item, idx) => (
-                        <div key={idx} className="info-item">
+                        <div key={idx} className='info-item'>
                           <span>{item}</span>
                         </div>
                       ))
                   ) : (
-                    <div className="info-item">No ROS data provided.</div>
+                    <div className='info-item'>No ROS data provided.</div>
                   )}
                 </div>
               </div>
 
-              <div className="painmap-info" style={{ marginTop: 24 }}>
+              <div className='painmap-info' style={{ marginTop: 24 }}>
                 <h3>Pain Map</h3>
                 <div
                   style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
                     gap: 16,
                   }}
                 >
                   <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/1506_Referred_Pain_Chart.jpg/1280px-1506_Referred_Pain_Chart.jpg"
-                    alt="Pain Map"
+                    src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/1506_Referred_Pain_Chart.jpg/1280px-1506_Referred_Pain_Chart.jpg'
+                    alt='Pain Map'
                     style={{
                       height: 180,
                       borderRadius: 8,
-                      border: "1px solid #ccc",
-                      background: "#fff",
+                      border: '1px solid #ccc',
+                      background: '#fff',
                       marginBottom: 12,
                     }}
                   />
-                  <div style={{ textAlign: "center" }}>
+                  <div style={{ textAlign: 'center' }}>
                     {selectedTicket.painMap &&
-                      selectedTicket.painMap.length > 0 ? (
+                    selectedTicket.painMap.length > 0 ? (
                       selectedTicket.painMap.map((area, idx) => (
-                        <div key={idx} className="info-item">
+                        <div key={idx} className='info-item'>
                           <span>{area}</span>
                         </div>
                       ))
                     ) : (
-                      <div className="info-item">No pain areas selected.</div>
+                      <div className='info-item'>No pain areas selected.</div>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="ticket-actions" style={{ marginTop: 12 }}>
+              <div className='ticket-actions' style={{ marginTop: 12 }}>
                 {!selectedTicket.claimedBy &&
-                  selectedTicket.status !== "Pending" && (
+                  selectedTicket.status !== 'Pending' && (
                     <button
-                      className="action-btn edit"
+                      className='action-btn edit'
                       onClick={() => openInvoice(selectedTicket)}
                     >
                       Generate Invoice
                     </button>
                   )}
-                {selectedTicket.status === "Processing" && (
+                {selectedTicket.status === 'Processing' && (
                   <button
-                    className="action-btn edit"
+                    className='action-btn edit'
                     onClick={() => {
-                      updateStatus(selectedTicket.id, "Completed");
+                      updateStatus(selectedTicket.id, 'Completed');
                     }}
-                    style={{ backgroundColor: "#28a745" }}
+                    style={{ backgroundColor: '#28a745' }}
                   >
                     Mark Completed
                   </button>
                 )}
                 <button
-                  className="action-btn"
-                  onClick={() => updateStatus(selectedTicket.id, "Incomplete")}
+                  className='action-btn'
+                  onClick={() => updateStatus(selectedTicket.id, 'Incomplete')}
                 >
                   Mark Incomplete
                 </button>
@@ -1591,30 +1586,30 @@ export default function ManageAppointment() {
       )}
 
       {showInvoiceModal && (
-        <div className="modal-overlay">
-          <div className="invoice-modal">
-            <div className="modal-header">
+        <div className='modal-overlay'>
+          <div className='invoice-modal'>
+            <div className='modal-header'>
               <img
-                src="/okie-doc-logo.png"
-                alt="OkieDoc+ Logo"
+                src='/okie-doc-logo.png'
+                alt='OkieDoc+ Logo'
                 style={{ height: 48, marginBottom: 8, opacity: 1 }}
               />
               <h2>Generate Invoice</h2>
               <button
                 onClick={() => setShowInvoiceModal(false)}
-                className="close-btn"
+                className='close-btn'
               >
                 ×
               </button>
             </div>
-            <div className="modal-body" style={{ padding: 20, opacity: 1 }}>
-              <div className="invoice-info">
+            <div className='modal-body' style={{ padding: 20, opacity: 1 }}>
+              <div className='invoice-info'>
                 <p>
                   <strong>Invoice No.:</strong> {invoiceData.invoiceNumber}
                 </p>
                 <p>
-                  <strong>Date of Consultation:</strong>{" "}
-                  {formatDate(invoiceTicket?.preferredDate)}{" "}
+                  <strong>Date of Consultation:</strong>{' '}
+                  {formatDate(invoiceTicket?.preferredDate)}{' '}
                   {invoiceTicket?.preferredTime}
                 </p>
                 <p>
@@ -1627,79 +1622,79 @@ export default function ManageAppointment() {
                   <strong>Email Address:</strong> {invoiceTicket?.email}
                 </p>
               </div>
-              <form onSubmit={sendInvoice} className="invoice-form">
-                <div className="invoice-items">
+              <form onSubmit={sendInvoice} className='invoice-form'>
+                <div className='invoice-items'>
                   <h3>Invoice Items</h3>
                   {invoiceData.items.map((item, idx) => (
-                    <div key={idx} className="invoice-item">
+                    <div key={idx} className='invoice-item'>
                       <input
-                        type="text"
-                        placeholder="Item name"
+                        type='text'
+                        placeholder='Item name'
                         value={item.name}
                         onChange={(e) =>
-                          updateInvoiceItem(idx, "name", e.target.value)
+                          updateInvoiceItem(idx, 'name', e.target.value)
                         }
                         required
                       />
                       <input
-                        type="text"
-                        placeholder="Description"
+                        type='text'
+                        placeholder='Description'
                         value={item.description}
                         onChange={(e) =>
-                          updateInvoiceItem(idx, "description", e.target.value)
+                          updateInvoiceItem(idx, 'description', e.target.value)
                         }
                       />
                       <input
-                        type="number"
-                        placeholder="Qty"
+                        type='number'
+                        placeholder='Qty'
                         value={item.quantity}
                         onChange={(e) =>
                           updateInvoiceItem(
                             idx,
-                            "quantity",
-                            parseInt(e.target.value) || 0
+                            'quantity',
+                            parseInt(e.target.value) || 0,
                           )
                         }
-                        min="1"
+                        min='1'
                         required
                       />
                       <input
-                        type="number"
-                        placeholder="Amount"
+                        type='number'
+                        placeholder='Amount'
                         value={item.amount}
                         onChange={(e) =>
                           updateInvoiceItem(
                             idx,
-                            "amount",
-                            parseFloat(e.target.value) || 0
+                            'amount',
+                            parseFloat(e.target.value) || 0,
                           )
                         }
-                        min="0"
-                        step="0.01"
+                        min='0'
+                        step='0.01'
                         required
                       />
                       <button
-                        type="button"
+                        type='button'
                         onClick={() => removeInvoiceItem(idx)}
-                        className="remove-item-btn"
+                        className='remove-item-btn'
                       >
                         ×
                       </button>
                     </div>
                   ))}
                   <button
-                    type="button"
+                    type='button'
                     onClick={addInvoiceItem}
-                    className="add-item-btn"
+                    className='add-item-btn'
                   >
                     + Add Item
                   </button>
                 </div>
-                <div className="invoice-fees">
-                  <div className="fee-item">
+                <div className='invoice-fees'>
+                  <div className='fee-item'>
                     <label>Platform Fee:</label>
                     <input
-                      type="number"
+                      type='number'
                       value={invoiceData.platformFee}
                       onChange={(e) =>
                         setInvoiceData((prev) => ({
@@ -1707,14 +1702,14 @@ export default function ManageAppointment() {
                           platformFee: parseFloat(e.target.value) || 0,
                         }))
                       }
-                      min="0"
-                      step="0.01"
+                      min='0'
+                      step='0.01'
                     />
                   </div>
-                  <div className="fee-item">
+                  <div className='fee-item'>
                     <label>E-Nurse Fee:</label>
                     <input
-                      type="number"
+                      type='number'
                       value={invoiceData.eNurseFee}
                       onChange={(e) =>
                         setInvoiceData((prev) => ({
@@ -1722,15 +1717,15 @@ export default function ManageAppointment() {
                           eNurseFee: parseFloat(e.target.value) || 0,
                         }))
                       }
-                      min="0"
-                      step="0.01"
+                      min='0'
+                      step='0.01'
                     />
                   </div>
                 </div>
-                <div style={{ padding: "0 20px 10px 20px", opacity: 1 }}>
+                <div style={{ padding: '0 20px 10px 20px', opacity: 1 }}>
                   <h3>Items</h3>
                   {invoiceData.items.map((item, idx) => (
-                    <div key={idx} style={{ display: "flex", gap: 8 }}>
+                    <div key={idx} style={{ display: 'flex', gap: 8 }}>
                       <span>{item.name}</span>
                       <span>{item.description}</span>
                       <span>Qty: {item.quantity}</span>
@@ -1752,22 +1747,22 @@ export default function ManageAppointment() {
                     City, Country
                   </footer>
                 </div>
-                <div className="modal-actions">
-                  <button type="submit" className="submit-btn">
+                <div className='modal-actions'>
+                  <button type='submit' className='submit-btn'>
                     Send Invoice
                   </button>
                   <button
-                    type="button"
+                    type='button'
                     onClick={handleDownloadInvoice}
-                    className="submit-btn"
+                    className='submit-btn'
                     style={{ marginLeft: 8 }}
                   >
                     Download PDF
                   </button>
                   <button
-                    type="button"
+                    type='button'
                     onClick={() => setShowInvoiceModal(false)}
-                    className="cancel-btn"
+                    className='cancel-btn'
                   >
                     Cancel
                   </button>
@@ -1779,60 +1774,60 @@ export default function ManageAppointment() {
       )}
 
       {showCreateTicketModal && (
-        <div className="modal-overlay">
-          <div className="create-appointment-modal">
-            <div className="modal-header">
+        <div className='modal-overlay'>
+          <div className='create-appointment-modal'>
+            <div className='modal-header'>
               <h2>Create New Ticket ({newTicketData.source})</h2>
               <button
                 onClick={() => setShowCreateTicketModal(false)}
-                className="close-btn"
+                className='close-btn'
               >
                 ×
               </button>
             </div>
-            <div className="modal-body">
-              <div style={{ marginBottom: 24, display: "flex", gap: 16 }}>
+            <div className='modal-body'>
+              <div style={{ marginBottom: 24, display: 'flex', gap: 16 }}>
                 <button
                   className={
-                    createTicketTab === "medical" ? "tab-btn active" : "tab-btn"
+                    createTicketTab === 'medical' ? 'tab-btn active' : 'tab-btn'
                   }
-                  type="button"
-                  onClick={() => setCreateTicketTab("medical")}
+                  type='button'
+                  onClick={() => setCreateTicketTab('medical')}
                 >
                   Medical Info
                 </button>
                 <button
                   className={
-                    createTicketTab === "ros" ? "tab-btn active" : "tab-btn"
+                    createTicketTab === 'ros' ? 'tab-btn active' : 'tab-btn'
                   }
-                  type="button"
-                  onClick={() => setCreateTicketTab("ros")}
+                  type='button'
+                  onClick={() => setCreateTicketTab('ros')}
                 >
                   Review of Systems (ROS)
                 </button>
                 <button
                   className={
-                    createTicketTab === "painmap" ? "tab-btn active" : "tab-btn"
+                    createTicketTab === 'painmap' ? 'tab-btn active' : 'tab-btn'
                   }
-                  type="button"
-                  onClick={() => setCreateTicketTab("painmap")}
+                  type='button'
+                  onClick={() => setCreateTicketTab('painmap')}
                 >
                   Pain Map
                 </button>
               </div>
-              {createTicketTab === "medical" && (
+              {createTicketTab === 'medical' && (
                 <form
                   onSubmit={submitCreateTicket}
-                  className="create-appointment-form"
+                  className='create-appointment-form'
                 >
-                  <div className="form-section">
+                  <div className='form-section'>
                     <h3>Patient Information</h3>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="patientName">Patient Name *</label>
+                    <div className='form-row'>
+                      <div className='form-group'>
+                        <label htmlFor='patientName'>Patient Name *</label>
                         <input
-                          id="patientName"
-                          name="patientName"
+                          id='patientName'
+                          name='patientName'
                           value={newTicketData.patientName}
                           onChange={(e) =>
                             setNewTicketData({
@@ -1843,11 +1838,11 @@ export default function ManageAppointment() {
                           required
                         />
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="mobile">Mobile Number *</label>
+                      <div className='form-group'>
+                        <label htmlFor='mobile'>Mobile Number *</label>
                         <input
-                          id="mobile"
-                          name="mobile"
+                          id='mobile'
+                          name='mobile'
                           value={newTicketData.mobile}
                           onChange={(e) =>
                             setNewTicketData({
@@ -1859,17 +1854,17 @@ export default function ManageAppointment() {
                         />
                       </div>
                     </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="patientBirthdate">
+                    <div className='form-row'>
+                      <div className='form-group'>
+                        <label htmlFor='patientBirthdate'>
                           Date of Birth *
                         </label>
                         <input
-                          id="patientBirthdate"
-                          name="patientBirthdate"
-                          type="date"
+                          id='patientBirthdate'
+                          name='patientBirthdate'
+                          type='date'
                           value={newTicketData.patientBirthdate}
-                          max={new Date().toISOString().split("T")[0]}
+                          max={new Date().toISOString().split('T')[0]}
                           onChange={(e) =>
                             setNewTicketData({
                               ...newTicketData,
@@ -1881,23 +1876,23 @@ export default function ManageAppointment() {
                         {newTicketData.patientBirthdate && (
                           <span
                             style={{
-                              fontSize: "0.875rem",
-                              color: "#666",
+                              fontSize: '0.875rem',
+                              color: '#666',
                               marginTop: 4,
-                              display: "block",
+                              display: 'block',
                             }}
                           >
-                            Age: {calculateAge(newTicketData.patientBirthdate)}{" "}
+                            Age: {calculateAge(newTicketData.patientBirthdate)}{' '}
                             years old
                           </span>
                         )}
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="email">Email Address *</label>
+                      <div className='form-group'>
+                        <label htmlFor='email'>Email Address *</label>
                         <input
-                          id="email"
-                          name="email"
-                          type="email"
+                          id='email'
+                          name='email'
+                          type='email'
                           value={newTicketData.email}
                           onChange={(e) => {
                             const email = e.target.value;
@@ -1908,32 +1903,32 @@ export default function ManageAppointment() {
 
                             if (email && !validateEmail(email)) {
                               setEmailError(
-                                "Please enter a valid email address"
+                                'Please enter a valid email address',
                               );
                             } else {
-                              setEmailError("");
+                              setEmailError('');
                             }
                           }}
                           onBlur={(e) => {
                             const email = e.target.value;
                             if (email && !validateEmail(email)) {
                               setEmailError(
-                                "Please enter a valid email address"
+                                'Please enter a valid email address',
                               );
                             }
                           }}
                           required
                           style={{
-                            borderColor: emailError ? "red" : "",
+                            borderColor: emailError ? 'red' : '',
                           }}
                         />
                         {emailError && (
                           <span
                             style={{
-                              color: "red",
-                              fontSize: "0.875rem",
-                              marginTop: "4px",
-                              display: "block",
+                              color: 'red',
+                              fontSize: '0.875rem',
+                              marginTop: '4px',
+                              display: 'block',
                             }}
                           >
                             {emailError}
@@ -1943,14 +1938,14 @@ export default function ManageAppointment() {
                     </div>
                   </div>
 
-                  <div className="form-section">
+                  <div className='form-section'>
                     <h3>Medical Information</h3>
-                    <div className="form-group">
-                      <label htmlFor="chiefComplaint">Chief Complaint *</label>
+                    <div className='form-group'>
+                      <label htmlFor='chiefComplaint'>Chief Complaint *</label>
                       <textarea
-                        id="chiefComplaint"
-                        name="chiefComplaint"
-                        rows="3"
+                        id='chiefComplaint'
+                        name='chiefComplaint'
+                        rows='3'
                         value={newTicketData.chiefComplaint}
                         onChange={(e) =>
                           setNewTicketData({
@@ -1961,13 +1956,13 @@ export default function ManageAppointment() {
                         required
                       />
                     </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="symptoms">Symptoms</label>
+                    <div className='form-row'>
+                      <div className='form-group'>
+                        <label htmlFor='symptoms'>Symptoms</label>
                         <textarea
-                          id="symptoms"
-                          name="symptoms"
-                          rows="2"
+                          id='symptoms'
+                          name='symptoms'
+                          rows='2'
                           value={newTicketData.symptoms}
                           onChange={(e) =>
                             setNewTicketData({
@@ -1977,12 +1972,12 @@ export default function ManageAppointment() {
                           }
                         />
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="otherSymptoms">Other Symptoms</label>
+                      <div className='form-group'>
+                        <label htmlFor='otherSymptoms'>Other Symptoms</label>
                         <textarea
-                          id="otherSymptoms"
-                          name="otherSymptoms"
-                          rows="2"
+                          id='otherSymptoms'
+                          name='otherSymptoms'
+                          rows='2'
                           value={newTicketData.otherSymptoms}
                           onChange={(e) =>
                             setNewTicketData({
@@ -1993,16 +1988,16 @@ export default function ManageAppointment() {
                         />
                       </div>
                     </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="actualChiefComplaint">
+                    <div className='form-row'>
+                      <div className='form-group'>
+                        <label htmlFor='actualChiefComplaint'>
                           Actual Chief Complaint (Nurse)
                         </label>
                         <textarea
-                          id="actualChiefComplaint"
-                          name="actualChiefComplaint"
-                          rows="2"
-                          value={newTicketData.actualChiefComplaint || ""}
+                          id='actualChiefComplaint'
+                          name='actualChiefComplaint'
+                          rows='2'
+                          value={newTicketData.actualChiefComplaint || ''}
                           onChange={(e) =>
                             setNewTicketData({
                               ...newTicketData,
@@ -2011,21 +2006,21 @@ export default function ManageAppointment() {
                           }
                         />
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="medicalRecords">Medical Records</label>
-                        <div className="text-input-container">
+                      <div className='form-group'>
+                        <label htmlFor='medicalRecords'>Medical Records</label>
+                        <div className='text-input-container'>
                           {textPills.medicalRecords.length > 0 && (
-                            <div className="text-pills">
+                            <div className='text-pills'>
                               {textPills.medicalRecords.map((text, index) => (
-                                <div key={index} className="text-pill">
+                                <div key={index} className='text-pill'>
                                   <span>{text}</span>
                                   <button
-                                    type="button"
-                                    className="remove-pill"
+                                    type='button'
+                                    className='remove-pill'
                                     onClick={() =>
-                                      removeTextPill("medicalRecords", text)
+                                      removeTextPill('medicalRecords', text)
                                     }
-                                    aria-label="Remove text"
+                                    aria-label='Remove text'
                                   >
                                     ×
                                   </button>
@@ -2034,10 +2029,10 @@ export default function ManageAppointment() {
                             </div>
                           )}
                           <input
-                            type="text"
-                            id="medicalRecords"
-                            name="medicalRecords"
-                            placeholder="Type and press Enter to add"
+                            type='text'
+                            id='medicalRecords'
+                            name='medicalRecords'
+                            placeholder='Type and press Enter to add'
                             value={textInput.medicalRecords}
                             onChange={(e) =>
                               setTextInput((prev) => ({
@@ -2046,13 +2041,13 @@ export default function ManageAppointment() {
                               }))
                             }
                             onKeyPress={(e) =>
-                              handleTextInputKeyPress(e, "medicalRecords")
+                              handleTextInputKeyPress(e, 'medicalRecords')
                             }
                             onBlur={() => {
                               if (textInput.medicalRecords.trim()) {
                                 addTextPill(
-                                  "medicalRecords",
-                                  textInput.medicalRecords
+                                  'medicalRecords',
+                                  textInput.medicalRecords,
                                 );
                               }
                             }}
@@ -2060,22 +2055,22 @@ export default function ManageAppointment() {
                         </div>
                       </div>
                     </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="familyHistory">Family History</label>
-                        <div className="text-input-container">
+                    <div className='form-row'>
+                      <div className='form-group'>
+                        <label htmlFor='familyHistory'>Family History</label>
+                        <div className='text-input-container'>
                           {textPills.familyHistory.length > 0 && (
-                            <div className="text-pills">
+                            <div className='text-pills'>
                               {textPills.familyHistory.map((text, index) => (
-                                <div key={index} className="text-pill">
+                                <div key={index} className='text-pill'>
                                   <span>{text}</span>
                                   <button
-                                    type="button"
-                                    className="remove-pill"
+                                    type='button'
+                                    className='remove-pill'
                                     onClick={() =>
-                                      removeTextPill("familyHistory", text)
+                                      removeTextPill('familyHistory', text)
                                     }
-                                    aria-label="Remove text"
+                                    aria-label='Remove text'
                                   >
                                     ×
                                   </button>
@@ -2084,10 +2079,10 @@ export default function ManageAppointment() {
                             </div>
                           )}
                           <input
-                            type="text"
-                            id="familyHistory"
-                            name="familyHistory"
-                            placeholder="Type and press Enter to add"
+                            type='text'
+                            id='familyHistory'
+                            name='familyHistory'
+                            placeholder='Type and press Enter to add'
                             value={textInput.familyHistory}
                             onChange={(e) =>
                               setTextInput((prev) => ({
@@ -2096,34 +2091,34 @@ export default function ManageAppointment() {
                               }))
                             }
                             onKeyPress={(e) =>
-                              handleTextInputKeyPress(e, "familyHistory")
+                              handleTextInputKeyPress(e, 'familyHistory')
                             }
                             onBlur={() => {
                               if (textInput.familyHistory.trim()) {
                                 addTextPill(
-                                  "familyHistory",
-                                  textInput.familyHistory
+                                  'familyHistory',
+                                  textInput.familyHistory,
                                 );
                               }
                             }}
                           />
                         </div>
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="allergies">Allergies</label>
-                        <div className="text-input-container">
+                      <div className='form-group'>
+                        <label htmlFor='allergies'>Allergies</label>
+                        <div className='text-input-container'>
                           {textPills.allergies.length > 0 && (
-                            <div className="text-pills">
+                            <div className='text-pills'>
                               {textPills.allergies.map((text, index) => (
-                                <div key={index} className="text-pill">
+                                <div key={index} className='text-pill'>
                                   <span>{text}</span>
                                   <button
-                                    type="button"
-                                    className="remove-pill"
+                                    type='button'
+                                    className='remove-pill'
                                     onClick={() =>
-                                      removeTextPill("allergies", text)
+                                      removeTextPill('allergies', text)
                                     }
-                                    aria-label="Remove text"
+                                    aria-label='Remove text'
                                   >
                                     ×
                                   </button>
@@ -2132,10 +2127,10 @@ export default function ManageAppointment() {
                             </div>
                           )}
                           <input
-                            type="text"
-                            id="allergies"
-                            name="allergies"
-                            placeholder="Type and press Enter to add"
+                            type='text'
+                            id='allergies'
+                            name='allergies'
+                            placeholder='Type and press Enter to add'
                             value={textInput.allergies}
                             onChange={(e) =>
                               setTextInput((prev) => ({
@@ -2144,105 +2139,105 @@ export default function ManageAppointment() {
                               }))
                             }
                             onKeyPress={(e) =>
-                              handleTextInputKeyPress(e, "allergies")
+                              handleTextInputKeyPress(e, 'allergies')
                             }
                             onBlur={() => {
                               if (textInput.allergies.trim()) {
-                                addTextPill("allergies", textInput.allergies);
+                                addTextPill('allergies', textInput.allergies);
                               }
                             }}
                           />
                         </div>
                       </div>
                     </div>
-                    <div className="form-row">
-                      <div className="form-group">
+                    <div className='form-row'>
+                      <div className='form-group'>
                         <label>Smoking</label>
-                        <div className="checkbox-group">
-                          <label className="checkbox-item">
+                        <div className='checkbox-group'>
+                          <label className='checkbox-item'>
                             <input
-                              type="checkbox"
-                              name="smoking"
-                              value="yes"
-                              checked={newTicketData.smoking === "yes"}
+                              type='checkbox'
+                              name='smoking'
+                              value='yes'
+                              checked={newTicketData.smoking === 'yes'}
                               onChange={(e) =>
                                 setNewTicketData({
                                   ...newTicketData,
-                                  smoking: e.target.checked ? "yes" : "",
+                                  smoking: e.target.checked ? 'yes' : '',
                                 })
                               }
                             />
-                            <span className="checkmark"></span>
+                            <span className='checkmark'></span>
                             Yes
                           </label>
-                          <label className="checkbox-item">
+                          <label className='checkbox-item'>
                             <input
-                              type="checkbox"
-                              name="smoking"
-                              value="no"
-                              checked={newTicketData.smoking === "no"}
+                              type='checkbox'
+                              name='smoking'
+                              value='no'
+                              checked={newTicketData.smoking === 'no'}
                               onChange={(e) =>
                                 setNewTicketData({
                                   ...newTicketData,
-                                  smoking: e.target.checked ? "no" : "",
+                                  smoking: e.target.checked ? 'no' : '',
                                 })
                               }
                             />
-                            <span className="checkmark"></span>
+                            <span className='checkmark'></span>
                             No
                           </label>
                         </div>
                       </div>
-                      <div className="form-group">
+                      <div className='form-group'>
                         <label>Drinking</label>
-                        <div className="checkbox-group">
-                          <label className="checkbox-item">
+                        <div className='checkbox-group'>
+                          <label className='checkbox-item'>
                             <input
-                              type="checkbox"
-                              name="drinking"
-                              value="yes"
-                              checked={newTicketData.drinking === "yes"}
+                              type='checkbox'
+                              name='drinking'
+                              value='yes'
+                              checked={newTicketData.drinking === 'yes'}
                               onChange={(e) =>
                                 setNewTicketData({
                                   ...newTicketData,
-                                  drinking: e.target.checked ? "yes" : "",
+                                  drinking: e.target.checked ? 'yes' : '',
                                 })
                               }
                             />
-                            <span className="checkmark"></span>
+                            <span className='checkmark'></span>
                             Yes
                           </label>
-                          <label className="checkbox-item">
+                          <label className='checkbox-item'>
                             <input
-                              type="checkbox"
-                              name="drinking"
-                              value="no"
-                              checked={newTicketData.drinking === "no"}
+                              type='checkbox'
+                              name='drinking'
+                              value='no'
+                              checked={newTicketData.drinking === 'no'}
                               onChange={(e) =>
                                 setNewTicketData({
                                   ...newTicketData,
-                                  drinking: e.target.checked ? "no" : "",
+                                  drinking: e.target.checked ? 'no' : '',
                                 })
                               }
                             />
-                            <span className="checkmark"></span>
+                            <span className='checkmark'></span>
                             No
                           </label>
                         </div>
                       </div>
                     </div>
                   </div>
-                  <div className="form-section">
+                  <div className='form-section'>
                     <h3>Appointment Details</h3>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="preferredDate">Preferred Date</label>
+                    <div className='form-row'>
+                      <div className='form-group'>
+                        <label htmlFor='preferredDate'>Preferred Date</label>
                         <input
-                          type="date"
-                          id="preferredDate"
-                          name="preferredDate"
+                          type='date'
+                          id='preferredDate'
+                          name='preferredDate'
                           value={newTicketData.preferredDate}
-                          min={new Date().toISOString().split("T")[0]}
+                          min={new Date().toISOString().split('T')[0]}
                           onChange={(e) =>
                             setNewTicketData({
                               ...newTicketData,
@@ -2251,16 +2246,16 @@ export default function ManageAppointment() {
                           }
                         />
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="preferredTime">Preferred Time</label>
+                      <div className='form-group'>
+                        <label htmlFor='preferredTime'>Preferred Time</label>
                         <input
-                          type="time"
-                          id="preferredTime"
-                          name="preferredTime"
+                          type='time'
+                          id='preferredTime'
+                          name='preferredTime'
                           value={newTicketData.preferredTime}
                           min={
                             newTicketData.preferredDate ===
-                              new Date().toISOString().split("T")[0]
+                            new Date().toISOString().split('T')[0]
                               ? new Date().toTimeString().slice(0, 5)
                               : undefined
                           }
@@ -2273,14 +2268,14 @@ export default function ManageAppointment() {
                         />
                       </div>
                     </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="preferredSpecialist">
+                    <div className='form-row'>
+                      <div className='form-group'>
+                        <label htmlFor='preferredSpecialist'>
                           Preferred Specialist
                         </label>
                         <select
-                          id="preferredSpecialist"
-                          name="preferredSpecialist"
+                          id='preferredSpecialist'
+                          name='preferredSpecialist'
                           value={newTicketData.preferredSpecialist}
                           onChange={(e) =>
                             setNewTicketData({
@@ -2290,7 +2285,7 @@ export default function ManageAppointment() {
                           }
                           required
                         >
-                          <option value="">Select Doctor</option>
+                          <option value=''>Select Doctor</option>
                           {doctors && doctors.length > 0 ? (
                             doctors.map((doctor) => (
                               <option key={doctor.id} value={doctor.name}>
@@ -2298,19 +2293,19 @@ export default function ManageAppointment() {
                               </option>
                             ))
                           ) : (
-                            <option value="" disabled>
+                            <option value='' disabled>
                               Loading specialists...
                             </option>
                           )}
                         </select>
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="consultationChannel">
+                      <div className='form-group'>
+                        <label htmlFor='consultationChannel'>
                           Consultation Channel
                         </label>
                         <select
-                          id="consultationChannel"
-                          name="consultationChannel"
+                          id='consultationChannel'
+                          name='consultationChannel'
                           value={newTicketData.consultationChannel}
                           onChange={(e) =>
                             setNewTicketData({
@@ -2319,15 +2314,15 @@ export default function ManageAppointment() {
                             })
                           }
                         >
-                          <option value="Mobile Call">Mobile Call</option>
-                          <option value="Platform Chat">Platform Chat</option>
-                          <option value="Viber (Audio Call)">
+                          <option value='Mobile Call'>Mobile Call</option>
+                          <option value='Platform Chat'>Platform Chat</option>
+                          <option value='Viber (Audio Call)'>
                             Viber (Audio Call)
                           </option>
-                          <option value="Viber (Video Call)">
+                          <option value='Viber (Video Call)'>
                             Viber (Video Call)
                           </option>
-                          <option value="Platform Video Call">
+                          <option value='Platform Video Call'>
                             Platform Video Call
                           </option>
                         </select>
@@ -2335,12 +2330,12 @@ export default function ManageAppointment() {
                     </div>
                   </div>
 
-                  <div className="form-section">
+                  <div className='form-section'>
                     <h3>HMO Information</h3>
-                    <div className="form-group">
-                      <label className="checkbox-label">
+                    <div className='form-group'>
+                      <label className='checkbox-label'>
                         <input
-                          type="checkbox"
+                          type='checkbox'
                           checked={newTicketData.hasHMO}
                           onChange={(e) =>
                             setNewTicketData((prev) => ({
@@ -2348,32 +2343,32 @@ export default function ManageAppointment() {
                               hasHMO: e.target.checked,
                               hmo: e.target.checked
                                 ? prev.hmo || {
-                                  company: "",
-                                  memberId: "",
-                                  expirationDate: "",
-                                  loaCode: "",
-                                  eLOAFile: null,
-                                }
+                                    company: '',
+                                    memberId: '',
+                                    expirationDate: '',
+                                    loaCode: '',
+                                    eLOAFile: null,
+                                  }
                                 : {
-                                  company: "",
-                                  memberId: "",
-                                  expirationDate: "",
-                                  loaCode: "",
-                                  eLOAFile: null,
-                                },
+                                    company: '',
+                                    memberId: '',
+                                    expirationDate: '',
+                                    loaCode: '',
+                                    eLOAFile: null,
+                                  },
                             }))
                           }
-                        />{" "}
+                        />{' '}
                         Patient has HMO coverage
                       </label>
                     </div>
                     {newTicketData.hasHMO && (
-                      <div className="hmo-fields">
-                        <div className="form-row">
-                          <div className="form-group">
-                            <label htmlFor="hmoCompany">HMO Company</label>
+                      <div className='hmo-fields'>
+                        <div className='form-row'>
+                          <div className='form-group'>
+                            <label htmlFor='hmoCompany'>HMO Company</label>
                             <input
-                              id="hmoCompany"
+                              id='hmoCompany'
                               value={newTicketData.hmo.company}
                               onChange={(e) =>
                                 setNewTicketData((prev) => ({
@@ -2383,10 +2378,10 @@ export default function ManageAppointment() {
                               }
                             />
                           </div>
-                          <div className="form-group">
-                            <label htmlFor="hmoMemberId">Member ID</label>
+                          <div className='form-group'>
+                            <label htmlFor='hmoMemberId'>Member ID</label>
                             <input
-                              id="hmoMemberId"
+                              id='hmoMemberId'
                               value={newTicketData.hmo.memberId}
                               onChange={(e) =>
                                 setNewTicketData((prev) => ({
@@ -2400,14 +2395,14 @@ export default function ManageAppointment() {
                             />
                           </div>
                         </div>
-                        <div className="form-row">
-                          <div className="form-group">
-                            <label htmlFor="hmoExpiration">
+                        <div className='form-row'>
+                          <div className='form-group'>
+                            <label htmlFor='hmoExpiration'>
                               Expiration Date
                             </label>
                             <input
-                              type="date"
-                              id="hmoExpiration"
+                              type='date'
+                              id='hmoExpiration'
                               value={newTicketData.hmo.expirationDate}
                               onChange={(e) =>
                                 setNewTicketData((prev) => ({
@@ -2420,10 +2415,10 @@ export default function ManageAppointment() {
                               }
                             />
                           </div>
-                          <div className="form-group">
-                            <label htmlFor="hmoLoaCode">LOA Code</label>
+                          <div className='form-group'>
+                            <label htmlFor='hmoLoaCode'>LOA Code</label>
                             <input
-                              id="hmoLoaCode"
+                              id='hmoLoaCode'
                               value={newTicketData.hmo.loaCode}
                               onChange={(e) =>
                                 setNewTicketData((prev) => ({
@@ -2434,12 +2429,12 @@ export default function ManageAppointment() {
                             />
                           </div>
                         </div>
-                        <div className="form-group">
-                          <label htmlFor="hmoFile">eLOA File</label>
+                        <div className='form-group'>
+                          <label htmlFor='hmoFile'>eLOA File</label>
                           <input
-                            type="file"
-                            id="hmoFile"
-                            accept=".pdf,.jpg,.jpeg"
+                            type='file'
+                            id='hmoFile'
+                            accept='.pdf,.jpg,.jpeg'
                             onChange={(e) =>
                               setNewTicketData((prev) => ({
                                 ...prev,
@@ -2455,56 +2450,56 @@ export default function ManageAppointment() {
                     )}
                   </div>
 
-                  <div className="modal-actions">
-                    <button type="submit" className="submit-btn">
+                  <div className='modal-actions'>
+                    <button type='submit' className='submit-btn'>
                       Create Ticket
                     </button>
                     <button
-                      type="button"
+                      type='button'
                       onClick={() => setShowCreateTicketModal(false)}
-                      className="cancel-btn"
+                      className='cancel-btn'
                     >
                       Cancel
                     </button>
                   </div>
                 </form>
               )}
-              {createTicketTab === "painmap" && (
-                <div className="painmap-section">
+              {createTicketTab === 'painmap' && (
+                <div className='painmap-section'>
                   <h3>Pain Map</h3>
-                  <div style={{ textAlign: "center", marginBottom: 24 }}>
+                  <div style={{ textAlign: 'center', marginBottom: 24 }}>
                     <img
-                      src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/1506_Referred_Pain_Chart.jpg/1280px-1506_Referred_Pain_Chart.jpg"
-                      alt="Pain Map"
+                      src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/1506_Referred_Pain_Chart.jpg/1280px-1506_Referred_Pain_Chart.jpg'
+                      alt='Pain Map'
                       style={{
-                        maxWidth: "100%",
-                        height: "auto",
+                        maxWidth: '100%',
+                        height: 'auto',
                         borderRadius: 12,
-                        boxShadow: "0 2px 8px rgba(11,83,136,0.07)",
+                        boxShadow: '0 2px 8px rgba(11,83,136,0.07)',
                       }}
                     />
                   </div>
-                  <div className="painmap-checklist">
+                  <div className='painmap-checklist'>
                     <strong
                       style={{
-                        display: "block",
+                        display: 'block',
                         marginBottom: 10,
-                        color: "#2a4d6c",
+                        color: '#2a4d6c',
                       }}
                     >
                       Select pain locations:
                     </strong>
                     <div
                       style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "16px 24px",
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '16px 24px',
                       }}
                     >
                       {painMapFields.map((part) => (
-                        <label key={part} className="painmap-item-label">
+                        <label key={part} className='painmap-item-label'>
                           <input
-                            type="checkbox"
+                            type='checkbox'
                             checked={
                               newTicketData.painMap &&
                               newTicketData.painMap.includes(part)
@@ -2526,13 +2521,13 @@ export default function ManageAppointment() {
                   </div>
                 </div>
               )}
-              {createTicketTab === "ros" && (
-                <div className="ros-section">
+              {createTicketTab === 'ros' && (
+                <div className='ros-section'>
                   <h3>Review of Systems</h3>
                   <div style={{ marginBottom: 18 }}>
-                    <label className="ros-item-label">
+                    <label className='ros-item-label'>
                       <input
-                        type="checkbox"
+                        type='checkbox'
                         checked={newTicketData.rosNone || false}
                         onChange={(e) =>
                           setNewTicketData({
@@ -2545,16 +2540,16 @@ export default function ManageAppointment() {
                     </label>
                   </div>
                   {Object.entries(rosFields).map(([group, items]) => (
-                    <div key={group} className="ros-group">
-                      <span className="ros-group-title">
+                    <div key={group} className='ros-group'>
+                      <span className='ros-group-title'>
                         {group.charAt(0).toUpperCase() +
-                          group.slice(1).replace(/([A-Z])/g, " $1")}
+                          group.slice(1).replace(/([A-Z])/g, ' $1')}
                       </span>
-                      <div className="ros-items">
+                      <div className='ros-items'>
                         {items.map((item) => (
-                          <label key={item} className="ros-item-label">
+                          <label key={item} className='ros-item-label'>
                             <input
-                              type="checkbox"
+                              type='checkbox'
                               checked={
                                 newTicketData.ros && newTicketData.ros[group]
                                   ? newTicketData.ros[group].includes(item)
@@ -2567,7 +2562,7 @@ export default function ManageAppointment() {
                                   ros[group] = [...ros[group], item];
                                 } else {
                                   ros[group] = ros[group].filter(
-                                    (i) => i !== item
+                                    (i) => i !== item,
                                   );
                                 }
                                 setNewTicketData({ ...newTicketData, ros });
@@ -2586,19 +2581,18 @@ export default function ManageAppointment() {
         </div>
       )}
 
-      {/* Ticket Detail Modal with 4 Tabs */}
       {showTicketDetailModal && selectedTicket && (
-        <div className="modal-overlay">
+        <div className='modal-overlay'>
           <div
-            className="ticket-detail-modal"
-            style={{ maxWidth: 900, width: "90%" }}
+            className='ticket-detail-modal'
+            style={{ maxWidth: 900, width: '90%' }}
           >
             <div
-              className="modal-header"
-              style={{ borderBottom: "1px solid #e0e0e0", paddingBottom: 16 }}
+              className='modal-header'
+              style={{ borderBottom: '1px solid #e0e0e0', paddingBottom: 16 }}
             >
               <div>
-                <h2 style={{ margin: 0, color: "#0b5388" }}>
+                <h2 style={{ margin: 0, color: '#0b5388' }}>
                   TICKET #{selectedTicket.id}
                 </h2>
               </div>
@@ -2607,74 +2601,73 @@ export default function ManageAppointment() {
                   setShowTicketDetailModal(false);
                   setSelectedTicket(null);
                 }}
-                className="close-btn"
+                className='close-btn'
               >
                 ×
               </button>
             </div>
 
-            {/* Patient Info Summary */}
             <div
               style={{
-                padding: "16px 24px",
-                background: "#f8f9fa",
-                borderBottom: "1px solid #e0e0e0",
+                padding: '16px 24px',
+                background: '#f8f9fa',
+                borderBottom: '1px solid #e0e0e0',
               }}
             >
               <div
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
                   gap: 16,
                 }}
               >
                 <div>
                   <p
                     style={{
-                      margin: "0 0 4px",
+                      margin: '0 0 4px',
                       fontSize: 12,
-                      color: "#666",
-                      textTransform: "uppercase",
+                      color: '#666',
+                      textTransform: 'uppercase',
                     }}
                   >
                     Patient Details
                   </p>
-                  <p style={{ margin: "0 0 4px" }}>
+                  <p style={{ margin: '0 0 4px' }}>
                     <strong>Name:</strong> {selectedTicket.patientName}
                   </p>
-                  <p style={{ margin: "0 0 4px" }}>
+                  <p style={{ margin: '0 0 4px' }}>
                     <strong>Email:</strong> {selectedTicket.email}
                   </p>
-                  <p style={{ margin: "0 0 4px" }}>
-                    <strong>Age:</strong>{" "}
+                  <p style={{ margin: '0 0 4px' }}>
+                    <strong>Age:</strong>{' '}
                     {selectedTicket.age ||
                       calculateAge(selectedTicket.patientBirthdate) ||
-                      "N/A"}
+                      'N/A'}
                   </p>
-                  <p style={{ margin: "0 0 4px" }}>
+                  <p style={{ margin: '0 0 4px' }}>
                     <strong>Mobile:</strong> {selectedTicket.mobile}
                   </p>
                   <p style={{ margin: 0 }}>
-                    <strong>Birthdate:</strong>{" "}
-                    {formatDate(selectedTicket.patientBirthdate) || "N/A"}
+                    <strong>Birthdate:</strong>{' '}
+                    {formatDate(selectedTicket.patientBirthdate) || 'N/A'}
                   </p>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <p style={{ margin: "0 0 4px", color: "#0b5388" }}>
-                    <strong>Date Created:</strong>{" "}
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ margin: '0 0 4px', color: '#0b5388' }}>
+                    <strong>Date Created:</strong>{' '}
                     {formatDate(selectedTicket.createdAt)}
                   </p>
                   <p style={{ margin: 0 }}>
-                    <strong>Status:</strong>{" "}
+                    <strong>Status:</strong>{' '}
                     <span
                       style={{
                         color:
-                          selectedTicket.status === "Confirmed"
-                            ? "#4caf50"
-                            : selectedTicket.status === "Processing"
-                              ? "#2196f3"
-                              : "#ff9800",
+                          selectedTicket.status === 'Confirmed'
+                            ? '#4caf50'
+                            : selectedTicket.status === 'Processing'
+                              ? '#2196f3'
+                              : '#ff9800',
                       }}
                     >
                       {selectedTicket.status}
@@ -2686,101 +2679,99 @@ export default function ManageAppointment() {
                 style={{
                   marginTop: 16,
                   paddingTop: 16,
-                  borderTop: "1px solid #e0e0e0",
+                  borderTop: '1px solid #e0e0e0',
                 }}
               >
-                <p style={{ margin: "0 0 4px" }}>
-                  <strong>Assigned Nurse:</strong>{" "}
-                  {selectedTicket.assignedNurse || nurseName || "N/A"}
+                <p style={{ margin: '0 0 4px' }}>
+                  <strong>Assigned Nurse:</strong>{' '}
+                  {selectedTicket.assignedNurse || nurseName || 'N/A'}
                 </p>
-                <p style={{ margin: "0 0 4px" }}>
-                  <strong>Assigned Specialist:</strong>{" "}
-                  {selectedTicket.assignedSpecialist || "Not specified"}
+                <p style={{ margin: '0 0 4px' }}>
+                  <strong>Assigned Specialist:</strong>{' '}
+                  {selectedTicket.assignedSpecialist || 'Not specified'}
                 </p>
                 <p style={{ margin: 0 }}>
-                  <strong>Consultation Type:</strong>{" "}
+                  <strong>Consultation Type:</strong>{' '}
                   {selectedTicket.consultationChannel ||
                     selectedTicket.chiefComplaint}
                 </p>
               </div>
-              <div style={{ marginTop: 16, textAlign: "right" }}>
+              <div style={{ marginTop: 16, textAlign: 'right' }}>
                 <button
-                  className="action-btn"
+                  className='action-btn'
                   style={{
-                    background: "#0b5388",
-                    color: "#fff",
-                    padding: "8px 20px",
+                    background: '#0b5388',
+                    color: '#fff',
+                    padding: '8px 20px',
                     borderRadius: 20,
                   }}
-                  onClick={() => alert("Feature in progress")}
+                  onClick={() => alert('Feature in progress')}
                 >
                   Consultation Histories
                 </button>
               </div>
             </div>
 
-            {/* Tabs */}
             <div
               style={{
-                display: "flex",
-                borderBottom: "2px solid #e0e0e0",
-                background: "#fff",
+                display: 'flex',
+                borderBottom: '2px solid #e0e0e0',
+                background: '#fff',
               }}
             >
               {[
-                "assessment",
-                "medicalHistory",
-                "laboratoryRequest",
-                "prescription",
+                'assessment',
+                'medicalHistory',
+                'laboratoryRequest',
+                'prescription',
               ].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setTicketDetailTab(tab)}
                   style={{
                     flex: 1,
-                    padding: "12px 16px",
-                    border: "none",
+                    padding: '12px 16px',
+                    border: 'none',
                     background:
-                      ticketDetailTab === tab ? "#e3f2fd" : "transparent",
-                    color: ticketDetailTab === tab ? "#0b5388" : "#666",
+                      ticketDetailTab === tab ? '#e3f2fd' : 'transparent',
+                    color: ticketDetailTab === tab ? '#0b5388' : '#666',
                     fontWeight: ticketDetailTab === tab ? 600 : 400,
-                    cursor: "pointer",
+                    cursor: 'pointer',
                     borderBottom:
                       ticketDetailTab === tab
-                        ? "2px solid #0b5388"
-                        : "2px solid transparent",
-                    marginBottom: "-2px",
-                    transition: "all 0.2s ease",
+                        ? '2px solid #0b5388'
+                        : '2px solid transparent',
+                    marginBottom: '-2px',
+                    transition: 'all 0.2s ease',
                   }}
                 >
-                  {tab === "assessment" && "Assessment"}
-                  {tab === "medicalHistory" && "Medical History"}
-                  {tab === "laboratoryRequest" && "Laboratory Request"}
-                  {tab === "prescription" && "Prescription"}
+                  {tab === 'assessment' && 'Assessment'}
+                  {tab === 'medicalHistory' && 'Medical History'}
+                  {tab === 'laboratoryRequest' && 'Laboratory Request'}
+                  {tab === 'prescription' && 'Prescription'}
                 </button>
               ))}
             </div>
 
-            {/* Tab Content */}
             <div
-              className="modal-body"
+              className='modal-body'
               style={{
                 padding: 24,
                 maxHeight: 400,
-                overflowY: "auto",
-                background: "#e8f4fc",
+                overflowY: 'auto',
+                background: '#e8f4fc',
               }}
             >
-              {ticketDetailTab === "assessment" && (
+              {ticketDetailTab === 'assessment' && (
                 <div>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                  <p style={{ lineHeight: 1.8, color: '#333' }}>
                     "Sed ut perspiciatis unde omnis iste natus error sit
                     voluptatem accusantium doloremque laudantium, totam rem
                     aperiam, eaque ipsa quae ab illo inventore veritatis et
                     quasi architecto beatae vitae dicta sunt explicabo. Nemo
                     enim ipsam
                   </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                  <p style={{ lineHeight: 1.8, color: '#333' }}>
                     voluptatem quia voluptas sit aspernatur aut odit aut fugit,
                     sed quia consequuntur magni dolores eos qui ratione
                     voluptatem sequi nesciunt. Neque porro quisquam est, qui
@@ -2788,7 +2779,7 @@ export default function ManageAppointment() {
                     velit, sed quia non numquam eius modi tempora incidunt ut
                     labore et dolore magnam aliquam quaerat voluptatem.
                   </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                  <p style={{ lineHeight: 1.8, color: '#333' }}>
                     Ut enim ad minima veniam, quis nostrum exercitationem ullam
                     corporis suscipit laboriosam, nisi ut aliquid ex ea commodi
                     consequatur? Quis autem vel eum iure reprehenderit qui in ea
@@ -2798,21 +2789,21 @@ export default function ManageAppointment() {
                 </div>
               )}
 
-              {ticketDetailTab === "medicalHistory" && (
+              {ticketDetailTab === 'medicalHistory' && (
                 <div>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                  <p style={{ lineHeight: 1.8, color: '#333' }}>
                     "Lorem ipsum dolor sit amet, consectetur adipiscing elit,
                     sed do eiusmod tempor incididunt ut labore et dolore magna
                     aliqua. Ut enim ad minim veniam, quis nostrud exercitation
                     ullamco laboris nisi ut aliquip ex ea commodo consequat.
                   </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                  <p style={{ lineHeight: 1.8, color: '#333' }}>
                     Duis aute irure dolor in reprehenderit in voluptate velit
                     esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
                     occaecat cupidatat non proident, sunt in culpa qui officia
                     deserunt mollit anim id est laborum."
                   </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                  <p style={{ lineHeight: 1.8, color: '#333' }}>
                     Sed ut perspiciatis unde omnis iste natus error sit
                     voluptatem accusantium doloremque laudantium, totam rem
                     aperiam, eaque ipsa quae ab illo inventore veritatis et
@@ -2821,20 +2812,20 @@ export default function ManageAppointment() {
                 </div>
               )}
 
-              {ticketDetailTab === "laboratoryRequest" && (
+              {ticketDetailTab === 'laboratoryRequest' && (
                 <div>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                  <p style={{ lineHeight: 1.8, color: '#333' }}>
                     "At vero eos et accusamus et iusto odio dignissimos ducimus
                     qui blanditiis praesentium voluptatum deleniti atque
                     corrupti quos dolores et quas molestias excepturi sint
                     occaecati cupiditate non provident.
                   </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                  <p style={{ lineHeight: 1.8, color: '#333' }}>
                     Similique sunt in culpa qui officia deserunt mollitia animi,
                     id est laborum et dolorum fuga. Et harum quidem rerum
                     facilis est et expedita distinctio."
                   </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                  <p style={{ lineHeight: 1.8, color: '#333' }}>
                     Nam libero tempore, cum soluta nobis est eligendi optio
                     cumque nihil impedit quo minus id quod maxime placeat facere
                     possimus, omnis voluptas assumenda est, omnis dolor
@@ -2843,21 +2834,21 @@ export default function ManageAppointment() {
                 </div>
               )}
 
-              {ticketDetailTab === "prescription" && (
+              {ticketDetailTab === 'prescription' && (
                 <div>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                  <p style={{ lineHeight: 1.8, color: '#333' }}>
                     "Temporibus autem quibusdam et aut officiis debitis aut
                     rerum necessitatibus saepe eveniet ut et voluptates
                     repudiandae sint et molestiae non recusandae. Itaque earum
                     rerum hic tenetur a sapiente delectus.
                   </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                  <p style={{ lineHeight: 1.8, color: '#333' }}>
                     Ut aut reiciendis voluptatibus maiores alias consequatur aut
                     perferendis doloribus asperiores repellat. Nam libero
                     tempore, cum soluta nobis est eligendi optio cumque nihil
                     impedit quo minus id quod maxime placeat facere possimus."
                   </p>
-                  <p style={{ lineHeight: 1.8, color: "#333" }}>
+                  <p style={{ lineHeight: 1.8, color: '#333' }}>
                     Omnis voluptas assumenda est, omnis dolor repellendus.
                     Temporibus autem quibusdam et aut officiis debitis aut rerum
                     necessitatibus saepe eveniet ut et voluptates repudiandae

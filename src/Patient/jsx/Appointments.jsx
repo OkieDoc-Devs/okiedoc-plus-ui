@@ -123,8 +123,12 @@ const Appointments = ({ onAppointmentAdded }) => {
           displayStatus = 'Processing';
         } else if (t.status === 'for_payment') {
           displayStatus = 'For Payment';
-        } else if (t.status === 'confirmed' || t.status === 'completed') {
+        } else if (t.status === 'confirmed') {
           displayStatus = 'Confirmed';
+        } else if (t.status === 'completed') {
+          displayStatus = 'Completed';
+        } else if (t.status === 'cancelled') {
+          displayStatus = 'Cancelled';
         } else if (t.status === 'pending' || t.status === 'unclaimed') {
           displayStatus = 'Pending';
         } else {
@@ -142,8 +146,12 @@ const Appointments = ({ onAppointmentAdded }) => {
           status: displayStatus,
           specialist: computedSpecialistName,
           specialty: t.specialty || t.specialist?.specialization || "General",
-          date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'TBD',
-          time: t.createdAt ? new Date(t.createdAt).toLocaleTimeString() : 'TBD',
+          date: t.preferredDate
+            ? new Date(t.preferredDate).toLocaleDateString()
+            : t.createdAt
+              ? new Date(t.createdAt).toLocaleDateString()
+              : 'TBD',
+          time: t.preferredTime || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString() : 'TBD'),
           description: t.chiefComplaint || t.symptoms || "",
           consultationChannel: t.consultationChannel || t.channel || "Platform Chat",
           consultationType: t.consultationType || "Teleconsultation",

@@ -37,8 +37,12 @@ const ConsultationHistory = () => {
           const mappedHistory = data.history.map(t => ({
             id: t.ticketNumber,
             ticketNumber: t.ticketNumber,
-            date: t.visitDate ? new Date(t.visitDate).toLocaleDateString() : 'Unknown Date',
-            time: t.visitDate ? new Date(t.visitDate).toLocaleTimeString() : '',
+            date: t.preferredDate
+              ? new Date(t.preferredDate).toLocaleDateString()
+              : t.visitDate
+                ? new Date(t.visitDate).toLocaleDateString()
+                : 'Unknown Date',
+            time: t.preferredTime || (t.visitDate ? new Date(t.visitDate).toLocaleTimeString() : ''),
             specialist: t.specialistName,
             nurse: 'Assigned Nurse', // Can be enriched from backend later
             status: t.status === 'completed' ? 'Completed' : 'Incomplete',

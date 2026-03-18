@@ -30,6 +30,7 @@ import PRC from '../../assets/PRC_Sample.jpg';
 import PTR from '../../assets/PTR.png';
 import esig from '../../assets/esig.png';
 import OkieDocLogo from '../../assets/okie-doc-logo.png';
+import NotificationBell from '../../components/Notifications/NotificationBell';
 
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
@@ -473,10 +474,13 @@ const SpecialistDashboard = () => {
           <img src={OkieDocLogo} alt='Okie-Doc+' className='logo-image' />
         </div>
         <h3 className='dashboard-title'>Admin Dashboard</h3>
-        <div className='user-account'>
-          <img src='/account.svg' alt='Account' className='account-icon' />
-          <span className='account-name'>Admin</span>
-          <div className='account-dropdown'>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <NotificationBell />
+          <div className='user-account'>
+            <img src='/account.svg' alt='Account' className='account-icon' />
+            <span className='account-name'>Admin</span>
+            <div className='account-dropdown'>
             <button
               className='dropdown-item logout-item'
               onClick={handleLogout}
@@ -484,6 +488,7 @@ const SpecialistDashboard = () => {
               Logout
             </button>
           </div>
+        </div>
         </div>
         <div className='dashboard-nav'>
           <button

@@ -4,6 +4,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import socketClient from "../../utils/socketClient";
+import { connectSocket } from "../../utils/socketClient";
 import {
   getConversations,
   getMessages,
@@ -14,8 +16,9 @@ import {
   createConversation,
   searchUsers,
   getAllChatUsers,
-  subscribeToConversation,
   setupChatSocketListeners,
+  subscribeToConversation,
+  unsubscribeFromConversation,
   transformConversationForUI,
   transformMessageForUI,
   isSocketConnected,
@@ -25,9 +28,10 @@ import {
 export function useChat({ currentUserId, currentUserType = "n" } = {}) {
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
-  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [activeCallHost, setActiveCallHost] = useState(null);
   const [typingUsers, setTypingUsers] = useState([]);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
 
@@ -98,6 +102,10 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
           timeoutId = setTimeout(initSocket, 2000);
         }
       } else {
+        // Not yet connected — trigger a connection attempt then retry
+        if (!connected) {
+          connectSocket();
+        }
         timeoutId = setTimeout(initSocket, 1000);
       }
     };
@@ -148,13 +156,15 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
 
     globalCleanupRef.current = setupChatSocketListeners({
       onMessage: (data) => {
-        const incomingConversationId = data.conversationId;
+        const incomingConversationId = data.conversationId || data.ticket || data.message?.ticket;
         const currentActive = activeConversationRef.current;
+        const message = data.message || data;
 
         const senderId =
-          data.message?.Sender_ID ||
-          data.message?.Sender_Id ||
-          data.message?.senderId;
+          message.sender?.id || 
+          message.Sender_ID ||
+          message.Sender_Id ||
+          message.senderId;
 
         if (Number(senderId) === Number(currentUserId)) return;
 
@@ -164,7 +174,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         );
 
         setConversations((prev) => {
-          const index = prev.findIndex((c) => c.id === incomingConversationId);
+          const index = prev.findIndex((c) => Number(c.id) === Number(incomingConversationId));
 
           if (index === -1) {
             console.log(
@@ -176,23 +186,22 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
 
           const existingConv = prev[index];
           const isActive =
-            currentActive && currentActive.id === incomingConversationId;
+            currentActive && Number(currentActive.id) === Number(incomingConversationId);
 
           const senderName =
-            data.message?.Sender_Name ||
-            data.message?.senderName ||
-            data.message?.sender?.Display_Name ||
-            data.message?.sender?.displayName ||
-            data.message?.sender?.name ||
+            message.sender?.fullName ||
+            message.senderName ||
+            message.sender?.Display_Name ||
+            message.sender?.displayName ||
+            message.sender?.name ||
             existingConv.name?.split(" ")[0] ||
             existingConv.name;
 
           const updatedConv = {
             ...existingConv,
             lastMessage:
-              data.message?.Message_Content ||
-              data.message?.content ||
-              data.message?.text ||
+              message.content ||
+              message.text ||
               "New message",
             lastMessageSentByMe: false,
             lastMessageSenderName: senderName,
@@ -263,12 +272,22 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
     };
   }, [socketReady, currentUserId, loadConversations]);
 
+  useEffect(() => {
+    activeConversationRef.current = activeConversation;
+    // reset active call when conversation changes (it will be re-set by loadMessages)
+    setActiveCallHost(null);
+  }, [activeConversation]);
+
   const loadMessages = useCallback(
     async (conversationId, options = {}) => {
       setLoading(true);
       setError(null);
       try {
-        const data = await getMessages(conversationId, options);
+        const response = await getMessages(conversationId, options);
+        // Handle both old array format and new object format for safety
+        const data = Array.isArray(response) ? response : response.messages;
+        const hostId = response.activeCallHost || null;
+
         const transformed = data.map((msg) =>
           transformMessageForUI(msg, currentUserId, currentUserType)
         );
@@ -277,6 +296,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
           setMessages((prev) => [...transformed, ...prev]);
         } else {
           setMessages(transformed);
+          setActiveCallHost(hostId);
         }
         setHasMoreMessages(data.length >= (options.limit || 50));
         markAsRead(conversationId).catch(() => { });
@@ -300,16 +320,21 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         cleanupRef.current = null;
       }
 
+      // Join the ticket room via HTTP using the chatService helper (which uses socket.id + apiRequest)
       subscribeToConversation(conversationId);
+      
       subscribedIdsRef.current.add(conversationId);
 
       cleanupRef.current = setupChatSocketListeners({
         onMessage: (data) => {
           const currentActive = activeConversationRef.current;
 
-          if (data.conversationId !== currentActive?.id) return;
+          // Use Number() comparison — socket broadcasts numeric ticketId,
+          // but the stored conversation.id might be a string.
+          if (Number(data.conversationId) !== Number(currentActive?.id)) return;
 
           const senderId =
+            data.message?.sender?.id ||
             data.message?.Sender_ID ||
             data.message?.Sender_Id ||
             data.message?.senderId;
@@ -330,7 +355,23 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
 
           markAsRead(currentActive?.id).catch(() => { });
         },
-        onTyping: () => { },
+
+        onCallEnded: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (Number(data.ticketId) === Number(currentActive?.id)) {
+            console.log("[Chat] Call ended event received:", data);
+            setActiveCallHost(null);
+          }
+        },
+
+        onCallStarted: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (Number(data.ticketId) === Number(currentActive?.id)) {
+            console.log("[Chat] Call started event received:", data);
+            setActiveCallHost(data.activeCallHost);
+          }
+        },
+
         onRead: (data) => {
           const currentActive = activeConversationRef.current;
           if (data.conversationId === currentActive?.id) {
@@ -357,6 +398,38 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
               )
             );
           }
+        },
+        onTicketClaimed: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (!currentActive || Number(data.ticketId) !== Number(currentActive.id)) return;
+          const nurseName = data.nurse?.fullName || 'A nurse';
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `sys-claimed-${Date.now()}`,
+              isSystem: true,
+              text: `${nurseName} has joined this consultation as the assigned nurse.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isSent: false,
+              sender: 'system',
+            },
+          ]);
+        },
+        onSpecialistJoined: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (!currentActive || Number(data.ticketId) !== Number(currentActive.id)) return;
+          const specName = data.specialist?.fullName || 'A specialist';
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `sys-specialist-${Date.now()}`,
+              isSystem: true,
+              text: `Dr. ${specName} has been assigned and joined this consultation.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isSent: false,
+              sender: 'system',
+            },
+          ]);
         },
       });
     },
@@ -396,8 +469,13 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
   );
 
   const closeConversation = useCallback(() => {
-    if (activeConversation?.id && cleanupRef.current) {
-      cleanupRef.current();
+    if (activeConversation?.id) {
+      // Leave the ticket socket room when closing the chat via HTTP
+      unsubscribeFromConversation(activeConversation.id);
+
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
     }
     setActiveConversation(null);
     setMessages([]);
@@ -457,6 +535,8 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
 
       console.log("[useChat] handleUploadFile called", {
         fileName: file.name,
+        isCallActive: !!activeCallHost,
+        activeCallHost,
         fileType: file.type,
         fileSize: file.size,
         conversationId: activeConversation.id,
@@ -538,7 +618,10 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         const result = await createConversation(conversationData);
         const transformed = transformConversationForUI(result, currentUserId);
 
-        setConversations((prev) => [transformed, ...prev]);
+        setConversations((prev) => {
+          if (prev.some((c) => c.id === transformed.id)) return prev;
+          return [transformed, ...prev];
+        });
         await openConversation(transformed);
 
         if (socketReady) {
@@ -609,6 +692,8 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
     getAllUsers: handleGetAllUsers,
     setError,
     setConversations,
+    activeCallHost,
+    isCallActive: !!activeCallHost,
   };
 }
 

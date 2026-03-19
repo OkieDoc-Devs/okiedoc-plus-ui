@@ -185,6 +185,7 @@ class AuthService {
       patient: '/patient-dashboard',
       nurse: '/nurse-dashboard',
       admin: '/admin/specialist-dashboard',
+      nurse_admin: '/nurse-admin-dashboard',
     };
     return paths[userType] || '/dashboard';
   }

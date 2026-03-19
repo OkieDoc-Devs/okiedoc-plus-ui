@@ -80,7 +80,7 @@ const EditableRow = ({ editableUserData, onUserDataChange, onSave, onCancel }) =
   );
 };
 
-const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff }) => {
+const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff, isNurseAdmin = false }) => {
   const [editingRowId, setEditingRowId] = useState(null);
   const [editableUserData, setEditableUserData] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -224,7 +224,8 @@ const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff }) =>
               <label>Role</label>
               <select name="role" value={staffForm.role} onChange={handleStaffFormChange} className="input-md">
                 <option value="nurse">Nurse</option>
-                <option value="admin">Admin</option>
+                {!isNurseAdmin && <option value="admin">Admin</option>}
+                {!isNurseAdmin && <option value="nurse_admin">Nurse Admin</option>}
               </select>
             </div>
             <div className="input-group">

@@ -10,6 +10,7 @@ import MyAccount from "./Nurse/MyAccount.jsx";
 import ManageAppointments from "./Nurse/ManageAppointments.jsx";
 import Messages from "./Nurse/Messages.jsx";
 import SpecialistDashboard from "./Admin/Specialistdashboard/SpecialistDashboard.jsx";
+import NurseAdminDashboard from "./NurseAdmin/NurseAdminDashboard.jsx";
 import PatientDashboard from "./Patient/jsx/PatientDashboard.jsx";
 import SpecialistDashboard2 from "./Specialists/SpecialistDashboard.jsx";
 import SpecialistLogin from "./Login & Registration/SpecialistLogin.jsx";
@@ -45,11 +46,15 @@ createRoot(document.getElementById("root")).render(
           <Route path="/nurse-messages" element={<ProtectedRoute allowedRoles={['nurse']}><Messages /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['nurse']}><Dashboard /></ProtectedRoute>} />
 
-          {/* Admin Routes */}
-          <Route
-            path="/admin/specialist-dashboard"
-            element={<ProtectedRoute allowedRoles={['admin']}><SpecialistDashboard /></ProtectedRoute>}
-          />
+        {/* Admin Routes */}
+        <Route
+          path="/admin/specialist-dashboard"
+          element={<ProtectedRoute allowedRoles={['admin']}><SpecialistDashboard /></ProtectedRoute>}
+        />
+        <Route
+          path="/nurse-admin-dashboard"
+          element={<ProtectedRoute allowedRoles={['nurse_admin', 'nurseadmin', 'na']}><NurseAdminDashboard /></ProtectedRoute>}
+        />
 
           {/* Patient Routes */}
           <Route path="/patient-dashboard" element={<ProtectedRoute allowedRoles={['patient']}><PatientDashboard /></ProtectedRoute>} />

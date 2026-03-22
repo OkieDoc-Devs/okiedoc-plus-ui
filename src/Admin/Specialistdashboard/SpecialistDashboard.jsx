@@ -32,7 +32,7 @@ import esig from '../../assets/esig.png';
 import OkieDocLogo from '../../assets/okie-doc-logo.png';
 import NotificationBell from '../../components/Notifications/NotificationBell';
 
-const SpecialistDashboard = () => {
+const SpecialistDashboard = ({ isNurseAdmin = false }) => {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('pending');
@@ -473,22 +473,25 @@ const SpecialistDashboard = () => {
         <div className='header-center'>
           <img src={OkieDocLogo} alt='Okie-Doc+' className='logo-image' />
         </div>
-        <h3 className='dashboard-title'>Admin Dashboard</h3>
-        
+        <h3 className='dashboard-title'>
+          {isNurseAdmin ? 'Nurse Admin Dashboard' : 'Admin Dashboard'}
+        </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <NotificationBell />
           <div className='user-account'>
             <img src='/account.svg' alt='Account' className='account-icon' />
-            <span className='account-name'>Admin</span>
+            <span className='account-name'>
+              {isNurseAdmin ? 'Nurse Admin' : 'Admin'}
+            </span>
             <div className='account-dropdown'>
-            <button
-              className='dropdown-item logout-item'
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
+              <button
+                className='dropdown-item logout-item'
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
           </div>
-        </div>
         </div>
         <div className='dashboard-nav'>
           <button
@@ -512,12 +515,14 @@ const SpecialistDashboard = () => {
           >
             User Management
           </button>
-          <button
-            className={`nav-tab ${activeTab === 'transactions' ? 'active' : ''}`}
-            onClick={() => setActiveTab('transactions')}
-          >
-            Transaction History
-          </button>
+          {!isNurseAdmin && (
+            <button
+              className={`nav-tab ${activeTab === 'transactions' ? 'active' : ''}`}
+              onClick={() => setActiveTab('transactions')}
+            >
+              Transaction History
+            </button>
+          )}
           <button
             className={`nav-tab ${activeTab === 'chats' ? 'active' : ''}`}
             onClick={() => setActiveTab('chats')}
@@ -530,12 +535,14 @@ const SpecialistDashboard = () => {
           >
             Consultation History
           </button>
-          <button
-            className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('settings')}
-          >
-            System Fee Settings
-          </button>
+          {!isNurseAdmin && (
+            <button
+              className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
+              onClick={() => setActiveTab('settings')}
+            >
+              System Fee Settings
+            </button>
+          )}
         </div>
       </div>
 
@@ -649,6 +656,7 @@ const SpecialistDashboard = () => {
             onUpdate={handleUpdateUser}
             onDelete={setDeletingUser}
             onCreateStaff={handleCreateStaff}
+            isNurseAdmin={isNurseAdmin}
           />
         )}
 

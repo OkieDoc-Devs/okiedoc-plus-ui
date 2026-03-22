@@ -10,6 +10,7 @@ import MyAccount from './Nurse/MyAccount.jsx';
 import ManageAppointments from './Nurse/ManageAppointments.jsx';
 import Messages from './Nurse/Messages.jsx';
 import SpecialistDashboard from './Admin/Specialistdashboard/SpecialistDashboard.jsx';
+import NurseAdminDashboard from './NurseAdmin/NurseAdminDashboard.jsx';
 import PatientDashboard from './Patient/jsx/PatientDashboard.jsx';
 import SpecialistDashboard2 from './Specialists/SpecialistDashboard.jsx';
 import SpecialistLogin from './Login & Registration/SpecialistLogin.jsx';
@@ -23,7 +24,10 @@ import { NotificationProvider } from './contexts/NotificationContext.jsx';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 
 // Configure Sails Socket Client
-const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "http://localhost:1337";
+const apiUrl =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  'http://localhost:1337';
 const isProd = import.meta.env.MODE === 'production';
 
 const loadSailsSocket = () => {
@@ -116,6 +120,16 @@ createRoot(document.getElementById('root')).render(
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <SpecialistDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path='/nurse-admin-dashboard'
+              element={
+                <ProtectedRoute
+                  allowedRoles={['nurse_admin', 'nurseadmin', 'na']}
+                >
+                  <NurseAdminDashboard />
                 </ProtectedRoute>
               }
             />

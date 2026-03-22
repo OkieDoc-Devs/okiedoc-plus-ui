@@ -395,6 +395,7 @@ export default function Registration() {
               type='date'
               value={formData.birthday}
               onChange={handleInputChange}
+              min='1920-01-01'
             />
             {errors.birthday && (
               <span className='error-message'>{errors.birthday}</span>

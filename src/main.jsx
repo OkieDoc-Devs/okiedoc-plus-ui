@@ -46,6 +46,10 @@ const loadSailsSocket = () => {
       // console.log('Sails.io.js loaded and configured for:', apiUrl);
     }
   };
+  script.onerror = () => {
+    console.warn('[Socket] Failed to load sails.io.js - real-time features will be unavailable');
+  };
+  script.async = true;
   document.head.appendChild(script);
 };
 

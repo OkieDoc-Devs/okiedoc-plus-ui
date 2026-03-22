@@ -60,7 +60,9 @@ export default function SpecialistRegistration() {
   }, [provinces, fetchCities]);
 
   useEffect(() => {
-    const nagaCity = cities.find((c) => c.name === 'Naga');
+    const nagaCity = cities.find(
+      (c) => c.name === 'City of Naga' || c.name === 'Naga',
+    );
     if (nagaCity) {
       fetchBarangays(nagaCity.code);
     }

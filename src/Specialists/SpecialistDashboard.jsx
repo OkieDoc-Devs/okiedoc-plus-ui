@@ -231,13 +231,13 @@ const SpecialistDashboard = () => {
               ? `${new Date(t.preferredDate).toLocaleDateString()} ${t.preferredTime}`
               : t.createdAt
                 ? new Date(t.createdAt).toLocaleString('en-US', {
-                    month: 'numeric',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
-                  })
+                  month: 'numeric',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                })
                 : 'TBD',
           status:
             t.status === 'confirmed'
@@ -275,13 +275,13 @@ const SpecialistDashboard = () => {
               ? `${new Date(t.preferredDate).toLocaleDateString()} ${t.preferredTime}`
               : t.createdAt
                 ? new Date(t.createdAt).toLocaleString('en-US', {
-                    month: 'numeric',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
-                  })
+                  month: 'numeric',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                })
                 : 'TBD',
           status: 'Available',
           rawTicket: t,
@@ -497,6 +497,12 @@ const SpecialistDashboard = () => {
 
     const savedAccount = loadAccountData(sessionUser.email);
     setAccountDetails((prev) => ({ ...prev, ...savedAccount }));
+  }, [navigate, sessionUser]);
+
+  useEffect(() => {
+    if (!sessionUser || sessionUser.userType !== 'specialist' || sessionUser.applicationStatus === 'pending' || sessionUser.applicationStatus === 'denied') {
+      return;
+    }
 
     const savedSchedules = loadScheduleData(sessionUser.email);
     setSchedules(savedSchedules);
@@ -715,13 +721,13 @@ const SpecialistDashboard = () => {
               ? `${new Date(ticket.preferredDate).toLocaleDateString()} ${ticket.preferredTime}`
               : ticket.createdAt
                 ? new Date(ticket.createdAt).toLocaleString('en-US', {
-                    month: 'numeric',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
-                  })
+                  month: 'numeric',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                })
                 : 'TBD',
           status:
             ticket.status === 'confirmed'
@@ -1075,11 +1081,9 @@ const SpecialistDashboard = () => {
       days.push(
         <div
           key={day}
-          className={`calendar-day ${
-            hasSchedule || hasTickets ? 'has-schedule' : ''
-          } ${isTodayDate ? 'today' : ''} ${isPast ? 'past' : ''} ${
-            hasTickets ? 'has-tickets' : ''
-          }`}
+          className={`calendar-day ${hasSchedule || hasTickets ? 'has-schedule' : ''
+            } ${isTodayDate ? 'today' : ''} ${isPast ? 'past' : ''} ${hasTickets ? 'has-tickets' : ''
+            }`}
           onClick={() => !isPast && setSelectedDate(day)}
         >
           <span className='day-number'>{day}</span>
@@ -2086,27 +2090,27 @@ const SpecialistDashboard = () => {
       </div>
 
       <div className='dashboard-nav'>
-          <div className='nav-left-info'>
-            <strong>Service Area:</strong>{' '}
-            {profileData.barangay || profileData.city
-              ? `${profileData.barangay || ''}${profileData.barangay && profileData.city ? ', ' : ''}${profileData.city || ''}${profileData.province ? ` (${profileData.province})` : ''}`
-              : 'Not set'}
-          </div>
-          <div className='nav-tabs-container'>
-            <button
-              className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => handleNavigation('dashboard', 'Dashboard')}
-            >
-              Dashboard
-            </button>
-            <button
-              className={`nav-tab ${activeTab === 'messages' ? 'active' : ''}`}
-              onClick={() => handleNavigation('messages', 'Messages')}
-            >
-              Messages
-            </button>
-            <button
-              className={`nav-tab ${activeTab === 'schedule' ? 'active' : ''}`}
+        <div className='nav-left-info'>
+          <strong>Service Area:</strong>{' '}
+          {profileData.barangay || profileData.city
+            ? `${profileData.barangay || ''}${profileData.barangay && profileData.city ? ', ' : ''}${profileData.city || ''}${profileData.province ? ` (${profileData.province})` : ''}`
+            : 'Not set'}
+        </div>
+        <div className='nav-tabs-container'>
+          <button
+            className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => handleNavigation('dashboard', 'Dashboard')}
+          >
+            Dashboard
+          </button>
+          <button
+            className={`nav-tab ${activeTab === 'messages' ? 'active' : ''}`}
+            onClick={() => handleNavigation('messages', 'Messages')}
+          >
+            Messages
+          </button>
+          <button
+            className={`nav-tab ${activeTab === 'schedule' ? 'active' : ''}`}
             onClick={() => handleNavigation('schedule', 'Schedules')}
           >
             Schedules
@@ -2123,9 +2127,9 @@ const SpecialistDashboard = () => {
           >
             Transactions
           </button>
-          </div>
-          <div className='nav-right-placeholder'></div>
         </div>
+        <div className='nav-right-placeholder'></div>
+      </div>
 
       <div className='main-content'>
         {activeTab === 'dashboard' && renderDashboard()}
@@ -2425,8 +2429,8 @@ const SpecialistDashboard = () => {
                 value={
                   selectedDate
                     ? `${getMonthName(
-                        currentMonth,
-                      )} ${selectedDate}, ${currentYear}`
+                      currentMonth,
+                    )} ${selectedDate}, ${currentYear}`
                     : ''
                 }
                 readOnly

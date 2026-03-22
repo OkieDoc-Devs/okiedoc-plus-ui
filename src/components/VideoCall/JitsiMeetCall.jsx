@@ -19,6 +19,7 @@ const JitsiMeetCall = ({
   patient,
   currentUser,
   ticketId,
+  isPopout = false,
 }) => {
   const jitsiContainerRef = useRef(null);
   const initInProgressRef = useRef(false);
@@ -170,13 +171,16 @@ const JitsiMeetCall = ({
     }
     setJitsiApi(null);
     onClose();
+    if (isPopout) {
+      window.close();
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className='jitsi-call-overlay'>
-      <div className='jitsi-call-modal'>
+    <div className={isPopout ? 'jitsi-call-popout-container' : 'jitsi-call-overlay'}>
+      <div className={isPopout ? 'jitsi-call-popout' : 'jitsi-call-modal'}>
         <div className='jitsi-call-header'>
           <h3>
             OkieDoc+ Secure {callType === 'video' ? 'Video' : 'Audio'}{' '}

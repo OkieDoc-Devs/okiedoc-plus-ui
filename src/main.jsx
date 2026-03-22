@@ -19,6 +19,7 @@ import PendingVerification from './Specialists/PendingVerification.jsx';
 import DeniedVerification from './Specialists/DeniedVerification.jsx';
 import CommercialPage from './CommercialPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import VideoCallPage from './components/VideoCall/VideoCallPage.jsx';
 
 import { NotificationProvider } from './contexts/NotificationContext.jsx';
 import { AuthProvider } from './contexts/AuthContext.jsx';
@@ -60,6 +61,14 @@ createRoot(document.getElementById('root')).render(
             <Route path='/login' element={<Login />} />
             <Route path='/registration' element={<Registration />} />
             <Route path='/specialist-login' element={<SpecialistLogin />} />
+            <Route
+              path='/video-call'
+              element={
+                <ProtectedRoute allowedRoles={['nurse', 'admin', 'nurse_admin', 'nurseadmin', 'na', 'patient', 'specialist']}>
+                  <VideoCallPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path='/specialist-registration'
               element={<SpecialistRegistration />}

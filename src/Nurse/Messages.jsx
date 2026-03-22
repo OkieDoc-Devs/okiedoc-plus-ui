@@ -239,14 +239,19 @@ const Messages = () => {
     fileInputRef.current?.click();
   };
 
+  const openPopoutCall = (callMode) => {
+    if (!activeConversation) return;
+    const { id, name, avatar } = activeConversation;
+    const url = `/video-call?ticketId=${id}&callType=${callMode}&patientId=${id}&patientName=${encodeURIComponent(name || '')}&patientAvatar=${encodeURIComponent(avatar || '')}`;
+    window.open(url, 'OkieDocVideoCall', 'width=1000,height=800,menubar=no,toolbar=no,location=no,status=no');
+  };
+
   const handleVoiceCall = () => {
-    setIsVideoCall(false);
-    setShowVideoCall(true);
+    openPopoutCall('audio');
   };
 
   const handleVideoCallClick = () => {
-    setIsVideoCall(true);
-    setShowVideoCall(true);
+    openPopoutCall('video');
   };
 
   const handleCloseVideoCall = () => {
@@ -811,26 +816,6 @@ const Messages = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {showVideoCall && activeConversation && (
-        <JitsiMeetCall
-          isOpen={showVideoCall}
-          onClose={handleCloseVideoCall}
-          onCallEnd={handleCallEnd}
-          callType={isVideoCall ? 'video' : 'audio'}
-          patient={{
-            name: activeConversation?.name,
-            avatar: activeConversation?.avatar,
-            id: activeConversation?.id,
-          }}
-          currentUser={{
-            id: currentUserId,
-            firstName: getNurseFirstName(),
-            profileUrl: getNurseProfileImage(),
-          }}
-          ticketId={activeConversation?.id}
-        />
       )}
     </div>
   );

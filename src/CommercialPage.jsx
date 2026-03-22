@@ -25,12 +25,10 @@ function CommercialPage() {
   const navigate = useNavigate();
   const [isDropdownMenuOpen, setIsDropdownMenuOpen] = useState(false);
 
-  // ===== CAROUSEL STATE =====
   const [currentIndex, setCurrentIndex] = useState(0);
   const [featuredCarouselIndex, setFeaturedCarouselIndex] = useState(0);
   const [featuredSpecialists, setFeaturedSpecialists] = useState([]);
 
-  // ===== CAROUSEL SLIDES (How It Works) =====
   const slides = useMemo(
     () => [
       {
@@ -79,7 +77,6 @@ function CommercialPage() {
     [],
   );
 
-  // ===== AUTO-ROTATE CAROUSEL =====
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % slides.length);
@@ -87,7 +84,6 @@ function CommercialPage() {
     return () => clearInterval(interval);
   }, [slides.length]);
 
-  // ===== FEATURED SPECIALISTS STATE =====
   const featuredSlides = useMemo(() => {
     if (!featuredSpecialists.length) {
       return [];
@@ -100,7 +96,6 @@ function CommercialPage() {
     return res;
   }, [featuredSpecialists]);
 
-  // ===== FETCH FEATURED SPECIALISTS =====
   useEffect(() => {
     let isMounted = true;
 
@@ -125,7 +120,6 @@ function CommercialPage() {
     };
   }, []);
 
-  // ===== CAROUSEL NAVIGATION =====
   const goToPrev = () =>
     setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
   const goToNext = () => setCurrentIndex((prev) => (prev + 1) % slides.length);
@@ -408,12 +402,20 @@ function CommercialPage() {
                 <p className='cta-text'>
                   Get connected to a doctor right away.
                 </p>
-                <button
-                  className='consult-now-btn'
-                  onClick={() => navigate('/login')}
-                >
-                  Consult Now
-                </button>
+                <div className='cta-buttons'>
+                  <button
+                    className='consult-now-btn'
+                    onClick={() => navigate('/login')}
+                  >
+                    Consult Now
+                  </button>
+                  <button
+                    className='callback-request-btn'
+                    onClick={() => setShowCallbackModal(true)}
+                  >
+                    Callback Request
+                  </button>
+                </div>
               </div>
               <div className='phone-mockup'>
                 <img
@@ -426,7 +428,6 @@ function CommercialPage() {
           </div>
         </div>
 
-        {/* ===== HOW IT WORKS CAROUSEL SECTION ===== */}
         <section className='carousel-section'>
           <div className='carousel-container'>
             <div className='carousel-shell'>
@@ -472,7 +473,6 @@ function CommercialPage() {
               </button>
             </div>
 
-            {/* Carousel Dots */}
             <div className='carousel-dots'>
               {slides.map((_, i) => (
                 <button
@@ -485,7 +485,6 @@ function CommercialPage() {
           </div>
         </section>
 
-        {/* ===== FEATURED SPECIALISTS CAROUSEL SECTION ===== */}
         <section className='featured-section'>
           <div className='featured-header'>
             <div className='featured-divider'></div>
@@ -564,7 +563,6 @@ function CommercialPage() {
             </button>
           </div>
 
-          {/* Featured CTA Block */}
           <div className='featured-cta-block'>
             <h3 className='featured-cta-title'>Be part of our team!</h3>
             <p className='featured-cta-text'>

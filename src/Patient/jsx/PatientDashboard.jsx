@@ -1413,31 +1413,33 @@ const PatientDashboard = () => {
               <div className='patient-mobile-logo'>
                 <span className='patient-mobile-logo-text'>OkieDoc</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '15px' }}
+              >
                 <NotificationBell />
                 <div
                   className='patient-mobile-profile-section'
                   onClick={() => setShowMobileProfileModal(true)}
                 >
-                <div className='patient-profile-image-container'>
-                  {profileImage ? (
-                    <img
-                      src={profileImage}
-                      alt='Profile'
-                      className='patient-profile-image'
-                    />
-                  ) : (
-                    <div className='patient-profile-image-placeholder'>
-                      <FaUser className='patient-profile-icon' />
-                    </div>
-                  )}
+                  <div className='patient-profile-image-container'>
+                    {profileImage ? (
+                      <img
+                        src={profileImage}
+                        alt='Profile'
+                        className='patient-profile-image'
+                      />
+                    ) : (
+                      <div className='patient-profile-image-placeholder'>
+                        <FaUser className='patient-profile-icon' />
+                      </div>
+                    )}
+                  </div>
+                  <div className='patient-profile-name'>
+                    <h3 className='patient-profile-full-name'>
+                      {profileData.firstName} {profileData.lastName}
+                    </h3>
+                  </div>
                 </div>
-                <div className='patient-profile-name'>
-                  <h3 className='patient-profile-full-name'>
-                    {profileData.firstName} {profileData.lastName}
-                  </h3>
-                </div>
-              </div>
               </div>
             </div>
 
@@ -1633,7 +1635,10 @@ const PatientDashboard = () => {
               )}
             </div>
           </div>
-          <div className='patient-user-profile' style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div
+            className='patient-user-profile'
+            style={{ display: 'flex', alignItems: 'center', gap: '15px' }}
+          >
             <NotificationBell />
             <button
               className='patient-profile-trigger'
@@ -1669,15 +1674,18 @@ const PatientDashboard = () => {
           </div>
         </div>
 
-        <div style={{
-          backgroundColor: '#e3f2fd',
-          padding: '12px 20px',
-          borderBottom: '1px solid #bbdefb',
-          fontSize: '14px',
-          fontWeight: '500',
-          color: '#1565c0'
-        }}>
-          <strong>Service Area:</strong> {profileData.barangay || 'Not set'}, {profileData.city || 'Not set'}, {profileData.province || 'Not set'}
+        <div
+          style={{
+            backgroundColor: '#e3f2fd',
+            padding: '12px 20px',
+            borderBottom: '1px solid #bbdefb',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#1565c0',
+          }}
+        >
+          <strong>Service Area:</strong> {profileData.barangay || 'Not set'},{' '}
+          {profileData.city || 'Not set'}, {profileData.province || 'Not set'}
         </div>
 
         <div className='patient-dashboard-nav'>

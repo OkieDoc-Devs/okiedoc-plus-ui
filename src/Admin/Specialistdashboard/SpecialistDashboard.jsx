@@ -546,14 +546,16 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
         </div>
       </div>
 
-      <div style={{
-        backgroundColor: '#f3e5f5',
-        padding: '12px 20px',
-        borderBottom: '1px solid #e1bee7',
-        fontSize: '14px',
-        fontWeight: '500',
-        color: '#6a1b9a'
-      }}>
+      <div
+        style={{
+          backgroundColor: '#f3e5f5',
+          padding: '12px 20px',
+          borderBottom: '1px solid #e1bee7',
+          fontSize: '14px',
+          fontWeight: '500',
+          color: '#6a1b9a',
+        }}
+      >
         <strong>Service Area:</strong> Bicol Region, Camarines Sur, Naga
       </div>
 

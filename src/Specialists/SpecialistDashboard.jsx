@@ -2513,15 +2513,18 @@ const SpecialistDashboard = () => {
         </div>
       </div>
 
-      <div style={{
-        backgroundColor: '#e3f2fd',
-        padding: '12px 20px',
-        borderBottom: '1px solid #bbdefb',
-        fontSize: '14px',
-        fontWeight: '500',
-        color: '#1565c0'
-      }}>
-        <strong>Service Area:</strong> {profileData.barangay || 'Not set'}, {profileData.city || 'Not set'}, {profileData.province || 'Not set'}
+      <div
+        style={{
+          backgroundColor: '#e3f2fd',
+          padding: '12px 20px',
+          borderBottom: '1px solid #bbdefb',
+          fontSize: '14px',
+          fontWeight: '500',
+          color: '#1565c0',
+        }}
+      >
+        <strong>Service Area:</strong> {profileData.barangay || 'Not set'},{' '}
+        {profileData.city || 'Not set'}, {profileData.province || 'Not set'}
       </div>
 
       <div className='main-content'>

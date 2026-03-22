@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import NurseConsultationHistory from '../Patient/jsx/ConsultationHistory';
 import {
-  getNurseId,
   getNurseFirstName,
   getNurseProfileImage,
 } from './services/storageService.js';
@@ -30,9 +29,9 @@ import {
   triageTicket,
   assignSpecialist,
   fetchDoctorsFromAPI,
-  logoutFromAPI,
 } from './services/apiService.js';
 import { useNotification } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const USE_API = true;
 
@@ -40,6 +39,7 @@ export default function ManageAppointment() {
   const [showConsultationHistory, setShowConsultationHistory] = useState(false);
   const navigate = useNavigate();
   const { unreadCount } = useNotification();
+  const { logout, user } = useAuth();
   const [online] = useState(true);
   const [tickets, setTickets] = useState([]);
 
@@ -323,33 +323,7 @@ export default function ManageAppointment() {
   };
 
   const nurseName = getNurseFirstName();
-  const [nurseId, setNurseId] = useState(null);
-
-  useEffect(() => {
-    const loadNurseProfile = async () => {
-      if (!USE_API) return;
-
-      try {
-        const data = await fetchNurseProfile();
-        if (data && data.id) {
-          localStorage.setItem('nurse.id', String(data.id));
-          setNurseId(data.id);
-          console.log(
-            'ManageAppointments: Loaded nurse ID from profile:',
-            data.id,
-          );
-        }
-      } catch (error) {
-        console.error('Error loading nurse profile:', error);
-        const fallbackId = getNurseId();
-        if (fallbackId !== null) {
-          setNurseId(fallbackId);
-        }
-      }
-    };
-
-    loadNurseProfile();
-  }, []);
+  const nurseId = user?.id ?? null;
 
   useEffect(() => {
     const loadDoctors = async () => {
@@ -372,7 +346,7 @@ export default function ManageAppointment() {
 
   const handleLogout = async () => {
     try {
-      await logoutFromAPI();
+      await logout();
     } catch (error) {
       console.error('Logout error:', error);
     }

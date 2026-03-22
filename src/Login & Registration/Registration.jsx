@@ -1,6 +1,6 @@
 import './auth.css';
 import { useNavigate } from 'react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { usePSGC } from '../hooks/usePSGC';
 
@@ -9,6 +9,7 @@ import { apiRequest } from '../api/apiClient';
 const registerPatient = async (formData) => {
   return await apiRequest('/api/v1/auth/register', {
     method: 'POST',
+    disableAuthRedirect: true,
     body: JSON.stringify({
       firstName: formData.firstName,
       lastName: formData.lastName,
@@ -30,7 +31,15 @@ const registerPatient = async (formData) => {
 
 export default function Registration() {
   const navigate = useNavigate();
-  const { regions, provinces, cities, barangays, fetchProvinces, fetchCities, fetchBarangays } = usePSGC();
+  const {
+    regions,
+    provinces,
+    cities,
+    barangays,
+    fetchProvinces,
+    fetchCities,
+    fetchBarangays,
+  } = usePSGC();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -55,6 +64,49 @@ export default function Registration() {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Initialize defaults for Bicol Region, Camarines Sur, and Naga
+  useEffect(() => {
+    if (regions.length > 0 && formData.region === '') {
+      const bicolRegion = regions.find((r) => r.name === 'Bicol Region');
+      if (bicolRegion) {
+        setFormData((prev) => ({ ...prev, region: bicolRegion.name }));
+        fetchProvinces(bicolRegion.code);
+      }
+    }
+  }, [regions, formData.region, fetchProvinces]);
+
+  // Set province to Camarines Sur after regions are loaded
+  useEffect(() => {
+    if (
+      provinces.length > 0 &&
+      formData.region === 'Bicol Region' &&
+      formData.province === ''
+    ) {
+      const camarineSur = provinces.find((p) => p.name === 'Camarines Sur');
+      if (camarineSur) {
+        setFormData((prev) => ({ ...prev, province: camarineSur.name }));
+        fetchCities(camarineSur.code);
+      }
+    }
+  }, [provinces, formData.region, formData.province, fetchCities]);
+
+  // Set city to Naga after provinces are loaded
+  useEffect(() => {
+    if (
+      cities.length > 0 &&
+      formData.province === 'Camarines Sur' &&
+      formData.city === ''
+    ) {
+      const nagaCity = cities.find(
+        (c) => c.name === 'City of Naga' || c.name === 'City of Naga',
+      );
+      if (nagaCity) {
+        setFormData((prev) => ({ ...prev, city: nagaCity.name }));
+        fetchBarangays(nagaCity.code);
+      }
+    }
+  }, [cities, formData.province, formData.city, fetchBarangays]);
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -148,7 +200,7 @@ export default function Registration() {
       if (result.message || result.success) {
         setSuccess(
           result.message ||
-          'Your account has been successfully created. You may now log in.',
+            'Your account has been successfully created. You may now log in.',
         );
         window.scrollTo(0, 0);
         setFormData({
@@ -376,10 +428,17 @@ export default function Registration() {
               id='region'
               value={formData.region}
               onChange={(e) => {
-                const selectedRegion = regions.find(r => r.name === e.target.value);
+                const selectedRegion = regions.find(
+                  (r) => r.name === e.target.value,
+                );
                 handleInputChange(e);
                 fetchProvinces(selectedRegion?.code);
-                setFormData(prev => ({ ...prev, province: '', city: '', barangay: '' }));
+                setFormData((prev) => ({
+                  ...prev,
+                  province: '',
+                  city: '',
+                  barangay: '',
+                }));
               }}
             >
               <option value=''>Select Region</option>
@@ -401,10 +460,12 @@ export default function Registration() {
               id='province'
               value={formData.province}
               onChange={(e) => {
-                const selectedProvince = provinces.find(p => p.name === e.target.value);
+                const selectedProvince = provinces.find(
+                  (p) => p.name === e.target.value,
+                );
                 handleInputChange(e);
                 fetchCities(selectedProvince?.code);
-                setFormData(prev => ({ ...prev, city: '', barangay: '' }));
+                setFormData((prev) => ({ ...prev, city: '', barangay: '' }));
               }}
               disabled={!formData.region}
             >
@@ -427,10 +488,12 @@ export default function Registration() {
               id='city'
               value={formData.city}
               onChange={(e) => {
-                const selectedCity = cities.find(c => c.name === e.target.value);
+                const selectedCity = cities.find(
+                  (c) => c.name === e.target.value,
+                );
                 handleInputChange(e);
                 fetchBarangays(selectedCity?.code);
-                setFormData(prev => ({ ...prev, barangay: '' }));
+                setFormData((prev) => ({ ...prev, barangay: '' }));
               }}
               disabled={!formData.province}
             >

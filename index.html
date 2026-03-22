@@ -33,26 +33,6 @@
       window.io.sails = window.io.sails || {};
       window.io.sails.autoConnect = false;
     </script>
-    <script>
-      (function() {
-        const apiUrl = import.meta?.env?.VITE_API_URL || "http://localhost:1337";
-        const script = document.createElement('script');
-        script.src = apiUrl + "/socket/sails.io.js";
-        script.onload = function() {
-          if (typeof io !== "undefined" && io.sails) {
-            io.sails.url = apiUrl;
-            io.sails.transports = ["websocket", "polling"];
-            io.sails.useCORSRouteToGetCookie = true;
-            io.sails.environment = import.meta?.env?.MODE || "development";
-            console.log("Sails.io.js configured for:", io.sails.url);
-          }
-        };
-        script.onerror = function() {
-          console.warn("Sails.io.js failed to load from: " + apiUrl + "/socket/sails.io.js");
-        };
-        document.head.appendChild(script);
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>

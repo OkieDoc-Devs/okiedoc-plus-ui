@@ -18,6 +18,7 @@ import {
   fetchTicketsFromAPI,
 } from './services/apiService.js';
 import { useNotification } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { transformProfileFromAPI } from './services/profileService.js';
 import NotificationBell from '../components/Notifications/NotificationBell';
 import { disconnectSocket } from '../utils/socketClient';
@@ -25,6 +26,7 @@ import { disconnectSocket } from '../utils/socketClient';
 export default function Dashboard() {
   const navigate = useNavigate();
   const { unreadCount } = useNotification();
+  const { logout } = useAuth();
 
   const [nurseName, setNurseName] = useState(getNurseFirstName());
   const [nurseProfileImage, setNurseProfileImage] = useState(
@@ -80,7 +82,7 @@ export default function Dashboard() {
   const handleLogout = async () => {
     try {
       disconnectSocket();
-      await logoutFromAPI();
+      await logout();
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -308,6 +310,17 @@ export default function Dashboard() {
             Messages
           </button>
         </div>
+      </div>
+
+      <div style={{
+        backgroundColor: '#e3f2fd',
+        padding: '12px 20px',
+        borderBottom: '1px solid #bbdefb',
+        fontSize: '14px',
+        fontWeight: '500',
+        color: '#1565c0'
+      }}>
+        <strong>Service Area:</strong> Bicol Region, Camarines Sur, Naga
       </div>
 
       <div className='appointments-section'>

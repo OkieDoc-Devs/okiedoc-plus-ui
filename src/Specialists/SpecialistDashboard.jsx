@@ -2,14 +2,14 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUpload, FaTimes } from 'react-icons/fa';
 import './SpecialistDashboard.css';
-import authService from './authService';
+import { useAuth } from '../contexts/AuthContext';
 import * as specialistApi from './services/apiService';
 import { API_BASE_URL } from '../api/apiClient';
 import Messages from './Messages';
 import ImageCropperModal from '../components/ImageCropperModal';
 import NotificationBell from '../components/Notifications/NotificationBell';
 import { disconnectSocket } from '../utils/socketClient';
-  import { usePSGC } from '../hooks/usePSGC';
+import { usePSGC } from '../hooks/usePSGC';
 import {
   formatDateLabel,
   getDaysInMonth,
@@ -81,6 +81,7 @@ import {
 
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
+  const { user: sessionUser, logout } = useAuth();
   const {
     regions,
     provinces,
@@ -456,40 +457,37 @@ const SpecialistDashboard = () => {
   useEffect(() => {
     document.body.classList.add('specialist-dashboard-body');
 
-    const currentUser = authService.getCurrentUser();
-
-    if (!currentUser || currentUser.userType !== 'specialist') {
+    if (!sessionUser || sessionUser.userType !== 'specialist') {
       navigate('/specialist-login');
       return;
     }
 
-    if (currentUser.user.applicationStatus === 'pending') {
+    if (sessionUser.applicationStatus === 'pending') {
       navigate('/specialist-pending');
       return;
-    } else if (currentUser.user.applicationStatus === 'denied') {
+    } else if (sessionUser.applicationStatus === 'denied') {
       navigate('/specialist-denied');
       return;
     }
 
-    setCurrentUser(currentUser.user);
+    setCurrentUser(sessionUser);
     setIsLoading(false);
 
     const initials = generateUserInitials(
-      currentUser.user.firstName || currentUser.user.fName,
-      currentUser.user.lastName || currentUser.user.lName,
+      sessionUser.firstName || sessionUser.fName,
+      sessionUser.lastName || sessionUser.lName,
     );
     setUserInitials(initials);
 
-    const profile = loadProfileData(currentUser.user.email);
+    const profile = loadProfileData(sessionUser.email);
     setProfileData((prev) => ({
       ...prev,
-      firstName: currentUser.user.firstName || currentUser.user.fName || '',
-      lastName: currentUser.user.lastName || currentUser.user.lName || '',
-      email: currentUser.user.email,
-      phone: profile.phone || currentUser.user.phone || '+63 ',
-      prcNumber: profile.prcNumber || currentUser.user.licenseNumber || '',
-      specialization:
-        profile.specialization || currentUser.user.specialty || '',
+      firstName: sessionUser.firstName || sessionUser.fName || '',
+      lastName: sessionUser.lastName || sessionUser.lName || '',
+      email: sessionUser.email,
+      phone: profile.phone || sessionUser.phone || '+63 ',
+      prcNumber: profile.prcNumber || sessionUser.licenseNumber || '',
+      specialization: profile.specialization || sessionUser.specialty || '',
       subSpecialization: profile.subSpecialization || '',
       bio: profile.bio || '',
       prcImage: profile.prcImage || '',
@@ -503,10 +501,10 @@ const SpecialistDashboard = () => {
       zipCode: profile.zipCode || '',
     }));
 
-    const savedAccount = loadAccountData(currentUser.user.email);
+    const savedAccount = loadAccountData(sessionUser.email);
     setAccountDetails((prev) => ({ ...prev, ...savedAccount }));
 
-    const savedSchedules = loadScheduleData(currentUser.user.email);
+    const savedSchedules = loadScheduleData(sessionUser.email);
     setSchedules(savedSchedules);
 
     loadTicketsData();
@@ -515,7 +513,7 @@ const SpecialistDashboard = () => {
     return () => {
       document.body.classList.remove('specialist-dashboard-body');
     };
-  }, [navigate, loadTicketsData, loadDashboardData]);
+  }, [navigate, loadTicketsData, loadDashboardData, sessionUser]);
 
   useEffect(() => {
     if (tickets.length > 0 && !selectedTicketId) {
@@ -555,7 +553,7 @@ const SpecialistDashboard = () => {
     if (window.confirm('Are you sure you want to logout?')) {
       try {
         disconnectSocket();
-        await authService.logout();
+        await logout();
         navigate('/');
       } catch (error) {
         console.error('Logout error:', error);
@@ -612,13 +610,7 @@ const SpecialistDashboard = () => {
         zipCode: profileData.zipCode,
       });
 
-      authService.updateCurrentUser(updatedProfile);
       setApiError(null);
-
-      const user = JSON.parse(localStorage.getItem(email) || '{}');
-      user.fName = profileData.firstName || user.fName;
-      user.lName = profileData.lastName || user.lName;
-      localStorage.setItem(email, JSON.stringify(user));
 
       const profile = {
         phone: profileData.phone,
@@ -638,8 +630,15 @@ const SpecialistDashboard = () => {
       };
       saveProfileData(email, profile);
 
-      setCurrentUser(user);
-      const initials = generateUserInitials(user.fName, user.lName);
+      setCurrentUser((prev) => ({
+        ...(prev || {}),
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+      }));
+      const initials = generateUserInitials(
+        profileData.firstName,
+        profileData.lastName,
+      );
       setUserInitials(initials);
 
       setShowSuccessModal(true);
@@ -2435,7 +2434,7 @@ const SpecialistDashboard = () => {
           />
         </div>
         <h3 className='dashboard-title'>Specialist Dashboard</h3>
-        
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <NotificationBell />
           <div className='user-account'>
@@ -2465,20 +2464,20 @@ const SpecialistDashboard = () => {
               {currentUser?.lastName || currentUser?.lName || ''}
             </span>
             <div className='account-dropdown'>
-            <button
-              className='dropdown-item'
-              onClick={() => handleNavigation('profile', 'Personal Data')}
-            >
-              My Account
-            </button>
-            <button
-              className='dropdown-item logout-item'
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
+              <button
+                className='dropdown-item'
+                onClick={() => handleNavigation('profile', 'Personal Data')}
+              >
+                My Account
+              </button>
+              <button
+                className='dropdown-item logout-item'
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
           </div>
-        </div>
         </div>
         <div className='dashboard-nav'>
           <button
@@ -2512,6 +2511,17 @@ const SpecialistDashboard = () => {
             Transactions
           </button>
         </div>
+      </div>
+
+      <div style={{
+        backgroundColor: '#e3f2fd',
+        padding: '12px 20px',
+        borderBottom: '1px solid #bbdefb',
+        fontSize: '14px',
+        fontWeight: '500',
+        color: '#1565c0'
+      }}>
+        <strong>Service Area:</strong> {profileData.barangay || 'Not set'}, {profileData.city || 'Not set'}, {profileData.province || 'Not set'}
       </div>
 
       <div className='main-content'>

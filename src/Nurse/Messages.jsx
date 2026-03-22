@@ -16,8 +16,8 @@ import {
   getNurseFirstName,
   getNurseProfileImage,
 } from './services/storageService.js';
-import { logoutFromAPI } from './services/apiService.js';
 import { useNotification } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useChat } from './services/useChat.js';
 import {
   isAllowedFileType,
@@ -31,6 +31,7 @@ import './NurseStyles.css';
 const Messages = () => {
   const navigate = useNavigate();
   const { unreadCount } = useNotification();
+  const { user, logout } = useAuth();
   const [newMessage, setNewMessage] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,33 +44,7 @@ const Messages = () => {
   const chatMessagesRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const getCurrentUserId = () => {
-    try {
-      const currentUser = localStorage.getItem('currentUser');
-      if (currentUser) {
-        const user = JSON.parse(currentUser);
-        if (user.id) {
-          console.log('Chat: Using currentUser.id:', user.id);
-          return user.id;
-        }
-      }
-      const nurseId = localStorage.getItem('nurse.id');
-      if (nurseId) {
-        const parsed = parseInt(nurseId, 10);
-        if (!isNaN(parsed)) {
-          console.log('Chat: Using nurse.id (parsed):', parsed);
-          return parsed;
-        }
-        console.warn('Chat: nurse.id is not a numeric ID:', nurseId);
-      }
-    } catch (error) {
-      console.error('Error getting current user:', error);
-    }
-    console.warn('Chat: Could not determine current user ID');
-    return null;
-  };
-
-  const currentUserId = getCurrentUserId();
+  const currentUserId = user?.id || null;
 
   const {
     conversations,
@@ -95,7 +70,7 @@ const Messages = () => {
 
   const handleLogout = async () => {
     try {
-      await logoutFromAPI();
+      await logout();
     } catch (error) {
       console.error('Logout error:', error);
     }

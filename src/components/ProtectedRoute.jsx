@@ -1,11 +1,16 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth, getRedirectPathForRole } from '../contexts/AuthContext';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const userType = localStorage.getItem('okiedoc_user_type');
+  const { user, loading, isAuthenticated } = useAuth();
   const location = useLocation();
 
-  if (!userType) {
+  if (loading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
     const isSpecialistRoute =
       location.pathname.includes('specialist') ||
       location.pathname.includes('admin');
@@ -13,14 +18,10 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to={loginRoute} state={{ from: location }} replace />;
   }
 
+  const userType = user?.userType || user?.role;
+
   if (allowedRoles && !allowedRoles.includes(userType)) {
-    const defaultPaths = {
-      specialist: '/specialist-dashboard',
-      patient: '/patient-dashboard',
-      nurse: '/nurse-dashboard',
-      admin: '/admin/specialist-dashboard',
-    };
-    const redirectPath = defaultPaths[userType] || '/login';
+    const redirectPath = getRedirectPathForRole(userType);
     return <Navigate to={redirectPath} replace />;
   }
 

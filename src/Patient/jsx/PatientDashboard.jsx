@@ -221,7 +221,7 @@ const PatientDashboard = () => {
               profile.Date_Of_Birth ||
               profile.Birth_Date ||
               profile.birthdate;
-            console.log('Raw profile birthday:', rawDate);
+            // console.log('Raw profile birthday:', rawDate);
             if (!rawDate) return prev.birthday || '';
             if (typeof rawDate === 'string' && rawDate.includes('T'))
               return rawDate.split('T')[0];
@@ -337,7 +337,7 @@ const PatientDashboard = () => {
                 currentUser.Date_Of_Birth ||
                 currentUser.Birth_Date ||
                 currentUser.birthdate;
-              console.log('Raw currentUser birthday:', rawDate);
+              // console.log('Raw currentUser birthday:', rawDate);
               if (!rawDate) return prev.birthday || '';
               if (typeof rawDate === 'string' && rawDate.includes('T'))
                 return rawDate.split('T')[0];
@@ -396,9 +396,9 @@ const PatientDashboard = () => {
         let hasUpdates = false;
         for (const ticket of pendingPaymentTickets) {
           try {
-            console.log(
+            /* console.log(
               `Auto-verifying ticket ${ticket.id} on Home Dashboard...`,
-            );
+            ); */
             const result = await verifyTicketPayment(ticket.id);
             if (
               result.status === 'active' ||
@@ -415,9 +415,9 @@ const PatientDashboard = () => {
           }
         }
         if (hasUpdates) {
-          console.log(
+          /* console.log(
             'Home Dashboard auto-verification detected fresh payments! Reloading...',
-          );
+          ); */
           await loadHomeAppointments();
         }
       }
@@ -429,12 +429,12 @@ const PatientDashboard = () => {
   }, [homeAppointments, loadHomeAppointments]);
 
   useEffect(() => {
-    console.log('homeAppointments state changed:', homeAppointments);
-    console.log('homeAppointments length:', homeAppointments.length);
+    // console.log('homeAppointments state changed:', homeAppointments);
+    // console.log('homeAppointments length:', homeAppointments.length);
   }, [homeAppointments]);
 
   const refreshAppointments = (newTicket) => {
-    console.log('Refreshing home appointments...', newTicket);
+    // console.log('Refreshing home appointments...', newTicket);
     if (newTicket) {
       setHomeAppointments((prev) => [newTicket, ...prev]);
     } else {
@@ -530,7 +530,7 @@ const PatientDashboard = () => {
   };
 
   const handleSaveProfile = () => {
-    console.log('Saving profile:', profileData);
+    // console.log('Saving profile:', profileData);
     setIsEditingProfile(false);
   };
 
@@ -543,7 +543,7 @@ const PatientDashboard = () => {
       alert('Password must be at least 6 characters long');
       return;
     }
-    console.log('Changing password');
+    // console.log('Changing password');
     setPasswordData({
       currentPassword: '',
       newPassword: '',
@@ -723,13 +723,13 @@ const PatientDashboard = () => {
                         </div>
                       ) : (
                         homeAppointments.map((appointment) => {
-                          console.log(
+                          /* console.log(
                             'Rendering appointment:',
                             appointment.title,
                             appointment.status,
                             'ID:',
                             appointment.id,
-                          );
+                          ); */
                           return (
                             <div
                               key={appointment.id}

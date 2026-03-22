@@ -52,10 +52,10 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
   const prevUserIdRef = useRef(currentUserId);
   useEffect(() => {
     if (prevUserIdRef.current !== currentUserId) {
-      console.log("[useChat] User ID changed, resetting socket state", {
+      /* console.log("[useChat] User ID changed, resetting socket state", {
         previous: prevUserIdRef.current,
         current: currentUserId,
-      });
+      }); */
       prevUserIdRef.current = currentUserId;
       setSocketReady(false);
       subscribedIdsRef.current.clear();
@@ -88,7 +88,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         try {
           const authenticated = await authenticateSocket(currentUserId);
           if (mounted) {
-            console.log("[useChat] Socket auth result:", authenticated);
+            // console.log("[useChat] Socket auth result:", authenticated);
 
             if (authenticated) {
               subscribedIdsRef.current.clear();
@@ -144,7 +144,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
 
     conversations.forEach((conv) => {
       if (!subscribedIdsRef.current.has(conv.id)) {
-        console.log(`[useChat] Auto-subscribing to conversation ${conv.id}`);
+        // console.log(`[useChat] Auto-subscribing to conversation ${conv.id}`);
         subscribeToConversation(conv.id);
         subscribedIdsRef.current.add(conv.id);
       }
@@ -168,18 +168,18 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
 
         if (Number(senderId) === Number(currentUserId)) return;
 
-        console.log(
+        /* console.log(
           "[useChat] Incoming Global Message:",
           incomingConversationId
-        );
+        ); */
 
         setConversations((prev) => {
           const index = prev.findIndex((c) => Number(c.id) === Number(incomingConversationId));
 
           if (index === -1) {
-            console.log(
+            /* console.log(
               "[useChat] New conversation detected via message. Reloading list."
-            );
+            ); */
             loadConversations();
             return prev;
           }
@@ -222,7 +222,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
       },
 
       onNewConversation: (data) => {
-        console.log("[useChat] New conversation received:", data);
+        // console.log("[useChat] New conversation received:", data);
         loadConversations();
       },
 
@@ -359,7 +359,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         onCallEnded: (data) => {
           const currentActive = activeConversationRef.current;
           if (Number(data.ticketId) === Number(currentActive?.id)) {
-            console.log("[Chat] Call ended event received:", data);
+            // console.log("[Chat] Call ended event received:", data);
             setActiveCallHost(null);
           }
         },
@@ -367,7 +367,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         onCallStarted: (data) => {
           const currentActive = activeConversationRef.current;
           if (Number(data.ticketId) === Number(currentActive?.id)) {
-            console.log("[Chat] Call started event received:", data);
+            // console.log("[Chat] Call started event received:", data);
             setActiveCallHost(data.activeCallHost);
           }
         },
@@ -533,14 +533,14 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         return null;
       }
 
-      console.log("[useChat] handleUploadFile called", {
+      /* console.log("[useChat] handleUploadFile called", {
         fileName: file.name,
         isCallActive: !!activeCallHost,
         activeCallHost,
         fileType: file.type,
         fileSize: file.size,
         conversationId: activeConversation.id,
-      });
+      }); */
 
       try {
         const result = await uploadFile(activeConversation.id, file, caption);

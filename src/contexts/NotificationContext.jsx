@@ -55,27 +55,27 @@ export const NotificationProvider = ({ children }) => {
 
     const handleConnect = () => {
       setSocketConnected(true);
-      console.log(
+      /* console.log(
         '[Notifications] Socket connected and auto-joined to room via afterConnect',
-      );
+      ); */
       fetchNotifications();
     };
 
     const handleDisconnect = () => {
       setSocketConnected(false);
-      console.log('[Notifications] Socket disconnected');
+      // console.log('[Notifications] Socket disconnected');
     };
 
     const handleReconnect = () => {
       setSocketConnected(true);
-      console.log(
+      /* console.log(
         '[Notifications] Socket reconnected — re-fetching notifications',
-      );
+      ); */
       fetchNotifications();
     };
 
     const handleNotification = (msg) => {
-      console.log('[Notifications] Received real-time notification:', msg);
+      // console.log('[Notifications] Received real-time notification:', msg);
       const notif = msg?.notification || msg;
       if (notif && notif.id) {
         setNotifications((prev) => [notif, ...prev]);

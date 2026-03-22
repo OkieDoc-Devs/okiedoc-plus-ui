@@ -194,7 +194,7 @@ const SpecialistDashboard = () => {
   });
 
   const loadTicketsData = useCallback(async () => {
-    console.log('[SpecialistDashboard] Loading tickets from API...');
+    // console.log('[SpecialistDashboard] Loading tickets from API...');
     try {
       const [activeResponse, availableResponse] = await Promise.all([
         specialistApi.fetchMyActiveTickets().catch((e) => {
@@ -219,9 +219,9 @@ const SpecialistDashboard = () => {
       };
 
       if (activeResponse.success && activeResponse.activeTickets) {
-        console.log(
+        /* console.log(
           `[SpecialistDashboard] Loaded ${activeResponse.activeTickets.length} active tickets from API`,
-        );
+        ); */
         const mappedActive = activeResponse.activeTickets.map((t) => ({
           id: t.id,
           patient: formatPatientName(t.rawTicket?.patient || t),
@@ -261,9 +261,9 @@ const SpecialistDashboard = () => {
       }
 
       if (availableResponse.success && availableResponse.data) {
-        console.log(
+        /* console.log(
           `[SpecialistDashboard] Loaded ${availableResponse.data.length} available tickets from API`,
-        );
+        ); */
         const mappedAvailable = availableResponse.data.map((t) => ({
           id: t.id,
           patient: formatPatientName(t.patient),
@@ -319,9 +319,9 @@ const SpecialistDashboard = () => {
     }
 
     const savedTickets = loadTickets();
-    console.log(
+    /* console.log(
       `[SpecialistDashboard] Loaded ${savedTickets.length} tickets from localStorage`,
-    );
+    ); */
     if (savedTickets.length === 0) {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -362,7 +362,7 @@ const SpecialistDashboard = () => {
   const loadDashboardData = useCallback(async () => {
     try {
       const response = await specialistApi.fetchDashboard();
-      console.log('[SpecialistDashboard] Dashboard response:', response);
+      // console.log('[SpecialistDashboard] Dashboard response:', response);
       if (response.success) {
         setDashboardStats((prev) => response.stats || prev);
         if (response.specialist) {
@@ -406,10 +406,10 @@ const SpecialistDashboard = () => {
 
       try {
         const profileResponse = await specialistApi.fetchProfile();
-        console.log(
+        /* console.log(
           '[SpecialistDashboard] Profile fetch success:',
           profileResponse,
-        );
+        ); */
 
         if (profileResponse) {
           setProfileData((prev) => ({
@@ -523,9 +523,9 @@ const SpecialistDashboard = () => {
 
   useEffect(() => {
     if (activeTab === 'dashboard') {
-      console.log(
+      /* console.log(
         '[SpecialistDashboard] Dashboard tab active, reloading tickets...',
-      );
+      ); */
       loadTicketsData();
     }
   }, [activeTab, loadTicketsData]);
@@ -575,16 +575,16 @@ const SpecialistDashboard = () => {
   };
 
   const saveProfile = async () => {
-    console.log('saveProfile triggered. Email check:');
+    // console.log('saveProfile triggered. Email check:');
     const email = profileData.email;
-    console.log('Current Email:', email);
+    // console.log('Current Email:', email);
     if (!email) {
       console.warn('saveProfile aborted: No email found in profileData!');
       setApiError('Session missing. Please refresh the page.');
       return;
     }
 
-    console.log('Running validations on:', profileData);
+    // console.log('Running validations on:', profileData);
     const validation = validateSpecialistProfile(profileData);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];

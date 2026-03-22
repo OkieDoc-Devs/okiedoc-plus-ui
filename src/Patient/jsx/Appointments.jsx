@@ -115,7 +115,7 @@ const Appointments = ({ onAppointmentAdded }) => {
       const activeTicketsRes = await fetchPatientActiveTickets();
       const activeArr = activeTicketsRes.activeTickets || activeTicketsRes.data || (Array.isArray(activeTicketsRes) ? activeTicketsRes : []);
       const mapped = activeArr.map(t => {
-        console.log("Status map processing ticket:", t);
+        // console.log("Status map processing ticket:", t);
         let displayStatus = 'Pending';
         if (t.status === 'active' || (t.status === 'for_payment' && t.paymentStatus === 'paid')) {
           displayStatus = 'Active';
@@ -197,7 +197,7 @@ const Appointments = ({ onAppointmentAdded }) => {
         // Check each pending payment tickets statuses
         for (const ticket of pendingPaymentTickets) {
           try {
-            console.log(`Auto-verifying ticket ${ticket.id}...`);
+            // console.log(`Auto-verifying ticket ${ticket.id}...`);
             const result = await verifyTicketPayment(ticket.id);
             if (result.status === 'active' || (result.status === 'for_payment' && result.paymentStatus === 'paid')) {
               hasUpdates = true;
@@ -209,7 +209,7 @@ const Appointments = ({ onAppointmentAdded }) => {
 
         // If at least one ticket was verified as paid, reload the entire list
         if (hasUpdates) {
-          console.log('Auto-verification detected fresh payments! Reloading...');
+          // console.log('Auto-verification detected fresh payments! Reloading...');
           await loadAppointments();
         }
       }
@@ -464,14 +464,14 @@ const Appointments = ({ onAppointmentAdded }) => {
   // Handle form submission
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted with data:", appointmentForm);
+    // console.log("Form submitted with data:", appointmentForm);
 
     if (!validateForm()) {
-      console.log("Form validation failed");
+      // console.log("Form validation failed");
       return;
     }
 
-    console.log("Form validation passed, creating appointment...");
+    // console.log("Form validation passed, creating appointment...");
     setIsSubmitting(true);
 
     try {
@@ -511,18 +511,18 @@ const Appointments = ({ onAppointmentAdded }) => {
       // Save appointment to localStorage
       const savedAppointment =
         appointmentService.addAppointment(newAppointment);
-      console.log("New appointment created:", savedAppointment);
+      // console.log("New appointment created:", savedAppointment);
 
       // Update local state
       setAppointments((prev) => {
         const updated = [...prev, savedAppointment];
-        console.log("Updated appointments state:", updated);
+        // console.log("Updated appointments state:", updated);
         return updated;
       });
 
       // Notify parent component to refresh appointments
       if (onAppointmentAdded) {
-        console.log("Calling onAppointmentAdded callback");
+        // console.log("Calling onAppointmentAdded callback");
         onAppointmentAdded();
       }
 

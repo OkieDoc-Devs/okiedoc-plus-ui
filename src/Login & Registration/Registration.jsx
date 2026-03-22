@@ -110,9 +110,20 @@ export default function Registration() {
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
+    let filteredValue = value;
+
+    // Apply character restrictions
+    if (['firstName', 'lastName', 'middleName'].includes(id)) {
+      filteredValue = value.replace(/[^a-zA-Z\s-]/g, '');
+    } else if (id === 'mobileNumber') {
+      filteredValue = value.replace(/[^0-9+]/g, '');
+    } else if (['addressLine1', 'addressLine2'].includes(id)) {
+      filteredValue = value.replace(/[^a-zA-Z0-9\s,]/g, '');
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [id]: value,
+      [id]: filteredValue,
     }));
 
     if (errors[id]) {
@@ -325,6 +336,7 @@ export default function Registration() {
               placeholder='Enter your first name'
               value={formData.firstName}
               onChange={handleInputChange}
+              maxLength={150}
             />
             {errors.firstName && (
               <span className='error-message'>{errors.firstName}</span>
@@ -340,6 +352,7 @@ export default function Registration() {
               placeholder='Enter your last name'
               value={formData.lastName}
               onChange={handleInputChange}
+              maxLength={150}
             />
             {errors.lastName && (
               <span className='error-message'>{errors.lastName}</span>
@@ -355,6 +368,7 @@ export default function Registration() {
               placeholder='Enter your middle name'
               value={formData.middleName}
               onChange={handleInputChange}
+              maxLength={150}
             />
 
             <label className='login-label' htmlFor='email'>
@@ -415,6 +429,7 @@ export default function Registration() {
               placeholder='+63 912 345 6789'
               value={formData.mobileNumber}
               onChange={handleInputChange}
+              maxLength={13}
             />
             {errors.mobileNumber && (
               <span className='error-message'>{errors.mobileNumber}</span>
@@ -539,6 +554,7 @@ export default function Registration() {
               placeholder='Enter your address line 1'
               value={formData.addressLine1}
               onChange={handleInputChange}
+              maxLength={150}
             />
             {errors.addressLine1 && (
               <span className='error-message'>{errors.addressLine1}</span>
@@ -554,6 +570,7 @@ export default function Registration() {
               placeholder='Enter your address line 2 (optional)'
               value={formData.addressLine2}
               onChange={handleInputChange}
+              maxLength={150}
             />
 
             <label className='login-label' htmlFor='zipCode'>
@@ -566,6 +583,7 @@ export default function Registration() {
               placeholder='Enter your zip code'
               value={formData.zipCode}
               onChange={handleInputChange}
+              maxLength={10}
             />
             {errors.zipCode && (
               <span className='error-message'>{errors.zipCode}</span>

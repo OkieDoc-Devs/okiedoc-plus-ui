@@ -283,7 +283,7 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
 
   const handleUpdateUser = async (updatedUser) => {
     try {
-      console.log('Simulating update for user:', updatedUser);
+      // console.log('Simulating update for user:', updatedUser);
       setUsers((prevUsers) =>
         prevUsers.map((user) =>
           user.id === updatedUser.id ? updatedUser : user,
@@ -299,7 +299,7 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
     if (!deletingUser) return;
 
     try {
-      console.log('Simulating delete for user:', deletingUser);
+      // console.log('Simulating delete for user:', deletingUser);
       setUsers((prevUsers) =>
         prevUsers.filter((user) => user.id !== deletingUser.id),
       );

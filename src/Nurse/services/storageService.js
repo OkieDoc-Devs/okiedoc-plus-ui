@@ -57,12 +57,12 @@ export function getNurseId() {
   if (nurseId) {
     const parsed = parseInt(nurseId, 10);
     if (!isNaN(parsed)) {
-      console.log('getNurseId: Returning nurse ID (parsed):', parsed);
+      // console.log('getNurseId: Returning nurse ID (parsed):', parsed);
       return parsed;
     }
   }
 
-  console.log('getNurseId: Returning nurse ID:', null);
+  // console.log('getNurseId: Returning nurse ID:', null);
   return null;
 }
 

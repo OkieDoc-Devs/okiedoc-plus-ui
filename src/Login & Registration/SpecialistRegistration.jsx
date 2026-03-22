@@ -68,9 +68,20 @@ export default function SpecialistRegistration() {
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
+    let filteredValue = value;
+
+    // Apply character restrictions
+    if (['firstName', 'lastName', 'middleName'].includes(id)) {
+      filteredValue = value.replace(/[^a-zA-Z\s-]/g, '');
+    } else if (id === 'mobileNumber') {
+      filteredValue = value.replace(/[^0-9+]/g, '');
+    } else if (['addressLine1', 'addressLine2'].includes(id)) {
+      filteredValue = value.replace(/[^a-zA-Z0-9\s,]/g, '');
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [id]: value,
+      [id]: filteredValue,
     }));
     if (errors[id]) {
       setErrors((prev) => ({ ...prev, [id]: '' }));
@@ -286,6 +297,7 @@ export default function SpecialistRegistration() {
               placeholder='Enter your first name'
               value={formData.firstName}
               onChange={handleInputChange}
+              maxLength={150}
             />
             {errors.firstName && (
               <span className='error-message'>{errors.firstName}</span>
@@ -301,6 +313,7 @@ export default function SpecialistRegistration() {
               placeholder='Enter your last name'
               value={formData.lastName}
               onChange={handleInputChange}
+              maxLength={150}
             />
             {errors.lastName && (
               <span className='error-message'>{errors.lastName}</span>
@@ -316,6 +329,7 @@ export default function SpecialistRegistration() {
               placeholder='Enter your middle name'
               value={formData.middleName}
               onChange={handleInputChange}
+              maxLength={150}
             />
 
             <label className='login-label' htmlFor='email'>
@@ -414,13 +428,29 @@ export default function SpecialistRegistration() {
               E-Signature Upload (Optional)
             </label>
             <input
-              className='login-input'
+              className={`login-input ${errors.eSignature ? 'error' : ''}`}
               id='eSignature'
               type='file'
-              accept='image/png, image/jpeg'
-              onChange={(e) => setESignatureFile(e.target.files[0])}
+              accept='image/png'
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file && file.type !== 'image/png') {
+                  setErrors((prev) => ({
+                    ...prev,
+                    eSignature: 'Only PNG files are accepted for e-signature',
+                  }));
+                  setESignatureFile(null);
+                  e.target.value = ''; // Reset the input
+                } else {
+                  setErrors((prev) => ({ ...prev, eSignature: '' }));
+                  setESignatureFile(file);
+                }
+              }}
               style={{ padding: '10px' }}
             />
+            {errors.eSignature && (
+              <span className='error-message'>{errors.eSignature}</span>
+            )}
 
             <label className='login-label' htmlFor='mobileNumber'>
               Mobile Number
@@ -432,6 +462,7 @@ export default function SpecialistRegistration() {
               placeholder='+63 912 345 6789'
               value={formData.mobileNumber}
               onChange={handleInputChange}
+              maxLength={13}
             />
             {errors.mobileNumber && (
               <span className='error-message'>{errors.mobileNumber}</span>
@@ -557,6 +588,7 @@ export default function SpecialistRegistration() {
               placeholder='Enter your address line 1'
               value={formData.addressLine1}
               onChange={handleInputChange}
+              maxLength={150}
             />
             {errors.addressLine1 && (
               <span className='error-message'>{errors.addressLine1}</span>
@@ -572,6 +604,7 @@ export default function SpecialistRegistration() {
               placeholder='Enter your address line 2 (optional)'
               value={formData.addressLine2}
               onChange={handleInputChange}
+              maxLength={150}
             />
 
             <label className='login-label' htmlFor='zipCode'>
@@ -584,6 +617,7 @@ export default function SpecialistRegistration() {
               placeholder='Enter your zip code'
               value={formData.zipCode}
               onChange={handleInputChange}
+              maxLength={10}
             />
             {errors.zipCode && (
               <span className='error-message'>{errors.zipCode}</span>

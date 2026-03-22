@@ -43,7 +43,7 @@ const loadSailsSocket = () => {
       if (typeof window.io.socket.connect === 'function') {
         window.io.socket.connect();
       }
-      console.log('Sails.io.js loaded and configured for:', apiUrl);
+      // console.log('Sails.io.js loaded and configured for:', apiUrl);
     }
   };
   document.head.appendChild(script);

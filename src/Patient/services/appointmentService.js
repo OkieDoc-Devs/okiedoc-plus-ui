@@ -99,17 +99,17 @@ class AppointmentService {
 
   // Initialize with dummy tickets for demonstration
   initializeDummyTickets() {
-    console.log('Initializing dummy tickets...');
+    // console.log('Initializing dummy tickets...');
     const existingAppointments = this.getAllAppointments();
-    console.log('Existing appointments:', existingAppointments);
+    // console.log('Existing appointments:', existingAppointments);
     
     // Only initialize if no appointments exist
     if (existingAppointments.length > 0) {
-      console.log('Appointments already exist, returning existing data');
+      // console.log('Appointments already exist, returning existing data');
       return existingAppointments;
     }
     
-    console.log('No existing appointments, initializing dummy tickets');
+    // console.log('No existing appointments, initializing dummy tickets');
     const dummyTickets = [
       {
         id: 'dummy-1',
@@ -255,7 +255,7 @@ class AppointmentService {
 
     // Always add dummy tickets
     this.saveAppointments(dummyTickets);
-    console.log('Dummy tickets initialized:', dummyTickets);
+    // console.log('Dummy tickets initialized:', dummyTickets);
     return dummyTickets;
   }
 
@@ -267,7 +267,7 @@ class AppointmentService {
 
   // Reset to fresh dummy data (for debugging)
   resetToDummyData() {
-    console.log('Resetting to fresh dummy data...');
+    // console.log('Resetting to fresh dummy data...');
     this.clearAllAppointments();
     return this.initializeDummyTickets();
   }

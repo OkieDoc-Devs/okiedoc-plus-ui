@@ -42,7 +42,7 @@ const Messages = () => {
       if (currentUser) {
         const user = JSON.parse(currentUser);
         if (user.id) {
-          console.log("Chat: Using currentUser.id:", user.id);
+          // console.log("Chat: Using currentUser.id:", user.id);
           return user.id;
         }
       }

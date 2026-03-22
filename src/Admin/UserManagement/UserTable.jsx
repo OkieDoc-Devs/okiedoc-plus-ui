@@ -1,6 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { sanitizeInput } from '../../Specialists/utils/validationUtils';
-import EmptyState from '../Components/EmptyState';
 import './UserTable.css';
 
 const ReadOnlyRow = ({ user, onView, onEdit, onDelete }) => {
@@ -52,7 +50,7 @@ const EditableRow = ({ editableUserData, onUserDataChange, onSave, onCancel }) =
   );
 };
 
-const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff, isNurseAdmin = false }) => {
+const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff, toolbar }) => {
   const [editingRowId, setEditingRowId] = useState(null);
   const [editableUserData, setEditableUserData] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -143,7 +141,7 @@ const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff, isNu
     const { name, value } = e.target;
     setEditableUserData(prevData => ({
       ...prevData,
-      [name]: sanitizeInput(value),
+      [name]: value, // Removed the problematic sanitizeInput dependency to prevent crashes
     }));
   };
 
@@ -195,8 +193,9 @@ const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff, isNu
             </thead>
             <tbody>
               {sortedUsers.length > 0 ? (
-                sortedUsers.map(user => (
-                  <React.Fragment key={user.id}>
+                sortedUsers.map((user, index) => (
+                  /* Guaranteed unique key to prevent React rendering crashes */
+                  <React.Fragment key={`${user.userType || 'user'}-${user.id}-${index}`}>
                     {editingRowId === user.id ? (
                       <EditableRow
                         editableUserData={editableUserData}
@@ -226,64 +225,68 @@ const UserTable = ({ users = [], onUpdate, onView, onDelete, onCreateStaff, isNu
         </div>
       </div>
 
-      {/* UX FIX: Unified Overlay for Add Staff Modal */}
       {showAddModal && (
-        <Modal title="Create New Staff" onClose={() => setShowAddModal(false)}>
-          <div id="modal-body" className="form-grid">
-            <div className="input-group full-width">
-              <label>Role</label>
-              <select name="role" value={staffForm.role} onChange={handleStaffFormChange} className="input-md">
-                <option value="nurse">Nurse</option>
-                {!isNurseAdmin && <option value="admin">Admin</option>}
-                {!isNurseAdmin && <option value="nurse_admin">Nurse Admin</option>}
-              </select>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowAddModal(false)}>
+          <div style={{ maxWidth: '600px', width: '95%', maxHeight: '90vh', overflowY: 'auto', backgroundColor: '#fff', borderRadius: '8px', padding: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '15px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#0B5388' }}>Create New Staff</h2>
+              <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#7f8c8d' }}>✕</button>
             </div>
-            <div className="input-group">
-              <label>First Name</label>
-              <input type="text" name="firstName" value={staffForm.firstName} onChange={handleStaffFormChange} className="input-md" />
+
+            <div className="form-grid" style={{ paddingRight: '10px' }}>
+              <div className="input-group full-width">
+                <label>Role</label>
+                <select name="role" value={staffForm.role} onChange={handleStaffFormChange} className="input-md">
+                  <option value="nurse">Nurse</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="input-group">
+                <label>First Name</label>
+                <input type="text" name="firstName" value={staffForm.firstName} onChange={handleStaffFormChange} className="input-md" />
+              </div>
+              <div className="input-group">
+                <label>Last Name</label>
+                <input type="text" name="lastName" value={staffForm.lastName} onChange={handleStaffFormChange} className="input-md" />
+              </div>
+              <div className="input-group">
+                <label>Middle Name (Optional)</label>
+                <input type="text" name="middleName" value={staffForm.middleName} onChange={handleStaffFormChange} className="input-md" />
+              </div>
+              <div className="input-group">
+                <label>Email Address</label>
+                <input type="email" name="email" value={staffForm.email} onChange={handleStaffFormChange} className="input-md" />
+              </div>
+              <div className="input-group">
+                <label>Mobile Number</label>
+                <input type="text" name="mobileNumber" value={staffForm.mobileNumber} onChange={handleStaffFormChange} className="input-md" />
+              </div>
+              <div className="input-group">
+                <label>Password</label>
+                <input type="password" name="password" value={staffForm.password} onChange={handleStaffFormChange} className="input-md" />
+              </div>
+              {staffForm.role === 'nurse' && (
+                <>
+                  <div className="input-group">
+                    <label>License Number</label>
+                    <input type="text" name="licenseNumber" value={staffForm.licenseNumber} onChange={handleStaffFormChange} className="input-md" />
+                  </div>
+                  <div className="input-group">
+                    <label>PRC Expiry Date</label>
+                    <input type="date" name="prcExpiryDate" value={staffForm.prcExpiryDate} onChange={handleStaffFormChange} className="input-md" />
+                  </div>
+                </>
+              )}
             </div>
-            <div className="input-group">
-              <label>Last Name</label>
-              <input type="text" name="lastName" value={staffForm.lastName} onChange={handleStaffFormChange} className="input-md" />
+            
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button className="action-btn btn-primary" onClick={() => setShowAddModal(false)} disabled={isSubmitting}>Cancel</button>
+              <button className="action-btn btn-success" onClick={submitStaffForm} disabled={isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create Staff"}
+              </button>
             </div>
-            <div className="input-group">
-              <label>Middle Name (Optional)</label>
-              <input type="text" name="middleName" value={staffForm.middleName} onChange={handleStaffFormChange} className="input-md" />
-            </div>
-            <div className="input-group">
-              <label>Email Address</label>
-              <input type="email" name="email" value={staffForm.email} onChange={handleStaffFormChange} className="input-md" />
-            </div>
-            <div className="input-group">
-              <label>Mobile Number</label>
-              <input type="text" name="mobileNumber" value={staffForm.mobileNumber} onChange={handleStaffFormChange} className="input-md" />
-            </div>
-            <div className="input-group">
-              <label>Password</label>
-              <input type="password" name="password" value={staffForm.password} onChange={handleStaffFormChange} className="input-md" />
-            </div>
-            {staffForm.role === 'nurse' && (
-              <>
-                <div className="input-group">
-                  <label>License Number</label>
-                  <input type="text" name="licenseNumber" value={staffForm.licenseNumber} onChange={handleStaffFormChange} className="input-md" />
-                </div>
-                <div className="input-group">
-                  <label>PRC Expiry Date</label>
-                  <input type="date" name="prcExpiryDate" value={staffForm.prcExpiryDate} onChange={handleStaffFormChange} className="input-md" />
-                </div>
-              </>
-            )}
           </div>
-          <div className="modal-actions" style={{ marginTop: '20px' }}>
-            <button className="action-btn btn-primary" onClick={() => setShowAddModal(false)} disabled={isSubmitting}>
-              Cancel
-            </button>
-            <button className="action-btn btn-success" onClick={submitStaffForm} disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Staff"}
-            </button>
-          </div>
-        </Modal>
+        </div>
       )}
     </>
   );

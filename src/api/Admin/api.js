@@ -259,3 +259,33 @@ export const deleteUser = async (userId) => {
     throw error;
   }
 };
+
+/**
+ * Update Specialist Status
+ * Sends a command to manually update a specialist's operational status.
+ * @param {Object} payload - The update payload
+ * @param {number} payload.specialistId - The ID of the specialist (user ID).
+ * @param {string} payload.status - The new status ('approved', 'inactive', 'suspended').
+ * @returns {Promise<Object>} The API response confirming the update.
+ */
+export const updateSpecialistStatus = async ({ specialistId, status }) => {
+  try {
+    const token = localStorage.getItem('admin_token');
+    const response = await fetch('/api/v1/admin/update-specialist-status', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ specialistId, status })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to update specialist status');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};

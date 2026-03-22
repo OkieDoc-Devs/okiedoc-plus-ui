@@ -1,10 +1,8 @@
 import React, { useState, useMemo } from "react";
 import esigPlaceholder from '../../assets/esig.png';
 
-const SpecialistTable = ({ specialists = [], toolbar }) => {
+const SpecialistTable = ({ specialists = [], onStatusChange, toolbar }) => {
   const [viewModalSpec, setViewModalSpec] = useState(null);
-  const [denyModalSpec, setDenyModalSpec] = useState(null);
-  const [denyReason, setDenyReason] = useState("");
   const [imageViewUrl, setImageViewUrl] = useState(null);
 
   const [sortConfig, setSortConfig] = useState({ key: 'firstName', direction: 'asc' });
@@ -50,21 +48,6 @@ const SpecialistTable = ({ specialists = [], toolbar }) => {
     return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
   };
 
-  const handleAccept = (specId) => {
-    alert(`Specialist ${specId} status confirmed/activated. (Simulated)`);
-    setViewModalSpec(null);
-  };
-
-  const handleSubmitDenial = () => {
-    if (denyReason && denyModalSpec) {
-      alert(`Specialist ${denyModalSpec.id} has been denied/deactivated. Reason: ${denyReason}. (Simulated)`);
-      setDenyModalSpec(null);
-      setDenyReason("");
-    } else {
-      alert("A reason is required for denying/deactivating the specialist.");
-    }
-  };
-
   const viewButtonStyle = {
     marginLeft: "10px",
     padding: "2px 8px",
@@ -104,8 +87,8 @@ const SpecialistTable = ({ specialists = [], toolbar }) => {
                 <th onClick={() => requestSort('specialization')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                   Specialization{getSortIndicator('specialization')}
                 </th>
-                <th onClick={() => requestSort('barangay')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                  Location (Brgy, City){getSortIndicator('barangay')}
+                <th onClick={() => requestSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Status{getSortIndicator('status')}
                 </th>
                 <th>Actions</th>
               </tr>
@@ -119,11 +102,34 @@ const SpecialistTable = ({ specialists = [], toolbar }) => {
                     <td>{spec.lastName || "N/A"}</td>
                     <td>{spec.email || "N/A"}</td>
                     <td>{spec.specialization || spec.details?.specializations?.join(", ") || "N/A"}</td>
-                    <td>{spec.barangay ? `${spec.barangay}, ${spec.city || ''}` : 'N/A'}</td>
+
+                    <td>
+                      <span style={{ 
+                        display: 'block', fontWeight: '600', textTransform: 'capitalize', 
+                        color: spec.status === 'suspended' ? '#e74c3c' : spec.status === 'inactive' ? '#95a5a6' : '#2ecc71' 
+                      }}>
+                        {spec.status === 'approved' ? 'Active' : spec.status}
+                      </span>
+                    </td>
+
                     <td>
                       <button className="action-btn btn-primary" onClick={() => setViewModalSpec(spec)}>View</button>
-                      <button className="action-btn btn-success" onClick={() => handleAccept(spec.id)}>Confirm</button>
-                      <button className="action-btn btn-danger" onClick={() => setDenyModalSpec(spec)}>Deactivate</button>
+                      
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value && onStatusChange) {
+                            onStatusChange(spec.id, e.target.value);
+                            e.target.value = ""; 
+                          }
+                        }}
+                        defaultValue=""
+                        style={{ marginLeft: '10px', padding: '6px 12px', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: 'pointer', backgroundColor: '#f8fafc', color: '#1e293b', fontWeight: '500' }}
+                      >
+                        <option value="" disabled>Change Status</option>
+                        <option value="approved">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="suspended">Suspended</option>
+                      </select>
                     </td>
                   </tr>
                 ))
@@ -139,7 +145,6 @@ const SpecialistTable = ({ specialists = [], toolbar }) => {
         </div>
       </div>
 
-      {/* UX FIX: Unified Overlay for Specialist Info */}
       {viewModalSpec && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setViewModalSpec(null)}>
           <div style={{ maxWidth: '750px', width: '95%', maxHeight: '90vh', overflowY: 'auto', backgroundColor: '#fff', borderRadius: '8px', padding: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
@@ -199,7 +204,7 @@ const SpecialistTable = ({ specialists = [], toolbar }) => {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</span>
-                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '600', textTransform: 'capitalize' }}>{viewModalSpec.status || "Active"}</span>
+                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '600', textTransform: 'capitalize' }}>{viewModalSpec.status === 'approved' ? 'Active' : viewModalSpec.status || "Active"}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gridColumn: '1 / -1' }}>
                 <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Address</span>
@@ -220,21 +225,6 @@ const SpecialistTable = ({ specialists = [], toolbar }) => {
             
             <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
               <button className="action-btn btn-primary" onClick={() => setViewModalSpec(null)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {denyModalSpec && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setDenyModalSpec(null)}>
-          <div style={{ maxWidth: '500px', width: '95%', backgroundColor: '#fff', borderRadius: '8px', padding: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '15px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#0B5388' }}>Reason for Deactivating {denyModalSpec.firstName}</h2>
-              <button onClick={() => setDenyModalSpec(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#7f8c8d' }}>✕</button>
-            </div>
-            <textarea id="deny-reason-textarea" placeholder="Provide a reason for deactivating this specialist..." value={denyReason} onChange={(e) => setDenyReason(e.target.value)} rows={5} style={{ width: "100%", padding: "10px", boxSizing: "border-box", border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="action-btn btn-danger" onClick={handleSubmitDenial}>Submit Deactivation</button>
             </div>
           </div>
         </div>

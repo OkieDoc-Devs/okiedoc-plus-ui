@@ -29,9 +29,8 @@ import PRC from '../../assets/PRC_Sample.jpg';
 import PTR from '../../assets/PTR.png';
 import esig from '../../assets/esig.png';
 import OkieDocLogo from '../../assets/okie-doc-logo.png';
-import NotificationBell from '../../components/Notifications/NotificationBell';
 
-const SpecialistDashboard = ({ isNurseAdmin = false }) => {
+const SpecialistDashboard = () => {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('pending');
@@ -301,7 +300,14 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
       safeString(c.ticket).includes(searchString) || 
       safeString(c.id).includes(searchString);
       
-    return matchesSearch && isLocationMatch(c);
+    const consultationDate = c.date ? new Date(c.date) : null;
+    const fromDate = filterDateFrom ? new Date(filterDateFrom) : null;
+    const toDate = filterDateTo ? new Date(filterDateTo) : null;
+    if (fromDate) fromDate.setHours(0, 0, 0, 0);
+    if (toDate) toDate.setHours(23, 59, 59, 999);
+    const matchesDate = (!fromDate && !toDate) || (consultationDate && (!fromDate || consultationDate >= fromDate) && (!toDate || consultationDate <= toDate));
+
+    return matchesSearch && matchesDate && isLocationMatch(c);
   });
 
   const handleCreateStaff = async (staffData) => {
@@ -319,17 +325,17 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
   const handleUpdateUser = async (updatedUser) => {
     try {
       setUsers((prevUsers) => prevUsers.map((user) => user.id === updatedUser.id ? updatedUser : user));
-      alert('User updated successfully! (Simulated)');
-    } catch { alert('Failed to update user. (Simulated)'); }
+      alert('User updated successfully!');
+    } catch { alert('Failed to update user.'); }
   };
 
   const handleDeleteUser = async () => {
     if (!deletingUser) return;
     try {
       setUsers((prevUsers) => prevUsers.filter((user) => user.id !== deletingUser.id));
-      alert('User deleted successfully! (Simulated)');
+      alert('User deleted successfully!');
       setDeletingUser(null);
-    } catch { alert('Failed to delete user. (Simulated)'); }
+    } catch { alert('Failed to delete user.'); }
   };
 
   const handleApproveSpecialist = async (specialistId) => {
@@ -346,6 +352,18 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
       alert(`Specialist denied!`);
       window.location.reload(); 
     } catch (error) { alert('Failed to deny specialist.'); }
+  };
+
+  const handleUpdateSpecialistStatus = async (specialistId, newStatus) => {
+    try {
+      const { updateSpecialistStatus } = await import('../../api/Admin/api.js');
+      await updateSpecialistStatus({ specialistId, status: newStatus });
+      alert(`Specialist status successfully updated!`);
+      setSpecialists(prev => prev.map(s => s.id === specialistId ? { ...s, status: newStatus } : s));
+    } catch (error) {
+      alert('Failed to update specialist status.');
+      console.error(error);
+    }
   };
 
   const handleLogout = async () => {
@@ -435,9 +453,21 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
               <option value='Cancelled'>Cancelled</option>
             </select>
           )}
+
+          {activeTab === 'users' && (
+            <button
+              style={{ backgroundColor: '#0B5388', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: '5px', fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.2s', marginLeft: 'auto' }}
+              onClick={() => handleExport(filteredUsers, 'User_Management_Report.csv')}
+              disabled={filteredUsers.length === 0}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#08406b'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#0B5388'}
+            >
+              Export CSV
+            </button>
+          )}
         </div>
 
-        {activeTab === 'transactions' && (
+        {(activeTab === 'transactions' || activeTab === 'consultations') && (
           <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', backgroundColor: '#f8fafc', padding: '12px 15px', borderRadius: '6px', border: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -449,10 +479,15 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
                 <input id='dateTo' type='date' value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} style={{...filterFieldStyle, padding: '6px 10px'}} />
               </div>
             </div>
+            
             <button
               style={{ backgroundColor: '#0B5388', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: '5px', fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.2s' }}
-              onClick={() => handleExport(sortedTransactions)}
-              disabled={sortedTransactions.length === 0}
+              onClick={() => {
+                const targetData = activeTab === 'transactions' ? sortedTransactions : filteredConsultations;
+                const targetFilename = activeTab === 'transactions' ? 'Transaction_History_Report.csv' : 'Consultation_History_Report.csv';
+                handleExport(targetData, targetFilename);
+              }}
+              disabled={(activeTab === 'transactions' ? sortedTransactions.length : filteredConsultations.length) === 0}
               onMouseOver={(e) => e.target.style.backgroundColor = '#08406b'}
               onMouseOut={(e) => e.target.style.backgroundColor = '#0B5388'}
             >
@@ -470,24 +505,12 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
         <div className='header-center'>
           <img src={OkieDocLogo} alt='Okie-Doc+' className='logo-image' />
         </div>
-        <h3 className='dashboard-title'>
-          {isNurseAdmin ? 'Nurse Admin Dashboard' : 'Admin Dashboard'}
-        </h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <NotificationBell />
-          <div className='user-account'>
-            <img src='/account.svg' alt='Account' className='account-icon' />
-            <span className='account-name'>
-              {isNurseAdmin ? 'Nurse Admin' : 'Admin'}
-            </span>
-            <div className='account-dropdown'>
-              <button
-                className='dropdown-item logout-item'
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-            </div>
+        <h3 className='dashboard-title'>Admin Dashboard</h3>
+        <div className='user-account'>
+          <img src='/account.svg' alt='Account' className='account-icon' />
+          <span className='account-name'>Admin</span>
+          <div className='account-dropdown'>
+            <button className='dropdown-item logout-item' onClick={handleLogout}>Logout</button>
           </div>
         </div>
         <div className='dashboard-nav'>
@@ -501,31 +524,18 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
           <button className={`nav-tab ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
             User Management
           </button>
-          {!isNurseAdmin && (
-            <button
-              className={`nav-tab ${activeTab === 'transactions' ? 'active' : ''}`}
-              onClick={() => setActiveTab('transactions')}
-            >
-              Transaction History
-            </button>
-          )}
-          <button
-            className={`nav-tab ${activeTab === 'chats' ? 'active' : ''}`}
-            onClick={() => setActiveTab('chats')}
-          >
+          <button className={`nav-tab ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')}>
+            Transaction History
+          </button>
+          <button className={`nav-tab ${activeTab === 'chats' ? 'active' : ''}`} onClick={() => setActiveTab('chats')}>
             Chat Consultations
           </button>
           <button className={`nav-tab ${activeTab === 'consultations' ? 'active' : ''}`} onClick={() => setActiveTab('consultations')}>
             Consultation History
           </button>
-          {!isNurseAdmin && (
-            <button
-              className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
-              onClick={() => setActiveTab('settings')}
-            >
-              System Fee Settings
-            </button>
-          )}
+          <button className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+            System Fee Settings
+          </button>
         </div>
       </div>
 
@@ -534,17 +544,10 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
           <PendingTable applications={filteredPending} onApprove={handleApproveSpecialist} onDeny={handleDenySpecialist} toolbar={renderToolbar()} />
         )}
         {activeTab === 'list' && (
-          <SpecialistTable specialists={filteredSpecialists} toolbar={renderToolbar()} />
+          <SpecialistTable specialists={filteredSpecialists} onStatusChange={handleUpdateSpecialistStatus} toolbar={renderToolbar()} />
         )}
         {activeTab === 'users' && (
-          <UserTable
-            users={filteredUsers}
-            onView={setViewingUser}
-            onUpdate={handleUpdateUser}
-            onDelete={setDeletingUser}
-            onCreateStaff={handleCreateStaff}
-            isNurseAdmin={isNurseAdmin}
-          />
+          <UserTable users={filteredUsers} onView={setViewingUser} onUpdate={handleUpdateUser} onDelete={setDeletingUser} onCreateStaff={handleCreateStaff} toolbar={renderToolbar()} />
         )}
 
         {activeTab === 'transactions' && (

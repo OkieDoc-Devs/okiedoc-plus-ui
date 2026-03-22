@@ -1,16 +1,15 @@
-import './auth.css';
-import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import "./auth.css";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import authService from "../Specialists/authService";
 
 export default function SpecialistLogin() {
   const navigate = useNavigate();
-  const { login, getRedirectPathForRole } = useAuth();
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e) => {
@@ -19,88 +18,92 @@ export default function SpecialistLogin() {
       ...prev,
       [id]: value,
     }));
-    setError('');
+    setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     try {
-      const user = await login({
-        email: formData.email,
-        password: formData.password,
-        roleMode: 'allow',
-        role: 'specialist',
-      });
-      const path = getRedirectPathForRole(user?.role);
-      navigate(path);
+      const result = await authService.loginSpecialist(
+        formData.email,
+        formData.password,
+      );
+      if (result.success) {
+        const path =
+          result.redirect || authService.getRedirectPath("specialist");
+        navigate(path);
+        return;
+      }
+
+      setError(result.error || "Invalid email or password. Please try again.");
     } catch (err) {
-      setError(err?.message || 'Login failed. Please try again.');
+      setError("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className='login-page-wrapper'>
-      <div className='login-container'>
-        <div className='header-inside-container'>
+    <div className="login-page-wrapper">
+      <div className="login-container">
+        <div className="header-inside-container">
           <button
-            className='back-btn login-back-btn'
-            onClick={() => navigate('/')}
+            className="back-btn login-back-btn"
+            onClick={() => navigate("/")}
           >
-            <span className='material-symbols-outlined'>arrow_back_2</span>
+            <span className="material-symbols-outlined">arrow_back_2</span>
           </button>
-          <img src='/okie-doc-logo.png' alt='OkieDoc+' className='logo-image' />
-          <div style={{ width: '2.5rem' }}></div>
+          <img src="/okie-doc-logo.png" alt="OkieDoc+" className="logo-image" />
+          <div style={{ width: "2.5rem" }}></div>
         </div>
-        <h2 className='login-title'>Specialist Sign in</h2>
-        <p className='login-subtitle'>
+        <h2 className="login-title">Specialist Sign in</h2>
+        <p className="login-subtitle">
           Access your specialist dashboard and consultations.
         </p>
-        <form className='login-form' onSubmit={handleSubmit}>
-          {error && <p className='auth-alert auth-alert--error'>{error}</p>}
-          <label className='login-label' htmlFor='email'>
+        <form className="login-form" onSubmit={handleSubmit}>
+          {error && <p className="auth-alert auth-alert--error">{error}</p>}
+          <label className="login-label" htmlFor="email">
             Email address
           </label>
           <input
-            className='login-input'
-            id='email'
-            type='email'
-            placeholder='Enter your email address'
+            className="login-input"
+            id="email"
+            type="email"
+            placeholder="Enter your email address"
             value={formData.email}
             onChange={handleInputChange}
             required
           />
-          <label className='login-label'>Password</label>
-          <div className='login-password'>
+          <label className="login-label">Password</label>
+          <div className="login-password">
             <input
-              className='login-input'
-              id='password'
-              type='password'
-              placeholder='Enter your password'
+              className="login-input"
+              id="password"
+              type="password"
+              placeholder="Enter your password"
               value={formData.password}
               onChange={handleInputChange}
               required
             />
           </div>
-          <button className='login-btn' type='submit' disabled={isLoading}>
-            {isLoading ? 'Signing in...' : 'Sign in'}
+          <button className="login-btn" type="submit" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Sign in"}
           </button>
-          <p className='login-text'>
-            Don&apos;t have a specialist account?{' '}
+          <p className="login-text">
+            Don&apos;t have a specialist account?{" "}
             <a
-              className='specialist-register-link'
-              href='/specialist-registration'
+              className="specialist-register-link"
+              href="/specialist-registration"
             >
               Register as a specialist
             </a>
           </p>
-          <p className='login-text'>
-            Not a specialist?{' '}
-            <a className='specialist-link' href='/login'>
+          <p className="login-text">
+            Not a specialist?{" "}
+            <a className="specialist-link" href="/login">
               Back to general login
             </a>
           </p>

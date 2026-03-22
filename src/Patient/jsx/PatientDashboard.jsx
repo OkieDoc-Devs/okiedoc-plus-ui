@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { logoutPatient } from '../services/auth';
+import { disconnectSocket } from '../../utils/socketClient';
 import { useNavigate } from 'react-router';
 import MedicalRecords from './MedicalRecords';
 import Appointments from './Appointments';
@@ -43,12 +44,13 @@ import {
   FaDollarSign,
   FaUpload,
   FaTimes as FaClose,
-  FaBell,
   FaEllipsisH,
   FaPhone,
   FaVideo,
   FaPhoneAlt,
 } from 'react-icons/fa';
+
+import NotificationBell from '../../components/Notifications/NotificationBell';
 
 const PatientDashboard = () => {
   const [_globalId, setGlobalId] = useState('');
@@ -129,22 +131,32 @@ const PatientDashboard = () => {
                 ? 'Active'
                 : t.status === 'for_payment'
                   ? 'For Payment'
-                  : t.status === 'processing' ||
-                      t.status === 'triage' ||
-                      t.status === 'assigned'
-                    ? 'Processing'
-                    : t.status === 'pending' || t.status === 'unclaimed'
-                      ? 'Pending'
-                      : 'Unknown',
-            date: t.createdAt
-              ? new Date(t.createdAt).toLocaleDateString()
-              : 'TBD',
-            time: t.createdAt
-              ? new Date(t.createdAt).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
-              : 'TBD',
+                  : t.status === 'confirmed'
+                    ? 'Confirmed'
+                    : t.status === 'completed'
+                      ? 'Completed'
+                      : t.status === 'cancelled'
+                        ? 'Cancelled'
+                        : t.status === 'processing' ||
+                            t.status === 'triage' ||
+                            t.status === 'assigned'
+                          ? 'Processing'
+                          : t.status === 'pending' || t.status === 'unclaimed'
+                            ? 'Pending'
+                            : 'Unknown',
+            date: t.preferredDate
+              ? new Date(t.preferredDate).toLocaleDateString()
+              : t.createdAt
+                ? new Date(t.createdAt).toLocaleDateString()
+                : 'TBD',
+            time:
+              t.preferredTime ||
+              (t.createdAt
+                ? new Date(t.createdAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : 'TBD'),
             description: t.chiefComplaint || t.symptoms || '',
             chiefComplaint: t.chiefComplaint || '',
             symptoms: t.symptoms || '',
@@ -481,6 +493,7 @@ const PatientDashboard = () => {
 
   const handleLogout = async () => {
     try {
+      disconnectSocket();
       await logoutPatient();
       localStorage.removeItem('currentUser');
       navigate('/login');
@@ -1400,10 +1413,12 @@ const PatientDashboard = () => {
               <div className='patient-mobile-logo'>
                 <span className='patient-mobile-logo-text'>OkieDoc</span>
               </div>
-              <div
-                className='patient-mobile-profile-section'
-                onClick={() => setShowMobileProfileModal(true)}
-              >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <NotificationBell />
+                <div
+                  className='patient-mobile-profile-section'
+                  onClick={() => setShowMobileProfileModal(true)}
+                >
                 <div className='patient-profile-image-container'>
                   {profileImage ? (
                     <img
@@ -1422,6 +1437,7 @@ const PatientDashboard = () => {
                     {profileData.firstName} {profileData.lastName}
                   </h3>
                 </div>
+              </div>
               </div>
             </div>
 
@@ -1617,7 +1633,8 @@ const PatientDashboard = () => {
               )}
             </div>
           </div>
-          <div className='patient-user-profile'>
+          <div className='patient-user-profile' style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <NotificationBell />
             <button
               className='patient-profile-trigger'
               onClick={() => setActivePage('my-account')}

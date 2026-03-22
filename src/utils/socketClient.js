@@ -9,8 +9,16 @@ const socket = io(SOCKET_URL, {
   autoConnect: false,
 });
 
+socket.on('connect', () => {
+  console.log('[Socket] Connected with id:', socket.id);
+});
+
+socket.on('disconnect', (reason) => {
+  console.warn('[Socket] Disconnected. Reason:', reason);
+});
+
 socket.on('connect_error', (error) => {
-  console.error('Socket connection error:', error);
+  console.error('Socket connection error:', error.message);
   if (
     error.message === 'xhr poll error' ||
     error.message.includes('401') ||

@@ -1,0 +1,125 @@
+.jitsi-call-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.jitsi-call-modal {
+  width: 90vw;
+  max-width: 1200px;
+  height: 85vh;
+  background-color: #1a1a1a;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.jitsi-call-header {
+  height: 50px;
+  background-color: #2b2b2b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  border-bottom: 1px solid #3d3d3d;
+}
+
+.jitsi-call-header h3 {
+  color: #fff;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.jitsi-close-button {
+  background: none;
+  border: none;
+  color: #a0a0a0;
+  font-size: 28px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.jitsi-close-button:hover {
+  color: #ff4757;
+}
+
+.jitsi-video-container {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+}
+
+/* Loading & Error States */
+.jitsi-loading-state,
+.jitsi-error-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+}
+
+.jitsi-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-left-color: #0284c7; /* Brand Blue */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+.jitsi-error-text {
+  color: #ef4444;
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+}
+
+.jitsi-retry-btn {
+  background-color: #0284c7;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.jitsi-retry-btn:hover {
+  background-color: #0369a1;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .jitsi-call-modal {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+  }
+}

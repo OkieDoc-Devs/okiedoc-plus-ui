@@ -5,10 +5,11 @@ import './SpecialistDashboard.css';
 import authService from './authService';
 import * as specialistApi from './services/apiService';
 import { API_BASE_URL } from '../api/apiClient';
-import SpecialistCall from './SpecialistCall';
 import Messages from './Messages';
 import ImageCropperModal from '../components/ImageCropperModal';
-import { usePSGC } from '../hooks/usePSGC';
+import NotificationBell from '../components/Notifications/NotificationBell';
+import { disconnectSocket } from '../utils/socketClient';
+  import { usePSGC } from '../hooks/usePSGC';
 import {
   formatDateLabel,
   getDaysInMonth,
@@ -245,7 +246,7 @@ const SpecialistDashboard = () => {
                 : 'TBD',
           status:
             t.status === 'confirmed'
-              ? 'Awaiting'
+              ? 'Confirmed'
               : t.status === 'active'
                 ? 'In Progress'
                 : t.status === 'completed'
@@ -553,6 +554,7 @@ const SpecialistDashboard = () => {
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
       try {
+        disconnectSocket();
         await authService.logout();
         navigate('/');
       } catch (error) {
@@ -1807,7 +1809,8 @@ const SpecialistDashboard = () => {
                       )}
 
                       {(statusRaw === 'processing' ||
-                        statusRaw === 'triage complete') && (
+                        statusRaw === 'triage complete' ||
+                        statusRaw === 'confirmed') && (
                         <button
                           className='btn-primary'
                           style={{ backgroundColor: '#10b981' }}
@@ -2432,33 +2435,36 @@ const SpecialistDashboard = () => {
           />
         </div>
         <h3 className='dashboard-title'>Specialist Dashboard</h3>
-        <div className='user-account'>
-          {profileData.profileUrl ? (
-            <img
-              src={`${API_BASE_URL}${profileData.profileUrl}`}
-              alt='Account'
-              className='account-icon'
-            />
-          ) : (
-            <div
-              className='account-icon'
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.2rem',
-                fontWeight: 'bold',
-                color: '#0b5388',
-              }}
-            >
-              {userInitials}
-            </div>
-          )}
-          <span className='account-name'>
-            {currentUser?.firstName || currentUser?.fName || 'Specialist'}{' '}
-            {currentUser?.lastName || currentUser?.lName || ''}
-          </span>
-          <div className='account-dropdown'>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <NotificationBell />
+          <div className='user-account'>
+            {profileData.profileUrl ? (
+              <img
+                src={`${API_BASE_URL}${profileData.profileUrl}`}
+                alt='Account'
+                className='account-icon'
+              />
+            ) : (
+              <div
+                className='account-icon'
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.2rem',
+                  fontWeight: 'bold',
+                  color: '#0b5388',
+                }}
+              >
+                {userInitials}
+              </div>
+            )}
+            <span className='account-name'>
+              {currentUser?.firstName || currentUser?.fName || 'Specialist'}{' '}
+              {currentUser?.lastName || currentUser?.lName || ''}
+            </span>
+            <div className='account-dropdown'>
             <button
               className='dropdown-item'
               onClick={() => handleNavigation('profile', 'Personal Data')}
@@ -2472,6 +2478,7 @@ const SpecialistDashboard = () => {
               Logout
             </button>
           </div>
+        </div>
         </div>
         <div className='dashboard-nav'>
           <button
@@ -2741,7 +2748,10 @@ const SpecialistDashboard = () => {
             <div className='modal-actions'>
               {(() => {
                 const s = (selectedTicket.status || '').toLowerCase();
-                const isTriage = s === 'processing' || s === 'triage complete';
+                const isTriage =
+                  s === 'processing' ||
+                  s === 'triage complete' ||
+                  s === 'confirmed';
                 const isCompleted = s === 'completed';
 
                 return (
@@ -3088,15 +3098,6 @@ const SpecialistDashboard = () => {
           </div>
         </div>
       )}
-
-      {/* Call/Video Call Component */}
-      <SpecialistCall
-        isOpen={callState.isOpen}
-        onClose={handleCloseCall}
-        callType={callState.callType}
-        patient={callState.patient}
-        currentUser={currentUser}
-      />
 
       {/* Success Modal */}
       {showSuccessModal && (

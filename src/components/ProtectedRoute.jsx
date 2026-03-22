@@ -19,6 +19,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
       patient: '/patient-dashboard',
       nurse: '/nurse-dashboard',
       admin: '/admin/specialist-dashboard',
+      nurse_admin: '/nurse-admin-dashboard',
     };
     const redirectPath = defaultPaths[userType] || '/login';
     return <Navigate to={redirectPath} replace />;

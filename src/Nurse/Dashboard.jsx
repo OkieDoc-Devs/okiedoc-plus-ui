@@ -1,57 +1,61 @@
-import "../App.css";
-import "./NurseStyles.css";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import '../App.css';
+import './NurseStyles.css';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import {
   getNurseFirstName,
   getNurseProfileImage,
   saveNurseProfileImage,
-} from "./services/storageService.js";
+} from './services/storageService.js';
 import {
-  fetchTicketsFromAPI,
-  fetchNotificationsFromAPI,
-  fetchDashboardFromAPI,
   fetchNurseProfile,
   logoutFromAPI,
   updateTicket,
   claimTicket,
   triageTicket,
+  assignSpecialist,
   fetchDoctorsFromAPI,
-} from "./services/apiService.js";
-import { transformProfileFromAPI } from "./services/profileService.js";
+  fetchTicketsFromAPI,
+} from './services/apiService.js';
+import { useNotification } from '../contexts/NotificationContext';
+import { transformProfileFromAPI } from './services/profileService.js';
+import NotificationBell from '../components/Notifications/NotificationBell';
+import { disconnectSocket } from '../utils/socketClient';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { unreadCount } = useNotification();
 
-  const [notifications, setNotifications] = useState([]);
   const [nurseName, setNurseName] = useState(getNurseFirstName());
   const [nurseProfileImage, setNurseProfileImage] = useState(
-    getNurseProfileImage()
+    getNurseProfileImage(),
   );
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showTicketDetailModal, setShowTicketDetailModal] = useState(false);
-  const [ticketDetailTab, setTicketDetailTab] = useState("assessment");
+  const [ticketDetailTab, setTicketDetailTab] = useState('assessment');
   const [doctors, setDoctors] = useState([]);
-  const [urgency, setUrgency] = useState("medium");
-  const [targetSpecialty, setTargetSpecialty] = useState("");
-  const [assignedSpecialist, setAssignedSpecialist] = useState("");
+  const [urgency, setUrgency] = useState('medium');
+  const [targetSpecialty, setTargetSpecialty] = useState('');
+  const [assignedSpecialist, setAssignedSpecialist] = useState('');
   const [isTriaging, setIsTriaging] = useState(false);
 
   const formatDate = (dateString) => {
-    if (!dateString) return "";
+    if (!dateString) return '';
     try {
       let date = new Date(dateString);
       if (isNaN(date.getTime())) return dateString;
-      
-      // If the string is a plain date (YYYY-MM-DD), adjust for timezone to prevent one-day-off issues
-      if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString.split('T')[0])) {
-        date = new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
+
+      if (
+        typeof dateString === 'string' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(dateString.split('T')[0])
+      ) {
+        date = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
       }
 
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
       });
     } catch {
       return dateString;
@@ -73,19 +77,14 @@ export default function Dashboard() {
     return age;
   };
 
-  const handleTabClick = (tab) => {
-    if (tab === "notifications") {
-      navigate("/nurse-notifications");
-    }
-  };
-
   const handleLogout = async () => {
     try {
+      disconnectSocket();
       await logoutFromAPI();
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error('Logout error:', error);
     }
-    navigate("/");
+    navigate('/');
   };
 
   const [tickets, setTickets] = useState([]);
@@ -93,20 +92,20 @@ export default function Dashboard() {
   useEffect(() => {
     const loadDashboardData = async () => {
       console.log(
-        "Dashboard: Starting to load dashboard data for logged-in nurse..."
+        'Dashboard: Starting to load dashboard data for logged-in nurse...',
       );
 
       try {
-        console.log("Dashboard: Fetching nurse profile...");
+        console.log('Dashboard: Fetching nurse profile...');
         const nurse = await fetchNurseProfile();
         const profileData = transformProfileFromAPI(nurse);
 
         if (profileData.firstName) {
           setNurseName(profileData.firstName);
-          localStorage.setItem("nurse.firstName", profileData.firstName);
+          localStorage.setItem('nurse.firstName', profileData.firstName);
           console.log(
-            "Dashboard: Updated nurse name to:",
-            profileData.firstName
+            'Dashboard: Updated nurse name to:',
+            profileData.firstName,
           );
         }
 
@@ -114,153 +113,89 @@ export default function Dashboard() {
           saveNurseProfileImage(profileData.profileImage);
           setNurseProfileImage(getNurseProfileImage());
           console.log(
-            "Dashboard: Updated profile image to:",
-            getNurseProfileImage()
+            'Dashboard: Updated profile image to:',
+            getNurseProfileImage(),
           );
         } else {
-          localStorage.removeItem("nurse.profileImage");
-          setNurseProfileImage("/account.svg");
-          console.log("Dashboard: Cleared nurse avatar (no image from API)");
+          localStorage.removeItem('nurse.profileImage');
+          setNurseProfileImage('/account.svg');
+          console.log('Dashboard: Cleared nurse avatar (no image from API)');
         }
       } catch (profileError) {
         console.log(
-          "Dashboard: Could not fetch nurse profile:",
-          profileError.message
+          'Dashboard: Could not fetch nurse profile:',
+          profileError.message,
         );
       }
 
       try {
-        console.log("Dashboard: Fetching from dashboard API...");
+        console.log('Dashboard: Fetching from dashboard API...');
         const dashboardData = await fetchDashboardFromAPI();
-        console.log("Dashboard: Dashboard API response:", dashboardData);
+        console.log('Dashboard: Dashboard API response:', dashboardData);
         if (dashboardData) {
           if (dashboardData.nurse) {
             const nurseData = dashboardData.nurse;
             if (nurseData.First_Name) {
               setNurseName(nurseData.First_Name);
-              localStorage.setItem("nurse.firstName", nurseData.First_Name);
+              localStorage.setItem('nurse.firstName', nurseData.First_Name);
             }
             if (nurseData.Profile_Image_Data_URL) {
               saveNurseProfileImage(nurseData.Profile_Image_Data_URL);
               setNurseProfileImage(getNurseProfileImage());
               console.log(
-                "Dashboard: Updated profile image from dashboard API:",
-                getNurseProfileImage()
+                'Dashboard: Updated profile image from dashboard API:',
+                getNurseProfileImage(),
               );
             } else {
-              localStorage.removeItem("nurse.profileImage");
-              setNurseProfileImage("/account.svg");
+              localStorage.removeItem('nurse.profileImage');
+              setNurseProfileImage('/account.svg');
               console.log(
-                "Dashboard: Cleared nurse avatar (no image from dashboard API)"
+                'Dashboard: Cleared nurse avatar (no image from dashboard API)',
               );
             }
           }
 
           if (dashboardData.tickets && Array.isArray(dashboardData.tickets)) {
             console.log(
-              "Dashboard: Received tickets from dashboard API:",
+              'Dashboard: Received tickets from dashboard API:',
               dashboardData.tickets.length,
-              "tickets"
+              'tickets',
             );
             setTickets(dashboardData.tickets);
           } else {
-            console.log("Dashboard: No tickets in dashboard response");
+            console.log('Dashboard: No tickets in dashboard response');
             setTickets([]);
-          }
-          if (
-            dashboardData.notifications &&
-            Array.isArray(dashboardData.notifications) &&
-            dashboardData.notifications.length > 0
-          ) {
-            console.log(
-              "Dashboard: Received notifications from dashboard API:",
-              dashboardData.notifications.length,
-              "notifications"
-            );
-            console.log(
-              "Dashboard: Notification IDs:",
-              dashboardData.notifications.map((n) => n.id)
-            );
-            console.log(
-              "Dashboard: Unread count:",
-              dashboardData.notifications.filter((n) => n.unread).length
-            );
-            setNotifications(dashboardData.notifications);
-          } else {
-            console.log(
-              "Dashboard: No notifications in dashboard response, setting to empty"
-            );
-            setNotifications([]);
           }
           return;
         } else {
-          console.log("Dashboard: Empty dashboard response, setting defaults");
+          console.log('Dashboard: Empty dashboard response, setting defaults');
           setTickets([]);
-          setNotifications([]);
           return;
         }
       } catch (error) {
         console.log(
-          "Dashboard API not available, trying individual endpoints:",
-          error.message
+          'Dashboard API not available, trying individual endpoints:',
+          error.message,
         );
 
         try {
-          console.log("Dashboard: Fetching tickets from individual API...");
+          console.log('Dashboard: Fetching tickets from individual API...');
           const apiTickets = await fetchTicketsFromAPI();
-          console.log("Dashboard: Tickets API response:", apiTickets);
+          console.log('Dashboard: Tickets API response:', apiTickets);
           if (apiTickets && apiTickets.length > 0) {
             console.log(
-              "Dashboard: Received tickets from API:",
+              'Dashboard: Received tickets from API:',
               apiTickets.length,
-              "tickets"
+              'tickets',
             );
             setTickets(apiTickets);
           } else {
-            console.log("Dashboard: No tickets received from API");
+            console.log('Dashboard: No tickets received from API');
             setTickets([]);
           }
         } catch (ticketError) {
-          console.error("Dashboard: Tickets API error:", ticketError.message);
+          console.error('Dashboard: Tickets API error:', ticketError.message);
           setTickets([]);
-        }
-
-        try {
-          const apiNotifications = await fetchNotificationsFromAPI();
-          console.log(
-            "Dashboard: Notifications from individual API:",
-            apiNotifications
-          );
-          if (
-            apiNotifications &&
-            Array.isArray(apiNotifications) &&
-            apiNotifications.length > 0
-          ) {
-            console.log(
-              "Dashboard: Notification count from individual API:",
-              apiNotifications.length
-            );
-            console.log(
-              "Dashboard: Notification IDs:",
-              apiNotifications.map((n) => n.id)
-            );
-            console.log(
-              "Dashboard: Unread count:",
-              apiNotifications.filter((n) => n.unread).length
-            );
-            setNotifications(apiNotifications);
-          } else {
-            console.log(
-              "Dashboard: No notifications from individual API, setting to empty"
-            );
-            setNotifications([]);
-          }
-        } catch (notifError) {
-          console.error(
-            "Dashboard: Notifications API error:",
-            notifError.message
-          );
-          setNotifications([]);
         }
       }
     };
@@ -276,7 +211,7 @@ export default function Dashboard() {
         const data = await fetchDoctorsFromAPI();
         setDoctors(data || []);
       } catch (error) {
-        console.error("Dashboard: Error loading doctors:", error);
+        console.error('Dashboard: Error loading doctors:', error);
       }
     };
     loadDoctors();
@@ -284,7 +219,7 @@ export default function Dashboard() {
 
   const handleCompleteTriage = async (ticketId) => {
     if (!targetSpecialty) {
-      alert("Please enter a target specialty.");
+      alert('Please enter a target specialty.');
       return;
     }
 
@@ -295,120 +230,127 @@ export default function Dashboard() {
         targetSpecialty,
         urgency,
       };
-      if (assignedSpecialist) {
-        triageData.specialistId = parseInt(assignedSpecialist, 10);
-      }
 
       await triageTicket(triageData);
-      alert("Ticket triaged successfully!");
+
+      if (assignedSpecialist) {
+        await assignSpecialist(
+          parseInt(ticketId, 10),
+          parseInt(assignedSpecialist, 10),
+        );
+      }
+
+      alert('Ticket triaged successfully!');
       setShowTicketDetailModal(false);
       window.location.reload();
     } catch (error) {
-      console.error("Error triaging ticket:", error);
-      alert("Failed to triage ticket: " + error.message);
+      console.error('Error triaging ticket:', error);
+      alert('Failed to triage ticket: ' + error.message);
     } finally {
       setIsTriaging(false);
     }
   };
 
   return (
-    <div className="dashboard">
-      <div className="dashboard-header">
-        <div className="header-center">
+    <div className='dashboard'>
+      <div className='dashboard-header'>
+        <div className='header-center'>
           <img
-            src="/okie-doc-logo.png"
-            alt="Okie-Doc+"
-            className="logo-image"
+            src='/okie-doc-logo.png'
+            alt='Okie-Doc+'
+            className='logo-image'
           />
         </div>
-        <h3 className="dashboard-title">Nurse Dashboard</h3>
-        <div className="user-account">
-          <img src={nurseProfileImage} alt="Account" className="account-icon" />
-          <span className="account-name">{nurseName}</span>
-          <div className="account-dropdown">
-            <button
-              className="dropdown-item"
-              onClick={() => navigate("/nurse-myaccount")}
-            >
-              My Account
-            </button>
-            <button
-              className="dropdown-item logout-item"
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
+        <h3 className='dashboard-title'>Nurse Dashboard</h3>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <NotificationBell />
+          <div className='user-account'>
+            <img
+              src={nurseProfileImage}
+              alt='Account'
+              className='account-icon'
+            />
+            <span className='account-name'>{nurseName}</span>
+            <div className='account-dropdown'>
+              <button
+                className='dropdown-item'
+                onClick={() => navigate('/nurse-myaccount')}
+              >
+                My Account
+              </button>
+              <button
+                className='dropdown-item logout-item'
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
-        <div className="dashboard-nav">
+        <div className='dashboard-nav'>
           <button
             className={`nav-tab active`}
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate('/dashboard')}
           >
             Dashboard
           </button>
           <button
             className={`nav-tab`}
-            onClick={() => navigate("/nurse-manage-appointments")}
+            onClick={() => navigate('/nurse-manage-appointments')}
           >
             Manage Appointments
           </button>
           <button
             className={`nav-tab`}
-            onClick={() => navigate("/nurse-messages")}
+            onClick={() => navigate('/nurse-messages')}
           >
             Messages
-          </button>
-          <button
-            className={`nav-tab`}
-            onClick={() => handleTabClick("notifications")}
-          >
-            Notifications ({notifications.filter((n) => n.unread).length})
           </button>
         </div>
       </div>
 
-      <div className="appointments-section">
-        <div className="processing-tickets">
+      <div className='appointments-section'>
+        <div className='processing-tickets'>
           <h2>All Tickets ({tickets.length})</h2>
           {tickets.map((ticket) => (
             <div
               key={ticket.id}
-              className="ticket-card-new"
+              className='ticket-card-new'
               onClick={() => {
                 setSelectedTicket(ticket);
                 setShowTicketDetailModal(true);
-                setTicketDetailTab("assessment");
+                setTicketDetailTab('assessment');
               }}
-              style={{ cursor: "pointer" }}
+              style={{ cursor: 'pointer' }}
             >
-              <div className="ticket-card-header">
-                <span className="ticket-number">TICKET #{ticket.id}</span>
+              <div className='ticket-card-header'>
+                <span className='ticket-number'>TICKET #{ticket.id}</span>
               </div>
 
-              <div className="ticket-card-body">
-                <div className="ticket-left-section">
-                  <div className="ticket-patient-details">
-                    <h4 className="ticket-section-title">PATIENT DETAILS</h4>
-                    <div className="ticket-details-grid">
-                      <div className="ticket-details-col">
+              <div className='ticket-card-body'>
+                <div className='ticket-left-section'>
+                  <div className='ticket-patient-details'>
+                    <h4 className='ticket-section-title'>PATIENT DETAILS</h4>
+                    <div className='ticket-details-grid'>
+                      <div className='ticket-details-col'>
                         <p>
                           <strong>Name:</strong> {ticket.patientName}
                         </p>
                         <p>
-                          <strong>Age:</strong>{" "}
+                          <strong>Age:</strong>{' '}
                           {ticket.age ||
                             calculateAge(ticket.patientBirthdate) ||
-                            "N/A"}
+                            'N/A'}
                         </p>
                         <p>
-                          <strong>Birthdate:</strong>{" "}
+                          <strong>Birthdate:</strong>{' '}
                           {formatDate(ticket.patientBirthdate) ||
                             ticket.birthdate ||
-                            "N/A"}
+                            'N/A'}
                         </p>
                       </div>
-                      <div className="ticket-details-col">
+                      <div className='ticket-details-col'>
                         <p>
                           <strong>Email:</strong> {ticket.email}
                         </p>
@@ -419,34 +361,34 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="ticket-assignments">
+                  <div className='ticket-assignments'>
                     <p>
-                      <strong>Assigned Nurse:</strong>{" "}
-                      {ticket.assignedNurse || "Unassigned"}
+                      <strong>Assigned Nurse:</strong>{' '}
+                      {ticket.assignedNurse || 'Unassigned'}
                     </p>
                     <p>
-                      <strong>Assigned Specialist:</strong>{" "}
+                      <strong>Assigned Specialist:</strong>{' '}
                       {ticket.assignedSpecialist ||
                         ticket.preferredSpecialist ||
-                        "Not specified"}
+                        'Not specified'}
                     </p>
                     <p>
-                      <strong>Consultation Type:</strong>{" "}
+                      <strong>Consultation Type:</strong>{' '}
                       {ticket.consultationType || ticket.chiefComplaint}
                     </p>
                   </div>
                 </div>
 
-                <div className="ticket-right-section">
-                  <div className="ticket-meta">
+                <div className='ticket-right-section'>
+                  <div className='ticket-meta'>
                     <p>
-                      <strong>Date Created:</strong>{" "}
+                      <strong>Date Created:</strong>{' '}
                       {formatDate(ticket.createdAt) ||
                         ticket.dateCreated ||
                         ticket.preferredDate}
                     </p>
                     <p>
-                      <strong>Status:</strong>{" "}
+                      <strong>Status:</strong>{' '}
                       <span
                         className={`ticket-status-text ${ticket.status?.toLowerCase()}`}
                       >
@@ -457,17 +399,19 @@ export default function Dashboard() {
 
                   {ticket.status === 'pending' && !ticket.assignedNurse && (
                     <button
-                      className="ticket-history-btn"
+                      className='ticket-history-btn'
                       style={{ background: '#28a745', color: '#fff' }}
                       onClick={async (e) => {
                         e.stopPropagation();
-                        if (window.confirm("Do you want to claim this ticket?")) {
+                        if (
+                          window.confirm('Do you want to claim this ticket?')
+                        ) {
                           try {
                             await claimTicket(ticket.id);
-                            alert("Ticket claimed successfully!");
-                            window.location.reload(); // Simple way to refresh everything
+                            alert('Ticket claimed successfully!');
+                            window.location.reload();
                           } catch (err) {
-                            alert("Failed to claim ticket: " + err.message);
+                            alert('Failed to claim ticket: ' + err.message);
                           }
                         }
                       }}
@@ -477,24 +421,28 @@ export default function Dashboard() {
                   )}
 
                   <button
-                    className="ticket-history-btn"
+                    className='ticket-history-btn'
                     style={{ marginTop: '8px' }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      alert("Feature in progress");
+                      alert('Feature in progress');
                     }}
                   >
                     Consultation Histories
                   </button>
                   <button
-                    className="ticket-history-btn"
-                    style={{ marginTop: '8px', background: '#0b5388', color: '#fff' }}
+                    className='ticket-history-btn'
+                    style={{
+                      marginTop: '8px',
+                      background: '#0b5388',
+                      color: '#fff',
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (ticket.patientId) {
                         navigate(`/nurse-messages?userId=${ticket.patientId}`);
                       } else {
-                        alert("No patient ID found for this ticket.");
+                        alert('No patient ID found for this ticket.');
                       }
                     }}
                   >
@@ -505,7 +453,7 @@ export default function Dashboard() {
             </div>
           ))}
           {tickets.length === 0 && (
-            <div className="empty-state">
+            <div className='empty-state'>
               <p>No tickets available</p>
             </div>
           )}
@@ -513,17 +461,17 @@ export default function Dashboard() {
       </div>
 
       {showTicketDetailModal && selectedTicket && (
-        <div className="modal-overlay">
+        <div className='modal-overlay'>
           <div
-            className="ticket-detail-modal"
-            style={{ maxWidth: 900, width: "90%" }}
+            className='ticket-detail-modal'
+            style={{ maxWidth: 900, width: '90%' }}
           >
             <div
-              className="modal-header"
-              style={{ borderBottom: "1px solid #e0e0e0", paddingBottom: 16 }}
+              className='modal-header'
+              style={{ borderBottom: '1px solid #e0e0e0', paddingBottom: 16 }}
             >
               <div>
-                <h2 style={{ margin: 0, color: "#0b5388" }}>
+                <h2 style={{ margin: 0, color: '#0b5388' }}>
                   TICKET #{selectedTicket.id}
                 </h2>
               </div>
@@ -532,7 +480,7 @@ export default function Dashboard() {
                   setShowTicketDetailModal(false);
                   setSelectedTicket(null);
                 }}
-                className="close-btn"
+                className='close-btn'
               >
                 ×
               </button>
@@ -540,78 +488,81 @@ export default function Dashboard() {
 
             <div
               style={{
-                padding: "16px 24px",
-                background: "#f8f9fa",
-                borderBottom: "1px solid #e0e0e0",
+                padding: '16px 24px',
+                background: '#f8f9fa',
+                borderBottom: '1px solid #e0e0e0',
               }}
             >
               <div
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
                   gap: 16,
                 }}
               >
                 <div>
                   <p
                     style={{
-                      margin: "0 0 4px",
+                      margin: '0 0 4px',
                       fontSize: 12,
-                      color: "#666",
-                      textTransform: "uppercase",
+                      color: '#666',
+                      textTransform: 'uppercase',
                     }}
                   >
                     Patient Details
                   </p>
-                  <p style={{ margin: "0 0 4px" }}>
+                  <p style={{ margin: '0 0 4px' }}>
                     <strong>Name:</strong> {selectedTicket.patientName}
                   </p>
-                  <p style={{ margin: "0 0 4px" }}>
+                  <p style={{ margin: '0 0 4px' }}>
                     <strong>Email:</strong> {selectedTicket.email}
                   </p>
-                  <p style={{ margin: "0 0 4px" }}>
-                    <strong>Age:</strong>{" "}
+                  <p style={{ margin: '0 0 4px' }}>
+                    <strong>Age:</strong>{' '}
                     {selectedTicket.age ||
                       calculateAge(selectedTicket.patientBirthdate) ||
-                      "N/A"}
+                      'N/A'}
                   </p>
-                  <p style={{ margin: "0 0 4px" }}>
+                  <p style={{ margin: '0 0 4px' }}>
                     <strong>Mobile:</strong> {selectedTicket.mobile}
                   </p>
                   <p style={{ margin: 0 }}>
-                    <strong>Birthdate:</strong>{" "}
-                    {formatDate(selectedTicket.patientBirthdate) || "N/A"}
+                    <strong>Birthdate:</strong>{' '}
+                    {formatDate(selectedTicket.patientBirthdate) || 'N/A'}
                   </p>
-                  <p style={{ margin: "4px 0 0" }}>
-                    <strong>Address:</strong> {[
+                  <p style={{ margin: '4px 0 0' }}>
+                    <strong>Address:</strong>{' '}
+                    {[
                       selectedTicket.addressLine1,
                       selectedTicket.addressLine2,
                       selectedTicket.barangay,
                       selectedTicket.city,
                       selectedTicket.province,
                       selectedTicket.region,
-                      selectedTicket.zipCode
-                    ].filter(Boolean).join(", ") || "N/A"}
+                      selectedTicket.zipCode,
+                    ]
+                      .filter(Boolean)
+                      .join(', ') || 'N/A'}
                   </p>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <p style={{ margin: "0 0 4px", color: "#0b5388" }}>
-                    <strong>Date Created:</strong>{" "}
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ margin: '0 0 4px', color: '#0b5388' }}>
+                    <strong>Date Created:</strong>{' '}
                     {formatDate(selectedTicket.createdAt)}
                   </p>
                   <p style={{ margin: 0 }}>
-                    <strong>Status:</strong>{" "}
+                    <strong>Status:</strong>{' '}
                     <span
                       style={{
                         color:
-                          selectedTicket.status === "Confirmed"
-                            ? "#2196f3"
-                            : selectedTicket.status === "Completed"
-                              ? "#4caf50"
-                              : selectedTicket.status === "Processing"
-                                ? "#2196f3"
-                                : "#ff9800",
+                          selectedTicket.status === 'Confirmed'
+                            ? '#2196f3'
+                            : selectedTicket.status === 'Completed'
+                              ? '#4caf50'
+                              : selectedTicket.status === 'Processing'
+                                ? '#2196f3'
+                                : '#ff9800',
                       }}
                     >
                       {selectedTicket.status}
@@ -623,63 +574,74 @@ export default function Dashboard() {
                 style={{
                   marginTop: 16,
                   paddingTop: 16,
-                  borderTop: "1px solid #e0e0e0",
+                  borderTop: '1px solid #e0e0e0',
                 }}
               >
-                <p style={{ margin: "0 0 4px" }}>
-                  <strong>Assigned Nurse:</strong>{" "}
-                  {selectedTicket.assignedNurse || "Unassigned"}
+                <p style={{ margin: '0 0 4px' }}>
+                  <strong>Assigned Nurse:</strong>{' '}
+                  {selectedTicket.assignedNurse || 'Unassigned'}
                 </p>
-                <p style={{ margin: "0 0 4px" }}>
-                  <strong>Assigned Specialist:</strong>{" "}
+                <p style={{ margin: '0 0 4px' }}>
+                  <strong>Assigned Specialist:</strong>{' '}
                   {selectedTicket.assignedSpecialist ||
                     selectedTicket.preferredSpecialist ||
-                    "Not specified"}
+                    'Not specified'}
                 </p>
                 <p style={{ margin: 0 }}>
-                  <strong>Consultation Type:</strong>{" "}
+                  <strong>Consultation Type:</strong>{' '}
                   {selectedTicket.consultationChannel ||
                     selectedTicket.chiefComplaint}
                 </p>
               </div>
-              <div style={{ marginTop: 16, textAlign: "right", display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                {selectedTicket.status === 'pending' && !selectedTicket.assignedNurse && (
-                  <button
-                    className="action-btn"
-                    style={{
-                      background: "#28a745",
-                      color: "#fff",
-                      padding: "8px 20px",
-                      borderRadius: 20,
-                    }}
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (window.confirm("Do you want to claim this ticket?")) {
-                        try {
-                          await claimTicket(selectedTicket.id);
-                          alert("Ticket claimed successfully!");
-                          setShowTicketDetailModal(false);
-                          window.location.reload();
-                        } catch (err) {
-                          alert("Failed to claim ticket: " + err.message);
+              <div
+                style={{
+                  marginTop: 16,
+                  textAlign: 'right',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '8px',
+                }}
+              >
+                {selectedTicket.status === 'pending' &&
+                  !selectedTicket.assignedNurse && (
+                    <button
+                      className='action-btn'
+                      style={{
+                        background: '#28a745',
+                        color: '#fff',
+                        padding: '8px 20px',
+                        borderRadius: 20,
+                      }}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (
+                          window.confirm('Do you want to claim this ticket?')
+                        ) {
+                          try {
+                            await claimTicket(selectedTicket.id);
+                            alert('Ticket claimed successfully!');
+                            setShowTicketDetailModal(false);
+                            window.location.reload();
+                          } catch (err) {
+                            alert('Failed to claim ticket: ' + err.message);
+                          }
                         }
-                      }
-                    }}
-                  >
-                    Claim Ticket
-                  </button>
-                )}
+                      }}
+                    >
+                      Claim Ticket
+                    </button>
+                  )}
                 <button
-                  className="action-btn"
+                  className='action-btn'
                   style={{
-                    background: "#0b5388",
-                    color: "#fff",
-                    padding: "8px 20px",
+                    background: '#0b5388',
+                    color: '#fff',
+                    padding: '8px 20px',
                     borderRadius: 20,
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    alert("Feature in progress");
+                    alert('Feature in progress');
                   }}
                 >
                   Consultation Histories
@@ -689,92 +651,143 @@ export default function Dashboard() {
 
             <div
               style={{
-                display: "flex",
-                borderBottom: "2px solid #e0e0e0",
-                background: "#fff",
+                display: 'flex',
+                borderBottom: '2px solid #e0e0e0',
+                background: '#fff',
               }}
             >
               {[
-                "assessment",
-                "medicalHistory",
-                "laboratoryRequest",
-                "prescription",
-                ...(selectedTicket?.status === 'processing' && selectedTicket?.assignedNurse ? ["triage"] : [])
+                'assessment',
+                'medicalHistory',
+                'laboratoryRequest',
+                'prescription',
+                ...(selectedTicket?.status === 'processing' &&
+                selectedTicket?.assignedNurse
+                  ? ['triage']
+                  : []),
               ].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setTicketDetailTab(tab)}
                   style={{
                     flex: 1,
-                    padding: "12px 16px",
-                    border: "none",
+                    padding: '12px 16px',
+                    border: 'none',
                     background:
-                      ticketDetailTab === tab ? "#e3f2fd" : "transparent",
-                    color: ticketDetailTab === tab ? "#0b5388" : "#666",
+                      ticketDetailTab === tab ? '#e3f2fd' : 'transparent',
+                    color: ticketDetailTab === tab ? '#0b5388' : '#666',
                     fontWeight: ticketDetailTab === tab ? 600 : 400,
-                    cursor: "pointer",
+                    cursor: 'pointer',
                     borderBottom:
                       ticketDetailTab === tab
-                        ? "2px solid #0b5388"
-                        : "2px solid transparent",
-                    marginBottom: "-2px",
-                    transition: "all 0.2s ease",
+                        ? '2px solid #0b5388'
+                        : '2px solid transparent',
+                    marginBottom: '-2px',
+                    transition: 'all 0.2s ease',
                   }}
                 >
-                  {tab === "assessment" && "Assessment"}
-                  {tab === "medicalHistory" && "Medical History"}
-                  {tab === "laboratoryRequest" && "Laboratory Request"}
-                  {tab === "prescription" && "Prescription"}
-                  {tab === "triage" && "Triage"}
+                  {tab === 'assessment' && 'Assessment'}
+                  {tab === 'medicalHistory' && 'Medical History'}
+                  {tab === 'laboratoryRequest' && 'Laboratory Request'}
+                  {tab === 'prescription' && 'Prescription'}
+                  {tab === 'triage' && 'Triage'}
                 </button>
               ))}
             </div>
 
             <div
-              className="modal-body"
+              className='modal-body'
               style={{
                 padding: 24,
                 maxHeight: 400,
-                overflowY: "auto",
-                background: "#e8f4fc",
+                overflowY: 'auto',
+                background: '#e8f4fc',
               }}
             >
-              {ticketDetailTab === "triage" && (
-                <div style={{ background: '#fff', padding: 20, borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                  <h3 style={{ marginBottom: 16, color: '#0b5388' }}>Triage & specialist Assignment</h3>
+              {ticketDetailTab === 'triage' && (
+                <div
+                  style={{
+                    background: '#fff',
+                    padding: 20,
+                    borderRadius: 8,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                  }}
+                >
+                  <h3 style={{ marginBottom: 16, color: '#0b5388' }}>
+                    Triage & specialist Assignment
+                  </h3>
 
                   <div style={{ marginBottom: 12 }}>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Target Specialty:</label>
+                    <label
+                      style={{
+                        display: 'block',
+                        marginBottom: 4,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Target Specialty:
+                    </label>
                     <input
-                      type="text"
-                      placeholder="e.g. Pediatrics, Cardiology"
+                      type='text'
+                      placeholder='e.g. Pediatrics, Cardiology'
                       value={targetSpecialty}
                       onChange={(e) => setTargetSpecialty(e.target.value)}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 4, border: '1px solid #ccc' }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: 4,
+                        border: '1px solid #ccc',
+                      }}
                     />
                   </div>
 
                   <div style={{ marginBottom: 12 }}>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Urgency:</label>
+                    <label
+                      style={{
+                        display: 'block',
+                        marginBottom: 4,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Urgency:
+                    </label>
                     <select
                       value={urgency}
                       onChange={(e) => setUrgency(e.target.value)}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 4, border: '1px solid #ccc' }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: 4,
+                        border: '1px solid #ccc',
+                      }}
                     >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
+                      <option value='low'>Low</option>
+                      <option value='medium'>Medium</option>
+                      <option value='high'>High</option>
                     </select>
                   </div>
 
                   <div style={{ marginBottom: 20 }}>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Assign specialist (Optional):</label>
+                    <label
+                      style={{
+                        display: 'block',
+                        marginBottom: 4,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Assign specialist (Optional):
+                    </label>
                     <select
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 4, border: '1px solid #ccc' }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: 4,
+                        border: '1px solid #ccc',
+                      }}
                       value={assignedSpecialist}
                       onChange={(e) => setAssignedSpecialist(e.target.value)}
                     >
-                      <option value="">Select specialist</option>
+                      <option value=''>Select specialist</option>
                       {doctors.map((doctor) => (
                         <option key={doctor.id} value={doctor.id}>
                           {doctor.name} - {doctor.specialization}
@@ -784,7 +797,7 @@ export default function Dashboard() {
                   </div>
 
                   <button
-                    className="action-btn"
+                    className='action-btn'
                     style={{
                       width: '100%',
                       background: '#28a745',
@@ -794,24 +807,24 @@ export default function Dashboard() {
                       fontWeight: '700',
                       borderRadius: 6,
                       border: 'none',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
                     }}
                     disabled={isTriaging}
                     onClick={() => handleCompleteTriage(selectedTicket.id)}
                   >
-                    {isTriaging ? "Completing Triage..." : "Complete Triage"}
+                    {isTriaging ? 'Completing Triage...' : 'Complete Triage'}
                   </button>
                 </div>
               )}
 
-              {ticketDetailTab === "assessment" && (
+              {ticketDetailTab === 'assessment' && (
                 <div>
                   {selectedTicket?.assessment ? (
                     <p
                       style={{
                         lineHeight: 1.8,
-                        color: "#333",
-                        whiteSpace: "pre-wrap",
+                        color: '#333',
+                        whiteSpace: 'pre-wrap',
                       }}
                     >
                       {selectedTicket.assessment}
@@ -820,8 +833,8 @@ export default function Dashboard() {
                     <p
                       style={{
                         lineHeight: 1.8,
-                        color: "#999",
-                        fontStyle: "italic",
+                        color: '#999',
+                        fontStyle: 'italic',
                       }}
                     >
                       No assessment has been added yet. The specialist will add
@@ -831,14 +844,14 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {ticketDetailTab === "medicalHistory" && (
+              {ticketDetailTab === 'medicalHistory' && (
                 <div>
                   {selectedTicket?.medicalHistory ? (
                     <p
                       style={{
                         lineHeight: 1.8,
-                        color: "#333",
-                        whiteSpace: "pre-wrap",
+                        color: '#333',
+                        whiteSpace: 'pre-wrap',
                       }}
                     >
                       {selectedTicket.medicalHistory}
@@ -847,8 +860,8 @@ export default function Dashboard() {
                     <p
                       style={{
                         lineHeight: 1.8,
-                        color: "#999",
-                        fontStyle: "italic",
+                        color: '#999',
+                        fontStyle: 'italic',
                       }}
                     >
                       No medical history has been recorded for this patient.
@@ -857,13 +870,13 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {ticketDetailTab === "laboratoryRequest" && (
+              {ticketDetailTab === 'laboratoryRequest' && (
                 <div>
                   {selectedTicket?.laboratoryRequest ? (
                     (() => {
                       try {
                         const labRequests = JSON.parse(
-                          selectedTicket.laboratoryRequest
+                          selectedTicket.laboratoryRequest,
                         );
                         if (
                           Array.isArray(labRequests) &&
@@ -890,8 +903,8 @@ export default function Dashboard() {
                           <p
                             style={{
                               lineHeight: 1.8,
-                              color: "#333",
-                              whiteSpace: "pre-wrap",
+                              color: '#333',
+                              whiteSpace: 'pre-wrap',
                             }}
                           >
                             {selectedTicket.laboratoryRequest}
@@ -902,8 +915,8 @@ export default function Dashboard() {
                           <p
                             style={{
                               lineHeight: 1.8,
-                              color: "#333",
-                              whiteSpace: "pre-wrap",
+                              color: '#333',
+                              whiteSpace: 'pre-wrap',
                             }}
                           >
                             {selectedTicket.laboratoryRequest}
@@ -915,8 +928,8 @@ export default function Dashboard() {
                     <p
                       style={{
                         lineHeight: 1.8,
-                        color: "#999",
-                        fontStyle: "italic",
+                        color: '#999',
+                        fontStyle: 'italic',
                       }}
                     >
                       No laboratory requests have been added yet.
@@ -925,13 +938,13 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {ticketDetailTab === "prescription" && (
+              {ticketDetailTab === 'prescription' && (
                 <div>
                   {selectedTicket?.prescription ? (
                     (() => {
                       try {
                         const medicines = JSON.parse(
-                          selectedTicket.prescription
+                          selectedTicket.prescription,
                         );
                         if (Array.isArray(medicines) && medicines.length > 0) {
                           return (
@@ -958,8 +971,8 @@ export default function Dashboard() {
                                   {med.instructions && (
                                     <div
                                       style={{
-                                        fontSize: "0.9em",
-                                        color: "#666",
+                                        fontSize: '0.9em',
+                                        color: '#666',
                                       }}
                                     >
                                       Instructions: {med.instructions}
@@ -974,8 +987,8 @@ export default function Dashboard() {
                           <p
                             style={{
                               lineHeight: 1.8,
-                              color: "#333",
-                              whiteSpace: "pre-wrap",
+                              color: '#333',
+                              whiteSpace: 'pre-wrap',
                             }}
                           >
                             {selectedTicket.prescription}
@@ -986,8 +999,8 @@ export default function Dashboard() {
                           <p
                             style={{
                               lineHeight: 1.8,
-                              color: "#333",
-                              whiteSpace: "pre-wrap",
+                              color: '#333',
+                              whiteSpace: 'pre-wrap',
                             }}
                           >
                             {selectedTicket.prescription}
@@ -999,8 +1012,8 @@ export default function Dashboard() {
                     <p
                       style={{
                         lineHeight: 1.8,
-                        color: "#999",
-                        fontStyle: "italic",
+                        color: '#999',
+                        fontStyle: 'italic',
                       }}
                     >
                       No prescription has been added yet.
@@ -1012,74 +1025,74 @@ export default function Dashboard() {
 
             <div
               style={{
-                padding: "16px 24px",
-                borderTop: "1px solid #e0e0e0",
-                display: "flex",
-                justifyContent: "flex-end",
+                padding: '16px 24px',
+                borderTop: '1px solid #e0e0e0',
+                display: 'flex',
+                justifyContent: 'flex-end',
                 gap: 12,
-                background: "#fff",
+                background: '#fff',
               }}
             >
-              {(selectedTicket.status === "Confirmed" ||
-                selectedTicket.status === "Processing") && (
-                  <button
-                    onClick={async () => {
-                      if (
-                        window.confirm(
-                          "Are you sure you want to mark this ticket as completed?"
-                        )
-                      ) {
-                        try {
-                          await updateTicket(selectedTicket.id, {
-                            status: "Completed",
-                          });
-                          alert("Ticket marked as completed!");
-                          setShowTicketDetailModal(false);
-                          setSelectedTicket(null);
-                          const dashboardData = await fetchDashboardFromAPI();
-                          if (dashboardData.success) {
-                            setNurseName(
-                              dashboardData.data?.nurse?.firstName || nurseName
-                            );
-                          }
-                          const ticketsData = await fetchTicketsFromAPI();
-                          if (ticketsData.success) {
-                            window.location.reload();
-                          }
-                        } catch (error) {
-                          console.error("Error completing ticket:", error);
-                          alert(
-                            error.message ||
-                            "Failed to complete ticket. Please try again."
+              {(selectedTicket.status === 'Confirmed' ||
+                selectedTicket.status === 'Processing') && (
+                <button
+                  onClick={async () => {
+                    if (
+                      window.confirm(
+                        'Are you sure you want to mark this ticket as completed?',
+                      )
+                    ) {
+                      try {
+                        await updateTicket(selectedTicket.id, {
+                          status: 'Completed',
+                        });
+                        alert('Ticket marked as completed!');
+                        setShowTicketDetailModal(false);
+                        setSelectedTicket(null);
+                        const dashboardData = await fetchDashboardFromAPI();
+                        if (dashboardData.success) {
+                          setNurseName(
+                            dashboardData.data?.nurse?.firstName || nurseName,
                           );
                         }
+                        const ticketsData = await fetchTicketsFromAPI();
+                        if (ticketsData.success) {
+                          window.location.reload();
+                        }
+                      } catch (error) {
+                        console.error('Error completing ticket:', error);
+                        alert(
+                          error.message ||
+                            'Failed to complete ticket. Please try again.',
+                        );
                       }
-                    }}
-                    style={{
-                      background: "#4caf50",
-                      color: "#fff",
-                      padding: "10px 24px",
-                      borderRadius: 20,
-                      border: "none",
-                      cursor: "pointer",
-                      fontWeight: 500,
-                    }}
-                  >
-                    Mark as Completed
-                  </button>
-                )}
+                    }
+                  }}
+                  style={{
+                    background: '#4caf50',
+                    color: '#fff',
+                    padding: '10px 24px',
+                    borderRadius: 20,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                  }}
+                >
+                  Mark as Completed
+                </button>
+              )}
               <button
                 onClick={() => {
                   setShowTicketDetailModal(false);
                   setSelectedTicket(null);
                 }}
                 style={{
-                  background: "#e0e0e0",
-                  color: "#333",
-                  padding: "10px 24px",
+                  background: '#e0e0e0',
+                  color: '#333',
+                  padding: '10px 24px',
                   borderRadius: 20,
-                  border: "none",
-                  cursor: "pointer",
+                  border: 'none',
+                  cursor: 'pointer',
                   fontWeight: 500,
                 }}
               >

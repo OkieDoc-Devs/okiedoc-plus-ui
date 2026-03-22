@@ -14,9 +14,16 @@
   --danger: #f44336;
 }
 
-.specialist-dashboard * {
-  margin: 0;
-  padding: 0;
+.specialist-dashboard div,
+.specialist-dashboard span,
+.specialist-dashboard h1,
+.specialist-dashboard h2,
+.specialist-dashboard h3,
+.specialist-dashboard p,
+.specialist-dashboard button,
+.specialist-dashboard input,
+.specialist-dashboard select,
+.specialist-dashboard textarea {
   box-sizing: border-box;
   font-family: "Inter", Arial, sans-serif;
 }
@@ -2731,3 +2738,76 @@ html:has(body.specialist-dashboard-body) {
   color: #6b7280;
   font-size: 0.95rem;
 }
+
+/* ── Sender name label above received message bubbles (group chat) ───────── */
+.specialist-message-sender-name {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #0b5388;
+  margin-bottom: 3px;
+  padding-left: 2px;
+  letter-spacing: 0.01em;
+  opacity: 0.85;
+}
+
+/* Vary the colour slightly per sender role for visual distinction */
+.message-type-patient .specialist-message-sender-name {
+  color: #1a7e3a;  /* green for patients */
+}
+
+.message-type-specialist .specialist-message-sender-name {
+  color: #7b3fa0;  /* purple for specialists */
+}
+
+.message-type-nurse .specialist-message-sender-name {
+  color: #0b5388;  /* blue for nurses */
+}
+
+/* ── System Messages (centered, no bubble) ───────── */
+.system-message {
+  width: 100%;
+  text-align: center;
+  margin: 1rem 0;
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.system-message .message-text {
+  background: #f0f2f5;
+  color: #65676b;
+  font-size: 0.85rem;
+  padding: 6px 16px;
+  border-radius: 20px;
+  display: inline-block;
+  max-width: 80%;
+  line-height: 1.4;
+}
+
+/* ── Join Call Button ───────── */
+.join-call-btn {
+  background: #1877f2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px !important;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+  margin-top: 8px;
+  box-shadow: 0 2px 4px rgba(24, 119, 242, 0.2);
+}
+
+.join-call-btn:hover {
+  background: #166fe5;
+}
+
+.join-call-btn svg {
+  font-size: 1rem;
+}

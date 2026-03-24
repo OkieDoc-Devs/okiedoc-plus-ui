@@ -23,6 +23,9 @@ export default function SpecialistRegistration() {
     email: '',
     password: '',
     confirmPassword: '',
+    bMonth: '',
+    bDay: '',
+    bYear: '',
     primarySpecialty: '',
     subSpecialties: '',
     licenseNumber: '',
@@ -104,6 +107,14 @@ export default function SpecialistRegistration() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
+    
+    if (!formData.bMonth || !formData.bDay || !formData.bYear) {
+      newErrors.birthday = 'Complete birthday is required';
+    } else {
+      const birthDate = new Date(`${formData.bYear}-${formData.bMonth}-${formData.bDay}`);
+      if (birthDate > new Date()) newErrors.birthday = 'Birthday cannot be in the future';
+    }
+
     if (!formData.primarySpecialty.trim())
       newErrors.primarySpecialty = 'Medical specialty is required';
     if (!formData.licenseNumber.trim())
@@ -152,6 +163,7 @@ export default function SpecialistRegistration() {
       payload.append('licenseNumber', formData.licenseNumber);
       payload.append('primarySpecialty', formData.primarySpecialty);
       payload.append('subSpecialties', formData.subSpecialties || '');
+      payload.append('birthday', `${formData.bYear}-${formData.bMonth}-${formData.bDay}`);
       if (formData.prcExpiryDate)
         payload.append('prcExpiryDate', formData.prcExpiryDate);
       if (formData.s2Number) payload.append('s2Number', formData.s2Number);
@@ -184,6 +196,9 @@ export default function SpecialistRegistration() {
           email: '',
           password: '',
           confirmPassword: '',
+          bMonth: '',
+          bDay: '',
+          bYear: '',
           primarySpecialty: '',
           subSpecialties: '',
           licenseNumber: '',

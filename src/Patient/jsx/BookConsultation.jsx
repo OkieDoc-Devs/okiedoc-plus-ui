@@ -22,6 +22,12 @@ const BookConsultation = ({ onAppointmentAdded }) => {
     consultationChannel: 'chat',
     preferredDate: '',
     preferredTime: '10:00 AM',
+    prefMonth: '',
+    prefDay: '',
+    prefYear: '',
+    prefHour: '',
+    prefMinute: '',
+    prefAmPm: 'AM',
   });
 
   const handleChange = (e) => {
@@ -38,6 +44,12 @@ const BookConsultation = ({ onAppointmentAdded }) => {
       consultationChannel: 'chat',
       preferredDate: '',
       preferredTime: '10:00 AM',
+      prefMonth: '',
+      prefDay: '',
+      prefYear: '',
+      prefHour: '',
+      prefMinute: '',
+      prefAmPm: 'AM',
     });
   };
 
@@ -52,7 +64,21 @@ const BookConsultation = ({ onAppointmentAdded }) => {
     setSuccess('');
 
     try {
-      const selectedDate = new Date(formData.preferredDate);
+      if (!formData.prefMonth || !formData.prefDay || !formData.prefYear) {
+        setError('Please select a complete preferred date');
+        setLoading(false);
+        return;
+      }
+      if (!formData.prefHour || !formData.prefMinute) {
+        setError('Please select a complete preferred time');
+        setLoading(false);
+        return;
+      }
+
+      const combinedDate = `${formData.prefYear}-${formData.prefMonth}-${formData.prefDay}`;
+      const combinedTime = `${formData.prefHour}:${formData.prefMinute} ${formData.prefAmPm}`;
+
+      const selectedDate = new Date(combinedDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -64,11 +90,14 @@ const BookConsultation = ({ onAppointmentAdded }) => {
 
       if (selectedDate.getTime() === today.getTime()) {
         const now = new Date();
-        const [hours, minutes] = formData.preferredTime.split(':');
         const appointmentTime = new Date();
+        let hour24 = parseInt(formData.prefHour, 10);
+        if (formData.prefAmPm === 'PM' && hour24 !== 12) hour24 += 12;
+        if (formData.prefAmPm === 'AM' && hour24 === 12) hour24 = 0;
+
         appointmentTime.setHours(
-          parseInt(hours, 10),
-          parseInt(minutes, 10),
+          hour24,
+          parseInt(formData.prefMinute, 10),
           0,
           0,
         );
@@ -91,7 +120,13 @@ const BookConsultation = ({ onAppointmentAdded }) => {
         }
       }
 
-      const response = await createTicket(formData);
+      const payload = {
+        ...formData,
+        preferredDate: combinedDate,
+        preferredTime: combinedTime,
+      };
+
+      const response = await createTicket(payload);
       setSuccess(
         `Success! Your ticket number is ${response.ticketNumber}. Pending nurse triage.`,
       );
@@ -271,7 +306,6 @@ const BookConsultation = ({ onAppointmentAdded }) => {
 
                 <div className='form-group' style={{ marginBottom: '1rem' }}>
                   <label
-                    htmlFor='preferredDate'
                     style={{
                       display: 'block',
                       marginBottom: '0.5rem',
@@ -280,27 +314,75 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                   >
                     Preferred Date *
                   </label>
-                  <input
-                    type='date'
-                    id='preferredDate'
-                    name='preferredDate'
-                    required
-                    value={formData.preferredDate}
-                    onChange={handleChange}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                    }}
-                    min={new Date().toISOString().split('T')[0]}
-                    disabled={loading || success}
-                  />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <select
+                      name='prefMonth'
+                      value={formData.prefMonth}
+                      onChange={handleChange}
+                      required
+                      disabled={loading || success}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc',
+                      }}
+                    >
+                      <option value=''>Month</option>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                        <option key={m} value={m.toString().padStart(2, '0')}>
+                          {new Date(0, m - 1).toLocaleString('en-US', { month: 'short' })}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      name='prefDay'
+                      value={formData.prefDay}
+                      onChange={handleChange}
+                      required
+                      disabled={loading || success}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc',
+                      }}
+                    >
+                      <option value=''>Day</option>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                        <option key={d} value={d.toString().padStart(2, '0')}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      name='prefYear'
+                      value={formData.prefYear}
+                      onChange={handleChange}
+                      required
+                      disabled={loading || success}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc',
+                      }}
+                    >
+                      <option value=''>Year</option>
+                      {Array.from(
+                        { length: 2 },
+                        (_, i) => new Date().getFullYear() + i
+                      ).map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className='form-group' style={{ marginBottom: '1rem' }}>
                   <label
-                    htmlFor='preferredTime'
                     style={{
                       display: 'block',
                       marginBottom: '0.5rem',
@@ -309,21 +391,63 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                   >
                     Preferred Time *
                   </label>
-                  <input
-                    type='time'
-                    id='preferredTime'
-                    name='preferredTime'
-                    required
-                    value={formData.preferredTime}
-                    onChange={handleChange}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                    }}
-                    disabled={loading || success}
-                  />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <select
+                      name='prefHour'
+                      value={formData.prefHour}
+                      onChange={handleChange}
+                      required
+                      disabled={loading || success}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc',
+                      }}
+                    >
+                      <option value=''>Hour</option>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                        <option key={h} value={h.toString().padStart(2, '0')}>
+                          {h.toString().padStart(2, '0')}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      name='prefMinute'
+                      value={formData.prefMinute}
+                      onChange={handleChange}
+                      required
+                      disabled={loading || success}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc',
+                      }}
+                    >
+                      <option value=''>Minute</option>
+                      <option value='00'>00</option>
+                      <option value='15'>15</option>
+                      <option value='30'>30</option>
+                      <option value='45'>45</option>
+                    </select>
+                    <select
+                      name='prefAmPm'
+                      value={formData.prefAmPm}
+                      onChange={handleChange}
+                      required
+                      disabled={loading || success}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc',
+                      }}
+                    >
+                      <option value='AM'>AM</option>
+                      <option value='PM'>PM</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div

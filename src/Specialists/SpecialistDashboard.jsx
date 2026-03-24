@@ -143,6 +143,9 @@ const SpecialistDashboard = () => {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketFilter, setTicketFilter] = useState('All');
 
+  const [quickMessage, setQuickMessage] = useState('');
+  const [quickMessages, setQuickMessages] = useState([]);
+
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [editingService, setEditingService] = useState({ name: '', fee: 0 });
@@ -809,6 +812,28 @@ const SpecialistDashboard = () => {
     }
   };
 
+  const handleQuickSend = async (e) => {
+    e.preventDefault();
+    const trimmedMessage = quickMessage.trim();
+    if (!trimmedMessage) return;
+
+    const newMessage = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      text: trimmedMessage,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      sender: 'you',
+    };
+
+    setQuickMessages((prev) => [...prev, newMessage]);
+    setQuickMessage('');
+
+    // TODO: wire up real message sending API call when available
+    // await specialistApi.sendMessageToPatient(selectedTicketId, trimmedMessage);
+  };
+
   const handleCropComplete = async (croppedFile) => {
     setCropperModalOpen(false);
     setSelectedImageSrc(null);
@@ -1458,6 +1483,36 @@ const SpecialistDashboard = () => {
               {selectedPatient?.triageNotes || 'Vital signs not yet provided.'}
             </div>
           </div>
+
+          <div className='info-card quick-message-card'>
+            <div className='info-card-title'>Quick Message</div>
+            <div className='quick-message-list'>
+              {quickMessages.length === 0 ? (
+                <div className='no-quick-message'>
+                  Type a message below to send a quick note to the patient.
+                </div>
+              ) : (
+                quickMessages.map((msg) => (
+                  <div key={msg.id} className='quick-message-item'>
+                    <span className='quick-message-text'>{msg.text}</span>
+                    <span className='quick-message-time'>{msg.timestamp}</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <form className='quick-message-form' onSubmit={handleQuickSend}>
+              <input
+                type='text'
+                value={quickMessage}
+                onChange={(e) => setQuickMessage(e.target.value)}
+                placeholder='Type a message...'
+                className='message-input'
+              />
+              <button type='submit' className='send-btn'>
+                Send
+              </button>
+            </form>
+          </div>
         </div>
 
         <div className='soap-panel'>
@@ -1497,6 +1552,27 @@ const SpecialistDashboard = () => {
               placeholder='Treatment plan includes...'
             />
           </div>
+          <button
+            onClick={openMhModal}
+            style={{
+              background: '#0aadef',
+              color: '#000000',
+              border: 'none',
+              borderRadius: '24px',
+              padding: '12px 28px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              marginTop: 'auto',
+              marginBottom: '8px',
+              display: 'block',
+              marginLeft: 'auto',
+              transition: 'all 0.3s ease',
+            }}
+            onMouseEnter={(e) => (e.target.style.background = '#4aa7ed')}
+            onMouseLeave={(e) => (e.target.style.background = '#0aadef')}
+          >
+            Request Medical History
+          </button>
         </div>
       </div>
     );

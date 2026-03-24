@@ -1598,6 +1598,8 @@ html:has(body.specialist-dashboard-body) {
   max-height: calc(100vh - 160px);
   overflow-y: auto;
   border: 1px solid #e7effc;
+  display: flex;
+  flex-direction: column;
 }
 
 .soap-header h3 {
@@ -1618,6 +1620,94 @@ html:has(body.specialist-dashboard-body) {
   background: #fbfdff;
   margin-bottom: 10px;
   padding: 10px;
+}
+
+.soap-card textarea {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid #c7d9ee;
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: #111827;
+}
+
+.quick-message-card {
+  border: 1px solid #d5e8fb;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 10px;
+}
+
+.quick-message-list {
+  max-height: 140px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quick-message-item {
+  display: flex;
+  justify-content: space-between;
+  background: #f5faff;
+  border: 1px solid #e2ecf9;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 0.87rem;
+}
+
+.quick-message-time {
+  color: #687b91;
+  font-size: 0.75rem;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.no-quick-message {
+  color: #66788d;
+  font-size: 0.88rem;
+  padding: 8px;
+}
+
+.quick-message-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quick-message-form .message-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #c7d9ee;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.quick-message-form .message-input:focus {
+  outline: none;
+  border-color: #4aa7ed;
+  box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.15);
+}
+
+.quick-message-form .send-btn {
+  background-color: #0ea5ff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.quick-message-form .send-btn:hover {
+  background-color: #0b84d6;
 }
 
 .soap-card-title {
@@ -1668,11 +1758,6 @@ html:has(body.specialist-dashboard-body) {
   .soap-panel {
     max-height: none;
   }
-}
-  margin: 4px 0 0;
-  color: #0b5388;
-  font-weight: 600;
-  font-size: 0.95rem;
 }
 
 .patient-info-card {

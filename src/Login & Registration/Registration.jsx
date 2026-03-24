@@ -16,7 +16,7 @@ const registerPatient = async (formData) => {
       middleName: formData.middleName || '',
       email: formData.email,
       password: formData.password,
-      birthday: formData.birthday,
+      birthday: `${formData.bYear}-${formData.bMonth}-${formData.bDay}`,
       mobileNumber: formData.mobileNumber,
       barangay: formData.barangay,
       city: formData.city,
@@ -47,7 +47,9 @@ export default function Registration() {
     email: '',
     password: '',
     confirmPassword: '',
-    birthday: '',
+    bMonth: '',
+    bDay: '',
+    bYear: '',
     gender: '',
     mobileNumber: '',
     barangay: '',
@@ -189,6 +191,23 @@ export default function Registration() {
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
+    
+    if (!formData.bMonth || !formData.bDay || !formData.bYear) {
+      newErrors.birthday = 'Complete birthday is required';
+    } else {
+      const birthDate = new Date(`${formData.bYear}-${formData.bMonth}-${formData.bDay}`);
+      if (birthDate > new Date()) newErrors.birthday = 'Birthday cannot be in the future';
+    }
+
+    if (!formData.mobileNumber.trim()) {
+      newErrors.mobileNumber = 'Mobile number is required';
+    } else {
+      const mobileRegex = /^(09\d{9}|\+639\d{9})$/;
+      if (!mobileRegex.test(formData.mobileNumber.trim())) {
+        newErrors.mobileNumber = 'Must be a valid PH number (e.g., 09123456789 or +639123456789)';
+      }
+    }
+
     if (!formData.password) newErrors.password = 'Password is required';
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password';
@@ -386,17 +405,54 @@ export default function Registration() {
               <span className='error-message'>{errors.email}</span>
             )}
 
-            <label className='login-label' htmlFor='birthday'>
-              Birthday
-            </label>
-            <input
-              className={`login-input ${errors.birthday ? 'error' : ''}`}
-              id='birthday'
-              type='date'
-              value={formData.birthday}
-              onChange={handleInputChange}
-              min='1920-01-01'
-            />
+            <label className='login-label'>Birthday</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <select
+                className={`login-input ${errors.birthday ? 'error' : ''}`}
+                id='bMonth'
+                value={formData.bMonth}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value=''>Month</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m.toString().padStart(2, '0')}>
+                    {new Date(0, m - 1).toLocaleString('en-US', { month: 'short' })}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={`login-input ${errors.birthday ? 'error' : ''}`}
+                id='bDay'
+                value={formData.bDay}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value=''>Day</option>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d.toString().padStart(2, '0')}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={`login-input ${errors.birthday ? 'error' : ''}`}
+                id='bYear'
+                value={formData.bYear}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value=''>Year</option>
+                {Array.from(
+                  { length: new Date().getFullYear() - 1920 + 1 },
+                  (_, i) => new Date().getFullYear() - i
+                ).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
             {errors.birthday && (
               <span className='error-message'>{errors.birthday}</span>
             )}

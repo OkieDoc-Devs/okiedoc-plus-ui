@@ -108,8 +108,24 @@ export default function SpecialistRegistration() {
       newErrors.primarySpecialty = 'Medical specialty is required';
     if (!formData.licenseNumber.trim())
       newErrors.licenseNumber = 'License number is required';
-    if (!formData.mobileNumber.trim())
+    if (!formData.mobileNumber.trim()) {
       newErrors.mobileNumber = 'Mobile number is required';
+    } else {
+      const mobileRegex = /^(09\d{9}|\+639\d{9})$/;
+      if (!mobileRegex.test(formData.mobileNumber.trim())) {
+        newErrors.mobileNumber = 'Must be a valid PH number (e.g., 09123456789 or +639123456789)';
+      }
+    }
+
+    if (formData.prcExpiryDate) {
+      const expiry = new Date(formData.prcExpiryDate);
+      const minDate = new Date();
+      minDate.setDate(minDate.getDate() + 15);
+      minDate.setHours(0,0,0,0);
+      if (expiry < minDate) {
+        newErrors.prcExpiryDate = 'Expiry date must be at least 15 days from today';
+      }
+    }
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
@@ -359,6 +375,7 @@ export default function SpecialistRegistration() {
               placeholder='e.g. Cardiology, Pediatrics'
               value={formData.primarySpecialty}
               onChange={handleInputChange}
+              maxLength={100}
             />
             {errors.primarySpecialty && (
               <span className='error-message'>{errors.primarySpecialty}</span>
@@ -374,6 +391,7 @@ export default function SpecialistRegistration() {
               placeholder='e.g. Interventional, Electrophysiology'
               value={formData.subSpecialties}
               onChange={handleInputChange}
+              maxLength={255}
             />
 
             <label className='login-label' htmlFor='licenseNumber'>
@@ -386,6 +404,7 @@ export default function SpecialistRegistration() {
               placeholder='Enter your license number'
               value={formData.licenseNumber}
               onChange={handleInputChange}
+              maxLength={10}
             />
             {errors.licenseNumber && (
               <span className='error-message'>{errors.licenseNumber}</span>
@@ -395,12 +414,20 @@ export default function SpecialistRegistration() {
               PRC Expiry Date (Optional)
             </label>
             <input
-              className='login-input'
+              className={`login-input ${errors.prcExpiryDate ? 'error' : ''}`}
               id='prcExpiryDate'
               type='date'
               value={formData.prcExpiryDate}
               onChange={handleInputChange}
+              min={
+                new Date(new Date().setDate(new Date().getDate() + 15))
+                  .toISOString()
+                  .split('T')[0]
+              }
             />
+            {errors.prcExpiryDate && (
+              <span className='error-message'>{errors.prcExpiryDate}</span>
+            )}
 
             <label className='login-label' htmlFor='s2Number'>
               S2 License Number (Optional)
@@ -412,6 +439,7 @@ export default function SpecialistRegistration() {
               placeholder='For prescribing dangerous drugs'
               value={formData.s2Number}
               onChange={handleInputChange}
+              maxLength={20}
             />
 
             <label className='login-label' htmlFor='ptrNumber'>
@@ -424,6 +452,7 @@ export default function SpecialistRegistration() {
               placeholder='Professional Tax Receipt No.'
               value={formData.ptrNumber}
               onChange={handleInputChange}
+              maxLength={12}
             />
 
             <label className='login-label' htmlFor='eSignature'>

@@ -20,8 +20,8 @@ import {
   getTransactions,
   getConsultations,
   getPatientAndNurseUsers,
-  logoutAdmin,
 } from '../../api/Admin/api.js';
+import { useAuth } from '../../contexts/AuthContext';
 
 import FemaleAvatar from '../../assets/Female_Avatar.png';
 import MaleAvatar from '../../assets/Male_Avatar.png';
@@ -34,6 +34,7 @@ import NotificationBell from '../../components/Notifications/NotificationBell';
 
 const SpecialistDashboard = ({ isNurseAdmin = false }) => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
@@ -457,7 +458,7 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
 
   const handleLogout = async () => {
     try {
-      await logoutAdmin();
+      await logout();
     } catch (error) {
       console.error('Admin logout API call failed:', error);
     } finally {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { logoutPatient } from '../services/auth';
+import { useAuth } from '../../contexts/AuthContext';
 import { disconnectSocket } from '../../utils/socketClient';
 import { useNavigate } from 'react-router';
 import MedicalRecords from './MedicalRecords';
@@ -58,6 +58,7 @@ const PatientDashboard = () => {
   const [profileImage, setProfileImage] = useState(null);
   const [activeTicket, setActiveTicket] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
+  const { logout } = useAuth();
   const [newMessage, setNewMessage] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -494,7 +495,7 @@ const PatientDashboard = () => {
   const handleLogout = async () => {
     try {
       disconnectSocket();
-      await logoutPatient();
+      await logout();
       localStorage.removeItem('currentUser');
       navigate('/login');
     } catch (error) {

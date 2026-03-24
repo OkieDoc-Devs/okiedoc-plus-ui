@@ -33,7 +33,7 @@ const isProd = import.meta.env.MODE === 'production';
 
 const loadSailsSocket = () => {
   const script = document.createElement('script');
-  script.src = `${apiUrl}/socket/sails.io.js`;
+  script.src = `${apiUrl}/dependencies/sails.io.js`;
   script.onload = () => {
     if (window.io && window.io.sails) {
       window.io.sails.url = apiUrl;

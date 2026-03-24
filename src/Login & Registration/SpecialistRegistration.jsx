@@ -380,6 +380,61 @@ export default function SpecialistRegistration() {
               <span className='error-message'>{errors.email}</span>
             )}
 
+            <label className='login-label'>Birthday</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <select
+                className={`login-input ${errors.birthday ? 'error' : ''}`}
+                id='bMonth'
+                value={formData.bMonth}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value=''>Month</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m.toString().padStart(2, '0')}>
+                    {new Date(0, m - 1).toLocaleString('en-US', { month: 'short' })}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={`login-input ${errors.birthday ? 'error' : ''}`}
+                id='bDay'
+                value={formData.bDay}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value=''>Day</option>
+                {Array.from(
+                  { length: new Date(formData.bYear || 2000, formData.bMonth || 1, 0).getDate() },
+                  (_, i) => i + 1
+                ).map((d) => (
+                  <option key={d} value={d.toString().padStart(2, '0')}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={`login-input ${errors.birthday ? 'error' : ''}`}
+                id='bYear'
+                value={formData.bYear}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value=''>Year</option>
+                {Array.from(
+                  { length: new Date().getFullYear() - 1920 + 1 },
+                  (_, i) => new Date().getFullYear() - i
+                ).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {errors.birthday && (
+              <span className='error-message'>{errors.birthday}</span>
+            )}
+
             <label className='login-label' htmlFor='primarySpecialty'>
               Medical Specialty
             </label>

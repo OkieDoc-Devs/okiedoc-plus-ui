@@ -429,7 +429,10 @@ export default function Registration() {
                 style={{ flex: 1 }}
               >
                 <option value=''>Day</option>
-                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                {Array.from(
+                  { length: new Date(formData.bYear || 2000, formData.bMonth || 1, 0).getDate() },
+                  (_, i) => i + 1
+                ).map((d) => (
                   <option key={d} value={d.toString().padStart(2, '0')}>
                     {d}
                   </option>

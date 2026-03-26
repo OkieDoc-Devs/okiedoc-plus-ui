@@ -234,8 +234,12 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                     onChange={handleChange}
                     className="patient-form-input"
                     placeholder='e.g. Severe Headache'
+                    maxLength={50}
                     disabled={loading || success}
                   />
+                  <span className='patient-form-char-count'>
+                    {formData.chiefComplaint.length}/50
+                  </span>
                 </div>
 
                 <div className='form-group' style={{ marginBottom: '1rem' }}>
@@ -257,8 +261,12 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                     onChange={handleChange}
                     className="patient-form-textarea"
                     placeholder='Provide detailed symptoms'
+                    maxLength={500}
                     disabled={loading || success}
                   />
+                  <span className='patient-form-char-count'>
+                    {formData.symptoms.length}/500
+                  </span>
                 </div>
 
                 <div className='form-group' style={{ marginBottom: '1rem' }}>

@@ -951,6 +951,9 @@ const Appointments = ({ onAppointmentAdded }) => {
                       {formErrors.chiefComplaint}
                     </span>
                   )}
+                  <span className='patient-form-char-count'>
+                    {appointmentForm.chiefComplaint.length}/50
+                  </span>
                 </div>
 
                 {/* Symptoms */}
@@ -975,6 +978,9 @@ const Appointments = ({ onAppointmentAdded }) => {
                       {formErrors.symptoms}
                     </span>
                   )}
+                  <span className='patient-form-char-count'>
+                    {appointmentForm.symptoms.length}/500
+                  </span>
                 </div>
 
                 {/* Other Symptoms */}
@@ -991,6 +997,9 @@ const Appointments = ({ onAppointmentAdded }) => {
                     placeholder='Any additional symptoms or concerns'
                     rows='2'
                   />
+                  <span className='patient-form-char-count'>
+                    {appointmentForm.otherSymptoms.length}/500
+                  </span>
                 </div>
 
                 {/* Date and Time */}

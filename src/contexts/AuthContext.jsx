@@ -15,6 +15,7 @@ const DEFAULT_REDIRECTS = {
   patient: '/patient-dashboard',
   nurse: '/nurse-dashboard',
   admin: '/admin/specialist-dashboard',
+  nurse_admin: '/nurse-admin-dashboard',
 };
 
 function normalizeUser(rawUser) {

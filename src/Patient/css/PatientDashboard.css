@@ -361,7 +361,6 @@
   font-size: 28px;
   font-weight: bold;
   color: #333;
-  margin-bottom: 30px;
 }
 
 .patient-message-card {
@@ -1695,6 +1694,9 @@
 .patient-form-group textarea {
   resize: vertical;
   min-height: 60px;
+  max-height: 300px;
+  max-width: 100%;
+  resize: vertical;
 }
 
 .patient-form-actions {
@@ -2665,7 +2667,6 @@
   border: 2px solid #e9ecef;
   border-radius: 6px;
   font-size: 14px;
-  background-color: white;
   transition: border-color 0.2s;
 }
 

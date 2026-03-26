@@ -26,7 +26,6 @@
 }
 
 .patient-booking-title-icon {
-  margin-right: 12px;
   font-size: 20px;
 }
 
@@ -568,23 +567,30 @@
 
 .patient-booking-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  padding: 24px 32px;
+  padding: 20px 24px;
   border-bottom: 1px solid #e5e7eb;
   background: #0aadef;
   color: white;
+  position: relative;
+  min-height: 70px;
 }
 
 .patient-booking-title {
   font-size: 24px;
   font-weight: 600;
   margin: 0;
-  text-align: center;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  line-height: 1.2;
 }
 
 .patient-booking-close {
+  position: absolute;
+  right: 16px;
   background: none;
   border: none;
   color: white;
@@ -593,6 +599,8 @@
   padding: 8px;
   border-radius: 6px;
   transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
 }
 
 .patient-booking-close:hover {
@@ -671,6 +679,32 @@
   padding: 0 16px !important;
 }
 
+.patient-form-group input,
+.patient-form-group select,
+.patient-form-group textarea {
+  width: 100%;
+  padding: 15px 20px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+  background-color: #fff;
+}
+
+.patient-form-input,
+.patient-form-textarea,
+.patient-form-select {
+  width: 100%;
+  padding: 15px 20px !important;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.2s;
+  margin-top: 12px;
+  box-sizing: border-box;
+}
+
 .patient-form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -693,14 +727,12 @@
 .patient-form-input,
 .patient-form-textarea,
 .patient-form-select {
-  width: 100%;
   padding: 18px 24px;
   border: 2px solid #e5e7eb;
-  border-radius: 10px;
   font-size: 15px;
   transition: all 0.2s;
-  background: white;
   margin-top: 12px;
+  box-sizing: border-box;
 }
 
 .patient-form-input:focus,
@@ -709,21 +741,29 @@
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  resize: vertical;
 }
 
 .patient-form-input:disabled,
 .patient-form-textarea:disabled,
 .patient-form-select:disabled {
-  background-color: #f3f4f6;
-  color: #9ca3af;
   cursor: not-allowed;
-  border-color: #d1d5db;
+  resize: vertical;
 }
 
 .patient-form-textarea {
-  resize: vertical;
   min-height: 80px;
+  max-height: 300px;
+  max-width: 100%;
+  resize: vertical;
   font-family: inherit;
+  line-height: 1.5;
+}
+
+.patient-form-input::placeholder,
+.patient-form-textarea::placeholder {
+  color: #9ca3af;
+  opacity: 0.8;
 }
 
 .patient-form-error {

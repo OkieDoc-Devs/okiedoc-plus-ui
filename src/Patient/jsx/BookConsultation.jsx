@@ -232,12 +232,7 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                     required
                     value={formData.chiefComplaint}
                     onChange={handleChange}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                    }}
+                    className="patient-form-input"
                     placeholder='e.g. Severe Headache'
                     disabled={loading || success}
                   />
@@ -260,13 +255,7 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                     required
                     value={formData.symptoms}
                     onChange={handleChange}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                      minHeight: '80px',
-                    }}
+                    className="patient-form-textarea"
                     placeholder='Provide detailed symptoms'
                     disabled={loading || success}
                   />
@@ -288,12 +277,7 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                     name='consultationChannel'
                     value={formData.consultationChannel}
                     onChange={handleChange}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                    }}
+                    className="patient-form-select"
                     disabled={loading || success}
                   >
                     <option value='chat'>Chat</option>
@@ -465,14 +449,6 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                   <button
                     type='submit'
                     className='patient-booking-submit'
-                    style={{
-                      background: '#0b5388',
-                      color: 'white',
-                      padding: '0.5rem 1rem',
-                      borderRadius: '4px',
-                      border: 'none',
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                    }}
                     disabled={loading || success}
                   >
                     {loading ? 'Submitting...' : 'Submit Request'}

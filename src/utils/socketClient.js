@@ -10,7 +10,7 @@ const socket = io(SOCKET_URL, {
 });
 
 socket.on('connect', () => {
-  console.log('[Socket] Connected with id:', socket.id);
+  // console.log('[Socket] Connected with id:', socket.id);
 });
 
 socket.on('disconnect', (reason) => {

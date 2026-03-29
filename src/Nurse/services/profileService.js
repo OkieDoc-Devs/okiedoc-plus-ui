@@ -9,7 +9,7 @@
  * @returns {Object} Transformed profile data
  */
 export function transformProfileFromAPI(apiProfile) {
-  console.log("Transforming API profile data:", apiProfile);
+  // console.log("Transforming API profile data:", apiProfile);
 
   let firstName =
     apiProfile.firstName ||
@@ -32,15 +32,15 @@ export function transformProfileFromAPI(apiProfile) {
 
       if (!firstName && userData.firstName) {
         firstName = userData.firstName;
-        console.log("Using currentUser firstName:", firstName);
+        // console.log("Using currentUser firstName:", firstName);
       }
       if (!lastName && userData.lastName) {
         lastName = userData.lastName;
-        console.log("Using currentUser lastName:", lastName);
+        // console.log("Using currentUser lastName:", lastName);
       }
       if (userData.email) {
         email = userData.email;
-        console.log("Using currentUser email:", userData.email);
+        // console.log("Using currentUser email:", userData.email);
       }
     }
 

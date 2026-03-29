@@ -166,7 +166,7 @@ const MyAccount = ({
       alert('Password must be at least 6 characters long');
       return;
     }
-    console.log('Changing password');
+    // console.log('Changing password');
     setPasswordData({
       currentPassword: '',
       newPassword: '',

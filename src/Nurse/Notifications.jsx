@@ -6,11 +6,12 @@ import {
   getNurseFirstName,
   getNurseProfileImage,
 } from './services/storageService.js';
-import { logoutFromAPI } from './services/apiService.js';
 import { useNotification } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Notifications() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const { notifications, unreadCount, markAsRead, refreshNotifications } =
     useNotification();
   const [loading, setLoading] = useState(false);
@@ -22,7 +23,7 @@ export default function Notifications() {
 
   const handleLogout = async () => {
     try {
-      await logoutFromAPI();
+      await logout();
     } catch (error) {
       console.error('Logout error:', error);
     }

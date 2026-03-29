@@ -19,8 +19,8 @@ import {
   getTransactions,
   getConsultations,
   getPatientAndNurseUsers,
-  logoutAdmin,
 } from '../../api/Admin/api.js';
+import { useAuth } from '../../contexts/AuthContext';
 
 import FemaleAvatar from '../../assets/Female_Avatar.png';
 import MaleAvatar from '../../assets/Male_Avatar.png';
@@ -32,6 +32,7 @@ import OkieDocLogo from '../../assets/okie-doc-logo.png';
 
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
@@ -324,16 +325,26 @@ const SpecialistDashboard = () => {
 
   const handleUpdateUser = async (updatedUser) => {
     try {
-      setUsers((prevUsers) => prevUsers.map((user) => user.id === updatedUser.id ? updatedUser : user));
-      alert('User updated successfully!');
-    } catch { alert('Failed to update user.'); }
+      // console.log('Simulating update for user:', updatedUser);
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user.id === updatedUser.id ? updatedUser : user,
+        ),
+      );
+      alert('User updated successfully! (Simulated)');
+    } catch {
+      alert('Failed to update user. (Simulated)');
+    }
   };
 
   const handleDeleteUser = async () => {
     if (!deletingUser) return;
     try {
-      setUsers((prevUsers) => prevUsers.filter((user) => user.id !== deletingUser.id));
-      alert('User deleted successfully!');
+      // console.log('Simulating delete for user:', deletingUser);
+      setUsers((prevUsers) =>
+        prevUsers.filter((user) => user.id !== deletingUser.id),
+      );
+      alert('User deleted successfully! (Simulated)');
       setDeletingUser(null);
     } catch { alert('Failed to delete user.'); }
   };
@@ -367,18 +378,14 @@ const SpecialistDashboard = () => {
   };
 
   const handleLogout = async () => {
-    try { await logoutAdmin(); } catch (error) { console.error(error); } 
-    finally { sessionStorage.removeItem('isAdminLoggedIn'); localStorage.removeItem('admin_token'); navigate('/login'); }
-  };
-
-  const getSearchPlaceholder = () => {
-    switch (activeTab) {
-      case 'pending': return 'Search by applicant name, email, or UID...';
-      case 'list': return 'Search by specialist name, email, or UID...';
-      case 'users': return 'Search by name, email, mobile, or UID...';
-      case 'transactions': return 'Search by name, status, ticket ID, or channel...';
-      case 'consultations': return 'Search by name, status, or ticket ID...';
-      default: return 'Search...';
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Admin logout API call failed:', error);
+    } finally {
+      sessionStorage.removeItem('isAdminLoggedIn');
+      localStorage.removeItem('admin_token');
+      navigate('/login');
     }
   };
 
@@ -537,6 +544,19 @@ const SpecialistDashboard = () => {
             System Fee Settings
           </button>
         </div>
+      </div>
+
+      <div
+        style={{
+          backgroundColor: '#f3e5f5',
+          padding: '12px 20px',
+          borderBottom: '1px solid #e1bee7',
+          fontSize: '14px',
+          fontWeight: '500',
+          color: '#6a1b9a',
+        }}
+      >
+        <strong>Service Area:</strong> Bicol Region, Camarines Sur, Naga
       </div>
 
       <main className='dashboard-container'>

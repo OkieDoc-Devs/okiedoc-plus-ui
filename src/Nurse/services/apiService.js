@@ -92,10 +92,10 @@ export async function markNotificationAsRead(notificationId) {
 export async function fetchNurseProfile() {
   try {
     const data = await apiRequest("/api/v1/nurse/profile");
-    console.log("Raw API response for nurse profile:", data);
+    // console.log("Raw API response for nurse profile:", data);
 
     if (data.success) {
-      console.log("Profile data from API:", data.data);
+      // console.log("Profile data from API:", data.data);
       return data.data;
     } else {
       throw new Error(data.message || "Failed to load profile");
@@ -331,7 +331,7 @@ export async function logoutFromAPI() {
       localStorage.removeItem("nurse.firstName");
       localStorage.removeItem("nurse.lastName");
 
-      console.log("Logout successful:", data.message);
+      // console.log("Logout successful:", data.message);
       return data;
     } else {
       console.warn("Logout response:", data);

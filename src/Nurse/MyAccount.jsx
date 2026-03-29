@@ -61,7 +61,7 @@ export default function MyAccount() {
     const loadProfile = async () => {
       try {
         setLoading(true);
-        console.log("Loading nurse profile from API...");
+        // console.log("Loading nurse profile from API...");
 
         const nurse = await fetchNurseProfile();
         const profileData = transformProfileFromAPI(nurse);
@@ -77,8 +77,8 @@ export default function MyAccount() {
           localStorage.setItem("nurse.lastName", profileData.lastName);
         }
 
-        console.log("Profile loaded successfully:", profileData);
-        console.log("Updated localStorage with nurse name");
+        // console.log("Profile loaded successfully:", profileData);
+        // console.log("Updated localStorage with nurse name");
       } catch (error) {
         console.error("Error loading profile from API:", error);
         setError(error.message);
@@ -128,14 +128,14 @@ export default function MyAccount() {
 
   const handleSave = async () => {
     try {
-      console.log("Saving profile data to API...");
+      // console.log("Saving profile data to API...");
 
       const profileUpdateData = transformProfileToAPI(formData);
       await updateNurseProfile(profileUpdateData);
 
       setUserData(formData);
       setIsEditing(false);
-      console.log("Profile updated successfully");
+      // console.log("Profile updated successfully");
 
       alert("Profile updated successfully!");
     } catch (error) {

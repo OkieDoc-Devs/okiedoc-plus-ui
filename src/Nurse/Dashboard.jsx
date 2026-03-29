@@ -18,6 +18,7 @@ import {
   fetchTicketsFromAPI,
 } from './services/apiService.js';
 import { useNotification } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { transformProfileFromAPI } from './services/profileService.js';
 import NotificationBell from '../components/Notifications/NotificationBell';
 import { disconnectSocket } from '../utils/socketClient';
@@ -25,6 +26,7 @@ import { disconnectSocket } from '../utils/socketClient';
 export default function Dashboard() {
   const navigate = useNavigate();
   const { unreadCount } = useNotification();
+  const { logout } = useAuth();
 
   const [nurseName, setNurseName] = useState(getNurseFirstName());
   const [nurseProfileImage, setNurseProfileImage] = useState(
@@ -80,7 +82,7 @@ export default function Dashboard() {
   const handleLogout = async () => {
     try {
       disconnectSocket();
-      await logoutFromAPI();
+      await logout();
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -91,47 +93,47 @@ export default function Dashboard() {
 
   useEffect(() => {
     const loadDashboardData = async () => {
-      console.log(
+      /* console.log(
         'Dashboard: Starting to load dashboard data for logged-in nurse...',
-      );
+      ); */
 
       try {
-        console.log('Dashboard: Fetching nurse profile...');
+        // console.log('Dashboard: Fetching nurse profile...');
         const nurse = await fetchNurseProfile();
         const profileData = transformProfileFromAPI(nurse);
 
         if (profileData.firstName) {
           setNurseName(profileData.firstName);
           localStorage.setItem('nurse.firstName', profileData.firstName);
-          console.log(
+          /* console.log(
             'Dashboard: Updated nurse name to:',
             profileData.firstName,
-          );
+          ); */
         }
 
         if (profileData.profileImage) {
           saveNurseProfileImage(profileData.profileImage);
           setNurseProfileImage(getNurseProfileImage());
-          console.log(
+          /* console.log(
             'Dashboard: Updated profile image to:',
             getNurseProfileImage(),
-          );
+          ); */
         } else {
           localStorage.removeItem('nurse.profileImage');
           setNurseProfileImage('/account.svg');
-          console.log('Dashboard: Cleared nurse avatar (no image from API)');
+          // console.log('Dashboard: Cleared nurse avatar (no image from API)');
         }
       } catch (profileError) {
-        console.log(
+        /* console.log(
           'Dashboard: Could not fetch nurse profile:',
           profileError.message,
-        );
+        ); */
       }
 
       try {
-        console.log('Dashboard: Fetching from dashboard API...');
+        // console.log('Dashboard: Fetching from dashboard API...');
         const dashboardData = await fetchDashboardFromAPI();
-        console.log('Dashboard: Dashboard API response:', dashboardData);
+        // console.log('Dashboard: Dashboard API response:', dashboardData);
         if (dashboardData) {
           if (dashboardData.nurse) {
             const nurseData = dashboardData.nurse;
@@ -142,55 +144,55 @@ export default function Dashboard() {
             if (nurseData.Profile_Image_Data_URL) {
               saveNurseProfileImage(nurseData.Profile_Image_Data_URL);
               setNurseProfileImage(getNurseProfileImage());
-              console.log(
+              /* console.log(
                 'Dashboard: Updated profile image from dashboard API:',
                 getNurseProfileImage(),
-              );
+              ); */
             } else {
               localStorage.removeItem('nurse.profileImage');
               setNurseProfileImage('/account.svg');
-              console.log(
+              /* console.log(
                 'Dashboard: Cleared nurse avatar (no image from dashboard API)',
-              );
+              ); */
             }
           }
 
           if (dashboardData.tickets && Array.isArray(dashboardData.tickets)) {
-            console.log(
+            /* console.log(
               'Dashboard: Received tickets from dashboard API:',
               dashboardData.tickets.length,
               'tickets',
-            );
+            ); */
             setTickets(dashboardData.tickets);
           } else {
-            console.log('Dashboard: No tickets in dashboard response');
+            // console.log('Dashboard: No tickets in dashboard response');
             setTickets([]);
           }
           return;
         } else {
-          console.log('Dashboard: Empty dashboard response, setting defaults');
+          // console.log('Dashboard: Empty dashboard response, setting defaults');
           setTickets([]);
           return;
         }
       } catch (error) {
-        console.log(
+        /* console.log(
           'Dashboard API not available, trying individual endpoints:',
           error.message,
-        );
+        ); */
 
         try {
-          console.log('Dashboard: Fetching tickets from individual API...');
+          // console.log('Dashboard: Fetching tickets from individual API...');
           const apiTickets = await fetchTicketsFromAPI();
-          console.log('Dashboard: Tickets API response:', apiTickets);
+          // console.log('Dashboard: Tickets API response:', apiTickets);
           if (apiTickets && apiTickets.length > 0) {
-            console.log(
+            /* console.log(
               'Dashboard: Received tickets from API:',
               apiTickets.length,
               'tickets',
-            );
+            ); */
             setTickets(apiTickets);
           } else {
-            console.log('Dashboard: No tickets received from API');
+            // console.log('Dashboard: No tickets received from API');
             setTickets([]);
           }
         } catch (ticketError) {
@@ -308,6 +310,19 @@ export default function Dashboard() {
             Messages
           </button>
         </div>
+      </div>
+
+      <div
+        style={{
+          backgroundColor: '#e3f2fd',
+          padding: '12px 20px',
+          borderBottom: '1px solid #bbdefb',
+          fontSize: '14px',
+          fontWeight: '500',
+          color: '#1565c0',
+        }}
+      >
+        <strong>Service Area:</strong> Bicol Region, Camarines Sur, Naga
       </div>
 
       <div className='appointments-section'>

@@ -8,9 +8,11 @@ import {
   FaFacebookF,
 } from 'react-icons/fa';
 import './SpecialistAuth.css';
-import authService from './authService.js';
+import { useAuth } from '../contexts/AuthContext';
+
 const SpecialistLogin = () => {
   const navigate = useNavigate();
+  const { login: contextLogin, isAuthenticated, user, getRedirectPathForRole } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -21,14 +23,10 @@ const SpecialistLogin = () => {
   });
 
   useEffect(() => {
-    const checkSession = async () => {
-      await authService.initialize();
-      if (authService.isLoggedIn() && authService.isSpecialist()) {
-        navigate(authService.getRedirectPath('specialist'));
-      }
-    };
-    checkSession();
-  }, [navigate]);
+    if (isAuthenticated && user?.role === 'specialist') {
+      navigate(getRedirectPathForRole('specialist'));
+    }
+  }, [isAuthenticated, user, navigate, getRedirectPathForRole]);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -47,21 +45,24 @@ const SpecialistLogin = () => {
     }
 
     try {
-      const result = await authService.loginSpecialist(email.trim(), password);
+      const loggedInUser = await contextLogin({
+        email: email.trim(),
+        password: password,
+        roleMode: 'allow',
+        role: 'specialist',
+      });
 
-      if (result.success) {
+      if (loggedInUser) {
         alert(
           'Welcome, Dr. ' +
-            (result.user.lastName || result.user.firstName || '') +
+            (loggedInUser.lastName || loggedInUser.firstName || '') +
             ' 👋',
         );
-        navigate(result.redirect || '/specialist-dashboard');
-      } else {
-        alert(result.error || 'Invalid credentials.');
+        navigate(getRedirectPathForRole('specialist') || '/specialist-dashboard');
       }
     } catch (error) {
-      alert('An error occurred during login. Please try again.');
-      console.error(error);
+      alert(error.message || 'An error occurred during login. Please try again.');
+      console.error('Login error:', error);
     }
   };
 
@@ -80,12 +81,12 @@ const SpecialistLogin = () => {
       return;
     }
 
-    if (!authService.validateEmail(email.trim())) {
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       alert('Please enter a valid email.');
       return;
     }
 
-    if (!authService.validatePassword(password)) {
+    if (!password || password.length < 6) {
       alert('Password must be at least 6 characters.');
       return;
     }

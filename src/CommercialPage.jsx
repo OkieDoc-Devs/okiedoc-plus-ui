@@ -1,71 +1,196 @@
-import { useState } from "react";
-import "./Commercial.css";
-import { useNavigate } from "react-router";
-import nurseDocImage from "./assets/NurseDoc.png";
-import phoneImage from "./assets/phoneImage.png";
-import doc1 from "./assets/doc1.jpg";
-import doc2 from "./assets/doc2.jpg";
-import doc3 from "./assets/doc3.jpg";
-import doc4 from "./assets/doc4.jpg";
-import { FaTimes } from "react-icons/fa";
+import { useState, useMemo, useEffect } from 'react';
+import './Commercial.css';
+import { useNavigate } from 'react-router';
+import nurseDocImage from './assets/NurseDoc.png';
+import phoneImage from './assets/phoneImage.png';
+import doc1 from './assets/doc1.jpg';
+import doc2 from './assets/doc2.jpg';
+import doc3 from './assets/doc3.jpg';
+import doc4 from './assets/doc4.jpg';
+import { FaTimes } from 'react-icons/fa';
+import {
+  Search,
+  Phone,
+  Calendar,
+  User,
+  Clock,
+  CheckCircle2,
+  Video,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
+import { fetchFeaturedSpecialists } from './api/specialistsPublicApi';
 
 function CommercialPage() {
   const navigate = useNavigate();
   const [isDropdownMenuOpen, setIsDropdownMenuOpen] = useState(false);
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [featuredCarouselIndex, setFeaturedCarouselIndex] = useState(0);
+  const [featuredSpecialists, setFeaturedSpecialists] = useState([]);
+
+  const slides = useMemo(
+    () => [
+      {
+        id: 'how-1',
+        type: 'info',
+        label: 'How it works',
+        title: 'Search for the right specialist',
+        description:
+          'Filter by doctor, hospital, or specialty and instantly see who is available today for online or in-person consultations.',
+        steps: [
+          'Browse verified specialists',
+          'See real-time availability',
+          'Compare consultation options',
+        ],
+        icon: <Search className='text-[#4aa7ed]' size={36} />,
+      },
+      {
+        id: 'how-2',
+        type: 'info',
+        label: 'How it works',
+        title: 'Book in minutes, not days',
+        description:
+          'Choose a time that works for you, confirm your details, and receive your appointment confirmation straight away.',
+        steps: [
+          'Pick a schedule that fits you',
+          'Confirm your contact details',
+          'Receive instant confirmation',
+        ],
+        icon: <Calendar className='text-[#4aa7ed]' size={36} />,
+      },
+      {
+        id: 'how-3',
+        type: 'info',
+        label: 'How it works',
+        title: 'Consult from wherever you are',
+        description:
+          'Join your consultation via mobile or desktop and keep all your records and follow-ups in one secure place.',
+        steps: [
+          'Join via mobile or desktop',
+          'Get medical advice and e-prescriptions',
+          'Track your history in OkieDoc+',
+        ],
+        icon: <Video className='text-[#4aa7ed]' size={36} />,
+      },
+    ],
+    [],
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [slides.length]);
+
+  const featuredSlides = useMemo(() => {
+    if (!featuredSpecialists.length) {
+      return [];
+    }
+
+    const res = [];
+    for (let i = 0; i < featuredSpecialists.length; i += 4) {
+      res.push(featuredSpecialists.slice(i, i + 4));
+    }
+    return res;
+  }, [featuredSpecialists]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadFeaturedSpecialists = async () => {
+      try {
+        const specialists = await fetchFeaturedSpecialists(12);
+        if (isMounted) {
+          setFeaturedSpecialists(specialists);
+          setFeaturedCarouselIndex(0);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setFeaturedSpecialists([]);
+        }
+      }
+    };
+
+    loadFeaturedSpecialists();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const goToPrev = () =>
+    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
+  const goToNext = () => setCurrentIndex((prev) => (prev + 1) % slides.length);
+  const goToFeaturedPrev = () => {
+    if (!featuredSlides.length) return;
+    setFeaturedCarouselIndex(
+      (prev) => (prev - 1 + featuredSlides.length) % featuredSlides.length,
+    );
+  };
+  const goToFeaturedNext = () => {
+    if (!featuredSlides.length) return;
+    setFeaturedCarouselIndex((prev) => (prev + 1) % featuredSlides.length);
+  };
   const [showCallbackModal, setShowCallbackModal] = useState(false);
   const [callbackForm, setCallbackForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    contactNumber: "",
-    philHealthNumber: "",
-    contactMethod: "",
+    firstName: '',
+    lastName: '',
+    email: '',
+    contactNumber: '',
+    philHealthNumber: '',
+    contactMethod: '',
   });
   const [callbackErrors, setCallbackErrors] = useState({});
   const [hasPhilHealth, setHasPhilHealth] = useState(false);
-  const [toast, setToast] = useState({ visible: false, message: "", type: "" });
+  const [toast, setToast] = useState({ visible: false, message: '', type: '' });
 
-  const showToast = (message, type = "error") => {
+  const showToast = (message, type = 'error') => {
     setToast({ visible: true, message, type });
-    setTimeout(() => setToast({ visible: false, message: "", type: "" }), 4000);
+    setTimeout(() => setToast({ visible: false, message: '', type: '' }), 4000);
   };
 
   const handleCallbackChange = (e) => {
     const { name, value } = e.target;
     setCallbackForm((prev) => ({ ...prev, [name]: value }));
     if (callbackErrors[name]) {
-      setCallbackErrors((prev) => ({ ...prev, [name]: "" }));
+      setCallbackErrors((prev) => ({ ...prev, [name]: '' }));
     }
   };
 
   const handlePhilHealthChange = (e) => {
-    let value = e.target.value.replace(/[^0-9]/g, "");
+    let value = e.target.value.replace(/[^0-9]/g, '');
     if (value.length > 12) value = value.slice(0, 12);
     let formatted = value;
-    if (value.length > 2) formatted = value.slice(0, 2) + "-" + value.slice(2);
+    if (value.length > 2) formatted = value.slice(0, 2) + '-' + value.slice(2);
     if (value.length > 11)
-      formatted = value.slice(0, 2) + "-" + value.slice(2, 11) + "-" + value.slice(11);
+      formatted =
+        value.slice(0, 2) + '-' + value.slice(2, 11) + '-' + value.slice(11);
     setCallbackForm((prev) => ({ ...prev, philHealthNumber: formatted }));
     if (callbackErrors.philHealthNumber) {
-      setCallbackErrors((prev) => ({ ...prev, philHealthNumber: "" }));
+      setCallbackErrors((prev) => ({ ...prev, philHealthNumber: '' }));
     }
   };
 
   const handleCallbackSubmit = async (e) => {
     e.preventDefault();
     const errors = {};
-    if (!callbackForm.firstName.trim()) errors.firstName = "Required";
-    if (!callbackForm.lastName.trim()) errors.lastName = "Required";
-    if (!callbackForm.email.trim()) errors.email = "Required";
-    else if (!/\S+@\S+\.\S+/.test(callbackForm.email)) errors.email = "Invalid email";
-    if (!callbackForm.contactNumber.trim()) errors.contactNumber = "Required";
-    if (!callbackForm.contactMethod) errors.contactMethod = "Please select a contact method";
+    if (!callbackForm.firstName.trim()) errors.firstName = 'Required';
+    if (!callbackForm.lastName.trim()) errors.lastName = 'Required';
+    if (!callbackForm.email.trim()) errors.email = 'Required';
+    else if (!/\S+@\S+\.\S+/.test(callbackForm.email))
+      errors.email = 'Invalid email';
+    if (!callbackForm.contactNumber.trim()) errors.contactNumber = 'Required';
+    if (!callbackForm.contactMethod)
+      errors.contactMethod = 'Please select a contact method';
     if (hasPhilHealth) {
       const philRegex = /^\d{2}-\d{9}-\d$/;
       if (!callbackForm.philHealthNumber.trim()) {
-        errors.philHealthNumber = "Required";
+        errors.philHealthNumber = 'Required';
       } else if (!philRegex.test(callbackForm.philHealthNumber)) {
-        errors.philHealthNumber = "Incomplete or invalid format (XX-XXXXXXXXX-X)";
+        errors.philHealthNumber =
+          'Incomplete or invalid format (XX-XXXXXXXXX-X)';
       }
     }
     if (Object.keys(errors).length > 0) {
@@ -73,39 +198,54 @@ function CommercialPage() {
       return;
     }
     try {
-      const response = await fetch("http://localhost:1337/api/callback-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: callbackForm.firstName,
-          lastName: callbackForm.lastName,
-          email: callbackForm.email,
-          contactNumber: callbackForm.contactNumber,
-          philHealthNumber: hasPhilHealth ? callbackForm.philHealthNumber : null,
-          contactMethod: callbackForm.contactMethod,
-        }),
-      });
+      const response = await fetch(
+        'http://localhost:1337/api/callback-requests',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firstName: callbackForm.firstName,
+            lastName: callbackForm.lastName,
+            email: callbackForm.email,
+            contactNumber: callbackForm.contactNumber,
+            philHealthNumber: hasPhilHealth
+              ? callbackForm.philHealthNumber
+              : null,
+            contactMethod: callbackForm.contactMethod,
+          }),
+        },
+      );
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Submission failed");
-      showToast("Your callback request has been submitted!", "success");
+      if (!response.ok) throw new Error(data.message || 'Submission failed');
+      showToast('Your callback request has been submitted!', 'success');
     } catch (err) {
-      showToast(err.message || "Something went wrong. Please try again.", "error");
+      showToast(
+        err.message || 'Something went wrong. Please try again.',
+        'error',
+      );
     } finally {
       setShowCallbackModal(false);
-      setCallbackForm({ firstName: "", lastName: "", email: "", contactNumber: "", philHealthNumber: "", contactMethod: "" });
+      setCallbackForm({
+        firstName: '',
+        lastName: '',
+        email: '',
+        contactNumber: '',
+        philHealthNumber: '',
+        contactMethod: '',
+      });
       setCallbackErrors({});
       setHasPhilHealth(false);
     }
   };
 
   const navLinks = [
-    "Products",
-    "Solutions",
-    "Community",
-    "Resources",
-    "Pricing",
-    "Contact",
-    "Link",
+    'Products',
+    'Solutions',
+    'Community',
+    'Resources',
+    'Pricing',
+    'Contact',
+    'Link',
   ];
 
   const toggleDropdownMenu = () => {
@@ -115,94 +255,89 @@ function CommercialPage() {
   const doctors = [
     {
       id: 1,
-      name: "Dr. Lady Dominique Lumidao",
-      credentials: "RMT, MD - General Medicine",
+      name: 'Dr. Lady Dominique Lumidao',
+      credentials: 'RMT, MD - General Medicine',
       image: doc1,
       onlineConsultation: true,
       inPersonConsultation: false,
-      clinicType: "Online Clinic",
-      schedule: "Today, 09:00 AM - 10:00 PM",
-      fee: "₱350.00",
+      clinicType: 'Online Clinic',
+      schedule: 'Today, 09:00 AM - 10:00 PM',
+      fee: '₱350.00',
     },
     {
       id: 2,
-      name: "Dr. Ciarra Isabella Liguid",
-      credentials: "RMT, MD - General Medicine",
+      name: 'Dr. Ciarra Isabella Liguid',
+      credentials: 'RMT, MD - General Medicine',
       image: doc3,
       onlineConsultation: true,
       inPersonConsultation: false,
-      clinicType: "Online Clinic",
-      schedule: "Today, 01:00 PM - 10:00 PM",
-      fee: "₱315.00",
+      clinicType: 'Online Clinic',
+      schedule: 'Today, 01:00 PM - 10:00 PM',
+      fee: '₱315.00',
     },
     {
       id: 3,
-      name: "Dr. Juan Carlos Santos",
-      credentials: "MD - Internal Medicine",
+      name: 'Dr. Juan Carlos Santos',
+      credentials: 'MD - Internal Medicine',
       image: doc2,
       onlineConsultation: true,
       inPersonConsultation: true,
-      clinicType: "Online Clinic",
-      schedule: "Today, 08:00 AM - 05:00 PM",
-      fee: "₱400.00",
+      clinicType: 'Online Clinic',
+      schedule: 'Today, 08:00 AM - 05:00 PM',
+      fee: '₱400.00',
     },
     {
       id: 4,
-      name: "Dr. Maria Elena Cruz",
-      credentials: "MD - Pediatrics",
+      name: 'Dr. Maria Elena Cruz',
+      credentials: 'MD - Pediatrics',
       image: doc4,
       onlineConsultation: true,
       inPersonConsultation: false,
-      clinicType: "Online Clinic",
-      schedule: "Today, 10:00 AM - 06:00 PM",
-      fee: "₱350.00",
+      clinicType: 'Online Clinic',
+      schedule: 'Today, 10:00 AM - 06:00 PM',
+      fee: '₱350.00',
     },
   ];
 
   return (
-    <div className="splash-container">
-      <header className="header">
-        <div className="logo-section">
-          <img
-            src="/okie-doc-logo.png"
-            alt="OkieDoc+"
-            className="logo-image"
-          />
+    <div className='splash-container'>
+      <header className='header'>
+        <div className='logo-section'>
+          <img src='/okie-doc-logo.png' alt='OkieDoc+' className='logo-image' />
         </div>
 
         <button
-          className="mobile-nav-toggle"
+          className='mobile-nav-toggle'
           onClick={toggleDropdownMenu}
-          aria-label="Toggle dropdown menu"
+          aria-label='Toggle dropdown menu'
         >
           ☰
         </button>
 
-        <div className="text-and-buttons">
-          <nav className="nav-links">
+        <div className='text-and-buttons'>
+          <nav className='nav-links'>
             {navLinks.map((link) => (
-              <a key={link} href="#" className="nav-link">
+              <a key={link} href='#' className='nav-link'>
                 {link}
               </a>
             ))}
           </nav>
         </div>
 
-        <div className="button-group">
-          <button className="btn" onClick={() => navigate("/login")}>
+        <div className='button-group'>
+          <button className='btn' onClick={() => navigate('/login')}>
             Login
           </button>
-          <button className="btn" onClick={() => navigate("/registration")}>
+          <button className='btn' onClick={() => navigate('/registration')}>
             Register
           </button>
         </div>
 
         <div
-          className={`mobile-nav-dropdown ${isDropdownMenuOpen ? "open" : ""
-            }`}
+          className={`mobile-nav-dropdown ${isDropdownMenuOpen ? 'open' : ''}`}
         >
           {navLinks.map((link) => (
-            <a key={link} href="#" className="nav-link">
+            <a key={link} href='#' className='nav-link'>
               {link}
             </a>
           ))}
@@ -218,40 +353,40 @@ function CommercialPage() {
         />
       </div> */}
 
-      <main className="splash-main">
+      <main className='splash-main'>
         <div>
-          <div className="background-decorative-circle"></div>
+          <div className='background-decorative-circle'></div>
         </div>
-        <div className="content-wrapper">
-          <div className="doctor-section">
+        <div className='content-wrapper'>
+          <div className='doctor-section'>
             <img
               src={nurseDocImage}
-              alt="Medical Professional"
-              className="doctor-image"
+              alt='Medical Professional'
+              className='doctor-image'
             />
           </div>
 
-          <div className="info-section">
-            <div className="search-section">
-              <h1 className="main-heading">FIND A SPECIALIST</h1>
-              <p className="sub-heading">
+          <div className='info-section'>
+            <div className='search-section'>
+              <h1 className='main-heading'>FIND A SPECIALIST</h1>
+              <p className='sub-heading'>
                 Book your Appointment - Anytime, Anywhere
               </p>
 
-              <div className="search-form">
-                <div className="search-bar">
+              <div className='search-form'>
+                <div className='search-bar'>
                   <svg
-                    className="search-icon"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
+                    className='search-icon'
+                    width='24'
+                    height='24'
+                    viewBox='0 0 24 24'
+                    fill='none'
+                    stroke='currentColor'
                   >
-                    <circle cx="11" cy="11" r="8" strokeWidth="2" />
-                    <path d="M21 21l-4.35-4.35" strokeWidth="2" />
+                    <circle cx='11' cy='11' r='8' strokeWidth='2' />
+                    <path d='M21 21l-4.35-4.35' strokeWidth='2' />
                   </svg>
-                  <div className="search-input">
+                  <div className='search-input'>
                     Your health starts here — search by doctor, hospital, or
                     specialty
                   </div>
@@ -259,114 +394,266 @@ function CommercialPage() {
               </div>
             </div>
 
-            <div className="cta-section">
-              <div className="cta-content">
-                <h2 className="cta-heading">
+            <div className='cta-section'>
+              <div className='cta-content'>
+                <h2 className='cta-heading'>
                   Immediate access to medical professionals
                 </h2>
-                <p className="cta-text">
+                <p className='cta-text'>
                   Get connected to a doctor right away.
                 </p>
-                <div className="cta-buttons">
+                <div className='cta-buttons'>
                   <button
-                    className="consult-now-btn"
-                    onClick={() => navigate("/login")}
+                    className='consult-now-btn'
+                    onClick={() => navigate('/login')}
                   >
                     Consult Now
                   </button>
                   <button
-                    className="callback-request-btn"
+                    className='callback-request-btn'
                     onClick={() => setShowCallbackModal(true)}
                   >
                     Callback Request
                   </button>
                 </div>
               </div>
-              <div className="phone-mockup">
+              <div className='phone-mockup'>
                 <img
                   src={phoneImage}
-                  alt="Mobile App Preview"
-                  className="phone-image"
+                  alt='Mobile App Preview'
+                  className='phone-image'
                 />
               </div>
             </div>
           </div>
         </div>
 
-        <section className="doctors-listing-section">
-          <div className="doctors-listing-container">
-            <h2 className="doctors-listing-heading">
+        <section className='carousel-section'>
+          <div className='carousel-container'>
+            <div className='carousel-shell'>
+              <button className='carousel-arrow' onClick={goToPrev}>
+                <ChevronLeft size={24} />
+              </button>
+
+              <div className='carousel-viewport'>
+                <div
+                  className='carousel-track'
+                  style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+                >
+                  {slides.map((slide) => (
+                    <div key={slide.id} className='carousel-slide'>
+                      <div className='carousel-card carousel-card--info'>
+                        <div className='carousel-card-header'>
+                          <span className='carousel-pill'>{slide.label}</span>
+                          {slide.icon}
+                        </div>
+                        <h3 className='carousel-card-title'>{slide.title}</h3>
+                        <p className='carousel-card-description'>
+                          {slide.description}
+                        </p>
+                        <ul className='carousel-card-steps'>
+                          {slide.steps.map((step) => (
+                            <li key={step}>
+                              <CheckCircle2
+                                size={16}
+                                className='text-[#4aa7ed]'
+                              />{' '}
+                              {step}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button className='carousel-arrow' onClick={goToNext}>
+                <ChevronRight size={24} />
+              </button>
+            </div>
+
+            <div className='carousel-dots'>
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentIndex(i)}
+                  className={`carousel-dot ${i === currentIndex ? 'carousel-dot--active' : ''}`}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className='featured-section'>
+          <div className='featured-header'>
+            <div className='featured-divider'></div>
+            <h2 className='featured-title'>Featured Specialists</h2>
+            <div className='featured-divider'></div>
+          </div>
+
+          <div className='featured-carousel-shell'>
+            <button
+              className='featured-carousel-arrow'
+              onClick={goToFeaturedPrev}
+              disabled={!featuredSlides.length}
+            >
+              <ChevronLeft size={24} />
+            </button>
+
+            <div className='featured-carousel-viewport'>
+              <div
+                className='featured-carousel-track'
+                style={{
+                  transform: `translateX(-${featuredCarouselIndex * 100}%)`,
+                }}
+              >
+                {featuredSlides.map((group, idx) => (
+                  <div key={idx} className='featured-carousel-slide'>
+                    {group.map((spec) => (
+                      <div key={spec.id} className='featured-specialist-card'>
+                        {spec.profileUrl ? (
+                          <img
+                            src={spec.profileUrl}
+                            alt={spec.fullName}
+                            className='featured-specialist-image'
+                          />
+                        ) : (
+                          <div className='featured-specialist-placeholder'>
+                            <User size={56} color='#9ab0c2' />
+                          </div>
+                        )}
+                        <span className='featured-specialist-badge'>
+                          {spec.specialty}
+                        </span>
+                        <h4 className='featured-specialist-name'>
+                          {spec.fullName}
+                        </h4>
+                        <p className='featured-specialist-bio'>
+                          {spec.bio ||
+                            'Specialist profile is available for consultation.'}
+                        </p>
+                        <button
+                          className='featured-specialist-btn'
+                          onClick={() =>
+                            navigate(`/doctor/${spec.userId || spec.id}`)
+                          }
+                        >
+                          Consult Now
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              {!featuredSlides.length && (
+                <div className='featured-empty-state'>
+                  No featured specialists available at the moment.
+                </div>
+              )}
+            </div>
+
+            <button
+              className='featured-carousel-arrow'
+              onClick={goToFeaturedNext}
+              disabled={!featuredSlides.length}
+            >
+              <ChevronRight size={24} />
+            </button>
+          </div>
+
+          <div className='featured-cta-block'>
+            <h3 className='featured-cta-title'>Be part of our team!</h3>
+            <p className='featured-cta-text'>
+              Know more about OkieDoc+ as a platform for specialist and proceed
+              with hassle free registration.
+            </p>
+            <button
+              className='featured-cta-btn'
+              onClick={() => navigate('/specialist-registration')}
+            >
+              Register as a specialist!
+            </button>
+          </div>
+        </section>
+
+        <section className='doctors-listing-section'>
+          <div className='doctors-listing-container'>
+            <h2 className='doctors-listing-heading'>
               Our Available Specialists
             </h2>
-            <div className="doctors-list">
+            <div className='doctors-list'>
               {doctors.map((doctor) => (
-                <div key={doctor.id} className="doctor-card">
-                  <div className="doctor-info">
+                <div key={doctor.id} className='doctor-card'>
+                  <div className='doctor-info'>
                     <img
                       src={doctor.image}
                       alt={doctor.name}
-                      className="doctor-avatar"
+                      className='doctor-avatar'
                     />
-                    <div className="doctor-details">
-                      <h3 className="doctor-name">{doctor.name}</h3>
-                      <p className="doctor-credentials">{doctor.credentials}</p>
-                      <div className="consultation-types">
+                    <div className='doctor-details'>
+                      <h3 className='doctor-name'>{doctor.name}</h3>
+                      <p className='doctor-credentials'>{doctor.credentials}</p>
+                      <div className='consultation-types'>
                         <span
-                          className={`consultation-badge ${doctor.onlineConsultation ? "active" : "inactive"
-                            }`}
+                          className={`consultation-badge ${
+                            doctor.onlineConsultation ? 'active' : 'inactive'
+                          }`}
                         >
-                          {doctor.onlineConsultation ? "✓" : "✕"} Online
+                          {doctor.onlineConsultation ? '✓' : '✕'} Online
                           Consultation
                         </span>
                         <span
-                          className={`consultation-badge ${doctor.inPersonConsultation ? "active" : "inactive"
-                            }`}
+                          className={`consultation-badge ${
+                            doctor.inPersonConsultation ? 'active' : 'inactive'
+                          }`}
                         >
-                          {doctor.inPersonConsultation ? "✓" : "✕"} In-Person
+                          {doctor.inPersonConsultation ? '✓' : '✕'} In-Person
                           Consultation
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="schedule-info">
-                    <p className="schedule-label">
+                  <div className='schedule-info'>
+                    <p className='schedule-label'>
                       Earliest Available Schedule
                     </p>
-                    <div className="schedule-details">
-                      <div className="clinic-icon">
+                    <div className='schedule-details'>
+                      <div className='clinic-icon'>
                         <svg
-                          width="40"
-                          height="40"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="#4aa7ed"
-                          strokeWidth="1.5"
+                          width='40'
+                          height='40'
+                          viewBox='0 0 24 24'
+                          fill='none'
+                          stroke='#4aa7ed'
+                          strokeWidth='1.5'
                         >
-                          <rect x="5" y="2" width="14" height="20" rx="2" />
-                          <path d="M12 18h.01" />
-                          <path d="M9 6h6" />
-                          <path d="M9 10h6" />
+                          <rect x='5' y='2' width='14' height='20' rx='2' />
+                          <path d='M12 18h.01' />
+                          <path d='M9 6h6' />
+                          <path d='M9 10h6' />
                         </svg>
                       </div>
-                      <div className="clinic-info">
-                        <p className="clinic-type">{doctor.clinicType}</p>
-                        <p className="clinic-schedule">{doctor.schedule}</p>
-                        <p className="clinic-fee">Fee: {doctor.fee}</p>
+                      <div className='clinic-info'>
+                        <p className='clinic-type'>{doctor.clinicType}</p>
+                        <p className='clinic-schedule'>{doctor.schedule}</p>
+                        <p className='clinic-fee'>Fee: {doctor.fee}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="doctor-actions">
+                  <div className='doctor-actions'>
                     <button
-                      className="book-appointment-link"
-                      onClick={() => navigate("/login")}
+                      className='book-appointment-link'
+                      onClick={() => navigate('/login')}
                     >
                       BOOK APPOINTMENT
                     </button>
                     <button
-                      className="view-profile-btn"
-                      onClick={() => navigate("/login")}
+                      className='view-profile-btn'
+                      onClick={() => navigate('/login')}
                     >
                       VIEW PROFILE
                     </button>
@@ -379,124 +666,171 @@ function CommercialPage() {
       </main>
 
       {showCallbackModal && (
-        <div className="callback-overlay">
-          <div className="callback-modal" onClick={(e) => e.stopPropagation()}>
+        <div className='callback-overlay'>
+          <div className='callback-modal' onClick={(e) => e.stopPropagation()}>
             <button
-              type="button"
-              className="callback-modal__close"
+              type='button'
+              className='callback-modal__close'
               onClick={() => setShowCallbackModal(false)}
-              aria-label="Close"
+              aria-label='Close'
             >
               ✕
             </button>
-            <form className="callback-form" onSubmit={handleCallbackSubmit} noValidate>
-              <div className="callback-row">
-                <div className="callback-field">
-                  {callbackErrors.firstName && <span className="cb-error">{callbackErrors.firstName}</span>}
+            <form
+              className='callback-form'
+              onSubmit={handleCallbackSubmit}
+              noValidate
+            >
+              <div className='callback-row'>
+                <div className='callback-field'>
+                  {callbackErrors.firstName && (
+                    <span className='cb-error'>{callbackErrors.firstName}</span>
+                  )}
                   <input
-                    type="text"
-                    name="firstName"
-                    placeholder="First Name"
+                    type='text'
+                    name='firstName'
+                    placeholder='First Name'
                     value={callbackForm.firstName}
                     onChange={handleCallbackChange}
-                    className={callbackErrors.firstName ? "cb-input cb-input-error" : "cb-input"}
+                    className={
+                      callbackErrors.firstName
+                        ? 'cb-input cb-input-error'
+                        : 'cb-input'
+                    }
                   />
                 </div>
-                <div className="callback-field">
-                  {callbackErrors.lastName && <span className="cb-error">{callbackErrors.lastName}</span>}
+                <div className='callback-field'>
+                  {callbackErrors.lastName && (
+                    <span className='cb-error'>{callbackErrors.lastName}</span>
+                  )}
                   <input
-                    type="text"
-                    name="lastName"
-                    placeholder="Last Name"
+                    type='text'
+                    name='lastName'
+                    placeholder='Last Name'
                     value={callbackForm.lastName}
                     onChange={handleCallbackChange}
-                    className={callbackErrors.lastName ? "cb-input cb-input-error" : "cb-input"}
+                    className={
+                      callbackErrors.lastName
+                        ? 'cb-input cb-input-error'
+                        : 'cb-input'
+                    }
                   />
                 </div>
               </div>
-              <div className="callback-field">
-                {callbackErrors.email && <span className="cb-error">{callbackErrors.email}</span>}
+              <div className='callback-field'>
+                {callbackErrors.email && (
+                  <span className='cb-error'>{callbackErrors.email}</span>
+                )}
                 <input
-                  type="email"
-                  name="email"
-                  placeholder="Email Address"
+                  type='email'
+                  name='email'
+                  placeholder='Email Address'
                   value={callbackForm.email}
                   onChange={handleCallbackChange}
-                  className={callbackErrors.email ? "cb-input cb-input-error" : "cb-input"}
+                  className={
+                    callbackErrors.email
+                      ? 'cb-input cb-input-error'
+                      : 'cb-input'
+                  }
                 />
               </div>
-              <div className="callback-field">
-                {callbackErrors.contactNumber && <span className="cb-error">{callbackErrors.contactNumber}</span>}
+              <div className='callback-field'>
+                {callbackErrors.contactNumber && (
+                  <span className='cb-error'>
+                    {callbackErrors.contactNumber}
+                  </span>
+                )}
                 <input
-                  type="tel"
-                  name="contactNumber"
-                  placeholder="Contact Number"
+                  type='tel'
+                  name='contactNumber'
+                  placeholder='Contact Number'
                   value={callbackForm.contactNumber}
                   onChange={handleCallbackChange}
-                  className={callbackErrors.contactNumber ? "cb-input cb-input-error" : "cb-input"}
+                  className={
+                    callbackErrors.contactNumber
+                      ? 'cb-input cb-input-error'
+                      : 'cb-input'
+                  }
                 />
               </div>
-              <div className="callback-field">
-                <label className="cb-checkbox-label">
+              <div className='callback-field'>
+                <label className='cb-checkbox-label'>
                   <input
-                    type="checkbox"
+                    type='checkbox'
                     checked={hasPhilHealth}
                     onChange={(e) => setHasPhilHealth(e.target.checked)}
-                    className="cb-checkbox"
+                    className='cb-checkbox'
                   />
                   I have a PhilHealth ID number
                 </label>
                 {hasPhilHealth && (
-                  <div className="callback-field" style={{ marginTop: "0.4rem" }}>
-                    {callbackErrors.philHealthNumber && <span className="cb-error">{callbackErrors.philHealthNumber}</span>}
+                  <div
+                    className='callback-field'
+                    style={{ marginTop: '0.4rem' }}
+                  >
+                    {callbackErrors.philHealthNumber && (
+                      <span className='cb-error'>
+                        {callbackErrors.philHealthNumber}
+                      </span>
+                    )}
                     <input
-                      type="text"
-                      name="philHealthNumber"
-                      placeholder="Philhealth ID Number (XX-XXXXXXXXX-X)"
+                      type='text'
+                      name='philHealthNumber'
+                      placeholder='Philhealth ID Number (XX-XXXXXXXXX-X)'
                       value={callbackForm.philHealthNumber}
                       onChange={handlePhilHealthChange}
                       maxLength={14}
-                      className={callbackErrors.philHealthNumber ? "cb-input cb-input-error" : "cb-input"}
+                      className={
+                        callbackErrors.philHealthNumber
+                          ? 'cb-input cb-input-error'
+                          : 'cb-input'
+                      }
                     />
                   </div>
                 )}
               </div>
-              <div className="callback-field">
-                <div className="cb-radio-group">
-                  <label className="cb-radio-label">
+              <div className='callback-field'>
+                <div className='cb-radio-group'>
+                  <label className='cb-radio-label'>
                     <input
-                      type="radio"
-                      name="contactMethod"
-                      value="mobile"
-                      checked={callbackForm.contactMethod === "mobile"}
+                      type='radio'
+                      name='contactMethod'
+                      value='mobile'
+                      checked={callbackForm.contactMethod === 'mobile'}
                       onChange={handleCallbackChange}
                     />
                     Call via Mobile
                   </label>
-                  <label className="cb-radio-label">
+                  <label className='cb-radio-label'>
                     <input
-                      type="radio"
-                      name="contactMethod"
-                      value="viber"
-                      checked={callbackForm.contactMethod === "viber"}
+                      type='radio'
+                      name='contactMethod'
+                      value='viber'
+                      checked={callbackForm.contactMethod === 'viber'}
                       onChange={handleCallbackChange}
                     />
                     Call via Viber
                   </label>
-                  <label className="cb-radio-label">
+                  <label className='cb-radio-label'>
                     <input
-                      type="radio"
-                      name="contactMethod"
-                      value="viber-video"
-                      checked={callbackForm.contactMethod === "viber-video"}
+                      type='radio'
+                      name='contactMethod'
+                      value='viber-video'
+                      checked={callbackForm.contactMethod === 'viber-video'}
                       onChange={handleCallbackChange}
                     />
                     Video Call via Viber
                   </label>
                 </div>
-                {callbackErrors.contactMethod && <span className="cb-error">{callbackErrors.contactMethod}</span>}
+                {callbackErrors.contactMethod && (
+                  <span className='cb-error'>
+                    {callbackErrors.contactMethod}
+                  </span>
+                )}
               </div>
-              <button type="submit" className="cb-submit-btn">Submit</button>
+              <button type='submit' className='cb-submit-btn'>
+                Submit
+              </button>
             </form>
           </div>
         </div>
@@ -504,7 +838,12 @@ function CommercialPage() {
       {toast.visible && (
         <div className={`cb-toast cb-toast--${toast.type}`}>
           <span>{toast.message}</span>
-          <button className="cb-toast__close" onClick={() => setToast({ visible: false, message: "", type: "" })}>✕</button>
+          <button
+            className='cb-toast__close'
+            onClick={() => setToast({ visible: false, message: '', type: '' })}
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>

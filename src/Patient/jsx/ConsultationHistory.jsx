@@ -152,13 +152,13 @@ const ConsultationHistory = () => {
 
   const handleDownloadDocument = (document) => {
     // Simulate document download
-    console.log(`Downloading ${document.name}`);
+    // console.log(`Downloading ${document.name}`);
     alert(`Downloading ${document.name}...`);
   };
 
   const handleRequestDocument = (document) => {
     // Simulate document request with payment
-    console.log(`Requesting ${document.name} for ${document.price}`);
+    // console.log(`Requesting ${document.name} for ${document.price}`);
     alert(`Redirecting to payment for ${document.name} - ${document.price}`);
   };
 

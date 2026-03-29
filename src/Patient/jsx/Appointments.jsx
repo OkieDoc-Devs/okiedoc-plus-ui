@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FaUserMd,
   FaCalendarPlus,
@@ -19,187 +19,210 @@ import {
   FaImage,
   FaExclamationTriangle,
   FaCalendarAlt,
-} from "react-icons/fa";
-import "../css/AppointmentBooking.css";
-import "../css/PatientDashboard.css";
-import BookConsultation from "./BookConsultation";
-import appointmentService from "../services/appointmentService";
-import { fetchPatientActiveTickets, cancelTicket, uploadPaymentProof, uploadLOA, payTicket, verifyTicketPayment } from "../services/apiService";
+} from 'react-icons/fa';
+import '../css/AppointmentBooking.css';
+import '../css/PatientDashboard.css';
+import BookConsultation from './BookConsultation';
+import appointmentService from '../services/appointmentService';
+import {
+  fetchPatientActiveTickets,
+  cancelTicket,
+  uploadPaymentProof,
+  uploadLOA,
+  payTicket,
+  verifyTicketPayment,
+} from '../services/apiService';
 
 const Appointments = ({ onAppointmentAdded }) => {
   const [activeTicket, setActiveTicket] = useState(null);
-  const [chatMessage, setChatMessage] = useState("");
+  const [chatMessage, setChatMessage] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({
-    chiefComplaint: "",
-    symptoms: "",
-    otherSymptoms: "",
-    preferredDate: "",
-    preferredTime: "",
-    specialization: "",
-    preferredSpecialist: "",
-    consultationChannel: "Platform Chat",
-    hmoCompany: "",
-    hmoMemberId: "",
-    hmoExpirationDate: "",
-    loaCode: "",
+    chiefComplaint: '',
+    symptoms: '',
+    otherSymptoms: '',
+    preferredDate: '',
+    preferredTime: '',
+    specialization: '',
+    preferredSpecialist: '',
+    consultationChannel: 'Platform Chat',
+    hmoCompany: '',
+    hmoMemberId: '',
+    hmoExpirationDate: '',
+    loaCode: '',
     eLOAFiles: [],
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentFile, setPaymentFile] = useState(null);
 
   const paymentMethods = [
-    { value: "credit_card", label: "Credit / Debit Card", icon: <FaCreditCard /> },
-    { value: "ewallet", label: "E-Wallet (GCash/Maya)", icon: <FaPhone /> },
-    { value: "hmo", label: "HMO / Corporate LOA", icon: <FaFileAlt /> },
+    {
+      value: 'credit_card',
+      label: 'Credit / Debit Card',
+      icon: <FaCreditCard />,
+    },
+    { value: 'ewallet', label: 'E-Wallet (GCash/Maya)', icon: <FaPhone /> },
+    { value: 'hmo', label: 'HMO / Corporate LOA', icon: <FaFileAlt /> },
   ];
 
-  // Authentication check disabled - users can book without login
-
-
-  // Available specialists
   const specialists = [
-    { id: 2, name: "Dr. John Smith", specialty: "Hematology" },
-    { id: 3, name: "Dr. Lisa Garcia", specialty: "Radiology" },
-    { id: 4, name: "Dr. Michael Brown", specialty: "Cardiology" },
-    { id: 6, name: "Dr. David Lee", specialty: "Dermatology" },
-    { id: 7, name: "Dr. Jennifer Martinez", specialty: "Pediatrics" },
-    { id: 8, name: "Dr. Robert Johnson", specialty: "Orthopedics" },
+    { id: 2, name: 'Dr. John Smith', specialty: 'Hematology' },
+    { id: 3, name: 'Dr. Lisa Garcia', specialty: 'Radiology' },
+    { id: 4, name: 'Dr. Michael Brown', specialty: 'Cardiology' },
+    { id: 6, name: 'Dr. David Lee', specialty: 'Dermatology' },
+    { id: 7, name: 'Dr. Jennifer Martinez', specialty: 'Pediatrics' },
+    { id: 8, name: 'Dr. Robert Johnson', specialty: 'Orthopedics' },
   ];
 
-  // Get unique specializations for dropdown
   const specializations = [
     ...new Set(specialists.map((specialist) => specialist.specialty)),
   ].sort();
 
-  // Filter specialists based on selected specialization
   const availableSpecialists = appointmentForm.specialization
     ? specialists.filter(
-      (specialist) => specialist.specialty === appointmentForm.specialization
-    )
+        (specialist) => specialist.specialty === appointmentForm.specialization,
+      )
     : [];
 
-  // Consultation channels
   const consultationChannels = [
-    { value: "Platform Chat", label: "Platform Chat", icon: <FaComments /> },
-    { value: "Mobile Call", label: "Mobile Call", icon: <FaPhone /> },
-    { value: "Viber Audio", label: "Viber (Audio Call)", icon: <FaPhone /> },
-    { value: "Viber Video", label: "Viber (Video Call)", icon: <FaVideo /> },
+    { value: 'Platform Chat', label: 'Platform Chat', icon: <FaComments /> },
+    { value: 'Mobile Call', label: 'Mobile Call', icon: <FaPhone /> },
+    { value: 'Viber Audio', label: 'Viber (Audio Call)', icon: <FaPhone /> },
+    { value: 'Viber Video', label: 'Viber (Video Call)', icon: <FaVideo /> },
     {
-      value: "Platform Video",
-      label: "Platform Video Call (via Lgorithm)",
+      value: 'Platform Video',
+      label: 'Platform Video Call (via Lgorithm)',
       icon: <FaDesktop />,
     },
   ];
 
-  // State for appointments
   const [appointments, setAppointments] = useState([]);
   const [showAppointmentDetails, setShowAppointmentDetails] = useState(false);
 
-  const loadAppointments = useCallback(async (newTicket = null) => {
-    if (newTicket) {
-      setAppointments(prev => [newTicket, ...prev]);
-      if (onAppointmentAdded) {
-        onAppointmentAdded(newTicket);
-      }
-      return;
-    }
-
-    try {
-      const activeTicketsRes = await fetchPatientActiveTickets();
-      const activeArr = activeTicketsRes.activeTickets || activeTicketsRes.data || (Array.isArray(activeTicketsRes) ? activeTicketsRes : []);
-      const mapped = activeArr.map(t => {
-        console.log("Status map processing ticket:", t);
-        let displayStatus = 'Pending';
-        if (t.status === 'active' || (t.status === 'for_payment' && t.paymentStatus === 'paid')) {
-          displayStatus = 'Active';
-        } else if (t.status === 'triage' || t.status === 'assigned' || t.status === 'processing') {
-          displayStatus = 'Processing';
-        } else if (t.status === 'for_payment') {
-          displayStatus = 'For Payment';
-        } else if (t.status === 'confirmed') {
-          displayStatus = 'Confirmed';
-        } else if (t.status === 'completed') {
-          displayStatus = 'Completed';
-        } else if (t.status === 'cancelled') {
-          displayStatus = 'Cancelled';
-        } else if (t.status === 'pending' || t.status === 'unclaimed') {
-          displayStatus = 'Pending';
-        } else {
-          displayStatus = t.status || 'Unknown';
+  const loadAppointments = useCallback(
+    async (newTicket = null) => {
+      if (newTicket) {
+        setAppointments((prev) => [newTicket, ...prev]);
+        if (onAppointmentAdded) {
+          onAppointmentAdded(newTicket);
         }
+        return;
+      }
 
-        const specialistFirstName = t.specialist?.user?.firstName || '';
-        const specialistLastName = t.specialist?.user?.lastName || '';
-        const computedSpecialistName = t.specialistName ||
-          (specialistFirstName || specialistLastName ? `${specialistFirstName} ${specialistLastName}`.trim() : "Unassigned");
-
-        return {
-          id: t.id || t.ticketNumber,
-          title: `Ticket #${t.ticketNumber || t.id} - ${t.chiefComplaint || 'Consultation'}`,
-          status: displayStatus,
-          specialist: computedSpecialistName,
-          specialty: t.specialty || t.specialist?.specialization || "General",
-          date: t.preferredDate
-            ? new Date(t.preferredDate).toLocaleDateString()
-            : t.createdAt
-              ? new Date(t.createdAt).toLocaleDateString()
-              : 'TBD',
-          time: t.preferredTime || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString() : 'TBD'),
-          description: t.chiefComplaint || t.symptoms || "",
-          consultationChannel: t.consultationChannel || t.channel || "Platform Chat",
-          consultationType: t.consultationType || "Teleconsultation",
-          bookingMethod: t.bookingMethod || "Online",
-          medicalDetails: {
-            chiefComplaint: t.chiefComplaint || "",
-            symptoms: t.symptoms || "",
-            otherSymptoms: t.otherSymptoms || ""
-          },
-          hmoDetails: {
-            company: t.hmoProvider || t.hmoCompany || "",
-            memberId: t.hmoMemberId || "",
-            expirationDate: t.hmoExpirationDate || "",
-            loaCode: t.loaCode || ""
+      try {
+        const activeTicketsRes = await fetchPatientActiveTickets();
+        const activeArr =
+          activeTicketsRes.activeTickets ||
+          activeTicketsRes.data ||
+          (Array.isArray(activeTicketsRes) ? activeTicketsRes : []);
+        const mapped = activeArr.map((t) => {
+          let displayStatus = 'Pending';
+          if (
+            t.status === 'active' ||
+            (t.status === 'for_payment' && t.paymentStatus === 'paid')
+          ) {
+            displayStatus = 'Active';
+          } else if (
+            t.status === 'triage' ||
+            t.status === 'assigned' ||
+            t.status === 'processing'
+          ) {
+            displayStatus = 'Processing';
+          } else if (t.status === 'for_payment') {
+            displayStatus = 'For Payment';
+          } else if (t.status === 'confirmed') {
+            displayStatus = 'Confirmed';
+          } else if (t.status === 'completed') {
+            displayStatus = 'Completed';
+          } else if (t.status === 'cancelled') {
+            displayStatus = 'Cancelled';
+          } else if (t.status === 'pending' || t.status === 'unclaimed') {
+            displayStatus = 'Pending';
+          } else {
+            displayStatus = t.status || 'Unknown';
           }
-        };
-      });
-      setAppointments(mapped);
-    } catch (error) {
-      console.error("Failed to load active tickets:", error);
-    }
-  }, [onAppointmentAdded]);
 
-  // Load appointments from localStorage on component mount
+          const specialistFirstName = t.specialist?.user?.firstName || '';
+          const specialistLastName = t.specialist?.user?.lastName || '';
+          const computedSpecialistName =
+            t.specialistName ||
+            (specialistFirstName || specialistLastName
+              ? `${specialistFirstName} ${specialistLastName}`.trim()
+              : 'Unassigned');
+
+          return {
+            id: t.id || t.ticketNumber,
+            title: `Ticket #${t.ticketNumber || t.id} - ${t.chiefComplaint || 'Consultation'}`,
+            status: displayStatus,
+            specialist: computedSpecialistName,
+            specialty: t.specialty || t.specialist?.specialization || 'General',
+            date: t.preferredDate
+              ? new Date(t.preferredDate).toLocaleDateString()
+              : t.createdAt
+                ? new Date(t.createdAt).toLocaleDateString()
+                : 'TBD',
+            time:
+              t.preferredTime ||
+              (t.createdAt
+                ? new Date(t.createdAt).toLocaleTimeString()
+                : 'TBD'),
+            description: t.chiefComplaint || t.symptoms || '',
+            consultationChannel:
+              t.consultationChannel || t.channel || 'Platform Chat',
+            consultationType: t.consultationType || 'Teleconsultation',
+            bookingMethod: t.bookingMethod || 'Online',
+            medicalDetails: {
+              chiefComplaint: t.chiefComplaint || '',
+              symptoms: t.symptoms || '',
+              otherSymptoms: t.otherSymptoms || '',
+            },
+            hmoDetails: {
+              company: t.hmoProvider || t.hmoCompany || '',
+              memberId: t.hmoMemberId || '',
+              expirationDate: t.hmoExpirationDate || '',
+              loaCode: t.loaCode || '',
+            },
+          };
+        });
+        setAppointments(mapped);
+      } catch (error) {
+        console.error('Failed to load active tickets:', error);
+      }
+    },
+    [onAppointmentAdded],
+  );
+
   useEffect(() => {
     const initializeAppointments = async () => {
       await loadAppointments();
     };
 
     initializeAppointments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Poll for "For Payment" auto-verification
   useEffect(() => {
     const checkPendingPayments = async () => {
-      // Find tickets that are specifically "For Payment"
-      const pendingPaymentTickets = appointments.filter(a => a.status === 'For Payment');
+      const pendingPaymentTickets = appointments.filter(
+        (a) => a.status === 'For Payment',
+      );
 
       if (pendingPaymentTickets.length > 0) {
         let hasUpdates = false;
 
-        // Check each pending payment tickets statuses
         for (const ticket of pendingPaymentTickets) {
           try {
-            console.log(`Auto-verifying ticket ${ticket.id}...`);
             const result = await verifyTicketPayment(ticket.id);
-            if (result.status === 'active' || (result.status === 'for_payment' && result.paymentStatus === 'paid')) {
+            if (
+              result.status === 'active' ||
+              (result.status === 'for_payment' &&
+                result.paymentStatus === 'paid')
+            ) {
               hasUpdates = true;
             }
           } catch (err) {
@@ -207,30 +230,26 @@ const Appointments = ({ onAppointmentAdded }) => {
           }
         }
 
-        // If at least one ticket was verified as paid, reload the entire list
         if (hasUpdates) {
-          console.log('Auto-verification detected fresh payments! Reloading...');
           await loadAppointments();
         }
       }
     };
 
-    // Only run if appointments have been loaded
     if (appointments.length > 0) {
       checkPendingPayments();
     }
-  }, [appointments.length, loadAppointments, appointments]); // Dependencies to fire only when total number of appointments change or initially loaded
-
+  }, [appointments.length, loadAppointments, appointments]);
 
   const handleCancel = async (appointment) => {
-    if (!window.confirm("Are you sure you want to cancel this ticket?")) return;
+    if (!window.confirm('Are you sure you want to cancel this ticket?')) return;
     try {
       await cancelTicket(appointment.id);
-      alert("Ticket cancelled successfully.");
+      alert('Ticket cancelled successfully.');
       loadAppointments();
     } catch (e) {
       console.error(e);
-      alert("Failed to cancel ticket.");
+      alert('Failed to cancel ticket.');
     }
   };
 
@@ -246,39 +265,39 @@ const Appointments = ({ onAppointmentAdded }) => {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case "Pending":
-        return <FaClock className="patient-status-icon patient-pending" />;
-      case "Processing":
+      case 'Pending':
+        return <FaClock className='patient-status-icon patient-pending' />;
+      case 'Processing':
         return (
-          <FaUserCheck className="patient-status-icon patient-processing" />
+          <FaUserCheck className='patient-status-icon patient-processing' />
         );
-      case "For Payment":
-        return <FaCreditCard className="patient-status-icon patient-payment" />;
-      case "Confirmed":
+      case 'For Payment':
+        return <FaCreditCard className='patient-status-icon patient-payment' />;
+      case 'Confirmed':
         return (
-          <FaCheckCircle className="patient-status-icon patient-confirmed" />
+          <FaCheckCircle className='patient-status-icon patient-confirmed' />
         );
-      case "Active":
-        return <FaPlay className="patient-status-icon patient-active" />;
+      case 'Active':
+        return <FaPlay className='patient-status-icon patient-active' />;
       default:
-        return <FaClock className="patient-status-icon" />;
+        return <FaClock className='patient-status-icon' />;
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "Pending":
-        return "patient-status-pending";
-      case "Processing":
-        return "patient-status-processing";
-      case "For Payment":
-        return "patient-status-payment";
-      case "Confirmed":
-        return "patient-status-confirmed";
-      case "Active":
-        return "patient-status-active";
+      case 'Pending':
+        return 'patient-status-pending';
+      case 'Processing':
+        return 'patient-status-processing';
+      case 'For Payment':
+        return 'patient-status-payment';
+      case 'Confirmed':
+        return 'patient-status-confirmed';
+      case 'Active':
+        return 'patient-status-active';
       default:
-        return "patient-status-default";
+        return 'patient-status-default';
     }
   };
 
@@ -287,11 +306,11 @@ const Appointments = ({ onAppointmentAdded }) => {
       const newMessage = {
         id: Date.now(),
         text: chatMessage,
-        sender: "patient",
+        sender: 'patient',
         timestamp: new Date().toLocaleTimeString(),
       };
       setChatMessages([...chatMessages, newMessage]);
-      setChatMessage("");
+      setChatMessage('');
     }
   };
 
@@ -309,18 +328,17 @@ const Appointments = ({ onAppointmentAdded }) => {
 
   const openChat = (appointment) => {
     setActiveTicket(appointment);
-    // Initialize with sample messages for this appointment
     setChatMessages([
       {
         id: 1,
-        sender: "nurse",
+        sender: 'nurse',
         text: `Hello! I'm here to assist you with your ${appointment.title} appointment.`,
         timestamp: new Date().toLocaleTimeString(),
       },
       {
         id: 2,
-        sender: "nurse",
-        text: "Please feel free to ask any questions or share any concerns you may have.",
+        sender: 'nurse',
+        text: 'Please feel free to ask any questions or share any concerns you may have.',
         timestamp: new Date().toLocaleTimeString(),
       },
     ]);
@@ -329,41 +347,37 @@ const Appointments = ({ onAppointmentAdded }) => {
   const closeChat = () => {
     setActiveTicket(null);
     setChatMessages([]);
-    setChatMessage("");
+    setChatMessage('');
   };
-
-
 
   const closeBookingModal = () => {
     setShowBookingModal(false);
     setAppointmentForm({
-      chiefComplaint: "",
-      symptoms: "",
-      otherSymptoms: "",
-      preferredDate: "",
-      preferredTime: "",
-      specialization: "",
-      preferredSpecialist: "",
-      consultationChannel: "Platform Chat",
-      hmoCompany: "",
-      hmoMemberId: "",
-      hmoExpirationDate: "",
-      loaCode: "",
+      chiefComplaint: '',
+      symptoms: '',
+      otherSymptoms: '',
+      preferredDate: '',
+      preferredTime: '',
+      specialization: '',
+      preferredSpecialist: '',
+      consultationChannel: 'Platform Chat',
+      hmoCompany: '',
+      hmoMemberId: '',
+      hmoExpirationDate: '',
+      loaCode: '',
       eLOAFiles: [],
     });
     setFormErrors({});
   };
 
-  // Handle form input changes
   const handleFormChange = (e) => {
     const { name, value } = e.target;
 
-    // If specialization changes, clear the selected specialist
-    if (name === "specialization") {
+    if (name === 'specialization') {
       setAppointmentForm((prev) => ({
         ...prev,
         [name]: value,
-        preferredSpecialist: "", // Clear specialist when specialization changes
+        preferredSpecialist: '',
       }));
     } else {
       setAppointmentForm((prev) => ({
@@ -372,31 +386,29 @@ const Appointments = ({ onAppointmentAdded }) => {
       }));
     }
 
-    // Clear error when user starts typing
     if (formErrors[name]) {
       setFormErrors((prev) => ({
         ...prev,
-        [name]: "",
+        [name]: '',
       }));
     }
   };
 
-  // Handle file upload for eLOA
   const handleELOAUpload = (e) => {
     const files = Array.from(e.target.files);
-    const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg"];
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg'];
+    const maxSize = 10 * 1024 * 1024;
 
     const validFiles = files.filter((file) => {
       if (!allowedTypes.includes(file.type)) {
         alert(
-          `${file.name} is not a valid file type. Please upload PDF, JPG, or JPEG files only.`
+          `${file.name} is not a valid file type. Please upload PDF, JPG, or JPEG files only.`,
         );
         return false;
       }
       if (file.size > maxSize) {
         alert(
-          `${file.name} is too large. Please upload files smaller than 10MB.`
+          `${file.name} is too large. Please upload files smaller than 10MB.`,
         );
         return false;
       }
@@ -417,7 +429,6 @@ const Appointments = ({ onAppointmentAdded }) => {
     }));
   };
 
-  // Remove eLOA file
   const removeELOAFile = (fileId) => {
     setAppointmentForm((prev) => ({
       ...prev,
@@ -425,73 +436,88 @@ const Appointments = ({ onAppointmentAdded }) => {
     }));
   };
 
-  // Form validation
   const validateForm = () => {
     const errors = {};
 
     if (!appointmentForm.chiefComplaint.trim()) {
-      errors.chiefComplaint = "Chief complaint is required";
+      errors.chiefComplaint = 'Chief complaint is required';
     }
     if (!appointmentForm.symptoms.trim()) {
-      errors.symptoms = "Symptoms are required";
+      errors.symptoms = 'Symptoms are required';
     }
     if (!appointmentForm.preferredDate) {
-      errors.preferredDate = "Preferred date is required";
+      errors.preferredDate = 'Preferred date is required';
     }
     if (!appointmentForm.preferredTime) {
-      errors.preferredTime = "Preferred time is required";
+      errors.preferredTime = 'Preferred time is required';
     }
     if (!appointmentForm.specialization) {
-      errors.specialization = "Please select a specialization";
+      errors.specialization = 'Please select a specialization';
     }
     if (!appointmentForm.preferredSpecialist) {
-      errors.preferredSpecialist = "Please select a specialist";
+      errors.preferredSpecialist = 'Please select a specialist';
     }
 
-    // Validate date is not in the past
     const selectedDate = new Date(appointmentForm.preferredDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     if (selectedDate < today) {
-      errors.preferredDate = "Please select a future date";
+      errors.preferredDate = 'Please select a future date';
+    }
+
+    if (selectedDate.getTime() === today.getTime()) {
+      const now = new Date();
+      const [hours, minutes] = appointmentForm.preferredTime.split(':');
+      const appointmentTime = new Date();
+      appointmentTime.setHours(
+        parseInt(hours, 10),
+        parseInt(minutes, 10),
+        0,
+        0,
+      );
+
+      if (appointmentTime <= now) {
+        errors.preferredTime =
+          'Cannot book appointments for times that have already passed';
+      } else {
+        const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60000);
+        if (appointmentTime < thirtyMinutesFromNow) {
+          errors.preferredTime =
+            'Appointments must be scheduled at least 30 minutes from the current time';
+        }
+      }
     }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  // Handle form submission
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted with data:", appointmentForm);
 
     if (!validateForm()) {
-      console.log("Form validation failed");
       return;
     }
 
-    console.log("Form validation passed, creating appointment...");
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Create new appointment ticket with all form details
       const newAppointment = {
         title: `Consultation - ${appointmentForm.preferredSpecialist}`,
-        status: "Pending",
+        status: 'Pending',
         specialist: appointmentForm.preferredSpecialist,
         date: appointmentForm.preferredDate,
         time: appointmentForm.preferredTime,
         specialty:
           specialists.find(
-            (s) => s.name === appointmentForm.preferredSpecialist
-          )?.specialty || "",
+            (s) => s.name === appointmentForm.preferredSpecialist,
+          )?.specialty || '',
         description: appointmentForm.chiefComplaint,
         consultationChannel: appointmentForm.consultationChannel,
-        consultationType: "Teleconsultation",
+        consultationType: 'Teleconsultation',
         medicalDetails: {
           chiefComplaint: appointmentForm.chiefComplaint,
           symptoms: appointmentForm.symptoms,
@@ -504,49 +530,39 @@ const Appointments = ({ onAppointmentAdded }) => {
           loaCode: appointmentForm.loaCode,
           eLOAFiles: appointmentForm.eLOAFiles,
         },
-        bookingMethod: "Online",
+        bookingMethod: 'Online',
         createdAt: new Date().toISOString(),
       };
 
-      // Save appointment to localStorage
       const savedAppointment =
         appointmentService.addAppointment(newAppointment);
-      console.log("New appointment created:", savedAppointment);
 
-      // Update local state
       setAppointments((prev) => {
         const updated = [...prev, savedAppointment];
-        console.log("Updated appointments state:", updated);
         return updated;
       });
 
-      // Notify parent component to refresh appointments
       if (onAppointmentAdded) {
-        console.log("Calling onAppointmentAdded callback");
         onAppointmentAdded();
       }
 
-      // Show success message
       alert(
-        "Your appointment is being processed. The Date & Time selected are subject for approval based on the Specialist's availability."
+        "Your appointment is being processed. The Date & Time selected are subject for approval based on the Specialist's availability.",
       );
 
-      // Close modal and reset form
       closeBookingModal();
     } catch (error) {
-      console.error("Error creating appointment:", error);
-      alert("There was an error creating your appointment. Please try again.");
+      console.error('Error creating appointment:', error);
+      alert('There was an error creating your appointment. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-
-
   const closePaymentModal = () => {
     setShowPaymentModal(false);
     setSelectedAppointment(null);
-    setPaymentMethod("");
+    setPaymentMethod('');
     setPaymentFile(null);
   };
 
@@ -554,12 +570,14 @@ const Appointments = ({ onAppointmentAdded }) => {
     e.preventDefault();
 
     if (!paymentMethod) {
-      alert("Please select a payment method");
+      alert('Please select a payment method');
       return;
     }
 
     if (!paymentFile) {
-      alert(`Please upload your ${paymentMethod === 'hmo' ? 'LOA Document' : 'Payment Proof'}`);
+      alert(
+        `Please upload your ${paymentMethod === 'hmo' ? 'LOA Document' : 'Payment Proof'}`,
+      );
       return;
     }
 
@@ -573,13 +591,13 @@ const Appointments = ({ onAppointmentAdded }) => {
       }
 
       alert(
-        "File submitted successfully! Your ticket is pending verification."
+        'File submitted successfully! Your ticket is pending verification.',
       );
       loadAppointments();
       closePaymentModal();
     } catch (error) {
-      console.error("Payment/LOA upload error:", error);
-      alert("There was an error processing your upload. Please try again.");
+      console.error('Payment/LOA upload error:', error);
+      alert('There was an error processing your upload. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -592,11 +610,11 @@ const Appointments = ({ onAppointmentAdded }) => {
       if (result.invoiceUrl) {
         window.location.href = result.invoiceUrl;
       } else {
-        alert("Failed to retrieve payment link.");
+        alert('Failed to retrieve payment link.');
       }
     } catch (error) {
-      console.error("Payment error:", error);
-      alert("Failed to initiate payment. Please try again.");
+      console.error('Payment error:', error);
+      alert('Failed to initiate payment. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -607,39 +625,42 @@ const Appointments = ({ onAppointmentAdded }) => {
       setIsSubmitting(true);
       const result = await verifyTicketPayment(appointment.id);
       if (result.status === 'active') {
-        alert("Payment verified! Your ticket is now active.");
+        alert('Payment verified! Your ticket is now active.');
         loadAppointments();
       } else {
-        alert(result.message || "Payment not yet detected. Please wait or try again later.");
+        alert(
+          result.message ||
+            'Payment not yet detected. Please wait or try again later.',
+        );
       }
     } catch (error) {
-      console.error("Verification error:", error);
-      alert("Failed to verify payment status. Please try again.");
+      console.error('Verification error:', error);
+      alert('Failed to verify payment status. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="patient-page-content">
-      <div className="patient-appointments-header">
+    <div className='patient-page-content'>
+      <div className='patient-appointments-header'>
         <div>
-          <h2 className="patient-page-title">My Appointments</h2>
-          <p className="patient-page-subtitle">
+          <h2 className='patient-page-title'>My Appointments</h2>
+          <p className='patient-page-subtitle'>
             Track your consultation requests and appointments
           </p>
         </div>
-        <div className="patient-book-appointment">
+        <div className='patient-book-appointment'>
           <BookConsultation onAppointmentAdded={loadAppointments} />
         </div>
       </div>
 
-      <div className="patient-appointments-section">
+      <div className='patient-appointments-section'>
         {appointments.length === 0 ? (
-          <div className="patient-empty-state">
-            <FaCalendarAlt className="patient-empty-icon" />
-            <h3 className="patient-empty-title">No Appointments Yet</h3>
-            <p className="patient-empty-message">
+          <div className='patient-empty-state'>
+            <FaCalendarAlt className='patient-empty-icon' />
+            <h3 className='patient-empty-title'>No Appointments Yet</h3>
+            <p className='patient-empty-message'>
               You haven't booked any appointments yet. Use the buttons above to
               book your first consultation.
             </p>
@@ -649,81 +670,91 @@ const Appointments = ({ onAppointmentAdded }) => {
             <div
               key={appointment.id}
               className={`patient-appointment-card ${getStatusColor(
-                appointment.status
+                appointment.status,
               )}`}
             >
-              <div className="patient-appointment-left">
-                <h3 className="patient-appointment-title">
+              <div className='patient-appointment-left'>
+                <h3 className='patient-appointment-title'>
                   {appointment.title}
                 </h3>
               </div>
 
-              <div className="patient-appointment-middle">
-                <div className="patient-appointment-details">
-                  <span className="patient-appointment-doctor">
+              <div className='patient-appointment-middle'>
+                <div className='patient-appointment-details'>
+                  <span className='patient-appointment-doctor'>
                     {appointment.specialist}
                   </span>
-                  <span className="patient-appointment-specialty">
+                  <span className='patient-appointment-specialty'>
                     {appointment.specialty}
                   </span>
-                  <span className="patient-appointment-date">
+                  <span className='patient-appointment-date'>
                     {appointment.date} at {appointment.time}
                   </span>
-                  <p className="patient-appointment-description">
+                  <p className='patient-appointment-description'>
                     {appointment.description}
                   </p>
                 </div>
               </div>
 
-              <div className="patient-appointment-right">
-                <div className="patient-appointment-status">
+              <div className='patient-appointment-right'>
+                <div className='patient-appointment-status'>
                   {getStatusIcon(appointment.status)}
-                  <span className="patient-status-text">
+                  <span className='patient-status-text'>
                     {appointment.status}
                   </span>
                 </div>
-                <div className="patient-appointment-actions">
-                  {appointment.status === "Pending" && (
+                <div className='patient-appointment-actions'>
+                  {appointment.status === 'Pending' && (
                     <button
-                      className="patient-view-details-btn"
-                      style={{ backgroundColor: "#dc3545", marginRight: "10px" }}
+                      className='patient-view-details-btn'
+                      style={{
+                        backgroundColor: '#dc3545',
+                        marginRight: '10px',
+                      }}
                       onClick={() => handleCancel(appointment)}
                     >
-                      <FaTimes className="patient-action-icon" /> Cancel
+                      <FaTimes className='patient-action-icon' /> Cancel
                     </button>
                   )}
-                  {appointment.status === "Active" && (
+                  {appointment.status === 'Active' && (
                     <button
-                      className="patient-chat-btn"
+                      className='patient-chat-btn'
                       onClick={() => openChat(appointment)}
                     >
-                      <FaComments className="patient-action-icon" />
+                      <FaComments className='patient-action-icon' />
                       Chat
                     </button>
                   )}
-                  {appointment.status === "For Payment" && (
+                  {appointment.status === 'For Payment' && (
                     <>
                       <button
-                        className="patient-payment-btn"
+                        className='patient-payment-btn'
                         disabled={isSubmitting}
                         onClick={() => handleXenditPayment(appointment)}
-                        style={{ marginRight: "10px" }}
+                        style={{ marginRight: '10px' }}
                       >
-                        <FaCreditCard className="patient-action-icon" />
-                        {isSubmitting && selectedAppointment?.id === appointment.id ? "Processing..." : "Pay"}
+                        <FaCreditCard className='patient-action-icon' />
+                        {isSubmitting &&
+                        selectedAppointment?.id === appointment.id
+                          ? 'Processing...'
+                          : 'Pay'}
                       </button>
                       <button
-                        className="patient-view-details-btn"
-                        style={{ backgroundColor: "#28a745", color: "white", marginRight: "10px" }}
+                        className='patient-view-details-btn'
+                        style={{
+                          backgroundColor: '#28a745',
+                          color: 'white',
+                          marginRight: '10px',
+                        }}
                         disabled={isSubmitting}
                         onClick={() => handleVerifyPayment(appointment)}
                       >
-                        <FaCheckCircle className="patient-action-icon" /> Verify
+                        <FaCheckCircle className='patient-action-icon' /> Verify
                       </button>
                     </>
                   )}
                   <button
-                    className="patient-view-details-btn"
+                    className='patient-view-details-btn'
                     onClick={() => handleViewAppointmentDetails(appointment)}
                   >
                     View
@@ -737,37 +768,38 @@ const Appointments = ({ onAppointmentAdded }) => {
 
       {/* Chat Modal for Active Appointments */}
       {activeTicket && (
-        <div className="patient-chat-modal-overlay" onClick={closeChat}>
+        <div className='patient-chat-modal-overlay' onClick={closeChat}>
           <div
-            className="patient-chat-modal"
+            className='patient-chat-modal'
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="patient-chat-header">
-              <div className="patient-chat-ticket-info">
-                <h3 className="patient-chat-ticket-title">
+            <div className='patient-chat-header'>
+              <div className='patient-chat-ticket-info'>
+                <h3 className='patient-chat-ticket-title'>
                   {activeTicket.title}
                 </h3>
-                <p className="patient-chat-ticket-specialist">
+                <p className='patient-chat-ticket-specialist'>
                   {activeTicket.specialist}
                 </p>
               </div>
-              <button className="patient-chat-close-btn" onClick={closeChat}>
+              <button className='patient-chat-close-btn' onClick={closeChat}>
                 <FaTimes />
               </button>
             </div>
 
-            <div className="patient-chat-messages">
+            <div className='patient-chat-messages'>
               {chatMessages.map((message) => (
                 <div
                   key={message.id}
-                  className={`patient-message ${message.sender === "patient"
-                    ? "patient-message-patient"
-                    : "patient-message-nurse"
-                    }`}
+                  className={`patient-message ${
+                    message.sender === 'patient'
+                      ? 'patient-message-patient'
+                      : 'patient-message-nurse'
+                  }`}
                 >
-                  <div className="patient-message-content">
-                    <p className="patient-message-text">{message.text}</p>
-                    <span className="patient-message-time">
+                  <div className='patient-message-content'>
+                    <p className='patient-message-text'>{message.text}</p>
+                    <span className='patient-message-time'>
                       {message.timestamp}
                     </span>
                   </div>
@@ -775,53 +807,53 @@ const Appointments = ({ onAppointmentAdded }) => {
               ))}
             </div>
 
-            <div className="patient-document-upload">
-              <div className="patient-upload-header">
-                <h4 className="patient-upload-title">Upload Documents</h4>
-                <p className="patient-upload-subtitle">
+            <div className='patient-document-upload'>
+              <div className='patient-upload-header'>
+                <h4 className='patient-upload-title'>Upload Documents</h4>
+                <p className='patient-upload-subtitle'>
                   Share files with your specialist
                 </p>
               </div>
 
-              <div className="patient-file-upload-area">
+              <div className='patient-file-upload-area'>
                 <input
-                  type="file"
-                  id="patient-file-upload"
+                  type='file'
+                  id='patient-file-upload'
                   multiple
                   onChange={handleFileUpload}
-                  style={{ display: "none" }}
+                  style={{ display: 'none' }}
                 />
                 <label
-                  htmlFor="patient-file-upload"
-                  className="patient-file-label"
+                  htmlFor='patient-file-upload'
+                  className='patient-file-label'
                 >
-                  <FaUpload className="patient-upload-icon" />
-                  <span className="patient-upload-text">
+                  <FaUpload className='patient-upload-icon' />
+                  <span className='patient-upload-text'>
                     Choose files to upload
                   </span>
-                  <span className="patient-upload-hint">
+                  <span className='patient-upload-hint'>
                     PDF, DOC, JPG, PNG up to 10MB
                   </span>
                 </label>
               </div>
 
               {uploadedFiles.length > 0 && (
-                <div className="patient-uploaded-files">
-                  <h5 className="patient-files-title">Uploaded Files:</h5>
+                <div className='patient-uploaded-files'>
+                  <h5 className='patient-files-title'>Uploaded Files:</h5>
                   {uploadedFiles.map((file) => (
-                    <div key={file.id} className="patient-file-item">
-                      <FaFileAlt className="patient-file-icon" />
-                      <div className="patient-file-info">
-                        <span className="patient-file-name">{file.name}</span>
-                        <span className="patient-file-size">
+                    <div key={file.id} className='patient-file-item'>
+                      <FaFileAlt className='patient-file-icon' />
+                      <div className='patient-file-info'>
+                        <span className='patient-file-name'>{file.name}</span>
+                        <span className='patient-file-size'>
                           ({(file.size / 1024).toFixed(1)} KB)
                         </span>
                       </div>
                       <button
-                        className="patient-file-remove"
+                        className='patient-file-remove'
                         onClick={() =>
                           setUploadedFiles((prev) =>
-                            prev.filter((f) => f.id !== file.id)
+                            prev.filter((f) => f.id !== file.id),
                           )
                         }
                       >
@@ -834,21 +866,21 @@ const Appointments = ({ onAppointmentAdded }) => {
             </div>
 
             <form
-              className="patient-chat-input-form"
+              className='patient-chat-input-form'
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSendMessage();
               }}
             >
-              <div className="patient-chat-input-container">
+              <div className='patient-chat-input-container'>
                 <input
-                  type="text"
-                  className="patient-chat-input"
-                  placeholder="Type your message..."
+                  type='text'
+                  className='patient-chat-input'
+                  placeholder='Type your message...'
                   value={chatMessage}
                   onChange={(e) => setChatMessage(e.target.value)}
                 />
-                <button type="submit" className="patient-chat-send-btn">
+                <button type='submit' className='patient-chat-send-btn'>
                   Send
                 </button>
               </div>
@@ -860,151 +892,155 @@ const Appointments = ({ onAppointmentAdded }) => {
       {/* Appointment Booking Modal */}
       {showBookingModal && (
         <div
-          className="patient-booking-modal-overlay"
+          className='patient-booking-modal-overlay'
           onClick={closeBookingModal}
         >
           <div
-            className="patient-booking-modal"
+            className='patient-booking-modal'
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="patient-booking-header">
-              <h2 className="patient-booking-title">Book New Appointment</h2>
+            <div className='patient-booking-header'>
+              <h2 className='patient-booking-title'>Book New Appointment</h2>
               <button
-                className="patient-booking-close"
+                className='patient-booking-close'
                 onClick={closeBookingModal}
               >
                 <FaTimes />
               </button>
             </div>
 
-            <form className="patient-booking-form" onSubmit={handleFormSubmit}>
-              <div className="patient-booking-content">
+            <form className='patient-booking-form' onSubmit={handleFormSubmit}>
+              <div className='patient-booking-content'>
                 {/* Consultation Type */}
-                <div className="patient-form-section">
-                  <h3 className="patient-section-title">
+                <div className='patient-form-section'>
+                  <h3 className='patient-section-title'>
                     Type of Consultation
                   </h3>
-                  <div className="patient-consultation-type">
-                    <span className="patient-consultation-label">
+                  <div className='patient-consultation-type'>
+                    <span className='patient-consultation-label'>
                       Teleconsultation
                     </span>
-                    <span className="patient-consultation-note">
+                    <span className='patient-consultation-note'>
                       (Default Service)
                     </span>
                   </div>
                 </div>
 
                 {/* Chief Complaint */}
-                <div className="patient-form-group">
+                <div className='patient-form-group'>
                   <label
-                    className="patient-form-label"
-                    htmlFor="chiefComplaint"
+                    className='patient-form-label'
+                    htmlFor='chiefComplaint'
                   >
                     Chief Complaint *
                   </label>
                   <textarea
-                    id="chiefComplaint"
-                    name="chiefComplaint"
-                    className={`patient-form-textarea ${formErrors.chiefComplaint ? "patient-form-error" : ""
-                      }`}
+                    id='chiefComplaint'
+                    name='chiefComplaint'
+                    className={`patient-form-textarea ${
+                      formErrors.chiefComplaint ? 'patient-form-error' : ''
+                    }`}
                     value={appointmentForm.chiefComplaint}
                     onChange={handleFormChange}
-                    placeholder="Describe your main concern or reason for consultation"
-                    rows="3"
+                    placeholder='Describe your main concern or reason for consultation'
+                    rows='3'
                     required
                   />
                   {formErrors.chiefComplaint && (
-                    <span className="patient-error-message">
+                    <span className='patient-error-message'>
                       {formErrors.chiefComplaint}
                     </span>
                   )}
                 </div>
 
                 {/* Symptoms */}
-                <div className="patient-form-group">
-                  <label className="patient-form-label" htmlFor="symptoms">
+                <div className='patient-form-group'>
+                  <label className='patient-form-label' htmlFor='symptoms'>
                     Symptoms *
                   </label>
                   <textarea
-                    id="symptoms"
-                    name="symptoms"
-                    className={`patient-form-textarea ${formErrors.symptoms ? "patient-form-error" : ""
-                      }`}
+                    id='symptoms'
+                    name='symptoms'
+                    className={`patient-form-textarea ${
+                      formErrors.symptoms ? 'patient-form-error' : ''
+                    }`}
                     value={appointmentForm.symptoms}
                     onChange={handleFormChange}
-                    placeholder="Describe your symptoms in detail"
-                    rows="3"
+                    placeholder='Describe your symptoms in detail'
+                    rows='3'
                     required
                   />
                   {formErrors.symptoms && (
-                    <span className="patient-error-message">
+                    <span className='patient-error-message'>
                       {formErrors.symptoms}
                     </span>
                   )}
                 </div>
 
                 {/* Other Symptoms */}
-                <div className="patient-form-group">
-                  <label className="patient-form-label" htmlFor="otherSymptoms">
+                <div className='patient-form-group'>
+                  <label className='patient-form-label' htmlFor='otherSymptoms'>
                     Other Symptoms
                   </label>
                   <textarea
-                    id="otherSymptoms"
-                    name="otherSymptoms"
-                    className="patient-form-textarea"
+                    id='otherSymptoms'
+                    name='otherSymptoms'
+                    className='patient-form-textarea'
                     value={appointmentForm.otherSymptoms}
                     onChange={handleFormChange}
-                    placeholder="Any additional symptoms or concerns"
-                    rows="2"
+                    placeholder='Any additional symptoms or concerns'
+                    rows='2'
                   />
                 </div>
 
                 {/* Date and Time */}
-                <div className="patient-form-row">
-                  <div className="patient-form-group patient-form-half">
+                <div className='patient-form-row'>
+                  <div className='patient-form-group patient-form-half'>
                     <label
-                      className="patient-form-label"
-                      htmlFor="preferredDate"
+                      className='patient-form-label'
+                      htmlFor='preferredDate'
                     >
                       Preferred Date *
                     </label>
                     <input
-                      type="date"
-                      id="preferredDate"
-                      name="preferredDate"
-                      className={`patient-form-input ${formErrors.preferredDate ? "patient-form-error" : ""
-                        }`}
+                      type='date'
+                      id='preferredDate'
+                      name='preferredDate'
+                      className={`patient-form-input ${
+                        formErrors.preferredDate ? 'patient-form-error' : ''
+                      }`}
                       value={appointmentForm.preferredDate}
                       onChange={handleFormChange}
-                      min={new Date().toISOString().split("T")[0]}
+                      min={new Date().toISOString().split('T')[0]}
                       required
                     />
                     {formErrors.preferredDate && (
-                      <span className="patient-error-message">
+                      <span className='patient-error-message'>
                         {formErrors.preferredDate}
                       </span>
                     )}
                   </div>
 
-                  <div className="patient-form-group patient-form-half">
+                  <div className='patient-form-group patient-form-half'>
                     <label
-                      className="patient-form-label"
-                      htmlFor="preferredTime"
+                      className='patient-form-label'
+                      htmlFor='preferredTime'
                     >
                       Preferred Time *
                     </label>
                     <input
-                      type="time"
-                      id="preferredTime"
-                      name="preferredTime"
-                      className={`patient-form-input ${formErrors.preferredTime ? "patient-form-error" : ""
-                        }`}
+                      type='time'
+                      id='preferredTime'
+                      name='preferredTime'
+                      className={`patient-form-input ${
+                        formErrors.preferredTime ? 'patient-form-error' : ''
+                      }`}
                       value={appointmentForm.preferredTime}
                       onChange={handleFormChange}
                       required
                     />
                     {formErrors.preferredTime && (
-                      <span className="patient-error-message">
+                      <span className='patient-error-message'>
                         {formErrors.preferredTime}
                       </span>
                     )}
@@ -1012,23 +1048,24 @@ const Appointments = ({ onAppointmentAdded }) => {
                 </div>
 
                 {/* Specialization Selection */}
-                <div className="patient-form-group">
+                <div className='patient-form-group'>
                   <label
-                    className="patient-form-label"
-                    htmlFor="specialization"
+                    className='patient-form-label'
+                    htmlFor='specialization'
                   >
                     Medical Specialization *
                   </label>
                   <select
-                    id="specialization"
-                    name="specialization"
-                    className={`patient-form-select ${formErrors.specialization ? "patient-form-error" : ""
-                      }`}
+                    id='specialization'
+                    name='specialization'
+                    className={`patient-form-select ${
+                      formErrors.specialization ? 'patient-form-error' : ''
+                    }`}
                     value={appointmentForm.specialization}
                     onChange={handleFormChange}
                     required
                   >
-                    <option value="">Select a specialization</option>
+                    <option value=''>Select a specialization</option>
                     {specializations.map((specialization) => (
                       <option key={specialization} value={specialization}>
                         {specialization}
@@ -1036,34 +1073,35 @@ const Appointments = ({ onAppointmentAdded }) => {
                     ))}
                   </select>
                   {formErrors.specialization && (
-                    <span className="patient-error-message">
+                    <span className='patient-error-message'>
                       {formErrors.specialization}
                     </span>
                   )}
                 </div>
 
                 {/* Preferred Specialist */}
-                <div className="patient-form-group">
+                <div className='patient-form-group'>
                   <label
-                    className="patient-form-label"
-                    htmlFor="preferredSpecialist"
+                    className='patient-form-label'
+                    htmlFor='preferredSpecialist'
                   >
                     Preferred Specialist *
                   </label>
                   <select
-                    id="preferredSpecialist"
-                    name="preferredSpecialist"
-                    className={`patient-form-select ${formErrors.preferredSpecialist ? "patient-form-error" : ""
-                      }`}
+                    id='preferredSpecialist'
+                    name='preferredSpecialist'
+                    className={`patient-form-select ${
+                      formErrors.preferredSpecialist ? 'patient-form-error' : ''
+                    }`}
                     value={appointmentForm.preferredSpecialist}
                     onChange={handleFormChange}
                     disabled={!appointmentForm.specialization}
                     required
                   >
-                    <option value="">
+                    <option value=''>
                       {appointmentForm.specialization
-                        ? "Select a specialist"
-                        : "Please select a specialization first"}
+                        ? 'Select a specialist'
+                        : 'Please select a specialization first'}
                     </option>
                     {availableSpecialists.map((specialist) => (
                       <option key={specialist.id} value={specialist.name}>
@@ -1072,38 +1110,38 @@ const Appointments = ({ onAppointmentAdded }) => {
                     ))}
                   </select>
                   {formErrors.preferredSpecialist && (
-                    <span className="patient-error-message">
+                    <span className='patient-error-message'>
                       {formErrors.preferredSpecialist}
                     </span>
                   )}
                 </div>
 
                 {/* Consultation Channel */}
-                <div className="patient-form-group">
-                  <label className="patient-form-label">
+                <div className='patient-form-group'>
+                  <label className='patient-form-label'>
                     Consultation Channel *
                   </label>
-                  <div className="patient-consultation-channels">
+                  <div className='patient-consultation-channels'>
                     {consultationChannels.map((channel) => (
                       <label
                         key={channel.value}
-                        className="patient-channel-option"
+                        className='patient-channel-option'
                       >
                         <input
-                          type="radio"
-                          name="consultationChannel"
+                          type='radio'
+                          name='consultationChannel'
                           value={channel.value}
                           checked={
                             appointmentForm.consultationChannel ===
                             channel.value
                           }
                           onChange={handleFormChange}
-                          className="patient-channel-radio"
+                          className='patient-channel-radio'
                         />
-                        <span className="patient-channel-icon">
+                        <span className='patient-channel-icon'>
                           {channel.icon}
                         </span>
-                        <span className="patient-channel-label">
+                        <span className='patient-channel-label'>
                           {channel.label}
                         </span>
                       </label>
@@ -1112,131 +1150,131 @@ const Appointments = ({ onAppointmentAdded }) => {
                 </div>
 
                 {/* HMO Section */}
-                <div className="patient-form-section">
-                  <h3 className="patient-section-title">
+                <div className='patient-form-section'>
+                  <h3 className='patient-section-title'>
                     HMO Information (Optional)
                   </h3>
 
-                  <div className="patient-form-row">
-                    <div className="patient-form-group patient-form-half">
+                  <div className='patient-form-row'>
+                    <div className='patient-form-group patient-form-half'>
                       <label
-                        className="patient-form-label"
-                        htmlFor="hmoCompany"
+                        className='patient-form-label'
+                        htmlFor='hmoCompany'
                       >
                         HMO Company
                       </label>
                       <input
-                        type="text"
-                        id="hmoCompany"
-                        name="hmoCompany"
-                        className="patient-form-input"
+                        type='text'
+                        id='hmoCompany'
+                        name='hmoCompany'
+                        className='patient-form-input'
                         value={appointmentForm.hmoCompany}
                         onChange={handleFormChange}
-                        placeholder="Enter HMO company name"
+                        placeholder='Enter HMO company name'
                       />
                     </div>
 
-                    <div className="patient-form-group patient-form-half">
+                    <div className='patient-form-group patient-form-half'>
                       <label
-                        className="patient-form-label"
-                        htmlFor="hmoMemberId"
+                        className='patient-form-label'
+                        htmlFor='hmoMemberId'
                       >
                         HMO Member ID
                       </label>
                       <input
-                        type="text"
-                        id="hmoMemberId"
-                        name="hmoMemberId"
-                        className="patient-form-input"
+                        type='text'
+                        id='hmoMemberId'
+                        name='hmoMemberId'
+                        className='patient-form-input'
                         value={appointmentForm.hmoMemberId}
                         onChange={handleFormChange}
-                        placeholder="Enter member ID"
+                        placeholder='Enter member ID'
                       />
                     </div>
                   </div>
 
-                  <div className="patient-form-row">
-                    <div className="patient-form-group patient-form-half">
+                  <div className='patient-form-row'>
+                    <div className='patient-form-group patient-form-half'>
                       <label
-                        className="patient-form-label"
-                        htmlFor="hmoExpirationDate"
+                        className='patient-form-label'
+                        htmlFor='hmoExpirationDate'
                       >
                         Expiration Date
                       </label>
                       <input
-                        type="date"
-                        id="hmoExpirationDate"
-                        name="hmoExpirationDate"
-                        className="patient-form-input"
+                        type='date'
+                        id='hmoExpirationDate'
+                        name='hmoExpirationDate'
+                        className='patient-form-input'
                         value={appointmentForm.hmoExpirationDate}
                         onChange={handleFormChange}
                       />
                     </div>
 
-                    <div className="patient-form-group patient-form-half">
-                      <label className="patient-form-label" htmlFor="loaCode">
+                    <div className='patient-form-group patient-form-half'>
+                      <label className='patient-form-label' htmlFor='loaCode'>
                         LOA Code
                       </label>
                       <input
-                        type="text"
-                        id="loaCode"
-                        name="loaCode"
-                        className="patient-form-input"
+                        type='text'
+                        id='loaCode'
+                        name='loaCode'
+                        className='patient-form-input'
                         value={appointmentForm.loaCode}
                         onChange={handleFormChange}
-                        placeholder="Enter LOA code"
+                        placeholder='Enter LOA code'
                       />
                     </div>
                   </div>
 
                   {/* eLOA File Upload */}
-                  <div className="patient-form-group">
-                    <label className="patient-form-label">
+                  <div className='patient-form-group'>
+                    <label className='patient-form-label'>
                       eLOA File Upload
                     </label>
-                    <div className="patient-file-upload-area">
+                    <div className='patient-file-upload-area'>
                       <input
-                        type="file"
-                        id="patient-eloaupload"
+                        type='file'
+                        id='patient-eloaupload'
                         multiple
-                        accept=".pdf,.jpg,.jpeg"
+                        accept='.pdf,.jpg,.jpeg'
                         onChange={handleELOAUpload}
-                        style={{ display: "none" }}
+                        style={{ display: 'none' }}
                       />
                       <label
-                        htmlFor="patient-eloaupload"
-                        className="patient-file-upload-label"
+                        htmlFor='patient-eloaupload'
+                        className='patient-file-upload-label'
                       >
-                        <FaUpload className="patient-upload-icon" />
-                        <span className="patient-upload-text">
+                        <FaUpload className='patient-upload-icon' />
+                        <span className='patient-upload-text'>
                           Choose eLOA files
                         </span>
-                        <span className="patient-upload-hint">
+                        <span className='patient-upload-hint'>
                           PDF, JPG, JPEG up to 10MB each
                         </span>
                       </label>
                     </div>
 
                     {appointmentForm.eLOAFiles.length > 0 && (
-                      <div className="patient-uploaded-files">
+                      <div className='patient-uploaded-files'>
                         {appointmentForm.eLOAFiles.map((file) => (
-                          <div key={file.id} className="patient-file-item">
-                            {file.type === "application/pdf" ? (
-                              <FaFilePdf className="patient-file-icon patient-file-pdf" />
+                          <div key={file.id} className='patient-file-item'>
+                            {file.type === 'application/pdf' ? (
+                              <FaFilePdf className='patient-file-icon patient-file-pdf' />
                             ) : (
-                              <FaImage className="patient-file-icon patient-file-image" />
+                              <FaImage className='patient-file-icon patient-file-image' />
                             )}
-                            <div className="patient-file-info">
-                              <span className="patient-file-name">
+                            <div className='patient-file-info'>
+                              <span className='patient-file-name'>
                                 {file.name}
                               </span>
-                              <span className="patient-file-size">
+                              <span className='patient-file-size'>
                                 ({(file.size / 1024).toFixed(1)} KB)
                               </span>
                             </div>
                             <button
-                              type="button"
-                              className="patient-file-remove"
+                              type='button'
+                              className='patient-file-remove'
                               onClick={() => removeELOAFile(file.id)}
                             >
                               <FaTimes />
@@ -1250,21 +1288,21 @@ const Appointments = ({ onAppointmentAdded }) => {
               </div>
 
               {/* Form Actions */}
-              <div className="patient-booking-actions">
+              <div className='patient-booking-actions'>
                 <button
-                  type="button"
-                  className="patient-booking-cancel"
+                  type='button'
+                  className='patient-booking-cancel'
                   onClick={closeBookingModal}
                   disabled={isSubmitting}
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  className="patient-booking-submit"
+                  type='submit'
+                  className='patient-booking-submit'
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Processing..." : "Submit"}
+                  {isSubmitting ? 'Processing...' : 'Submit'}
                 </button>
               </div>
             </form>
@@ -1275,17 +1313,17 @@ const Appointments = ({ onAppointmentAdded }) => {
       {/* Payment Modal */}
       {showPaymentModal && selectedAppointment && (
         <div
-          className="patient-booking-modal-overlay"
+          className='patient-booking-modal-overlay'
           onClick={closePaymentModal}
         >
           <div
-            className="patient-booking-modal"
+            className='patient-booking-modal'
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="patient-booking-header">
-              <h2 className="patient-booking-title">Payment</h2>
+            <div className='patient-booking-header'>
+              <h2 className='patient-booking-title'>Payment</h2>
               <button
-                className="patient-booking-close"
+                className='patient-booking-close'
                 onClick={closePaymentModal}
               >
                 <FaTimes />
@@ -1293,15 +1331,15 @@ const Appointments = ({ onAppointmentAdded }) => {
             </div>
 
             <form
-              className="patient-booking-form"
+              className='patient-booking-form'
               onSubmit={handlePaymentSubmit}
             >
-              <div className="patient-booking-content">
-                <div className="patient-payment-info">
-                  <h3 className="patient-section-title">Appointment Details</h3>
-                  <div className="patient-payment-details">
+              <div className='patient-booking-content'>
+                <div className='patient-payment-info'>
+                  <h3 className='patient-section-title'>Appointment Details</h3>
+                  <div className='patient-payment-details'>
                     <p>
-                      <strong>Specialist:</strong>{" "}
+                      <strong>Specialist:</strong>{' '}
                       {selectedAppointment.specialist}
                     </p>
                     <p>
@@ -1316,28 +1354,28 @@ const Appointments = ({ onAppointmentAdded }) => {
                   </div>
                 </div>
 
-                <div className="patient-form-group">
-                  <label className="patient-form-label">
+                <div className='patient-form-group'>
+                  <label className='patient-form-label'>
                     Select Payment Method *
                   </label>
-                  <div className="patient-payment-methods">
+                  <div className='patient-payment-methods'>
                     {paymentMethods.map((method) => (
                       <label
                         key={method.value}
-                        className="patient-payment-option"
+                        className='patient-payment-option'
                       >
                         <input
-                          type="radio"
-                          name="paymentMethod"
+                          type='radio'
+                          name='paymentMethod'
                           value={method.value}
                           checked={paymentMethod === method.value}
                           onChange={(e) => setPaymentMethod(e.target.value)}
-                          className="patient-payment-radio"
+                          className='patient-payment-radio'
                         />
-                        <span className="patient-payment-icon">
+                        <span className='patient-payment-icon'>
                           {method.icon}
                         </span>
-                        <span className="patient-payment-label">
+                        <span className='patient-payment-label'>
                           {method.label}
                         </span>
                       </label>
@@ -1346,44 +1384,50 @@ const Appointments = ({ onAppointmentAdded }) => {
                 </div>
 
                 {paymentMethod && (
-                  <div className="patient-form-group">
-                    <label className="patient-form-label">
-                      Upload {paymentMethod === 'hmo' ? 'LOA Document' : 'Payment Proof'} *
+                  <div className='patient-form-group'>
+                    <label className='patient-form-label'>
+                      Upload{' '}
+                      {paymentMethod === 'hmo'
+                        ? 'LOA Document'
+                        : 'Payment Proof'}{' '}
+                      *
                     </label>
                     <input
-                      type="file"
-                      accept="image/*,application/pdf"
+                      type='file'
+                      accept='image/*,application/pdf'
                       onChange={(e) => setPaymentFile(e.target.files[0])}
                       style={{ display: 'block', marginTop: '10px' }}
                     />
                   </div>
                 )}
 
-                <div className="patient-payment-note">
-                  <FaExclamationTriangle className="patient-warning-icon" />
+                <div className='patient-payment-note'>
+                  <FaExclamationTriangle className='patient-warning-icon' />
                   <p>
-                    Please upload the proof of your transaction or your valid HMO Letter of Authorization. It will be verified by the admin team soon.
+                    Please upload the proof of your transaction or your valid
+                    HMO Letter of Authorization. It will be verified by the
+                    admin team soon.
                   </p>
                 </div>
               </div>
 
-              <div className="patient-booking-actions">
+              <div className='patient-booking-actions'>
                 <button
-                  type="button"
-                  className="patient-booking-cancel"
+                  type='button'
+                  className='patient-booking-cancel'
                   onClick={closePaymentModal}
                   disabled={isSubmitting}
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  className="patient-booking-submit"
+                  type='submit'
+                  className='patient-booking-submit'
                   disabled={isSubmitting || !paymentMethod}
                 >
                   {isSubmitting ? (
                     <>
-                      <FaClock className="patient-spinner" />
+                      <FaClock className='patient-spinner' />
                       Processing...
                     </>
                   ) : (
@@ -1401,92 +1445,92 @@ const Appointments = ({ onAppointmentAdded }) => {
 
       {/* Appointment Details Modal */}
       {showAppointmentDetails && selectedAppointment && (
-        <div className="patient-appointment-details-overlay">
-          <div className="patient-appointment-details-modal">
-            <div className="patient-appointment-details-header">
+        <div className='patient-appointment-details-overlay'>
+          <div className='patient-appointment-details-modal'>
+            <div className='patient-appointment-details-header'>
               <h2>Appointment Details</h2>
               <button
-                className="patient-appointment-details-close"
+                className='patient-appointment-details-close'
                 onClick={closeAppointmentDetails}
               >
                 <FaTimes />
               </button>
             </div>
-            <div className="patient-appointment-details-content">
-              <div className="patient-appointment-details-section">
-                <h3 className="patient-appointment-details-title">
+            <div className='patient-appointment-details-content'>
+              <div className='patient-appointment-details-section'>
+                <h3 className='patient-appointment-details-title'>
                   Appointment Information
                 </h3>
-                <div className="patient-appointment-details-grid">
-                  <div className="patient-appointment-details-item">
-                    <span className="patient-appointment-details-label">
+                <div className='patient-appointment-details-grid'>
+                  <div className='patient-appointment-details-item'>
+                    <span className='patient-appointment-details-label'>
                       Title:
                     </span>
-                    <span className="patient-appointment-details-value">
+                    <span className='patient-appointment-details-value'>
                       {selectedAppointment.title}
                     </span>
                   </div>
-                  <div className="patient-appointment-details-item">
-                    <span className="patient-appointment-details-label">
+                  <div className='patient-appointment-details-item'>
+                    <span className='patient-appointment-details-label'>
                       Status:
                     </span>
-                    <span className="patient-appointment-details-value">
+                    <span className='patient-appointment-details-value'>
                       {selectedAppointment.status}
                     </span>
                   </div>
-                  <div className="patient-appointment-details-item">
-                    <span className="patient-appointment-details-label">
+                  <div className='patient-appointment-details-item'>
+                    <span className='patient-appointment-details-label'>
                       Specialist:
                     </span>
-                    <span className="patient-appointment-details-value">
+                    <span className='patient-appointment-details-value'>
                       {selectedAppointment.specialist}
                     </span>
                   </div>
-                  <div className="patient-appointment-details-item">
-                    <span className="patient-appointment-details-label">
+                  <div className='patient-appointment-details-item'>
+                    <span className='patient-appointment-details-label'>
                       Specialty:
                     </span>
-                    <span className="patient-appointment-details-value">
+                    <span className='patient-appointment-details-value'>
                       {selectedAppointment.specialty}
                     </span>
                   </div>
-                  <div className="patient-appointment-details-item">
-                    <span className="patient-appointment-details-label">
+                  <div className='patient-appointment-details-item'>
+                    <span className='patient-appointment-details-label'>
                       Date:
                     </span>
-                    <span className="patient-appointment-details-value">
+                    <span className='patient-appointment-details-value'>
                       {selectedAppointment.date}
                     </span>
                   </div>
-                  <div className="patient-appointment-details-item">
-                    <span className="patient-appointment-details-label">
+                  <div className='patient-appointment-details-item'>
+                    <span className='patient-appointment-details-label'>
                       Time:
                     </span>
-                    <span className="patient-appointment-details-value">
+                    <span className='patient-appointment-details-value'>
                       {selectedAppointment.time}
                     </span>
                   </div>
-                  <div className="patient-appointment-details-item">
-                    <span className="patient-appointment-details-label">
+                  <div className='patient-appointment-details-item'>
+                    <span className='patient-appointment-details-label'>
                       Consultation Type:
                     </span>
-                    <span className="patient-appointment-details-value">
+                    <span className='patient-appointment-details-value'>
                       {selectedAppointment.consultationType}
                     </span>
                   </div>
-                  <div className="patient-appointment-details-item">
-                    <span className="patient-appointment-details-label">
+                  <div className='patient-appointment-details-item'>
+                    <span className='patient-appointment-details-label'>
                       Consultation Channel:
                     </span>
-                    <span className="patient-appointment-details-value">
+                    <span className='patient-appointment-details-value'>
                       {selectedAppointment.consultationChannel}
                     </span>
                   </div>
-                  <div className="patient-appointment-details-item">
-                    <span className="patient-appointment-details-label">
+                  <div className='patient-appointment-details-item'>
+                    <span className='patient-appointment-details-label'>
                       Booking Method:
                     </span>
-                    <span className="patient-appointment-details-value">
+                    <span className='patient-appointment-details-value'>
                       {selectedAppointment.bookingMethod}
                     </span>
                   </div>
@@ -1494,36 +1538,36 @@ const Appointments = ({ onAppointmentAdded }) => {
               </div>
 
               {selectedAppointment.medicalDetails && (
-                <div className="patient-appointment-details-section">
-                  <h3 className="patient-appointment-details-title">
+                <div className='patient-appointment-details-section'>
+                  <h3 className='patient-appointment-details-title'>
                     Medical Information
                   </h3>
-                  <div className="patient-appointment-details-grid">
-                    <div className="patient-appointment-details-item">
-                      <span className="patient-appointment-details-label">
+                  <div className='patient-appointment-details-grid'>
+                    <div className='patient-appointment-details-item'>
+                      <span className='patient-appointment-details-label'>
                         Chief Complaint:
                       </span>
-                      <span className="patient-appointment-details-value">
+                      <span className='patient-appointment-details-value'>
                         {selectedAppointment.medicalDetails.chiefComplaint ||
-                          "General Consultation"}
+                          'General Consultation'}
                       </span>
                     </div>
-                    <div className="patient-appointment-details-item">
-                      <span className="patient-appointment-details-label">
+                    <div className='patient-appointment-details-item'>
+                      <span className='patient-appointment-details-label'>
                         Symptoms:
                       </span>
-                      <span className="patient-appointment-details-value">
+                      <span className='patient-appointment-details-value'>
                         {selectedAppointment.medicalDetails.symptoms ||
-                          "Not specified"}
+                          'Not specified'}
                       </span>
                     </div>
-                    <div className="patient-appointment-details-item">
-                      <span className="patient-appointment-details-label">
+                    <div className='patient-appointment-details-item'>
+                      <span className='patient-appointment-details-label'>
                         Other Symptoms:
                       </span>
-                      <span className="patient-appointment-details-value">
+                      <span className='patient-appointment-details-value'>
                         {selectedAppointment.medicalDetails.otherSymptoms ||
-                          "None"}
+                          'None'}
                       </span>
                     </div>
                   </div>
@@ -1531,45 +1575,45 @@ const Appointments = ({ onAppointmentAdded }) => {
               )}
 
               {selectedAppointment.hmoDetails && (
-                <div className="patient-appointment-details-section">
-                  <h3 className="patient-appointment-details-title">
+                <div className='patient-appointment-details-section'>
+                  <h3 className='patient-appointment-details-title'>
                     HMO Information
                   </h3>
-                  <div className="patient-appointment-details-grid">
-                    <div className="patient-appointment-details-item">
-                      <span className="patient-appointment-details-label">
+                  <div className='patient-appointment-details-grid'>
+                    <div className='patient-appointment-details-item'>
+                      <span className='patient-appointment-details-label'>
                         HMO Company:
                       </span>
-                      <span className="patient-appointment-details-value">
+                      <span className='patient-appointment-details-value'>
                         {selectedAppointment.hmoDetails.company ||
-                          "Not specified"}
+                          'Not specified'}
                       </span>
                     </div>
-                    <div className="patient-appointment-details-item">
-                      <span className="patient-appointment-details-label">
+                    <div className='patient-appointment-details-item'>
+                      <span className='patient-appointment-details-label'>
                         Member ID:
                       </span>
-                      <span className="patient-appointment-details-value">
+                      <span className='patient-appointment-details-value'>
                         {selectedAppointment.hmoDetails.memberId ||
-                          "Not specified"}
+                          'Not specified'}
                       </span>
                     </div>
-                    <div className="patient-appointment-details-item">
-                      <span className="patient-appointment-details-label">
+                    <div className='patient-appointment-details-item'>
+                      <span className='patient-appointment-details-label'>
                         Expiration Date:
                       </span>
-                      <span className="patient-appointment-details-value">
+                      <span className='patient-appointment-details-value'>
                         {selectedAppointment.hmoDetails.expirationDate ||
-                          "Not specified"}
+                          'Not specified'}
                       </span>
                     </div>
-                    <div className="patient-appointment-details-item">
-                      <span className="patient-appointment-details-label">
+                    <div className='patient-appointment-details-item'>
+                      <span className='patient-appointment-details-label'>
                         LOA Code:
                       </span>
-                      <span className="patient-appointment-details-value">
+                      <span className='patient-appointment-details-value'>
                         {selectedAppointment.hmoDetails.loaCode ||
-                          "Not specified"}
+                          'Not specified'}
                       </span>
                     </div>
                   </div>

@@ -28,14 +28,19 @@ const formatStatus = (status) => {
  */
 export const loginAdmin = async (email, password) => {
   try {
-    const data = await apiRequest('/api/v1/admin/login', {
+    const data = await apiRequest('/api/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
 
-    if (data.token) {
-      localStorage.setItem('admin_token', data.token);
+    const role = data?.user?.role || data?.user?.userType;
+    if (role !== 'admin') {
+      await apiRequest('/api/v1/auth/logout', { method: 'POST' }).catch(
+        () => {},
+      );
+      throw new Error('Access denied: this portal is for admin accounts.');
     }
+
     return data;
   } catch (error) {
     console.error('Admin login failed:', error);
@@ -49,11 +54,9 @@ export const loginAdmin = async (email, password) => {
  */
 export const logoutAdmin = async () => {
   try {
-    await apiRequest('/api/v1/admin/logout', { method: 'POST' });
+    await apiRequest('/api/v1/auth/logout', { method: 'POST' });
   } catch (error) {
     console.error('Admin logout failed:', error);
-  } finally {
-    localStorage.removeItem('admin_token');
   }
 };
 

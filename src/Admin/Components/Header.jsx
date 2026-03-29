@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import OkieDocLogo from '../../assets/okie-doc-logo.png';
-import { logoutAdmin } from '../../api/Admin/api.js';
+import { useAuth } from '../../contexts/AuthContext';
 import '../Specialistdashboard/SpecialistDashboard.css';
 
 /**
@@ -10,6 +10,7 @@ import '../Specialistdashboard/SpecialistDashboard.css';
  */
 const Header = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   /**
    * Handles the admin logout process.
@@ -18,7 +19,7 @@ const Header = () => {
   const handleLogout = async () => {
     try {
       // Call the API function to handle backend logout logic (e.g., invalidate token, log last_active)
-      await logoutAdmin();
+      await logout();
     } catch (error) {
        console.error("Admin logout API call failed:", error);
        // Log the error but proceed with frontend cleanup regardless

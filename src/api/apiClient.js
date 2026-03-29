@@ -3,8 +3,59 @@
  * Centralizes duplicate fetch logic across Patient and Specialist services
  */
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_URL || 'http://localhost:1337';
+const resolvedApiUrl =
+  import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '';
+
+if (import.meta.env.PROD) {
+  if (!resolvedApiUrl) {
+    throw new Error('VITE_API_URL must be set in production.');
+  }
+
+  if (!resolvedApiUrl.startsWith('https://')) {
+    throw new Error('VITE_API_URL must use HTTPS in production.');
+  }
+}
+
+export const API_BASE_URL = resolvedApiUrl || 'http://localhost:1337';
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+let cachedCsrfToken = null;
+
+async function fetchCsrfToken(forceRefresh = false) {
+  if (!forceRefresh && cachedCsrfToken) {
+    return cachedCsrfToken;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/csrf-token`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Unable to retrieve CSRF token.');
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  const token = payload._csrf || payload.csrfToken;
+
+  if (!token) {
+    throw new Error('CSRF token response was invalid.');
+  }
+
+  cachedCsrfToken = token;
+  return token;
+}
+
+function isLikelyCsrfFailure(responseData) {
+  const text =
+    typeof responseData === 'string'
+      ? responseData
+      : responseData?.error || responseData?.message || '';
+  return /csrf|forgery token/i.test(String(text));
+}
 
 /**
  * Generic API request handler
@@ -25,10 +76,7 @@ export async function apiRequest(endpoint, options = {}) {
     ...options.headers,
   };
 
-  const adminToken = localStorage.getItem('admin_token');
-  if (adminToken && !mergedHeaders['Authorization']) {
-    mergedHeaders['Authorization'] = `Bearer ${adminToken}`;
-  }
+  const { disableAuthRedirect = false, ...fetchOptions } = options;
 
   if (options.body instanceof FormData) {
     delete mergedHeaders['Content-Type'];
@@ -38,10 +86,24 @@ export async function apiRequest(endpoint, options = {}) {
     ? endpoint
     : `${API_BASE_URL}${endpoint}`;
 
+  const method = (fetchOptions.method || 'GET').toUpperCase();
+
+  if (import.meta.env.PROD && url.startsWith('http://')) {
+    throw new Error('Insecure API request blocked in production.');
+  }
+
   try {
-    const response = await fetch(url, {
+    if (
+      import.meta.env.PROD &&
+      MUTATING_METHODS.has(method) &&
+      !mergedHeaders['x-csrf-token']
+    ) {
+      mergedHeaders['x-csrf-token'] = await fetchCsrfToken();
+    }
+
+    let response = await fetch(url, {
       ...defaultOptions,
-      ...options,
+      ...fetchOptions,
       headers: mergedHeaders,
     });
 
@@ -57,14 +119,38 @@ export async function apiRequest(endpoint, options = {}) {
       } catch (e) {}
     }
 
+    if (
+      !response.ok &&
+      response.status === 403 &&
+      import.meta.env.PROD &&
+      MUTATING_METHODS.has(method) &&
+      isLikelyCsrfFailure(responseData)
+    ) {
+      mergedHeaders['x-csrf-token'] = await fetchCsrfToken(true);
+      response = await fetch(url, {
+        ...defaultOptions,
+        ...fetchOptions,
+        headers: mergedHeaders,
+      });
+
+      const retryContentType = response.headers.get('content-type');
+      if (retryContentType && retryContentType.includes('application/json')) {
+        responseData = await response.json().catch(() => ({}));
+      } else {
+        const retryText = await response.text();
+        try {
+          responseData = retryText ? JSON.parse(retryText) : {};
+        } catch (e) {
+          responseData = retryText;
+        }
+      }
+    }
+
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem("okiedoc_user_type");
-        localStorage.removeItem("currentUser");
-        localStorage.removeItem("admin_token");
-        localStorage.removeItem("nurse.id");
-        localStorage.removeItem("nurse.firstName");
-        window.location.href = "/login";
+        if (!disableAuthRedirect) {
+          window.location.href = '/login';
+        }
       }
 
       const errorPayload =

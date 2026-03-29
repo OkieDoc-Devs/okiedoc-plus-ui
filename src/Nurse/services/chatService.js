@@ -19,7 +19,7 @@ const MAX_AUTH_RETRIES = 3;
 function reconnectSocket() {
   const socket = getSocket();
   if (socket && !socket.connected) {
-    console.log("[Chat] Reconnecting socket to refresh session...");
+    // console.log("[Chat] Reconnecting socket to refresh session...");
     connectSocket();
   }
 }
@@ -48,7 +48,7 @@ export async function authenticateSocket(userId = null) {
         : "/api/v1/chat/conversations";
 
       await apiRequest(url);
-      console.log("[Chat] Socket authenticated successfully for user:", userId);
+      // console.log("[Chat] Socket authenticated successfully for user:", userId);
       socketAuthUserId = userId;
       authRetryCount = 0;
       return true;
@@ -81,7 +81,7 @@ export async function authenticateSocket(userId = null) {
 }
 
 export function resetSocketAuth() {
-  console.log("[Chat] Resetting socket auth state and reconnecting...");
+  // console.log("[Chat] Resetting socket auth state and reconnecting...");
   socketAuthPromise = null;
   socketAuthUserId = null;
   authRetryCount = 0;
@@ -292,18 +292,18 @@ export async function getAllChatUsers() {
 
 export async function subscribeToConversation(conversationId, callback) {
   const socket = getSocket();
-  console.log("[Chat] subscribeToConversation called", {
+  /* console.log("[Chat] subscribeToConversation called", {
     conversationId,
     socketExists: !!socket,
     isConnected: socket ? isSocketConnected() : false,
     socketId: socket?.id,
-  });
+  }); */
   if (socket && isSocketConnected() && socket.id) {
     try {
       const data = await apiRequest(
         `/api/v1/chat/conversations/${conversationId}/subscribe?socketId=${encodeURIComponent(socket.id)}`
       );
-      console.log("[Chat] Subscribed to conversation", conversationId, data);
+      // console.log("[Chat] Subscribed to conversation", conversationId, data);
       if (callback) callback(data);
     } catch (err) {
       console.error("[Chat] Failed to subscribe to conversation:", err);
@@ -326,7 +326,7 @@ export async function unsubscribeFromConversation(conversationId, callback) {
           body: JSON.stringify({ ticketId: conversationId, socketId: socket.id }),
         }
       );
-      console.log("[Chat] Unsubscribed from conversation", conversationId);
+      // console.log("[Chat] Unsubscribed from conversation", conversationId);
       if (callback) callback(data);
     } catch (err) {
       console.error("[Chat] Failed to unsubscribe:", err);
@@ -339,11 +339,11 @@ export async function unsubscribeFromConversation(conversationId, callback) {
 
 export function setupChatSocketListeners(handlers) {
   const socket = getSocket();
-  console.log("[Chat] setupChatSocketListeners called", {
+  /* console.log("[Chat] setupChatSocketListeners called", {
     socketExists: !!socket,
     isConnected: socket ? isSocketConnected() : false,
     handlers: Object.keys(handlers),
-  });
+  }); */
   if (!socket) {
     console.info("[Chat] Socket not available - event listeners not set up");
     return () => { };
@@ -370,17 +370,17 @@ export function setupChatSocketListeners(handlers) {
       const messageId =
         data.message?.Message_ID || data.message?.Id || data.message?.id;
       if (messageId && processedMessageIds.has(messageId)) {
-        console.log(
+        /* console.log(
           "[Chat] Skipping duplicate message event for ID:",
           messageId
-        );
+        ); */
         return;
       }
       if (messageId) {
         processedMessageIds.add(messageId);
         setTimeout(() => processedMessageIds.delete(messageId), 5000);
       }
-      console.log("[Chat] Received message event:", data);
+      // console.log("[Chat] Received message event:", data);
       onMessage(data);
     }
     : null;
@@ -388,12 +388,12 @@ export function setupChatSocketListeners(handlers) {
   if (wrappedOnMessage) {
     socket.on("chat:message", wrappedOnMessage);
     socket.on("chat:newMessage", wrappedOnMessage);
-    console.log("[Chat] Listening for chat:message and chat:newMessage events");
+    // console.log("[Chat] Listening for chat:message and chat:newMessage events");
   }
   if (onTyping) {
     socket.on("chat:typing", onTyping);
     socket.on("chat:userTyping", onTyping);
-    console.log("[Chat] Listening for chat:typing and chat:userTyping events");
+    // console.log("[Chat] Listening for chat:typing and chat:userTyping events");
   }
   if (onRead) {
     socket.on("chat:read", onRead);
@@ -414,26 +414,26 @@ export function setupChatSocketListeners(handlers) {
   if (onNewConversation) {
     socket.on("chat:newConversation", onNewConversation);
     socket.on("chat:conversation-created", onNewConversation);
-    console.log("[Chat] Listening for chat:newConversation events");
+    // console.log("[Chat] Listening for chat:newConversation events");
   }
   if (onTicketClaimed) {
     socket.on("ticket:claimed", onTicketClaimed);
-    console.log("[Chat] Listening for ticket:claimed events");
+    // console.log("[Chat] Listening for ticket:claimed events");
   }
   if (onSpecialistJoined) {
-    console.log("[Chat] Listening for ticket:specialist_joined events");
+    // console.log("[Chat] Listening for ticket:specialist_joined events");
   }
   if (onCallStarted) {
     socket.on("call:started", onCallStarted);
-    console.log("[Chat] Listening for call:started events");
+    // console.log("[Chat] Listening for call:started events");
   }
   if (onCallEnded) {
     socket.on("call:ended", onCallEnded);
-    console.log("[Chat] Listening for call:ended events");
+    // console.log("[Chat] Listening for call:ended events");
   }
 
   return () => {
-    console.log("[Chat] Cleaning up socket listeners");
+    // console.log("[Chat] Cleaning up socket listeners");
     if (wrappedOnMessage) {
       socket.off("chat:message", wrappedOnMessage);
       socket.off("chat:newMessage", wrappedOnMessage);

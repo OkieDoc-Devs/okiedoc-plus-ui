@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import NurseConsultationHistory from '../Patient/jsx/ConsultationHistory';
 import {
-  getNurseId,
   getNurseFirstName,
   getNurseProfileImage,
 } from './services/storageService.js';
@@ -30,9 +29,9 @@ import {
   triageTicket,
   assignSpecialist,
   fetchDoctorsFromAPI,
-  logoutFromAPI,
 } from './services/apiService.js';
 import { useNotification } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const USE_API = true;
 
@@ -40,35 +39,36 @@ export default function ManageAppointment() {
   const [showConsultationHistory, setShowConsultationHistory] = useState(false);
   const navigate = useNavigate();
   const { unreadCount } = useNotification();
+  const { logout, user } = useAuth();
   const [online] = useState(true);
   const [tickets, setTickets] = useState([]);
 
   useEffect(() => {
     if (!USE_API) {
-      console.log('ManageAppointments: API disabled, no data will be loaded');
+      // console.log('ManageAppointments: API disabled, no data will be loaded');
       return;
     }
 
     const loadTicketsData = async () => {
-      console.log(
+      /* console.log(
         'ManageAppointments: Loading tickets from API for logged-in nurse...',
-      );
+      ); */
       try {
         const data = await fetchTicketsFromAPI();
-        console.log('ManageAppointments: Tickets loaded from API:', data);
-        console.log(
+        // console.log('ManageAppointments: Tickets loaded from API:', data);
+        /* console.log(
           'ManageAppointments: API returned',
           data?.length,
           'tickets',
-        );
-        console.log(
+        ); */
+        /* console.log(
           'ManageAppointments: Checking claimedBy fields:',
           data?.map((t) => ({
             id: t.id,
             status: t.status,
             claimedBy: t.claimedBy,
           })),
-        );
+        ); */
 
         setTickets((prevTickets) => {
           const apiTickets = data || [];
@@ -89,16 +89,16 @@ export default function ManageAppointment() {
 
           const mergedTickets = [...mergedApiTickets, ...localOnlyTickets];
 
-          console.log('ManageAppointments: Merged tickets count:', {
+          /* console.log('ManageAppointments: Merged tickets count:', {
             fromAPI: apiTickets.length,
             localOnly: localOnlyTickets.length,
             total: mergedTickets.length,
-          });
+          }); */
 
-          console.log(
+          /* console.log(
             'ManageAppointments: Sample ticket after merge:',
             mergedTickets[0],
-          );
+          ); */
 
           return mergedTickets;
         });
@@ -323,33 +323,7 @@ export default function ManageAppointment() {
   };
 
   const nurseName = getNurseFirstName();
-  const [nurseId, setNurseId] = useState(null);
-
-  useEffect(() => {
-    const loadNurseProfile = async () => {
-      if (!USE_API) return;
-
-      try {
-        const data = await fetchNurseProfile();
-        if (data && data.id) {
-          localStorage.setItem('nurse.id', String(data.id));
-          setNurseId(data.id);
-          console.log(
-            'ManageAppointments: Loaded nurse ID from profile:',
-            data.id,
-          );
-        }
-      } catch (error) {
-        console.error('Error loading nurse profile:', error);
-        const fallbackId = getNurseId();
-        if (fallbackId !== null) {
-          setNurseId(fallbackId);
-        }
-      }
-    };
-
-    loadNurseProfile();
-  }, []);
+  const nurseId = user?.id ?? null;
 
   useEffect(() => {
     const loadDoctors = async () => {
@@ -372,7 +346,7 @@ export default function ManageAppointment() {
 
   const handleLogout = async () => {
     try {
-      await logoutFromAPI();
+      await logout();
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -380,15 +354,15 @@ export default function ManageAppointment() {
   };
 
   const claimTicket = async (ticketId) => {
-    console.log('🔥 CLAIM TICKET BUTTON CLICKED! Ticket ID:', ticketId);
-    console.log('=====================================');
-    console.log('CLAIMING TICKET');
-    console.log('=====================================');
-    console.log('Ticket ID:', ticketId);
+    // console.log('🔥 CLAIM TICKET BUTTON CLICKED! Ticket ID:', ticketId);
+    // console.log('=====================================');
+    // console.log('CLAIMING TICKET');
+    // console.log('=====================================');
+    /* console.log('Ticket ID:', ticketId);
     console.log('Nurse ID (claimedBy):', nurseId);
     console.log('Nurse Name:', nurseName);
     console.log('New Status: Processing');
-    console.log('USE_API:', USE_API);
+    console.log('USE_API:', USE_API); */
 
     if (!USE_API) {
       console.log('ManageAppointments: API disabled, cannot claim without API');
@@ -397,21 +371,21 @@ export default function ManageAppointment() {
     }
 
     try {
-      console.log('Sending claim request to API:');
+      // console.log('Sending claim request to API:');
       const result = await claimTicketAPI(ticketId);
 
-      console.log('=====================================');
+      /* console.log('=====================================');
       console.log('TICKET CLAIMED SUCCESSFULLY');
       console.log('=====================================');
       console.log('API Response:', result);
       console.log('Response status:', result?.status);
-      console.log('Response claimedBy:', result?.claimedBy);
+      console.log('Response claimedBy:', result?.claimedBy); */
 
       setTickets((prev) => {
         const updated = claimTicketUtil(prev, ticketId, nurseId);
-        console.log('Local state updated. Finding claimed ticket...');
+        // console.log('Local state updated. Finding claimed ticket...');
         const claimedTicket = updated.find((t) => t.id === ticketId);
-        console.log('Claimed ticket in local state:', claimedTicket);
+        // console.log('Claimed ticket in local state:', claimedTicket);
         return updated;
       });
       addNotification(
@@ -428,14 +402,14 @@ export default function ManageAppointment() {
   };
 
   const updateStatus = async (ticketId, newStatus) => {
-    console.log(
+    /* console.log(
       'ManageAppointments: Updating ticket status:',
       ticketId,
       newStatus,
-    );
+    ); */
 
     if (!USE_API) {
-      console.log('ManageAppointments: API disabled, updating status locally');
+      // console.log('ManageAppointments: API disabled, updating status locally');
       setTickets((prev) => updateTicketStatus(prev, ticketId, newStatus));
 
       if (newStatus === 'For Payment')
@@ -450,9 +424,9 @@ export default function ManageAppointment() {
 
     try {
       await updateTicket(ticketId, { status: newStatus });
-      console.log(
+      /* console.log(
         'ManageAppointments: Ticket status updated successfully in API',
-      );
+      ); */
 
       setTickets((prev) => updateTicketStatus(prev, ticketId, newStatus));
 
@@ -537,10 +511,10 @@ export default function ManageAppointment() {
       return;
     }
 
-    console.log('ManageAppointments: Rescheduling ticket:', ticketId);
+    // console.log('ManageAppointments: Rescheduling ticket:', ticketId);
 
     if (!USE_API) {
-      console.log('ManageAppointments: API disabled, rescheduling locally');
+      // console.log('ManageAppointments: API disabled, rescheduling locally');
       setTickets((prev) =>
         rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime),
       );
@@ -559,7 +533,7 @@ export default function ManageAppointment() {
         preferredDate: rescheduleDate,
         preferredTime: rescheduleTime,
       });
-      console.log('ManageAppointments: Ticket rescheduled successfully in API');
+      // console.log('ManageAppointments: Ticket rescheduled successfully in API');
 
       setTickets((prev) =>
         rescheduleTicket(prev, ticketId, rescheduleDate, rescheduleTime),
@@ -671,9 +645,9 @@ export default function ManageAppointment() {
     e.preventDefault();
 
     if (isSubmittingTicket) {
-      console.log(
+      /* console.log(
         '⚠️ Ticket submission already in progress, ignoring duplicate request',
-      );
+      ); */
       return;
     }
 
@@ -684,11 +658,11 @@ export default function ManageAppointment() {
     }
 
     setIsSubmittingTicket(true);
-    console.log('🔒 Ticket submission locked');
+    // console.log('🔒 Ticket submission locked');
 
     const newTicket = createNewTicket(newTicketData, textPills);
 
-    console.log('=====================================');
+    /* console.log('=====================================');
     console.log('CREATING NEW TICKET');
     console.log('=====================================');
     console.log('Ticket Data being sent to API:');
@@ -704,12 +678,12 @@ export default function ManageAppointment() {
     console.log('- Created At (Date parse):', new Date(newTicket.createdAt));
     console.log('- Preferred Date:', newTicket.preferredDate);
     console.log('- Preferred Time:', newTicket.preferredTime);
-    console.log('=====================================');
+    console.log('====================================='); */
 
     if (!USE_API) {
-      console.log(
+      /* console.log(
         'ManageAppointments: API disabled, cannot create ticket without API',
-      );
+      ); */
       alert(
         'API is required to create tickets. Please enable API integration.',
       );
@@ -717,21 +691,21 @@ export default function ManageAppointment() {
     }
 
     try {
-      console.log('Sending ticket to API endpoint: POST /api/nurse/tickets');
+      /* console.log('Sending ticket to API endpoint: POST /api/nurse/tickets');
       const createdTicket = await createTicket(newTicket);
       console.log('-------------------------------------');
       console.log('TICKET CREATED SUCCESSFULLY IN API');
       console.log('-------------------------------------');
       console.log('Response from API:');
       console.log(JSON.stringify(createdTicket, null, 2));
-      console.log('=====================================');
+      console.log('====================================='); */
 
       setTickets((prev) => {
         const ticketToAdd = createdTicket || newTicket;
-        console.log(
+        /* console.log(
           'ManageAppointments: Adding ticket to state immediately:',
           ticketToAdd.id,
-        );
+        ); */
         return [ticketToAdd, ...prev];
       });
 
@@ -754,13 +728,13 @@ export default function ManageAppointment() {
         }`,
       );
 
-      console.log('🔓 Ticket submission unlocked (success)');
+      // console.log('🔓 Ticket submission unlocked (success)');
       setIsSubmittingTicket(false);
     } catch (error) {
       console.error('ManageAppointments: Error creating ticket in API:', error);
       alert(`Failed to create ticket: ${error.message}. Please try again.`);
 
-      console.log('🔓 Ticket submission unlocked (error)');
+      // console.log('🔓 Ticket submission unlocked (error)');
       setIsSubmittingTicket(false);
     }
   };

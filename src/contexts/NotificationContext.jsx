@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import socketClient, { connectSocket } from '../utils/socketClient';
 import { apiRequest } from '../api/apiClient';
+import { useAuth } from './AuthContext';
 
 const NotificationContext = createContext();
 
@@ -21,21 +22,13 @@ export const useNotification = () => {
 };
 
 export const NotificationProvider = ({ children }) => {
+  const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [socketConnected, setSocketConnected] = useState(false);
 
-  const isLoggedIn = useCallback(() => {
-    return !!(
-      localStorage.getItem('okiedoc_user_type') ||
-      localStorage.getItem('currentUser') ||
-      localStorage.getItem('nurse.firstName') ||
-      localStorage.getItem('admin_token')
-    );
-  }, []);
-
   const fetchNotifications = useCallback(async () => {
-    if (!isLoggedIn()) return;
+    if (!isAuthenticated) return;
     try {
       const data = await apiRequest('/api/v1/notifications');
       setNotifications(data.notifications || []);
@@ -43,10 +36,18 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('[Notifications] Error fetching notifications:', error);
     }
-  }, [isLoggedIn]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!isLoggedIn()) return;
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setSocketConnected(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
 
     fetchNotifications();
 
@@ -54,27 +55,27 @@ export const NotificationProvider = ({ children }) => {
 
     const handleConnect = () => {
       setSocketConnected(true);
-      console.log(
+      /* console.log(
         '[Notifications] Socket connected and auto-joined to room via afterConnect',
-      );
+      ); */
       fetchNotifications();
     };
 
     const handleDisconnect = () => {
       setSocketConnected(false);
-      console.log('[Notifications] Socket disconnected');
+      // console.log('[Notifications] Socket disconnected');
     };
 
     const handleReconnect = () => {
       setSocketConnected(true);
-      console.log(
+      /* console.log(
         '[Notifications] Socket reconnected — re-fetching notifications',
-      );
+      ); */
       fetchNotifications();
     };
 
     const handleNotification = (msg) => {
-      console.log('[Notifications] Received real-time notification:', msg);
+      // console.log('[Notifications] Received real-time notification:', msg);
       const notif = msg?.notification || msg;
       if (notif && notif.id) {
         setNotifications((prev) => [notif, ...prev]);
@@ -97,7 +98,7 @@ export const NotificationProvider = ({ children }) => {
       socketClient.off('reconnect', handleReconnect);
       socketClient.off('notification', handleNotification);
     };
-  }, [fetchNotifications, isLoggedIn]);
+  }, [fetchNotifications, isAuthenticated]);
 
   const markAsRead = async (id) => {
     try {

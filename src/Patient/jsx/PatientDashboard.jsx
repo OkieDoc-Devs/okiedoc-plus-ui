@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { logoutPatient } from '../services/auth';
+import { useAuth } from '../../contexts/AuthContext';
 import { disconnectSocket } from '../../utils/socketClient';
 import { useNavigate } from 'react-router';
 import MedicalRecords from './MedicalRecords';
@@ -58,6 +58,7 @@ const PatientDashboard = () => {
   const [profileImage, setProfileImage] = useState(null);
   const [activeTicket, setActiveTicket] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
+  const { logout } = useAuth();
   const [newMessage, setNewMessage] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -221,7 +222,7 @@ const PatientDashboard = () => {
               profile.Date_Of_Birth ||
               profile.Birth_Date ||
               profile.birthdate;
-            console.log('Raw profile birthday:', rawDate);
+            // console.log('Raw profile birthday:', rawDate);
             if (!rawDate) return prev.birthday || '';
             if (typeof rawDate === 'string' && rawDate.includes('T'))
               return rawDate.split('T')[0];
@@ -337,7 +338,7 @@ const PatientDashboard = () => {
                 currentUser.Date_Of_Birth ||
                 currentUser.Birth_Date ||
                 currentUser.birthdate;
-              console.log('Raw currentUser birthday:', rawDate);
+              // console.log('Raw currentUser birthday:', rawDate);
               if (!rawDate) return prev.birthday || '';
               if (typeof rawDate === 'string' && rawDate.includes('T'))
                 return rawDate.split('T')[0];
@@ -396,9 +397,9 @@ const PatientDashboard = () => {
         let hasUpdates = false;
         for (const ticket of pendingPaymentTickets) {
           try {
-            console.log(
+            /* console.log(
               `Auto-verifying ticket ${ticket.id} on Home Dashboard...`,
-            );
+            ); */
             const result = await verifyTicketPayment(ticket.id);
             if (
               result.status === 'active' ||
@@ -415,9 +416,9 @@ const PatientDashboard = () => {
           }
         }
         if (hasUpdates) {
-          console.log(
+          /* console.log(
             'Home Dashboard auto-verification detected fresh payments! Reloading...',
-          );
+          ); */
           await loadHomeAppointments();
         }
       }
@@ -429,12 +430,12 @@ const PatientDashboard = () => {
   }, [homeAppointments, loadHomeAppointments]);
 
   useEffect(() => {
-    console.log('homeAppointments state changed:', homeAppointments);
-    console.log('homeAppointments length:', homeAppointments.length);
+    // console.log('homeAppointments state changed:', homeAppointments);
+    // console.log('homeAppointments length:', homeAppointments.length);
   }, [homeAppointments]);
 
   const refreshAppointments = (newTicket) => {
-    console.log('Refreshing home appointments...', newTicket);
+    // console.log('Refreshing home appointments...', newTicket);
     if (newTicket) {
       setHomeAppointments((prev) => [newTicket, ...prev]);
     } else {
@@ -494,7 +495,7 @@ const PatientDashboard = () => {
   const handleLogout = async () => {
     try {
       disconnectSocket();
-      await logoutPatient();
+      await logout();
       localStorage.removeItem('currentUser');
       navigate('/login');
     } catch (error) {
@@ -530,7 +531,7 @@ const PatientDashboard = () => {
   };
 
   const handleSaveProfile = () => {
-    console.log('Saving profile:', profileData);
+    // console.log('Saving profile:', profileData);
     setIsEditingProfile(false);
   };
 
@@ -543,7 +544,7 @@ const PatientDashboard = () => {
       alert('Password must be at least 6 characters long');
       return;
     }
-    console.log('Changing password');
+    // console.log('Changing password');
     setPasswordData({
       currentPassword: '',
       newPassword: '',
@@ -723,13 +724,13 @@ const PatientDashboard = () => {
                         </div>
                       ) : (
                         homeAppointments.map((appointment) => {
-                          console.log(
+                          /* console.log(
                             'Rendering appointment:',
                             appointment.title,
                             appointment.status,
                             'ID:',
                             appointment.id,
-                          );
+                          ); */
                           return (
                             <div
                               key={appointment.id}
@@ -1413,31 +1414,33 @@ const PatientDashboard = () => {
               <div className='patient-mobile-logo'>
                 <span className='patient-mobile-logo-text'>OkieDoc</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '15px' }}
+              >
                 <NotificationBell />
                 <div
                   className='patient-mobile-profile-section'
                   onClick={() => setShowMobileProfileModal(true)}
                 >
-                <div className='patient-profile-image-container'>
-                  {profileImage ? (
-                    <img
-                      src={profileImage}
-                      alt='Profile'
-                      className='patient-profile-image'
-                    />
-                  ) : (
-                    <div className='patient-profile-image-placeholder'>
-                      <FaUser className='patient-profile-icon' />
-                    </div>
-                  )}
+                  <div className='patient-profile-image-container'>
+                    {profileImage ? (
+                      <img
+                        src={profileImage}
+                        alt='Profile'
+                        className='patient-profile-image'
+                      />
+                    ) : (
+                      <div className='patient-profile-image-placeholder'>
+                        <FaUser className='patient-profile-icon' />
+                      </div>
+                    )}
+                  </div>
+                  <div className='patient-profile-name'>
+                    <h3 className='patient-profile-full-name'>
+                      {profileData.firstName} {profileData.lastName}
+                    </h3>
+                  </div>
                 </div>
-                <div className='patient-profile-name'>
-                  <h3 className='patient-profile-full-name'>
-                    {profileData.firstName} {profileData.lastName}
-                  </h3>
-                </div>
-              </div>
               </div>
             </div>
 
@@ -1633,7 +1636,10 @@ const PatientDashboard = () => {
               )}
             </div>
           </div>
-          <div className='patient-user-profile' style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div
+            className='patient-user-profile'
+            style={{ display: 'flex', alignItems: 'center', gap: '15px' }}
+          >
             <NotificationBell />
             <button
               className='patient-profile-trigger'
@@ -1667,6 +1673,20 @@ const PatientDashboard = () => {
               </button>
             </div>
           </div>
+        </div>
+
+        <div
+          style={{
+            backgroundColor: '#e3f2fd',
+            padding: '12px 20px',
+            borderBottom: '1px solid #bbdefb',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#1565c0',
+          }}
+        >
+          <strong>Service Area:</strong> {profileData.barangay || 'Not set'},{' '}
+          {profileData.city || 'Not set'}, {profileData.province || 'Not set'}
         </div>
 
         <div className='patient-dashboard-nav'>

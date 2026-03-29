@@ -85,7 +85,8 @@ export const createDefaultEncounter = () => ({
   referral: "",
   followUp: false,
   medicines: [],
-  labRequests: []
+  labRequests: [],
+  icd10: ""
 });
 
 /**

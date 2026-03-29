@@ -3372,3 +3372,158 @@ html:has(body.specialist-dashboard-body) {
   color: #6b7280;
   font-size: 0.95rem;
 }
+
+/* ============================================
+   ICD CODE SELECTOR STYLES
+   ============================================ */
+
+.icd-selector-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2eaf6;
+}
+
+.icd-code-selector {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.icd-dropdowns-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    overflow: visible;
+  }
+}
+
+.icd-dropdown-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.icd-label {
+  font-weight: 600;
+  color: #0b5388;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.icd-dropdown {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #c7d9ee;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 0.89rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icd-dropdown:hover {
+  border-color: #4aa7ed;
+  box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.1);
+}
+
+.icd-dropdown:focus {
+  outline: none;
+  border-color: #4aa7ed;
+  box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.2);
+}
+
+.icd-code-details {
+  background: #f0f6fc;
+  border: 1px solid #d9e8f7;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+  }
+  to {
+    opacity: 1;
+    max-height: 200px;
+    overflow: visible;
+  }
+}
+
+.icd-code-value {
+  font-size: 0.85rem;
+  color: #0b5388;
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-family: 'Courier New', monospace;
+}
+
+.icd-code-description {
+  font-size: 0.84rem;
+  color: #445f7f;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.icd-code-additional-info {
+  font-size: 0.82rem;
+  color: #667a94;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+/* Responsive design for ICD selector */
+@media (max-width: 768px) {
+  .icd-dropdowns-container {
+    gap: 8px;
+  }
+  
+  .icd-dropdown-group {
+    gap: 4px;
+  }
+  
+  .icd-label {
+    font-size: 0.8rem;
+  }
+  
+  .icd-dropdown {
+    font-size: 0.85rem;
+    padding: 7px 10px;
+  }
+  
+  .icd-code-details {
+    padding: 8px 10px;
+  }
+}

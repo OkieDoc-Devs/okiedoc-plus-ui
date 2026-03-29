@@ -8,6 +8,7 @@ import { API_BASE_URL } from '../api/apiClient';
 import SpecialistCall from './SpecialistCall';
 import Messages from './Messages';
 import ImageCropperModal from '../components/ImageCropperModal';
+import ICDCodeSelector from './components/ICDCodeSelector';
 import { usePSGC } from '../hooks/usePSGC';
 import {
   formatDateLabel,
@@ -2084,6 +2085,12 @@ const SpecialistDashboard = () => {
               onChange={(e) => saveEncounter({ assessment: e.target.value })}
               placeholder='Diagnosis: ...'
             />
+            <div className='icd-selector-section'>
+              <ICDCodeSelector
+                value={encounter.icd10}
+                onChange={(newCode) => saveEncounter({ icd10: newCode })}
+              />
+            </div>
           </div>
           <div className='soap-card soap-card--plan'>
             <div className='soap-card-title'>P - Plan</div>

@@ -2099,7 +2099,7 @@ const SpecialistDashboard = () => {
               background: '#0d6efd',
               color: '#ffffff',
               border: 'none',
-              borderRadius: '24px',
+              borderRadius: '6px',
               padding: '12px 28px',
               fontWeight: '600',
               cursor: 'pointer',

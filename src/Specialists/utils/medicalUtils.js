@@ -85,7 +85,8 @@ export const createDefaultEncounter = () => ({
   referral: "",
   followUp: false,
   medicines: [],
-  labRequests: []
+  labRequests: [],
+  icd10: ""
 });
 
 /**
@@ -107,6 +108,7 @@ export const createDefaultMedicineForm = () => ({
  */
 export const createDefaultLabForm = () => ({
   test: "",
+  customTestName: "",
   remarks: ""
 });
 
@@ -118,13 +120,14 @@ export const createDefaultLabForm = () => ({
 export const validateMedicine = (medicine) => {
   const errors = {};
 
-  if (!medicine.brand && !medicine.generic) {
+  if (!medicine.name || medicine.name.trim() === "") {
     errors.medicine = "Enter medicine brand or generic name";
   }
 
-  if (!medicine.instructions) {
-    errors.instructions = "Enter instructions";
-  }
+  // Optional: comment this out if specialInstructions is optional
+  // if (!medicine.specialInstructions) {
+  //   errors.instructions = "Enter instructions";
+  // }
 
   return {
     isValid: Object.keys(errors).length === 0,
@@ -142,6 +145,12 @@ export const validateLabRequest = (labRequest) => {
 
   if (!labRequest.test || labRequest.test.trim() === "") {
     errors.test = "Enter a lab test";
+  }
+
+  if (labRequest.test === "Custom Test") {
+    if (!labRequest.customTestName || labRequest.customTestName.trim() === "") {
+      errors.customTestName = "Enter a custom test name";
+    }
   }
 
   return {
@@ -200,7 +209,15 @@ export const addLabRequestToEncounter = (encounter, labRequest) => {
   }
 
   const labRequests = [...(encounter.labRequests || [])];
-  labRequests.push(labRequest);
+  const normalized = {
+    test: (labRequest.test || "").trim(),
+    remarks: (labRequest.remarks || "").trim(),
+    ...(labRequest.test === "Custom Test"
+      ? { customTestName: (labRequest.customTestName || "").trim() }
+      : {}),
+  };
+
+  labRequests.push(normalized);
 
   return {
     ...encounter,

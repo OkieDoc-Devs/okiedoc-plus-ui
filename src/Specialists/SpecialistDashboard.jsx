@@ -2,13 +2,13 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUpload, FaTimes } from 'react-icons/fa';
 import './SpecialistDashboard.css';
-import { useAuth } from '../contexts/AuthContext';
+import authService from './authService';
 import * as specialistApi from './services/apiService';
 import { API_BASE_URL } from '../api/apiClient';
+import SpecialistCall from './SpecialistCall';
 import Messages from './Messages';
 import ImageCropperModal from '../components/ImageCropperModal';
-import NotificationBell from '../components/Notifications/NotificationBell';
-import { disconnectSocket } from '../utils/socketClient';
+import ICDCodeSelector from './components/ICDCodeSelector';
 import { usePSGC } from '../hooks/usePSGC';
 import {
   formatDateLabel,
@@ -81,7 +81,6 @@ import {
 
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
-  const { user: sessionUser, logout } = useAuth();
   const {
     regions,
     provinces,
@@ -145,6 +144,9 @@ const SpecialistDashboard = () => {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketFilter, setTicketFilter] = useState('All');
 
+  const [quickMessage, setQuickMessage] = useState('');
+  const [quickMessages, setQuickMessages] = useState([]);
+
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [editingService, setEditingService] = useState({ name: '', fee: 0 });
@@ -162,12 +164,18 @@ const SpecialistDashboard = () => {
   const [cropperModalOpen, setCropperModalOpen] = useState(false);
   const [selectedImageSrc, setSelectedImageSrc] = useState(null);
 
+  const [callState, setCallState] = useState({
+    isOpen: false,
+    callType: 'audio',
+    patient: null,
+  });
+
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [encounter, setEncounter] = useState(createDefaultEncounter());
 
-  const [medForm, setMedForm] = useState(createDefaultMedicineForm());
+  const [medForm, setMedForm] = useState(null);
 
-  const [labForm, setLabForm] = useState(createDefaultLabForm());
+  const [labForm, setLabForm] = useState(null);
 
   const [mhRequests, setMhRequests] = useState([]);
   const [mhModal, setMhModal] = useState({
@@ -231,13 +239,13 @@ const SpecialistDashboard = () => {
               ? `${new Date(t.preferredDate).toLocaleDateString()} ${t.preferredTime}`
               : t.createdAt
                 ? new Date(t.createdAt).toLocaleString('en-US', {
-                  month: 'numeric',
-                  day: 'numeric',
-                  year: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  hour12: true,
-                })
+                    month: 'numeric',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                  })
                 : 'TBD',
           status:
             t.status === 'confirmed'
@@ -275,13 +283,13 @@ const SpecialistDashboard = () => {
               ? `${new Date(t.preferredDate).toLocaleDateString()} ${t.preferredTime}`
               : t.createdAt
                 ? new Date(t.createdAt).toLocaleString('en-US', {
-                  month: 'numeric',
-                  day: 'numeric',
-                  year: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  hour12: true,
-                })
+                    month: 'numeric',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                  })
                 : 'TBD',
           status: 'Available',
           rawTicket: t,
@@ -451,37 +459,40 @@ const SpecialistDashboard = () => {
   useEffect(() => {
     document.body.classList.add('specialist-dashboard-body');
 
-    if (!sessionUser || sessionUser.userType !== 'specialist') {
+    const currentUser = authService.getCurrentUser();
+
+    if (!currentUser || currentUser.userType !== 'specialist') {
       navigate('/specialist-login');
       return;
     }
 
-    if (sessionUser.applicationStatus === 'pending') {
+    if (currentUser.user.applicationStatus === 'pending') {
       navigate('/specialist-pending');
       return;
-    } else if (sessionUser.applicationStatus === 'denied') {
+    } else if (currentUser.user.applicationStatus === 'denied') {
       navigate('/specialist-denied');
       return;
     }
 
-    setCurrentUser(sessionUser);
+    setCurrentUser(currentUser.user);
     setIsLoading(false);
 
     const initials = generateUserInitials(
-      sessionUser.firstName || sessionUser.fName,
-      sessionUser.lastName || sessionUser.lName,
+      currentUser.user.firstName || currentUser.user.fName,
+      currentUser.user.lastName || currentUser.user.lName,
     );
     setUserInitials(initials);
 
-    const profile = loadProfileData(sessionUser.email);
+    const profile = loadProfileData(currentUser.user.email);
     setProfileData((prev) => ({
       ...prev,
-      firstName: sessionUser.firstName || sessionUser.fName || '',
-      lastName: sessionUser.lastName || sessionUser.lName || '',
-      email: sessionUser.email,
-      phone: profile.phone || sessionUser.phone || '+63 ',
-      prcNumber: profile.prcNumber || sessionUser.licenseNumber || '',
-      specialization: profile.specialization || sessionUser.specialty || '',
+      firstName: currentUser.user.firstName || currentUser.user.fName || '',
+      lastName: currentUser.user.lastName || currentUser.user.lName || '',
+      email: currentUser.user.email,
+      phone: profile.phone || currentUser.user.phone || '+63 ',
+      prcNumber: profile.prcNumber || currentUser.user.licenseNumber || '',
+      specialization:
+        profile.specialization || currentUser.user.specialty || '',
       subSpecialization: profile.subSpecialization || '',
       bio: profile.bio || '',
       prcImage: profile.prcImage || '',
@@ -495,16 +506,10 @@ const SpecialistDashboard = () => {
       zipCode: profile.zipCode || '',
     }));
 
-    const savedAccount = loadAccountData(sessionUser.email);
+    const savedAccount = loadAccountData(currentUser.user.email);
     setAccountDetails((prev) => ({ ...prev, ...savedAccount }));
-  }, [navigate, sessionUser]);
 
-  useEffect(() => {
-    if (!sessionUser || sessionUser.userType !== 'specialist' || sessionUser.applicationStatus === 'pending' || sessionUser.applicationStatus === 'denied') {
-      return;
-    }
-
-    const savedSchedules = loadScheduleData(sessionUser.email);
+    const savedSchedules = loadScheduleData(currentUser.user.email);
     setSchedules(savedSchedules);
 
     loadTicketsData();
@@ -513,7 +518,7 @@ const SpecialistDashboard = () => {
     return () => {
       document.body.classList.remove('specialist-dashboard-body');
     };
-  }, [navigate, loadTicketsData, loadDashboardData, sessionUser]);
+  }, [navigate, loadTicketsData, loadDashboardData]);
 
   useEffect(() => {
     if (tickets.length > 0 && !selectedTicketId) {
@@ -552,14 +557,21 @@ const SpecialistDashboard = () => {
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
       try {
-        disconnectSocket();
-        await logout();
+        await authService.logout();
         navigate('/');
       } catch (error) {
         console.error('Logout error:', error);
         window.location.href = '/';
       }
     }
+  };
+
+  const handleCloseCall = () => {
+    setCallState({
+      isOpen: false,
+      callType: 'audio',
+      patient: null,
+    });
   };
 
   const handleProfileChange = (field, value) => {
@@ -602,6 +614,7 @@ const SpecialistDashboard = () => {
         zipCode: profileData.zipCode,
       });
 
+      authService.updateCurrentUser(updatedProfile);
       setApiError(null);
 
       const user = JSON.parse(localStorage.getItem(email) || '{}');
@@ -627,17 +640,9 @@ const SpecialistDashboard = () => {
       };
       saveProfileData(email, profile);
 
-      setCurrentUser((prev) => ({
-        ...(prev || {}),
-        firstName: profileData.firstName,
-        lastName: profileData.lastName,
-      }));
-      const initials = generateUserInitials(
-        profileData.firstName,
-        profileData.lastName,
-      );
+      setCurrentUser(user);
+      const initials = generateUserInitials(user.fName, user.lName);
       setUserInitials(initials);
-
 
       setShowSuccessModal(true);
     } catch (error) {
@@ -721,13 +726,13 @@ const SpecialistDashboard = () => {
               ? `${new Date(ticket.preferredDate).toLocaleDateString()} ${ticket.preferredTime}`
               : ticket.createdAt
                 ? new Date(ticket.createdAt).toLocaleString('en-US', {
-                  month: 'numeric',
-                  day: 'numeric',
-                  year: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  hour12: true,
-                })
+                    month: 'numeric',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                  })
                 : 'TBD',
           status:
             ticket.status === 'confirmed'
@@ -806,6 +811,28 @@ const SpecialistDashboard = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleQuickSend = async (e) => {
+    e.preventDefault();
+    const trimmedMessage = quickMessage.trim();
+    if (!trimmedMessage) return;
+
+    const newMessage = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      text: trimmedMessage,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      sender: 'you',
+    };
+
+    setQuickMessages((prev) => [...prev, newMessage]);
+    setQuickMessage('');
+
+    // TODO: wire up real message sending API call when available
+    // await specialistApi.sendMessageToPatient(selectedTicketId, trimmedMessage);
   };
 
   const handleCropComplete = async (croppedFile) => {
@@ -1081,9 +1108,11 @@ const SpecialistDashboard = () => {
       days.push(
         <div
           key={day}
-          className={`calendar-day ${hasSchedule || hasTickets ? 'has-schedule' : ''
-            } ${isTodayDate ? 'today' : ''} ${isPast ? 'past' : ''} ${hasTickets ? 'has-tickets' : ''
-            }`}
+          className={`calendar-day ${
+            hasSchedule || hasTickets ? 'has-schedule' : ''
+          } ${isTodayDate ? 'today' : ''} ${isPast ? 'past' : ''} ${
+            hasTickets ? 'has-tickets' : ''
+          }`}
           onClick={() => !isPast && setSelectedDate(day)}
         >
           <span className='day-number'>{day}</span>
@@ -1358,9 +1387,7 @@ const SpecialistDashboard = () => {
                     <div className='patient-card-title'>
                       {t.patient || 'Unknown'}
                     </div>
-                    <span
-                      className={`status-badge ${getStatusBadgeClass(t.status)}`}
-                    >
+                    <span className={`status-badge ${getStatusBadgeClass(t.status)}`}>
                       {t.status}
                     </span>
                   </div>
@@ -1377,11 +1404,7 @@ const SpecialistDashboard = () => {
         <div className='patient-details-panel'>
           <div className='patient-details-header'>
             <div>
-              <h2>
-                {selectedPatient?.patientFullName ||
-                  selectedPatient?.patient ||
-                  'No patient selected'}
-              </h2>
+              <h2>{selectedPatient?.patientFullName || selectedPatient?.patient || 'No patient selected'}</h2>
               <p className='patient-specialization'>
                 {selectedPatient?.service || 'General Consultation'}
               </p>
@@ -1391,9 +1414,7 @@ const SpecialistDashboard = () => {
               onClick={handleCompleteConsultation}
               disabled={!selectedPatient || patientStatus === 'Completed'}
             >
-              {patientStatus === 'Completed'
-                ? 'Completed'
-                : 'Complete Consultation'}
+              {patientStatus === 'Completed' ? 'Completed' : 'Complete Consultation'}
             </button>
           </div>
 
@@ -1421,9 +1442,7 @@ const SpecialistDashboard = () => {
               <div className='info-item'>
                 <span className='info-label'>Contact</span>
                 <span className='info-value'>
-                  {selectedPatient?.mobile ||
-                    selectedPatient?.contact ||
-                    'Not provided'}
+                  {selectedPatient?.mobile || selectedPatient?.contact || 'Not provided'}
                 </span>
               </div>
             </div>
@@ -1465,6 +1484,577 @@ const SpecialistDashboard = () => {
               {selectedPatient?.triageNotes || 'Vital signs not yet provided.'}
             </div>
           </div>
+
+          <div className='info-card'>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div>
+                <div className='info-card-title' style={{ marginBottom: '2px' }}>Prescription</div>
+                <p style={{ color: '#66788d', fontSize: '0.87rem', margin: 0 }}>Add medications for the patient</p>
+              </div>
+              <button
+                onClick={() => setMedForm(createDefaultMedicineForm())}
+                style={{
+                  background: '#0d6efd',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                + Add Medication
+              </button>
+            </div>
+
+            {encounter?.medicines && encounter.medicines.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {encounter.medicines.map((med, idx) => (
+                  <div key={idx} style={{
+                    border: '1px solid #e2eaf6',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    backgroundColor: '#fbfdff',
+                    position: 'relative',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
+                      <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
+                        Medication #{idx + 1}
+                      </div>
+                      <button
+                        onClick={() => removeMedicine(idx)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#d32f2f',
+                          cursor: 'pointer',
+                          fontSize: '1.2rem',
+                          padding: '0',
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                          Medication Name
+                        </label>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                          {med.name || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                          Dosage
+                        </label>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                          {med.dosage || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                          Frequency
+                        </label>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                          {med.frequency || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                          Duration
+                        </label>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                          {med.duration || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                        Special Instructions
+                      </label>
+                      <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                        {med.specialInstructions || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {!medForm && (!encounter?.medicines || encounter.medicines.length === 0) && (
+              <div style={{
+                textAlign: 'center',
+                padding: '24px 12px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+              }}>
+                <p style={{ color: '#d17171', margin: '0 0 6px 0', fontSize: '0.95rem' }}>
+                  No medications prescribed yet
+                </p>
+                <p style={{ color: '#9ca3af', margin: 0, fontSize: '0.85rem' }}>
+                  Click "Add Medication" to start
+                </p>
+              </div>
+            )}
+
+            {medForm && (
+              <div style={{
+                border: '1px solid #e2eaf6',
+                borderRadius: '8px',
+                padding: '12px',
+                backgroundColor: '#fbfdff',
+                marginTop: '12px',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
+                  <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
+                    Medication #{(encounter?.medicines?.length || 0) + 1}
+                  </div>
+                  <button
+                    onClick={() => setMedForm(null)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#d32f2f',
+                      cursor: 'pointer',
+                      fontSize: '1.2rem',
+                      padding: '0',
+                    }}
+                  >
+                    🗑️
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                      Medication Name
+                    </label>
+                    <input
+                      type='text'
+                      value={medForm.name || ''}
+                      onChange={(e) => setMedForm({ ...medForm, name: e.target.value })}
+                      placeholder='e.g., Amoxicillin'
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #c7d9ee',
+                        backgroundColor: '#fff',
+                        fontSize: '0.9rem',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                      Dosage
+                    </label>
+                    <input
+                      type='text'
+                      value={medForm.dosage || ''}
+                      onChange={(e) => setMedForm({ ...medForm, dosage: e.target.value })}
+                      placeholder='e.g., 500mg'
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #c7d9ee',
+                        backgroundColor: '#fff',
+                        fontSize: '0.9rem',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                      Frequency
+                    </label>
+                    <select
+                      value={medForm.frequency || ''}
+                      onChange={(e) => setMedForm({ ...medForm, frequency: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #c7d9ee',
+                        backgroundColor: '#fff',
+                        fontSize: '0.9rem',
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      <option value=''>Select frequency</option>
+                      <option value='Once daily'>Once daily</option>
+                      <option value='Twice daily'>Twice daily</option>
+                      <option value='Three times daily'>Three times daily</option>
+                      <option value='Four times daily'>Four times daily</option>
+                      <option value='Every 4 hours'>Every 4 hours</option>
+                      <option value='Every 6 hours'>Every 6 hours</option>
+                      <option value='Every 8 hours'>Every 8 hours</option>
+                      <option value='Every 12 hours'>Every 12 hours</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                      Duration
+                    </label>
+                    <input
+                      type='text'
+                      value={medForm.duration || ''}
+                      onChange={(e) => setMedForm({ ...medForm, duration: e.target.value })}
+                      placeholder='e.g., 7 days'
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #c7d9ee',
+                        backgroundColor: '#fff',
+                        fontSize: '0.9rem',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                    Special Instructions
+                  </label>
+                  <input
+                    type='text'
+                    value={medForm.specialInstructions || ''}
+                    onChange={(e) => setMedForm({ ...medForm, specialInstructions: e.target.value })}
+                    placeholder='e.g., Take with food'
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #c7d9ee',
+                      backgroundColor: '#fff',
+                      fontSize: '0.9rem',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setMedForm(null)}
+                    style={{
+                      background: '#f3f4f6',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      padding: '8px 16px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={addMedicine}
+                    style={{
+                      background: '#0d6efd',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 16px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    Add Medication
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className='info-card'>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <div className='info-card-title' style={{ marginBottom: '2px' }}>Laboratory Requests</div>
+                <p style={{ color: '#66788d', fontSize: '0.87rem', margin: 0 }}>Select tests to be performed</p>
+              </div>
+              <button
+                onClick={() => setLabForm(createDefaultLabForm())}
+                style={{
+                  background: '#0d6efd',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                + Add Test
+              </button>
+            </div>
+
+            {encounter?.labRequests && encounter.labRequests.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {encounter.labRequests.map((lab, idx) => (
+                  <div key={idx} style={{
+                    border: '1px solid #e2eaf6',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    backgroundColor: '#fbfdff',
+                    position: 'relative',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
+                      <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
+                        Test #{idx + 1}
+                      </div>
+                      <button
+                        onClick={() => removeLab(idx)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#d32f2f',
+                          cursor: 'pointer',
+                          fontSize: '1.2rem',
+                          padding: '0',
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                          Test Name
+                        </label>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                          {(lab.test === 'Custom Test' && (lab.customTestName || '').trim()) ? (lab.customTestName || '').trim() : (lab.test || 'N/A')}
+                        </div>
+                        {lab.test === 'Custom Test' && !(lab.customTestName || '').trim() && (
+                          <div style={{ marginTop: '6px', color: '#111827', fontWeight: '600', fontSize: '0.9rem' }}>
+                            Enter custom test name
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                          Remarks
+                        </label>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                          {lab.remarks || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {!labForm && (!encounter?.labRequests || encounter.labRequests.length === 0) && (
+              <div style={{
+                textAlign: 'center',
+                padding: '24px 12px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+              }}>
+                <p style={{ color: '#d17171', margin: '0 0 6px 0', fontSize: '0.95rem' }}>
+                  No laboratory tests requested yet
+                </p>
+                <p style={{ color: '#9ca3af', margin: 0, fontSize: '0.85rem' }}>
+                  Click "Add Test" to start
+                </p>
+              </div>
+            )}
+
+            {labForm && (
+              <div style={{
+                border: '1px solid #e2eaf6',
+                borderRadius: '8px',
+                padding: '12px',
+                backgroundColor: '#fbfdff',
+                marginTop: '12px',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
+                  <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
+                    Test #{(encounter?.labRequests?.length || 0) + 1}
+                  </div>
+                  <button
+                    onClick={() => setLabForm(null)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#d32f2f',
+                      cursor: 'pointer',
+                      fontSize: '1.2rem',
+                      padding: '0',
+                    }}
+                  >
+                    🗑️
+                  </button>
+                </div>
+                
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                    Common Laboratory Tests
+                  </label>
+                  <select
+                    value={labForm.test || ''}
+                    onChange={(e) =>
+                      setLabForm((prev) => ({
+                        ...prev,
+                        test: e.target.value,
+                        customTestName: e.target.value === 'Custom Test' ? prev.customTestName : '',
+                      }))
+                    }
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #c7d9ee',
+                      backgroundColor: '#fff',
+                      fontSize: '0.9rem',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <option value=''>Select a test</option>
+                    <option value='Complete Blood Count (CBC)'>Complete Blood Count (CBC)</option>
+                    <option value='Lipid Profile'>Lipid Profile</option>
+                    <option value='HbA1c'>HbA1c</option>
+                    <option value='Kidney Function Test (KFT)'>Kidney Function Test (KFT)</option>
+                    <option value='Chest X-Ray'>Chest X-Ray</option>
+                    <option value='Ultrasound'>Ultrasound</option>
+                    <option value='Hepatitis B Surface Antigen'>Hepatitis B Surface Antigen</option>
+                    <option value='Pregnancy Test'>Pregnancy Test</option>
+                    <option value='Urinalysis'>Urinalysis</option>
+                    <option value='Blood Glucose (FBS)'>Blood Glucose (FBS)</option>
+                    <option value='Liver Function Test (LFT)'>Liver Function Test (LFT)</option>
+                    <option value='Thyroid Function Test'>Thyroid Function Test</option>
+                    <option value='ECG (Electrocardiogram)'>ECG (Electrocardiogram)</option>
+                    <option value='COVID-19 RT-PCR'>COVID-19 RT-PCR</option>
+                    <option value='Stool Examination'>Stool Examination</option>
+                    <option value='Custom Test'>Custom Test</option>
+                  </select>
+                </div>
+
+                {labForm.test === 'Custom Test' && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                      Add Custom Test
+                    </label>
+                    <input
+                      type='text'
+                      value={labForm.customTestName || ''}
+                      onChange={(e) =>
+                        setLabForm((prev) => ({ ...prev, customTestName: e.target.value }))
+                      }
+                      placeholder='Enter custom test name'
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #c7d9ee',
+                        backgroundColor: '#fff',
+                        fontSize: '0.9rem',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                    Remarks
+                  </label>
+                  <input
+                    type='text'
+                    value={labForm.remarks || ''}
+                    onChange={(e) => setLabForm({ ...labForm, remarks: e.target.value })}
+                    placeholder='e.g., Fasting required'
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #c7d9ee',
+                      backgroundColor: '#fff',
+                      fontSize: '0.9rem',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setLabForm(null)}
+                    style={{
+                      background: '#f3f4f6',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      padding: '8px 16px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={addLab}
+                    style={{
+                      background: '#0d6efd',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 16px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    Add Test
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className='info-card quick-message-card'>
+            <div className='info-card-title'>Quick Message</div>
+            <div className='quick-message-list'>
+              {quickMessages.length === 0 ? (
+                <div className='no-quick-message'>
+                  Type a message below to send a quick note to the patient.
+                </div>
+              ) : (
+                quickMessages.map((msg) => (
+                  <div key={msg.id} className='quick-message-item'>
+                    <span className='quick-message-text'>{msg.text}</span>
+                    <span className='quick-message-time'>{msg.timestamp}</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <form className='quick-message-form' onSubmit={handleQuickSend}>
+              <input
+                type='text'
+                value={quickMessage}
+                onChange={(e) => setQuickMessage(e.target.value)}
+                placeholder='Type a message...'
+                className='message-input'
+              />
+              <button type='submit' className='send-btn'>
+                Send
+              </button>
+            </form>
+          </div>
         </div>
 
         <div className='soap-panel'>
@@ -1495,6 +2085,12 @@ const SpecialistDashboard = () => {
               onChange={(e) => saveEncounter({ assessment: e.target.value })}
               placeholder='Diagnosis: ...'
             />
+            <div className='icd-selector-section'>
+              <ICDCodeSelector
+                value={encounter.icd10}
+                onChange={(newCode) => saveEncounter({ icd10: newCode })}
+              />
+            </div>
           </div>
           <div className='soap-card soap-card--plan'>
             <div className='soap-card-title'>P - Plan</div>
@@ -1504,6 +2100,27 @@ const SpecialistDashboard = () => {
               placeholder='Treatment plan includes...'
             />
           </div>
+          <button
+            onClick={openMhModal}
+            style={{
+              background: '#0d6efd',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '12px 28px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              marginTop: 'auto',
+              marginBottom: '8px',
+              display: 'block',
+              marginLeft: 'auto',
+              transition: 'all 0.3s ease',
+            }}
+            onMouseEnter={(e) => (e.target.style.background = '#0b5ed7')}
+            onMouseLeave={(e) => (e.target.style.background = '#0d6efd')}
+          >
+            Request Medical History
+          </button>
         </div>
       </div>
     );
@@ -2055,23 +2672,10 @@ const SpecialistDashboard = () => {
               {userInitials}
             </div>
           )}
-          <div
-            className='account-info'
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              marginLeft: '12px',
-              alignItems: 'flex-start',
-            }}
-          >
-            <span
-              className='account-name'
-              style={{ paddingLeft: 0, lineHeight: '1.2' }}
-            >
-              {currentUser?.firstName || currentUser?.fName || 'Specialist'}{' '}
-              {currentUser?.lastName || currentUser?.lName || ''}
-            </span>
-          </div>
+          <span className='account-name'>
+            {currentUser?.firstName || currentUser?.fName || 'Specialist'}{' '}
+            {currentUser?.lastName || currentUser?.lName || ''}
+          </span>
           <div className='account-dropdown'>
             <button
               className='dropdown-item'
@@ -2087,16 +2691,7 @@ const SpecialistDashboard = () => {
             </button>
           </div>
         </div>
-      </div>
-
-      <div className='dashboard-nav'>
-        <div className='nav-left-info'>
-          <strong>Service Area:</strong>{' '}
-          {profileData.barangay || profileData.city
-            ? `${profileData.barangay || ''}${profileData.barangay && profileData.city ? ', ' : ''}${profileData.city || ''}${profileData.province ? ` (${profileData.province})` : ''}`
-            : 'Not set'}
-        </div>
-        <div className='nav-tabs-container'>
+        <div className='dashboard-nav'>
           <button
             className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => handleNavigation('dashboard', 'Dashboard')}
@@ -2128,7 +2723,6 @@ const SpecialistDashboard = () => {
             Transactions
           </button>
         </div>
-        <div className='nav-right-placeholder'></div>
       </div>
 
       <div className='main-content'>
@@ -2429,8 +3023,8 @@ const SpecialistDashboard = () => {
                 value={
                   selectedDate
                     ? `${getMonthName(
-                      currentMonth,
-                    )} ${selectedDate}, ${currentYear}`
+                        currentMonth,
+                      )} ${selectedDate}, ${currentYear}`
                     : ''
                 }
                 readOnly
@@ -2712,6 +3306,15 @@ const SpecialistDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Call/Video Call Component */}
+      <SpecialistCall
+        isOpen={callState.isOpen}
+        onClose={handleCloseCall}
+        callType={callState.callType}
+        patient={callState.patient}
+        currentUser={currentUser}
+      />
 
       {/* Success Modal */}
       {showSuccessModal && (

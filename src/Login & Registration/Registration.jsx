@@ -1,6 +1,6 @@
 import './auth.css';
 import { useNavigate } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { FiUpload } from 'react-icons/fi';
 import { usePSGC } from '../hooks/usePSGC';
@@ -34,15 +34,7 @@ const registerPatient = async (formData, uploadedFiles) => {
 
 export default function Registration() {
   const navigate = useNavigate();
-  const {
-    regions,
-    provinces,
-    cities,
-    barangays,
-    fetchProvinces,
-    fetchCities,
-    fetchBarangays,
-  } = usePSGC();
+  const { regions, provinces, cities, barangays, fetchProvinces, fetchCities, fetchBarangays } = usePSGC();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -285,7 +277,7 @@ export default function Registration() {
       if (result.message || result.success) {
         setSuccess(
           result.message ||
-            'Your account has been successfully created. You may now log in.',
+          'Your account has been successfully created. You may now log in.',
         );
         window.scrollTo(0, 0);
         setFormData({
@@ -564,17 +556,10 @@ export default function Registration() {
               id='region'
               value={formData.region}
               onChange={(e) => {
-                const selectedRegion = regions.find(
-                  (r) => r.name === e.target.value,
-                );
+                const selectedRegion = regions.find(r => r.name === e.target.value);
                 handleInputChange(e);
                 fetchProvinces(selectedRegion?.code);
-                setFormData((prev) => ({
-                  ...prev,
-                  province: '',
-                  city: '',
-                  barangay: '',
-                }));
+                setFormData(prev => ({ ...prev, province: '', city: '', barangay: '' }));
               }}
             >
               <option value=''>Select Region</option>
@@ -596,12 +581,10 @@ export default function Registration() {
               id='province'
               value={formData.province}
               onChange={(e) => {
-                const selectedProvince = provinces.find(
-                  (p) => p.name === e.target.value,
-                );
+                const selectedProvince = provinces.find(p => p.name === e.target.value);
                 handleInputChange(e);
                 fetchCities(selectedProvince?.code);
-                setFormData((prev) => ({ ...prev, city: '', barangay: '' }));
+                setFormData(prev => ({ ...prev, city: '', barangay: '' }));
               }}
               disabled={!formData.region}
             >
@@ -624,12 +607,10 @@ export default function Registration() {
               id='city'
               value={formData.city}
               onChange={(e) => {
-                const selectedCity = cities.find(
-                  (c) => c.name === e.target.value,
-                );
+                const selectedCity = cities.find(c => c.name === e.target.value);
                 handleInputChange(e);
                 fetchBarangays(selectedCity?.code);
-                setFormData((prev) => ({ ...prev, barangay: '' }));
+                setFormData(prev => ({ ...prev, barangay: '' }));
               }}
               disabled={!formData.province}
             >

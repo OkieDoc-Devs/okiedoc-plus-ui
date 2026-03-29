@@ -1,12 +1,12 @@
 import './auth.css';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import { useAuth } from '../contexts/AuthContext';
+import authService from '../Specialists/authService';
+import { apiRequest } from '../api/apiClient';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, getRedirectPathForRole } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -28,15 +28,32 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const user = await login({
-        email: formData.email,
-        password: formData.password,
-        roleMode: 'deny',
-        role: 'specialist',
+      const result = await apiRequest('/api/v1/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
       });
 
-      const redirectPath = getRedirectPathForRole(user?.role);
-      navigate(redirectPath);
+      if (result.success) {
+        const role = result.user?.userType || result.user?.role;
+        if (role === 'specialist') {
+          await apiRequest('/api/v1/auth/logout', { method: 'POST' }).catch(
+            () => {},
+          );
+          setError('Specialists must login via the Specialist Portal.');
+          setIsLoading(false);
+          return;
+        }
+
+        localStorage.setItem('okiedoc_user_type', role);
+
+        const redirectPath = authService.getRedirectPath(role);
+        navigate(redirectPath);
+      } else {
+        setError(result.message || result.error || 'Invalid email or password');
+      }
     } catch (error) {
       console.error('Login error:', error);
       setError(error.message || 'An error occurred. Please try again.');

@@ -1559,8 +1559,8 @@ html:has(body.specialist-dashboard-body) {
 }
 
 .complete-consultation {
-  background: #0ea5ff;
-  color: #fff;
+  background: #0d6efd !important;
+  color: #fff !important;
   border: none;
   border-radius: 10px;
   box-shadow: 0 6px 12px rgba(0, 123, 255, 0.25);
@@ -1572,8 +1572,9 @@ html:has(body.specialist-dashboard-body) {
 }
 
 .complete-consultation:hover:not(:disabled) {
+  background: #0b5ed7 !important;
   transform: translateY(-1px);
-  box-shadow: 0 8px 14px rgba(0, 123, 255, 0.35);
+  box-shadow: 0 8px 14px rgba(13, 110, 253, 0.35);
 }
 
 .complete-consultation:disabled {
@@ -1697,17 +1698,18 @@ html:has(body.specialist-dashboard-body) {
 }
 
 .quick-message-form .send-btn {
-  background-color: #0ea5ff;
-  color: white;
+  background-color: #0d6efd;
+  color: #ffffff;
   border: none;
   border-radius: 8px;
   padding: 8px 14px;
   font-weight: 700;
   cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
 .quick-message-form .send-btn:hover {
-  background-color: #0b84d6;
+  background-color: #0b5ed7;
 }
 
 .soap-card-title {
@@ -1903,8 +1905,8 @@ html:has(body.specialist-dashboard-body) {
 }
 
 .complete-consultation {
-  background: #10b981;
-  color: white;
+  background: #0d6efd !important;
+  color: white !important;
   border: none;
   border-radius: 10px;
   padding: 10px 18px;
@@ -1914,7 +1916,7 @@ html:has(body.specialist-dashboard-body) {
 }
 
 .complete-consultation:hover {
-  background: #0e9f6a;
+  background: #0b5ed7 !important;
 }
 
 .patient-info-grid {
@@ -3050,8 +3052,8 @@ html:has(body.specialist-dashboard-body) {
 }
 
 .send-btn {
-  background: #0aadef;
-  color: #000000;
+  background: #0d6efd;
+  color: #ffffff;
   border: none;
   border-radius: 8px;
   padding: 10px 20px;
@@ -3061,7 +3063,7 @@ html:has(body.specialist-dashboard-body) {
 }
 
 .send-btn:hover {
-  background: #4aa7ed;
+  background: #0b5ed7;
 }
 
 .character-count {

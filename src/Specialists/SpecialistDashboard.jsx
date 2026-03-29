@@ -172,9 +172,9 @@ const SpecialistDashboard = () => {
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [encounter, setEncounter] = useState(createDefaultEncounter());
 
-  const [medForm, setMedForm] = useState(createDefaultMedicineForm());
+  const [medForm, setMedForm] = useState(null);
 
-  const [labForm, setLabForm] = useState(createDefaultLabForm());
+  const [labForm, setLabForm] = useState(null);
 
   const [mhRequests, setMhRequests] = useState([]);
   const [mhModal, setMhModal] = useState({
@@ -1484,6 +1484,547 @@ const SpecialistDashboard = () => {
             </div>
           </div>
 
+          <div className='info-card'>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div>
+                <div className='info-card-title' style={{ marginBottom: '2px' }}>Prescription</div>
+                <p style={{ color: '#66788d', fontSize: '0.87rem', margin: 0 }}>Add medications for the patient</p>
+              </div>
+              <button
+                onClick={() => setMedForm(createDefaultMedicineForm())}
+                style={{
+                  background: '#0d6efd',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                + Add Medication
+              </button>
+            </div>
+
+            {encounter?.medicines && encounter.medicines.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {encounter.medicines.map((med, idx) => (
+                  <div key={idx} style={{
+                    border: '1px solid #e2eaf6',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    backgroundColor: '#fbfdff',
+                    position: 'relative',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
+                      <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
+                        Medication #{idx + 1}
+                      </div>
+                      <button
+                        onClick={() => removeMedicine(idx)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#d32f2f',
+                          cursor: 'pointer',
+                          fontSize: '1.2rem',
+                          padding: '0',
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                          Medication Name
+                        </label>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                          {med.name || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                          Dosage
+                        </label>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                          {med.dosage || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                          Frequency
+                        </label>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                          {med.frequency || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                          Duration
+                        </label>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                          {med.duration || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                        Special Instructions
+                      </label>
+                      <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                        {med.specialInstructions || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {!medForm && (!encounter?.medicines || encounter.medicines.length === 0) && (
+              <div style={{
+                textAlign: 'center',
+                padding: '24px 12px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+              }}>
+                <p style={{ color: '#d17171', margin: '0 0 6px 0', fontSize: '0.95rem' }}>
+                  No medications prescribed yet
+                </p>
+                <p style={{ color: '#9ca3af', margin: 0, fontSize: '0.85rem' }}>
+                  Click "Add Medication" to start
+                </p>
+              </div>
+            )}
+
+            {medForm && (
+              <div style={{
+                border: '1px solid #e2eaf6',
+                borderRadius: '8px',
+                padding: '12px',
+                backgroundColor: '#fbfdff',
+                marginTop: '12px',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
+                  <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
+                    Medication #{(encounter?.medicines?.length || 0) + 1}
+                  </div>
+                  <button
+                    onClick={() => setMedForm(null)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#d32f2f',
+                      cursor: 'pointer',
+                      fontSize: '1.2rem',
+                      padding: '0',
+                    }}
+                  >
+                    🗑️
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                      Medication Name
+                    </label>
+                    <input
+                      type='text'
+                      value={medForm.name || ''}
+                      onChange={(e) => setMedForm({ ...medForm, name: e.target.value })}
+                      placeholder='e.g., Amoxicillin'
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #c7d9ee',
+                        backgroundColor: '#fff',
+                        fontSize: '0.9rem',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                      Dosage
+                    </label>
+                    <input
+                      type='text'
+                      value={medForm.dosage || ''}
+                      onChange={(e) => setMedForm({ ...medForm, dosage: e.target.value })}
+                      placeholder='e.g., 500mg'
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #c7d9ee',
+                        backgroundColor: '#fff',
+                        fontSize: '0.9rem',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                      Frequency
+                    </label>
+                    <select
+                      value={medForm.frequency || ''}
+                      onChange={(e) => setMedForm({ ...medForm, frequency: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #c7d9ee',
+                        backgroundColor: '#fff',
+                        fontSize: '0.9rem',
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      <option value=''>Select frequency</option>
+                      <option value='Once daily'>Once daily</option>
+                      <option value='Twice daily'>Twice daily</option>
+                      <option value='Three times daily'>Three times daily</option>
+                      <option value='Four times daily'>Four times daily</option>
+                      <option value='Every 4 hours'>Every 4 hours</option>
+                      <option value='Every 6 hours'>Every 6 hours</option>
+                      <option value='Every 8 hours'>Every 8 hours</option>
+                      <option value='Every 12 hours'>Every 12 hours</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                      Duration
+                    </label>
+                    <input
+                      type='text'
+                      value={medForm.duration || ''}
+                      onChange={(e) => setMedForm({ ...medForm, duration: e.target.value })}
+                      placeholder='e.g., 7 days'
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #c7d9ee',
+                        backgroundColor: '#fff',
+                        fontSize: '0.9rem',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                    Special Instructions
+                  </label>
+                  <input
+                    type='text'
+                    value={medForm.specialInstructions || ''}
+                    onChange={(e) => setMedForm({ ...medForm, specialInstructions: e.target.value })}
+                    placeholder='e.g., Take with food'
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #c7d9ee',
+                      backgroundColor: '#fff',
+                      fontSize: '0.9rem',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setMedForm(null)}
+                    style={{
+                      background: '#f3f4f6',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      padding: '8px 16px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={addMedicine}
+                    style={{
+                      background: '#0d6efd',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 16px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    Add Medication
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className='info-card'>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <div className='info-card-title' style={{ marginBottom: '2px' }}>Laboratory Requests</div>
+                <p style={{ color: '#66788d', fontSize: '0.87rem', margin: 0 }}>Select tests to be performed</p>
+              </div>
+              <button
+                onClick={() => setLabForm(createDefaultLabForm())}
+                style={{
+                  background: '#0d6efd',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                + Add Test
+              </button>
+            </div>
+
+            {encounter?.labRequests && encounter.labRequests.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {encounter.labRequests.map((lab, idx) => (
+                  <div key={idx} style={{
+                    border: '1px solid #e2eaf6',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    backgroundColor: '#fbfdff',
+                    position: 'relative',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
+                      <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
+                        Test #{idx + 1}
+                      </div>
+                      <button
+                        onClick={() => removeLab(idx)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#d32f2f',
+                          cursor: 'pointer',
+                          fontSize: '1.2rem',
+                          padding: '0',
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                          Test Name
+                        </label>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                          {(lab.test === 'Custom Test' && (lab.customTestName || '').trim()) ? (lab.customTestName || '').trim() : (lab.test || 'N/A')}
+                        </div>
+                        {lab.test === 'Custom Test' && !(lab.customTestName || '').trim() && (
+                          <div style={{ marginTop: '6px', color: '#111827', fontWeight: '600', fontSize: '0.9rem' }}>
+                            Enter custom test name
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                          Remarks
+                        </label>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
+                          {lab.remarks || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {!labForm && (!encounter?.labRequests || encounter.labRequests.length === 0) && (
+              <div style={{
+                textAlign: 'center',
+                padding: '24px 12px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+              }}>
+                <p style={{ color: '#d17171', margin: '0 0 6px 0', fontSize: '0.95rem' }}>
+                  No laboratory tests requested yet
+                </p>
+                <p style={{ color: '#9ca3af', margin: 0, fontSize: '0.85rem' }}>
+                  Click "Add Test" to start
+                </p>
+              </div>
+            )}
+
+            {labForm && (
+              <div style={{
+                border: '1px solid #e2eaf6',
+                borderRadius: '8px',
+                padding: '12px',
+                backgroundColor: '#fbfdff',
+                marginTop: '12px',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
+                  <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
+                    Test #{(encounter?.labRequests?.length || 0) + 1}
+                  </div>
+                  <button
+                    onClick={() => setLabForm(null)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#d32f2f',
+                      cursor: 'pointer',
+                      fontSize: '1.2rem',
+                      padding: '0',
+                    }}
+                  >
+                    🗑️
+                  </button>
+                </div>
+                
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                    Common Laboratory Tests
+                  </label>
+                  <select
+                    value={labForm.test || ''}
+                    onChange={(e) =>
+                      setLabForm((prev) => ({
+                        ...prev,
+                        test: e.target.value,
+                        customTestName: e.target.value === 'Custom Test' ? prev.customTestName : '',
+                      }))
+                    }
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #c7d9ee',
+                      backgroundColor: '#fff',
+                      fontSize: '0.9rem',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <option value=''>Select a test</option>
+                    <option value='Complete Blood Count (CBC)'>Complete Blood Count (CBC)</option>
+                    <option value='Lipid Profile'>Lipid Profile</option>
+                    <option value='HbA1c'>HbA1c</option>
+                    <option value='Kidney Function Test (KFT)'>Kidney Function Test (KFT)</option>
+                    <option value='Chest X-Ray'>Chest X-Ray</option>
+                    <option value='Ultrasound'>Ultrasound</option>
+                    <option value='Hepatitis B Surface Antigen'>Hepatitis B Surface Antigen</option>
+                    <option value='Pregnancy Test'>Pregnancy Test</option>
+                    <option value='Urinalysis'>Urinalysis</option>
+                    <option value='Blood Glucose (FBS)'>Blood Glucose (FBS)</option>
+                    <option value='Liver Function Test (LFT)'>Liver Function Test (LFT)</option>
+                    <option value='Thyroid Function Test'>Thyroid Function Test</option>
+                    <option value='ECG (Electrocardiogram)'>ECG (Electrocardiogram)</option>
+                    <option value='COVID-19 RT-PCR'>COVID-19 RT-PCR</option>
+                    <option value='Stool Examination'>Stool Examination</option>
+                    <option value='Custom Test'>Custom Test</option>
+                  </select>
+                </div>
+
+                {labForm.test === 'Custom Test' && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                      Add Custom Test
+                    </label>
+                    <input
+                      type='text'
+                      value={labForm.customTestName || ''}
+                      onChange={(e) =>
+                        setLabForm((prev) => ({ ...prev, customTestName: e.target.value }))
+                      }
+                      placeholder='Enter custom test name'
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #c7d9ee',
+                        backgroundColor: '#fff',
+                        fontSize: '0.9rem',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                    Remarks
+                  </label>
+                  <input
+                    type='text'
+                    value={labForm.remarks || ''}
+                    onChange={(e) => setLabForm({ ...labForm, remarks: e.target.value })}
+                    placeholder='e.g., Fasting required'
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #c7d9ee',
+                      backgroundColor: '#fff',
+                      fontSize: '0.9rem',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setLabForm(null)}
+                    style={{
+                      background: '#f3f4f6',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      padding: '8px 16px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={addLab}
+                    style={{
+                      background: '#0d6efd',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 16px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    Add Test
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className='info-card quick-message-card'>
             <div className='info-card-title'>Quick Message</div>
             <div className='quick-message-list'>
@@ -1555,8 +2096,8 @@ const SpecialistDashboard = () => {
           <button
             onClick={openMhModal}
             style={{
-              background: '#0aadef',
-              color: '#000000',
+              background: '#0d6efd',
+              color: '#ffffff',
               border: 'none',
               borderRadius: '24px',
               padding: '12px 28px',
@@ -1568,8 +2109,8 @@ const SpecialistDashboard = () => {
               marginLeft: 'auto',
               transition: 'all 0.3s ease',
             }}
-            onMouseEnter={(e) => (e.target.style.background = '#4aa7ed')}
-            onMouseLeave={(e) => (e.target.style.background = '#0aadef')}
+            onMouseEnter={(e) => (e.target.style.background = '#0b5ed7')}
+            onMouseLeave={(e) => (e.target.style.background = '#0d6efd')}
           >
             Request Medical History
           </button>

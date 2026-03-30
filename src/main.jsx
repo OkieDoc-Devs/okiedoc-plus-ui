@@ -10,6 +10,7 @@ import MyAccount from './Nurse/MyAccount.jsx';
 import ManageAppointments from './Nurse/ManageAppointments.jsx';
 import Messages from './Nurse/Messages.jsx';
 import SpecialistDashboard from './Admin/Specialistdashboard/SpecialistDashboard.jsx';
+import TicketDetails from './Admin/TicketDetails/TicketDetails.jsx';
 import NurseAdminDashboard from './NurseAdmin/NurseAdminDashboard.jsx';
 import PatientDashboard from './Patient/jsx/PatientDashboard.jsx';
 import SpecialistDashboard2 from './Specialists/SpecialistDashboard.jsx';
@@ -39,11 +40,9 @@ const loadSailsSocket = () => {
       window.io.sails.url = apiUrl;
       window.io.sails.useCORSRouteToGetCookie = true;
       window.io.sails.transports = ['websocket', 'polling'];
-      // Ensure it connects
       if (typeof window.io.socket.connect === 'function') {
         window.io.socket.connect();
       }
-      // console.log('Sails.io.js loaded and configured for:', apiUrl);
     }
   };
   script.onerror = () => {
@@ -133,6 +132,15 @@ createRoot(document.getElementById('root')).render(
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <SpecialistDashboard />
+                </ProtectedRoute>
+              }
+            />
+            {/* Ticket Details Route */}
+            <Route
+              path='/admin/ticket/:id'
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <TicketDetails />
                 </ProtectedRoute>
               }
             />

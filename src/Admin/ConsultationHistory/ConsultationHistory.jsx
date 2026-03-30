@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import EmptyState from "../Components/EmptyState";
+import { getTicketById } from "../../api/Admin/api";
 import {
   downloadTreatmentPlanPDF,
   downloadPrescriptionPDF,
@@ -12,6 +13,7 @@ import "./ConsultationHistory.css";
 
 const ConsultationHistory = ({ consultations = [], toolbar }) => {
   const [selectedConsultation, setSelectedConsultation] = useState(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
 
   const sortedConsultations = useMemo(() => {
@@ -46,6 +48,19 @@ const ConsultationHistory = ({ consultations = [], toolbar }) => {
   const getSortIndicator = (key) => {
     if (sortConfig.key !== key) return null;
     return sortConfig.direction === "asc" ? " ▲" : " ▼";
+  };
+
+  const handleViewConsultation = async (consultation) => {
+    setIsLoadingDetails(true);
+    try {
+      const fullTicketResponse = await getTicketById(consultation.ticket || consultation.id);
+      setSelectedConsultation(fullTicketResponse.data || fullTicketResponse);
+    } catch (error) {
+      console.error("Failed to load full ticket details, falling back to basic data:", error);
+      setSelectedConsultation(consultation);
+    } finally {
+      setIsLoadingDetails(false);
+    }
   };
 
   return (
@@ -104,8 +119,12 @@ const ConsultationHistory = ({ consultations = [], toolbar }) => {
                   <td>{c.status || "Completed"}</td>
                   <td>{c.barangay ? `${c.barangay}, ${c.city || ''}` : "—"}</td>
                   <td>
-                    <button className="action-btn btn-primary" onClick={() => setSelectedConsultation(c)}>
-                      View
+                    <button 
+                      className="action-btn btn-primary" 
+                      onClick={() => handleViewConsultation(c)}
+                      disabled={isLoadingDetails}
+                    >
+                      {isLoadingDetails ? '...' : 'View'}
                     </button>
                   </td>
                 </tr>
@@ -121,7 +140,6 @@ const ConsultationHistory = ({ consultations = [], toolbar }) => {
         </table>
       </div>
 
-      {/* UX FIX: Unified Overlay for Ticket Details */}
       {selectedConsultation && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setSelectedConsultation(null)}>
           <div style={{ maxWidth: '800px', width: '95%', maxHeight: '90vh', overflowY: 'auto', backgroundColor: '#fff', borderRadius: '8px', padding: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
@@ -134,7 +152,7 @@ const ConsultationHistory = ({ consultations = [], toolbar }) => {
               
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ticket ID</span>
-                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '600' }}>{selectedConsultation.ticket || selectedConsultation.id}</span>
+                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '600' }}>{selectedConsultation.ticketNumber || selectedConsultation.ticket || selectedConsultation.id}</span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -144,22 +162,41 @@ const ConsultationHistory = ({ consultations = [], toolbar }) => {
 
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Patient Name</span>
-                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>{selectedConsultation.patientName}</span>
+                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>
+                  {selectedConsultation.patient?.firstName ? `${selectedConsultation.patient.firstName} ${selectedConsultation.patient.lastName}` : selectedConsultation.patientName}
+                </span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned Specialist</span>
-                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>{selectedConsultation.specialistName || "Unassigned"}</span>
+                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>
+                  {selectedConsultation.specialist?.firstName ? `${selectedConsultation.specialist.firstName} ${selectedConsultation.specialist.lastName}` : selectedConsultation.specialistName || "Unassigned"}
+                </span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date</span>
-                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>{selectedConsultation.date ? new Date(selectedConsultation.date).toLocaleDateString() : "N/A"}</span>
+                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>
+                  {selectedConsultation.createdAt ? new Date(selectedConsultation.createdAt).toLocaleDateString() : (selectedConsultation.date ? new Date(selectedConsultation.date).toLocaleDateString() : "N/A")}
+                </span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Location</span>
                 <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>{selectedConsultation.barangay ? `${selectedConsultation.barangay}, ${selectedConsultation.city || ''}` : "N/A"}</span>
+              </div>
+
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '20px', padding: '12px', backgroundColor: '#e8f5e9', border: '1px solid #c8e6c9', borderRadius: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <span style={{ fontSize: '12px', color: '#27ae60', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 'bold' }}>Healthcare / HMO</span>
+                  <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.isUsingHmo ? selectedConsultation.hmoProvider : 'Cash / Direct Payment'}</span>
+                </div>
+                {selectedConsultation.isUsingHmo && (
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    <span style={{ fontSize: '12px', color: '#27ae60', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 'bold' }}>Member ID / LOA</span>
+                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>ID: {selectedConsultation.hmoMemberId || 'N/A'} <br/> LOA: {selectedConsultation.loaCode || 'N/A'}</span>
+                  </div>
+                )}
               </div>
 
               <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #e1e8ed', paddingTop: '15px', marginTop: '5px' }}>
@@ -179,19 +216,19 @@ const ConsultationHistory = ({ consultations = [], toolbar }) => {
                 <ul className="ch-soap-list" style={{ padding: 0, margin: 0, listStyle: 'none', display: 'grid', gap: '10px' }}>
                   <li style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Subjective</span>
-                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.soap?.subjective || "N/A"}</span>
+                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.subjective || "N/A"}</span>
                   </li>
                   <li style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Objective</span>
-                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.soap?.objective || "N/A"}</span>
+                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.objective || "N/A"}</span>
                   </li>
                   <li style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assessment</span>
-                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.soap?.assessment || "N/A"}</span>
+                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.assessment || "N/A"}</span>
                   </li>
                   <li style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Plan</span>
-                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.soap?.plan || "N/A"}</span>
+                    <span style={{ fontSize: '15px', color: '#2c3e50' }}>{selectedConsultation.plan || "N/A"}</span>
                   </li>
                 </ul>
               </div>
@@ -202,7 +239,7 @@ const ConsultationHistory = ({ consultations = [], toolbar }) => {
                    <button className="action-btn btn-primary" onClick={() => downloadTreatmentPlanPDF(selectedConsultation)}>Download Treatment Plan</button>
                    <button className="action-btn btn-success" onClick={() => downloadPrescriptionPDF(selectedConsultation)}>Download Prescription</button>
                    <button className="action-btn" style={{ backgroundColor: '#f1c40f', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => downloadLabRequestPDF(selectedConsultation)}>Download Lab Request</button>
-                   <button className="action-btn" style={{ backgroundColor: '#9b59b6', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => downloadMedicalCertificatePDF(selectedConsultation)}>Download Medical Certificate</button>
+                   <button className="action-btn" style={{ backgroundColor: '#9b59b6', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => downloadMedicalCertificatePDF(selectedConsultation)}>Download Medical Cert</button>
                    <button className="action-btn btn-danger" onClick={() => sendToEmail(selectedConsultation)}>Send to Email</button>
                  </div>
               </div>

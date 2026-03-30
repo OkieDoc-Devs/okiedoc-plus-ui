@@ -35,9 +35,7 @@ export const loginAdmin = async (email, password) => {
 
     const role = data?.user?.role || data?.user?.userType;
     if (role !== 'admin') {
-      await apiRequest('/api/v1/auth/logout', { method: 'POST' }).catch(
-        () => {},
-      );
+      await apiRequest('/api/v1/auth/logout', { method: 'POST' }).catch(() => {});
       throw new Error('Access denied: this portal is for admin accounts.');
     }
 
@@ -201,7 +199,6 @@ export const getPatientAndNurseUsers = async () => {
 
 /**
  * Approve or deny a pending specialist application.
- * @param {object} payload - { specialistId, action ('approve' | 'deny'), reason }
  */
 export const approveSpecialist = async (payload) => {
   try {
@@ -217,7 +214,6 @@ export const approveSpecialist = async (payload) => {
 
 /**
  * Create a new staff account (Nurse or Admin).
- * @param {object} payload - { fullName, email, password, mobileNumber, role, licenseNumber, prcExpiryDate }
  */
 export const createStaff = async (payload) => {
   try {
@@ -233,8 +229,6 @@ export const createStaff = async (payload) => {
 
 /**
  * Updates a user's information.
- * @param {string} userId - The ID of the user to update.
- * @param {object} userData - The data to update.
  */
 export const updateUser = async (userId, userData) => {
   try {
@@ -250,7 +244,6 @@ export const updateUser = async (userId, userData) => {
 
 /**
  * Deletes a user.
- * @param {string} userId - The ID of the user to delete.
  */
 export const deleteUser = async (userId) => {
   try {
@@ -265,30 +258,85 @@ export const deleteUser = async (userId) => {
 
 /**
  * Update Specialist Status
- * Sends a command to manually update a specialist's operational status.
- * @param {Object} payload - The update payload
- * @param {number} payload.specialistId - The ID of the specialist (user ID).
- * @param {string} payload.status - The new status ('approved', 'inactive', 'suspended').
- * @returns {Promise<Object>} The API response confirming the update.
  */
 export const updateSpecialistStatus = async ({ specialistId, status }) => {
   try {
     const token = localStorage.getItem('admin_token');
-    const response = await fetch('/api/v1/admin/update-specialist-status', {
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/update-specialist-status`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
       },
+      credentials: 'include',
       body: JSON.stringify({ specialistId, status })
     });
     
-    if (!response.ok) {
-      throw new Error('Failed to update specialist status');
-    }
-    
+    if (!response.ok) throw new Error('Failed to update specialist status');
     return await response.json();
   } catch (error) {
     throw error;
+  }
+};
+
+/**
+ * Fetches a single ticket by its ID or Ticket Number for the Admin
+ */
+export const getTicketById = async (ticketId) => {
+  try {
+    return await apiRequest(`/api/v1/admin/ticket/${ticketId}`);
+  } catch (error) {
+    console.error(`Failed to fetch ticket ${ticketId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Uploads a profile picture for the Admin (Triggers the Blob Storage PoC)
+ */
+export const uploadAdminAvatar = async (file) => {
+  const formData = new FormData();
+  formData.append('photo', file);
+
+  const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/user/upload-profile-picture`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      credentials: 'include', 
+      body: formData,
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.message || data.error || `Server error: ${response.status}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error uploading admin avatar:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetches the saved Blob avatar on refresh for the Admin dashboard.
+ */
+export const getAdminProfile = async () => {
+  try {
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/profile`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      credentials: 'include'
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch admin profile:', error);
+    return null;
   }
 };

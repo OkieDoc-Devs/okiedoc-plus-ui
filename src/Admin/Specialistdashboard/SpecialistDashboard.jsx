@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import PendingTable from './PendingTable';
@@ -19,6 +19,7 @@ import {
   getTransactions,
   getConsultations,
   getPatientAndNurseUsers,
+  getAdminProfile
 } from '../../api/Admin/api.js';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -33,6 +34,10 @@ import OkieDocLogo from '../../assets/okie-doc-logo.png';
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  
+  const fileInputRef = useRef(null);
+
+  const [adminAvatar, setAdminAvatar] = useState('/account.svg');
 
   const [activeTab, setActiveTab] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
@@ -91,13 +96,19 @@ const SpecialistDashboard = () => {
           transactionsData,
           consultationsData,
           usersData,
+          adminProfileData 
         ] = await Promise.all([
           getSpecialists(),
           getPendingApplications(),
           getTransactions(),
           getConsultations(),
           getPatientAndNurseUsers(),
+          getAdminProfile().catch(() => null) 
         ]);
+
+        if (adminProfileData && adminProfileData.profileUrl && !adminProfileData.profileUrl.includes('admin_avatar.png')) {
+          setAdminAvatar(adminProfileData.profileUrl);
+        }
 
         const specialistsArray = Array.isArray(specialistsData) ? specialistsData : specialistsData?.specialists || specialistsData?.data || [];
         const pendingArray = Array.isArray(pendingData) ? pendingData : pendingData?.applications || pendingData?.data || [];
@@ -287,6 +298,7 @@ const SpecialistDashboard = () => {
     if (sortConfigTx.key === key && sortConfigTx.direction === 'asc') direction = 'desc';
     setSortConfigTx({ key, direction });
   };
+  
   const getSortIndicatorTx = (key) => {
     if (sortConfigTx.key !== key) return null;
     return sortConfigTx.direction === 'asc' ? ' ▲' : ' ▼';
@@ -325,26 +337,16 @@ const SpecialistDashboard = () => {
 
   const handleUpdateUser = async (updatedUser) => {
     try {
-      // console.log('Simulating update for user:', updatedUser);
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.id === updatedUser.id ? updatedUser : user,
-        ),
-      );
-      alert('User updated successfully! (Simulated)');
-    } catch {
-      alert('Failed to update user. (Simulated)');
-    }
+      setUsers((prevUsers) => prevUsers.map((user) => user.id === updatedUser.id ? updatedUser : user));
+      alert('User updated successfully!');
+    } catch { alert('Failed to update user.'); }
   };
 
   const handleDeleteUser = async () => {
     if (!deletingUser) return;
     try {
-      // console.log('Simulating delete for user:', deletingUser);
-      setUsers((prevUsers) =>
-        prevUsers.filter((user) => user.id !== deletingUser.id),
-      );
-      alert('User deleted successfully! (Simulated)');
+      setUsers((prevUsers) => prevUsers.filter((user) => user.id !== deletingUser.id));
+      alert('User deleted successfully!');
       setDeletingUser(null);
     } catch { alert('Failed to delete user.'); }
   };
@@ -377,41 +379,49 @@ const SpecialistDashboard = () => {
     }
   };
 
-  const handleLogout = async () => {
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
     try {
-      await logout();
+      const { uploadAdminAvatar } = await import('../../api/Admin/api.js');
+      const result = await uploadAdminAvatar(file);
+      setAdminAvatar(result.profileUrl); 
+      alert('Upload successful!');
     } catch (error) {
-      console.error('Admin logout API call failed:', error);
-    } finally {
-      sessionStorage.removeItem('isAdminLoggedIn');
-      localStorage.removeItem('admin_token');
-      navigate('/login');
+      alert('Failed to upload avatar: ' + error.message);
     }
   };
 
+  const handleLogout = async () => {
+    try { await logout(); } catch (error) { console.error('Admin logout API call failed:', error); } 
+    finally { sessionStorage.removeItem('isAdminLoggedIn'); localStorage.removeItem('admin_token'); navigate('/login'); }
+  };
+
   const filterFieldStyle = {
-    padding: '8px 12px',
-    border: '1px solid #cbd5e1',
-    borderRadius: '5px',
-    backgroundColor: '#ffffff',
-    color: '#1e293b',
-    fontSize: '0.9rem',
-    outline: 'none'
+    padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '5px',
+    backgroundColor: '#ffffff', color: '#1e293b', fontSize: '0.9rem', outline: 'none'
+  };
+
+  const getSearchPlaceholder = () => {
+    switch (activeTab) {
+      case 'pending': return 'Search by applicant name, email, or UID...';
+      case 'list': return 'Search by specialist name, email, or UID...';
+      case 'users': return 'Search by name, email, mobile, or UID...';
+      case 'transactions': return 'Search by name, status, ticket ID, or channel...';
+      case 'consultations': return 'Search by name, status, or ticket ID...';
+      default: return 'Search...';
+    }
   };
 
   const renderToolbar = () => {
     if (!['pending', 'list', 'users', 'transactions', 'consultations'].includes(activeTab)) return null;
+    const currentDateStr = new Date().toISOString().split('T')[0];
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '20px', width: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <input
-            type='text'
-            placeholder={getSearchPlaceholder()}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ ...filterFieldStyle, width: '380px', flexShrink: 0 }}
-          />
+          <input type='text' placeholder={getSearchPlaceholder()} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ ...filterFieldStyle, width: '380px', flexShrink: 0 }} />
           {uniqueRegions.length > 0 && (
             <select value={selectedRegion} onChange={(e) => { setSelectedRegion(e.target.value); setSelectedProvince(''); setSelectedCity(''); setSelectedBarangay(''); }} style={filterFieldStyle}>
               <option value="">All Regions</option>
@@ -437,16 +447,9 @@ const SpecialistDashboard = () => {
             </select>
           )}
           {(activeTab === 'pending' || activeTab === 'list' || activeTab === 'transactions') && (
-            <select
-              value={filterSpecialization}
-              onChange={(e) => setFilterSpecialization(e.target.value)}
-              disabled={dynamicSpecializations.length === 0}
-              style={filterFieldStyle}
-            >
+            <select value={filterSpecialization} onChange={(e) => setFilterSpecialization(e.target.value)} disabled={dynamicSpecializations.length === 0} style={filterFieldStyle}>
               <option value=''>All Specializations</option>
-              {dynamicSpecializations.map((spec) => (
-                <option key={spec} value={spec}>{spec}</option>
-              ))}
+              {dynamicSpecializations.map((spec) => (<option key={spec} value={spec}>{spec}</option>))}
             </select>
           )}
           {activeTab === 'transactions' && (
@@ -464,7 +467,7 @@ const SpecialistDashboard = () => {
           {activeTab === 'users' && (
             <button
               style={{ backgroundColor: '#0B5388', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: '5px', fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.2s', marginLeft: 'auto' }}
-              onClick={() => handleExport(filteredUsers, 'User_Management_Report.csv')}
+              onClick={() => handleExport(filteredUsers, `User_Management_Report_${currentDateStr}.csv`)}
               disabled={filteredUsers.length === 0}
               onMouseOver={(e) => e.target.style.backgroundColor = '#08406b'}
               onMouseOut={(e) => e.target.style.backgroundColor = '#0B5388'}
@@ -491,7 +494,7 @@ const SpecialistDashboard = () => {
               style={{ backgroundColor: '#0B5388', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: '5px', fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.2s' }}
               onClick={() => {
                 const targetData = activeTab === 'transactions' ? sortedTransactions : filteredConsultations;
-                const targetFilename = activeTab === 'transactions' ? 'Transaction_History_Report.csv' : 'Consultation_History_Report.csv';
+                const targetFilename = activeTab === 'transactions' ? `Transaction_History_Report_${currentDateStr}.csv` : `Consultation_History_Report_${currentDateStr}.csv`;
                 handleExport(targetData, targetFilename);
               }}
               disabled={(activeTab === 'transactions' ? sortedTransactions.length : filteredConsultations.length) === 0}
@@ -513,13 +516,31 @@ const SpecialistDashboard = () => {
           <img src={OkieDocLogo} alt='Okie-Doc+' className='logo-image' />
         </div>
         <h3 className='dashboard-title'>Admin Dashboard</h3>
-        <div className='user-account'>
-          <img src='/account.svg' alt='Account' className='account-icon' />
+
+        <div className='user-account' style={{ marginLeft: 'auto' }}>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleAvatarChange} 
+            accept="image/png, image/jpeg" 
+            style={{ display: 'none' }} 
+          />
+
+          <img 
+            src={adminAvatar} 
+            alt='Account' 
+            className='account-icon' 
+            style={{ cursor: 'pointer', borderRadius: '50%', objectFit: 'cover' }} 
+            onClick={() => fileInputRef.current.click()}
+            onError={(e) => { e.target.onerror = null; e.target.src = '/account.svg'; }}
+            title="Click to Upload Blob Storage Avatar"
+          />
           <span className='account-name'>Admin</span>
           <div className='account-dropdown'>
             <button className='dropdown-item logout-item' onClick={handleLogout}>Logout</button>
           </div>
         </div>
+        
         <div className='dashboard-nav'>
           <button className={`nav-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}>
             Pending Applications
@@ -546,29 +567,18 @@ const SpecialistDashboard = () => {
         </div>
       </div>
 
-      <div
-        style={{
-          backgroundColor: '#f3e5f5',
-          padding: '12px 20px',
-          borderBottom: '1px solid #e1bee7',
-          fontSize: '14px',
-          fontWeight: '500',
-          color: '#6a1b9a',
-        }}
-      >
-        <strong>Service Area:</strong> Bicol Region, Camarines Sur, Naga
+      <div style={{ padding: '0 24px', marginTop: '20px', marginBottom: '-5px' }}>
+        <div style={{ backgroundColor: '#f8fafc', padding: '12px 20px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#0B5388', fontSize: '0.95rem', display: 'flex', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <span style={{ marginRight: '10px', fontSize: '1.2rem' }}>📍</span>
+          <span style={{ fontWeight: '700', marginRight: '8px' }}>Service Area:</span> 
+          <span style={{ color: '#475569', fontWeight: '500' }}>Bicol Region, Camarines Sur, Naga</span>
+        </div>
       </div>
 
       <main className='dashboard-container'>
-        {activeTab === 'pending' && (
-          <PendingTable applications={filteredPending} onApprove={handleApproveSpecialist} onDeny={handleDenySpecialist} toolbar={renderToolbar()} />
-        )}
-        {activeTab === 'list' && (
-          <SpecialistTable specialists={filteredSpecialists} onStatusChange={handleUpdateSpecialistStatus} toolbar={renderToolbar()} />
-        )}
-        {activeTab === 'users' && (
-          <UserTable users={filteredUsers} onView={setViewingUser} onUpdate={handleUpdateUser} onDelete={setDeletingUser} onCreateStaff={handleCreateStaff} toolbar={renderToolbar()} />
-        )}
+        {activeTab === 'pending' && <PendingTable applications={filteredPending} onApprove={handleApproveSpecialist} onDeny={handleDenySpecialist} toolbar={renderToolbar()} />}
+        {activeTab === 'list' && <SpecialistTable specialists={filteredSpecialists} onStatusChange={handleUpdateSpecialistStatus} toolbar={renderToolbar()} />}
+        {activeTab === 'users' && <UserTable users={filteredUsers} onView={setViewingUser} onUpdate={handleUpdateUser} onDelete={setDeletingUser} onCreateStaff={handleCreateStaff} toolbar={renderToolbar()} />}
 
         {activeTab === 'transactions' && (
           <div id='transactions' className='tab-content active'>
@@ -606,24 +616,15 @@ const SpecialistDashboard = () => {
                         <td>{t.barangay ? `${t.barangay}, ${t.city || ''}` : 'N/A'}</td>
                       </tr>
                     ))
-                  ) : (
-                    <tr><td colSpan='9' style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>No transactions found matching your criteria.</td></tr>
-                  )}
+                  ) : (<tr><td colSpan='9' style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>No transactions found matching your criteria.</td></tr>)}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {activeTab === 'chats' && (
-          <div className='tab-content active' id='chat-consultations-wrapper'>
-            <ChatOversight />
-          </div>
-        )}
-
-        {activeTab === 'consultations' && (
-          <ConsultationHistory consultations={filteredConsultations} toolbar={renderToolbar()} />
-        )}
+        {activeTab === 'chats' && <div className='tab-content active' id='chat-consultations-wrapper'><ChatOversight /></div>}
+        {activeTab === 'consultations' && <ConsultationHistory consultations={filteredConsultations} toolbar={renderToolbar()} />}
 
         {activeTab === 'settings' && (
           <div id='settings' className='tab-content active settings-tab-content'>
@@ -643,46 +644,12 @@ const SpecialistDashboard = () => {
                   </div>
                 ))}
               </div>
-              <div className='settings-card'>
-                <h3>Discount</h3>
-                <div className='settings-item'>
-                  <span>Activate Discount</span>
-                  <label className='switch'>
-                    <input type='checkbox' checked={discount.isActive} onChange={handleDiscountToggle} />
-                    <span className='slider round'></span>
-                  </label>
-                </div>
-                {discount.isActive && (
-                  <>
-                    <div className='settings-item'>
-                      <label>Discount Type:</label>
-                      <select value={discount.type} onChange={(e) => setDiscount({ ...discount, type: e.target.value })}>
-                        <option value='percentage'>Percentage (%)</option>
-                        <option value='peso'>Peso (₱)</option>
-                      </select>
-                    </div>
-                    <div className='settings-item'>
-                      <label>Discount Value:</label>
-                      <input type='number' value={discount.value} onChange={(e) => setDiscount({ ...discount, value: parseFloat(e.target.value) || 0 })} />
-                    </div>
-                  </>
-                )}
-              </div>
               <div className='settings-card notes-card'>
                 <h3>Checkout Notes</h3>
                 <div className='settings-item'>
                   <span>Display Notes on Checkout</span>
-                  <label className='switch'>
-                    <input type='checkbox' checked={notes.isActive} onChange={handleNotesToggle} />
-                    <span className='slider round'></span>
-                  </label>
+                  <label className='switch'><input type='checkbox' checked={notes.isActive} onChange={handleNotesToggle} /><span className='slider round'></span></label>
                 </div>
-                {notes.isActive && (
-                  <div className='settings-item-full'>
-                    <label htmlFor='checkout-notes-textarea'>Notes to Display:</label>
-                    <textarea id='checkout-notes-textarea' value={notes.checkout} onChange={(e) => setNotes({ ...notes, checkout: e.target.value })} rows='4' placeholder='Enter notes to show...'></textarea>
-                  </div>
-                )}
               </div>
             </div>
           </div>

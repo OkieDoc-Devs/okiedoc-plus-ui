@@ -34,9 +34,9 @@ export default function SpecialistRegistration() {
     ptrNumber: '',
     mobileNumber: '',
     barangay: '',
-    city: 'City of Naga',
-    province: 'Camarines Sur',
-    region: 'Bicol Region',
+    city: '',
+    province: '',
+    region: '',
     zipCode: '',
     addressLine1: '',
     addressLine2: '',
@@ -49,27 +49,44 @@ export default function SpecialistRegistration() {
 
   // Set default location and fetch provinces and cities on component mount
   useEffect(() => {
-    const bicolRegion = regions.find((r) => r.name === 'Bicol Region');
-    if (bicolRegion) {
-      fetchProvinces(bicolRegion.code);
+    if (regions.length > 0 && formData.region === '') {
+      const bicolRegion = regions.find((r) => r.name === 'Bicol Region');
+      if (bicolRegion) {
+        setFormData((prev) => ({ ...prev, region: bicolRegion.name }));
+        fetchProvinces(bicolRegion.code);
+      }
     }
-  }, [regions, fetchProvinces]);
+  }, [regions, formData.region, fetchProvinces]);
 
   useEffect(() => {
-    const camarinesSur = provinces.find((p) => p.name === 'Camarines Sur');
-    if (camarinesSur) {
-      fetchCities(camarinesSur.code);
+    if (
+      provinces.length > 0 &&
+      formData.region === 'Bicol Region' &&
+      formData.province === ''
+    ) {
+      const camarinesSur = provinces.find((p) => p.name === 'Camarines Sur');
+      if (camarinesSur) {
+        setFormData((prev) => ({ ...prev, province: camarinesSur.name }));
+        fetchCities(camarinesSur.code);
+      }
     }
-  }, [provinces, fetchCities]);
+  }, [provinces, formData.region, formData.province, fetchCities]);
 
   useEffect(() => {
-    const nagaCity = cities.find(
-      (c) => c.name === 'City of Naga' || c.name === 'Naga',
-    );
-    if (nagaCity) {
-      fetchBarangays(nagaCity.code);
+    if (
+      cities.length > 0 &&
+      formData.province === 'Camarines Sur' &&
+      formData.city === ''
+    ) {
+      const nagaCity = cities.find(
+        (c) => c.name === 'City of Naga' || c.name === 'Naga',
+      );
+      if (nagaCity) {
+        setFormData((prev) => ({ ...prev, city: nagaCity.name }));
+        fetchBarangays(nagaCity.code);
+      }
     }
-  }, [cities, fetchBarangays]);
+  }, [cities, formData.province, formData.city, fetchBarangays]);
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -589,7 +606,6 @@ export default function SpecialistRegistration() {
                   barangay: '',
                 }));
               }}
-              disabled
             >
               <option value=''>Select Region</option>
               {regions.map((r) => (
@@ -617,7 +633,7 @@ export default function SpecialistRegistration() {
                 fetchCities(selectedProvince?.code);
                 setFormData((prev) => ({ ...prev, city: '', barangay: '' }));
               }}
-              disabled
+              disabled={!formData.region}
             >
               <option value=''>Select Province</option>
               {provinces.map((p) => (
@@ -645,7 +661,7 @@ export default function SpecialistRegistration() {
                 fetchBarangays(selectedCity?.code);
                 setFormData((prev) => ({ ...prev, barangay: '' }));
               }}
-              disabled
+              disabled={!formData.province}
             >
               <option value=''>Select City / Municipality</option>
               {cities.map((c) => (

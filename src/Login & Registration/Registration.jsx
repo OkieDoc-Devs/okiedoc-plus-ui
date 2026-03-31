@@ -2,39 +2,45 @@ import './auth.css';
 import { useNavigate } from 'react-router';
 import { useState, useEffect } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import { FiUpload } from 'react-icons/fi';
 import { usePSGC } from '../hooks/usePSGC';
 
 import { apiRequest } from '../api/apiClient';
 
-const registerPatient = async (formData, uploadedFiles) => {
-  const data = new FormData();
-  Object.keys(formData).forEach((key) => {
-    if (formData[key] !== undefined && formData[key] !== null) {
-      data.append(key, formData[key]);
-    }
-  });
-
-  if (uploadedFiles.philHealthId) {
-    data.append('philHealthId', uploadedFiles.philHealthId);
-  }
-  if (uploadedFiles.seniorCitizenId) {
-    data.append('seniorCitizenId', uploadedFiles.seniorCitizenId);
-  }
-  if (uploadedFiles.pwdId) {
-    data.append('pwdId', uploadedFiles.pwdId);
-  }
-
+const registerPatient = async (formData) => {
   return await apiRequest('/api/v1/auth/register', {
     method: 'POST',
     disableAuthRedirect: true,
-    body: data,
+    body: JSON.stringify({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      middleName: formData.middleName || '',
+      email: formData.email,
+      password: formData.password,
+      birthday: `${formData.bYear}-${formData.bMonth}-${formData.bDay}`,
+      gender: formData.gender || undefined,
+      mobileNumber: formData.mobileNumber,
+      barangay: formData.barangay,
+      city: formData.city,
+      province: formData.province,
+      region: formData.region,
+      zipCode: formData.zipCode,
+      addressLine1: formData.addressLine1,
+      addressLine2: formData.addressLine2,
+    }),
   });
 };
 
 export default function Registration() {
   const navigate = useNavigate();
-  const { regions, provinces, cities, barangays, fetchProvinces, fetchCities, fetchBarangays } = usePSGC();
+  const {
+    regions,
+    provinces,
+    cities,
+    barangays,
+    fetchProvinces,
+    fetchCities,
+    fetchBarangays,
+  } = usePSGC();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -54,7 +60,6 @@ export default function Registration() {
     zipCode: '',
     addressLine1: '',
     addressLine2: '',
-    philHealthNumber: '',
   });
   const [success, setSuccess] = useState('');
   const [errors, setErrors] = useState({});
@@ -62,11 +67,6 @@ export default function Registration() {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState({
-    philHealthId: null,
-    seniorCitizenId: null,
-    pwdId: null,
-  });
 
   // Initialize defaults for Bicol Region, Camarines Sur, and Naga
   useEffect(() => {
@@ -120,6 +120,8 @@ export default function Registration() {
       filteredValue = value.replace(/[^a-zA-Z\s-]/g, '');
     } else if (id === 'mobileNumber') {
       filteredValue = value.replace(/[^0-9+]/g, '');
+    } else if (id === 'zipCode') {
+      filteredValue = value.replace(/[^0-9]/g, '').slice(0, 4);
     } else if (['addressLine1', 'addressLine2'].includes(id)) {
       filteredValue = value.replace(/[^a-zA-Z0-9\s,]/g, '');
     }
@@ -134,47 +136,6 @@ export default function Registration() {
         ...prev,
         [id]: '',
       }));
-    }
-  };
-
-  const handlePhilHealthChange = (e) => {
-    let value = e.target.value.replace(/[^0-9]/g, '');
-    if (value.length > 12) value = value.slice(0, 12);
-    let formatted = value;
-    if (value.length > 2) formatted = value.slice(0, 2) + '-' + value.slice(2);
-    if (value.length > 11)
-      formatted =
-        value.slice(0, 2) + '-' + value.slice(2, 11) + '-' + value.slice(11);
-
-    setFormData((prev) => ({ ...prev, philHealthNumber: formatted }));
-    if (errors.philHealthNumber)
-      setErrors((prev) => ({ ...prev, philHealthNumber: '' }));
-  };
-
-  const handleFileUpload = (e, idType) => {
-    const file = e.target.files[0];
-    if (file) {
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
-
-      if (!allowedTypes.includes(file.type)) {
-        setErrors((prev) => ({
-          ...prev,
-          [idType]: 'Only PNG, JPEG, and JPG files are allowed',
-        }));
-        return;
-      }
-
-      if (file.size > maxSize) {
-        setErrors((prev) => ({
-          ...prev,
-          [idType]: 'File size must be less than 5MB',
-        }));
-        return;
-      }
-
-      setUploadedFiles((prev) => ({ ...prev, [idType]: file }));
-      if (errors[idType]) setErrors((prev) => ({ ...prev, [idType]: '' }));
     }
   };
 
@@ -207,15 +168,25 @@ export default function Registration() {
   };
 
   const isPasswordValid = (password) => {
-    return password.length > 0;
+    return (
+      password.length >= 8 &&
+      /[A-Z]/.test(password) &&
+      /[0-9]/.test(password) &&
+      /[^A-Za-z0-9]/.test(password)
+    );
   };
 
   const getPasswordRequirements = (password) => {
-    return [];
+    return [
+      { label: 'At least 8 characters', met: password.length >= 8 },
+      { label: 'One uppercase letter', met: /[A-Z]/.test(password) },
+      { label: 'One number', met: /[0-9]/.test(password) },
+      { label: 'One special character', met: /[^A-Za-z0-9]/.test(password) },
+    ];
   };
 
-  const shouldShowRequirements = () => {
-    return false;
+  const shouldShowRequirements = (password) => {
+    return password.length > 0 && !isPasswordValid(password);
   };
 
   const handleSubmit = async (e) => {
@@ -233,12 +204,15 @@ export default function Registration() {
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
-    
+
     if (!formData.bMonth || !formData.bDay || !formData.bYear) {
       newErrors.birthday = 'Complete birthday is required';
     } else {
-      const birthDate = new Date(`${formData.bYear}-${formData.bMonth}-${formData.bDay}`);
-      if (birthDate > new Date()) newErrors.birthday = 'Birthday cannot be in the future';
+      const birthDate = new Date(
+        `${formData.bYear}-${formData.bMonth}-${formData.bDay}`,
+      );
+      if (birthDate > new Date())
+        newErrors.birthday = 'Birthday cannot be in the future';
     }
 
     if (!formData.mobileNumber.trim()) {
@@ -246,16 +220,17 @@ export default function Registration() {
     } else {
       const mobileRegex = /^(09\d{9}|\+639\d{9})$/;
       if (!mobileRegex.test(formData.mobileNumber.trim())) {
-        newErrors.mobileNumber = 'Must be a valid PH number (e.g., 09123456789 or +639123456789)';
+        newErrors.mobileNumber =
+          'Must be a valid PH number (e.g., 09123456789 or +639123456789)';
       }
     }
 
-    if (formData.philHealthNumber && formData.philHealthNumber.length < 14) {
-      newErrors.philHealthNumber =
-        'Invalid PhilHealth number format. Must be XX-XXXXXXXXX-X';
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (!isPasswordValid(formData.password)) {
+      newErrors.password =
+        'Password must be at least 8 characters and include an uppercase letter, a number, and a special character';
     }
-
-    if (!formData.password) newErrors.password = 'Password is required';
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password';
     } else if (formData.password !== formData.confirmPassword) {
@@ -273,11 +248,11 @@ export default function Registration() {
     }
 
     try {
-      const result = await registerPatient(formData, uploadedFiles);
+      const result = await registerPatient(formData);
       if (result.message || result.success) {
         setSuccess(
           result.message ||
-          'Your account has been successfully created. You may now log in.',
+            'Your account has been successfully created. You may now log in.',
         );
         window.scrollTo(0, 0);
         setFormData({
@@ -297,12 +272,6 @@ export default function Registration() {
           zipCode: '',
           addressLine1: '',
           addressLine2: '',
-          philHealthNumber: '',
-        });
-        setUploadedFiles({
-          philHealthId: null,
-          seniorCitizenId: null,
-          pwdId: null,
         });
       }
     } catch (error) {
@@ -470,7 +439,9 @@ export default function Registration() {
                 <option value=''>Month</option>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                   <option key={m} value={m.toString().padStart(2, '0')}>
-                    {new Date(0, m - 1).toLocaleString('en-US', { month: 'short' })}
+                    {new Date(0, m - 1).toLocaleString('en-US', {
+                      month: 'short',
+                    })}
                   </option>
                 ))}
               </select>
@@ -483,8 +454,14 @@ export default function Registration() {
               >
                 <option value=''>Day</option>
                 {Array.from(
-                  { length: new Date(formData.bYear || 2000, formData.bMonth || 1, 0).getDate() },
-                  (_, i) => i + 1
+                  {
+                    length: new Date(
+                      formData.bYear || 2000,
+                      formData.bMonth || 1,
+                      0,
+                    ).getDate(),
+                  },
+                  (_, i) => i + 1,
                 ).map((d) => (
                   <option key={d} value={d.toString().padStart(2, '0')}>
                     {d}
@@ -501,7 +478,7 @@ export default function Registration() {
                 <option value=''>Year</option>
                 {Array.from(
                   { length: new Date().getFullYear() - 1920 + 1 },
-                  (_, i) => new Date().getFullYear() - i
+                  (_, i) => new Date().getFullYear() - i,
                 ).map((y) => (
                   <option key={y} value={y}>
                     {y}
@@ -556,10 +533,17 @@ export default function Registration() {
               id='region'
               value={formData.region}
               onChange={(e) => {
-                const selectedRegion = regions.find(r => r.name === e.target.value);
+                const selectedRegion = regions.find(
+                  (r) => r.name === e.target.value,
+                );
                 handleInputChange(e);
                 fetchProvinces(selectedRegion?.code);
-                setFormData(prev => ({ ...prev, province: '', city: '', barangay: '' }));
+                setFormData((prev) => ({
+                  ...prev,
+                  province: '',
+                  city: '',
+                  barangay: '',
+                }));
               }}
             >
               <option value=''>Select Region</option>
@@ -581,10 +565,12 @@ export default function Registration() {
               id='province'
               value={formData.province}
               onChange={(e) => {
-                const selectedProvince = provinces.find(p => p.name === e.target.value);
+                const selectedProvince = provinces.find(
+                  (p) => p.name === e.target.value,
+                );
                 handleInputChange(e);
                 fetchCities(selectedProvince?.code);
-                setFormData(prev => ({ ...prev, city: '', barangay: '' }));
+                setFormData((prev) => ({ ...prev, city: '', barangay: '' }));
               }}
               disabled={!formData.region}
             >
@@ -607,10 +593,12 @@ export default function Registration() {
               id='city'
               value={formData.city}
               onChange={(e) => {
-                const selectedCity = cities.find(c => c.name === e.target.value);
+                const selectedCity = cities.find(
+                  (c) => c.name === e.target.value,
+                );
                 handleInputChange(e);
                 fetchBarangays(selectedCity?.code);
-                setFormData(prev => ({ ...prev, barangay: '' }));
+                setFormData((prev) => ({ ...prev, barangay: '' }));
               }}
               disabled={!formData.province}
             >
@@ -647,7 +635,7 @@ export default function Registration() {
             )}
 
             <label className='login-label' htmlFor='addressLine1'>
-              Address Line 1
+              Address Line 1 (House No., Street)
             </label>
             <input
               className={`login-input ${errors.addressLine1 ? 'error' : ''}`}
@@ -663,7 +651,7 @@ export default function Registration() {
             )}
 
             <label className='login-label' htmlFor='addressLine2'>
-              Address Line 2
+              Address Line 2 (Apartment, Suite, Unit)
             </label>
             <input
               className='login-input'
@@ -676,213 +664,20 @@ export default function Registration() {
             />
 
             <label className='login-label' htmlFor='zipCode'>
-              Zip Code
+              ZIP Code
             </label>
             <input
               className={`login-input ${errors.zipCode ? 'error' : ''}`}
               id='zipCode'
               type='text'
-              placeholder='Enter your zip code'
+              placeholder='Enter your ZIP code'
               value={formData.zipCode}
               onChange={handleInputChange}
-              maxLength={10}
+              maxLength={4}
             />
             {errors.zipCode && (
               <span className='error-message'>{errors.zipCode}</span>
             )}
-
-            <label
-              style={{ marginBottom: '0%' }}
-              className='login-label'
-              htmlFor='philHealthNumber'
-            >
-              PhilHealth Number{' '}
-              <span style={{ color: '#999', fontSize: '0.9em' }}>
-                (Optional)
-              </span>
-            </label>
-            <div>
-              <p
-                style={{
-                  color: '#999',
-                  fontSize: '0.9em',
-                  margin: '0%',
-                  marginBottom: '8px',
-                }}
-              >
-                PhilHealth ID information is subject to verification and approval
-              </p>
-            </div>
-            <input
-              className={`login-input ${errors.philHealthNumber ? 'error' : ''}`}
-              id='philHealthNumber'
-              type='text'
-              placeholder='PhilHealth ID Number (XX-XXXXXXXXX-X)'
-              value={formData.philHealthNumber}
-              onChange={handlePhilHealthChange}
-              maxLength='14'
-            />
-            {errors.philHealthNumber && (
-              <span
-                className='error-message'
-                style={{ display: 'block', marginBottom: '8px' }}
-              >
-                {errors.philHealthNumber}
-              </span>
-            )}
-
-            <div style={{ marginTop: '16px', marginBottom: '16px' }}>
-              <h3
-                style={{
-                  fontSize: '1.1em',
-                  marginBottom: '12px',
-                  color: '#333',
-                }}
-              >
-                Upload ID Documents
-              </h3>
-
-              <label
-                style={{
-                  display: 'inline-block',
-                  width: '100%',
-                  marginBottom: '12px',
-                }}
-              >
-                <input
-                  type='file'
-                  accept='image/png,image/jpeg,image/jpg'
-                  onChange={(e) => handleFileUpload(e, 'philHealthId')}
-                  style={{ display: 'none' }}
-                />
-                <button
-                  type='button'
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.previousElementSibling.click();
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    backgroundColor: '#42a5f5',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '1em',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-start',
-                    gap: '8px',
-                  }}
-                >
-                  <FiUpload size={20} /> <span>Upload PhilHealth ID</span>
-                </button>
-              </label>
-              {uploadedFiles.philHealthId && (
-                <p style={{ color: '#4caf50', fontSize: '0.9em', margin: '4px 0' }}>
-                  ✓ {uploadedFiles.philHealthId.name}
-                </p>
-              )}
-              {errors.philHealthId && (
-                <span className='error-message'>{errors.philHealthId}</span>
-              )}
-
-              <label
-                style={{
-                  display: 'inline-block',
-                  width: '100%',
-                  marginBottom: '12px',
-                }}
-              >
-                <input
-                  type='file'
-                  accept='image/png,image/jpeg,image/jpg'
-                  onChange={(e) => handleFileUpload(e, 'seniorCitizenId')}
-                  style={{ display: 'none' }}
-                />
-                <button
-                  type='button'
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.previousElementSibling.click();
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    backgroundColor: '#42a5f5',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '1em',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-start',
-                    gap: '8px',
-                  }}
-                >
-                  <FiUpload size={20} /> <span>Upload Senior Citizen ID</span>
-                </button>
-              </label>
-              {uploadedFiles.seniorCitizenId && (
-                <p style={{ color: '#4caf50', fontSize: '0.9em', margin: '4px 0' }}>
-                  ✓ {uploadedFiles.seniorCitizenId.name}
-                </p>
-              )}
-              {errors.seniorCitizenId && (
-                <span className='error-message'>{errors.seniorCitizenId}</span>
-              )}
-
-              <label
-                style={{
-                  display: 'inline-block',
-                  width: '100%',
-                  marginBottom: '12px',
-                }}
-              >
-                <input
-                  type='file'
-                  accept='image/png,image/jpeg,image/jpg'
-                  onChange={(e) => handleFileUpload(e, 'pwdId')}
-                  style={{ display: 'none' }}
-                />
-                <button
-                  type='button'
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.previousElementSibling.click();
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    backgroundColor: '#42a5f5',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '1em',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-start',
-                    gap: '8px',
-                  }}
-                >
-                  <FiUpload size={20} /> <span>Upload PWD ID</span>
-                </button>
-              </label>
-              {uploadedFiles.pwdId && (
-                <p style={{ color: '#4caf50', fontSize: '0.9em', margin: '4px 0' }}>
-                  ✓ {uploadedFiles.pwdId.name}
-                </p>
-              )}
-              {errors.pwdId && (
-                <span className='error-message'>{errors.pwdId}</span>
-              )}
-            </div>
 
             <label className='login-label' htmlFor='password'>
               Password
@@ -970,7 +765,7 @@ export default function Registration() {
               Register
             </button>
             <p className='login-text'>
-              Already have an Okie-Doc+ account? <a href='/login'>Login</a>
+              Already have an OkieDoc+ account? <a href='/login'>Login</a>
             </p>
             <p className='login-text'>
               Are you a specialist?{' '}

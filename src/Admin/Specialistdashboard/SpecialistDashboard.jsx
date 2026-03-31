@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import PendingTable from './PendingTable';
 import SpecialistTable from './SpecialistTable';
 import ConsultationHistory from '../ConsultationHistory/ConsultationHistory';
+import Modal from '../Components/Modal';
 import UserTable from '../UserManagement/UserTable.jsx';
 import '../UserManagement/UserTable.css';
 
@@ -30,6 +31,7 @@ import PRC from '../../assets/PRC_Sample.jpg';
 import PTR from '../../assets/PTR.png';
 import esig from '../../assets/esig.png';
 import OkieDocLogo from '../../assets/okie-doc-logo.png';
+import NotificationBell from '../../components/Notifications/NotificationBell';
 
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
@@ -106,15 +108,25 @@ const SpecialistDashboard = () => {
           getAdminProfile().catch(() => null) 
         ]);
 
+        const specialistsArray = Array.isArray(specialistsData)
+          ? specialistsData
+          : specialistsData?.specialists || specialistsData?.data || [];
+        const pendingArray = Array.isArray(pendingData)
+          ? pendingData
+          : pendingData?.applications || pendingData?.data || [];
+        const transactionsArray = Array.isArray(transactionsData)
+          ? transactionsData
+          : transactionsData?.transactions || transactionsData?.data || [];
+        const consultationsArray = Array.isArray(consultationsData)
+          ? consultationsData
+          : consultationsData?.consultations || consultationsData?.data || [];
+        const usersArray = Array.isArray(usersData)
+          ? usersData
+          : usersData?.users || usersData?.data || [];
+
         if (adminProfileData && adminProfileData.profileUrl && !adminProfileData.profileUrl.includes('admin_avatar.png')) {
           setAdminAvatar(adminProfileData.profileUrl);
         }
-
-        const specialistsArray = Array.isArray(specialistsData) ? specialistsData : specialistsData?.specialists || specialistsData?.data || [];
-        const pendingArray = Array.isArray(pendingData) ? pendingData : pendingData?.applications || pendingData?.data || [];
-        const transactionsArray = Array.isArray(transactionsData) ? transactionsData : transactionsData?.transactions || transactionsData?.data || [];
-        const consultationsArray = Array.isArray(consultationsData) ? consultationsData : consultationsData?.consultations || consultationsData?.data || [];
-        const usersArray = Array.isArray(usersData) ? usersData : usersData?.users || usersData?.data || [];
 
         const processedSpecialists = (specialistsArray || []).map((spec, index) => {
           let signature = spec.eSignatureUrl || esig;
@@ -159,6 +171,7 @@ const SpecialistDashboard = () => {
         console.error('Failed to fetch dashboard data from backend:', error);
       }
     };
+
     fetchAndProcessData();
   }, []);
 
@@ -393,6 +406,7 @@ const SpecialistDashboard = () => {
     }
   };
 
+
   const handleLogout = async () => {
     try { await logout(); } catch (error) { console.error('Admin logout API call failed:', error); } 
     finally { sessionStorage.removeItem('isAdminLoggedIn'); localStorage.removeItem('admin_token'); navigate('/login'); }
@@ -414,101 +428,6 @@ const SpecialistDashboard = () => {
     }
   };
 
-  const renderToolbar = () => {
-    if (!['pending', 'list', 'users', 'transactions', 'consultations'].includes(activeTab)) return null;
-    const currentDateStr = new Date().toISOString().split('T')[0];
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '20px', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <input type='text' placeholder={getSearchPlaceholder()} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ ...filterFieldStyle, width: '380px', flexShrink: 0 }} />
-          {uniqueRegions.length > 0 && (
-            <select value={selectedRegion} onChange={(e) => { setSelectedRegion(e.target.value); setSelectedProvince(''); setSelectedCity(''); setSelectedBarangay(''); }} style={filterFieldStyle}>
-              <option value="">All Regions</option>
-              {uniqueRegions.map((r) => (<option key={r} value={r}>{r}</option>))}
-            </select>
-          )}
-          {uniqueProvinces.length > 0 && (
-            <select value={selectedProvince} onChange={(e) => { setSelectedProvince(e.target.value); setSelectedCity(''); setSelectedBarangay(''); }} style={filterFieldStyle}>
-              <option value="">All Provinces</option>
-              {uniqueProvinces.map((p) => (<option key={p} value={p}>{p}</option>))}
-            </select>
-          )}
-          {uniqueCities.length > 0 && (
-            <select value={selectedCity} onChange={(e) => { setSelectedCity(e.target.value); setSelectedBarangay(''); }} style={filterFieldStyle}>
-              <option value="">All Cities</option>
-              {uniqueCities.map((c) => (<option key={c} value={c}>{c}</option>))}
-            </select>
-          )}
-          {uniqueBarangays.length > 0 && (
-            <select value={selectedBarangay} onChange={(e) => setSelectedBarangay(e.target.value)} style={filterFieldStyle}>
-              <option value="">All Barangays</option>
-              {uniqueBarangays.map((b) => (<option key={b} value={b}>{b}</option>))}
-            </select>
-          )}
-          {(activeTab === 'pending' || activeTab === 'list' || activeTab === 'transactions') && (
-            <select value={filterSpecialization} onChange={(e) => setFilterSpecialization(e.target.value)} disabled={dynamicSpecializations.length === 0} style={filterFieldStyle}>
-              <option value=''>All Specializations</option>
-              {dynamicSpecializations.map((spec) => (<option key={spec} value={spec}>{spec}</option>))}
-            </select>
-          )}
-          {activeTab === 'transactions' && (
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={filterFieldStyle}>
-              <option value=''>All Statuses</option>
-              <option value='Pending'>Pending</option>
-              <option value='Processing'>Processing</option>
-              <option value='For Payment'>For Payment</option>
-              <option value='Active'>Active</option>
-              <option value='Completed'>Completed</option>
-              <option value='Cancelled'>Cancelled</option>
-            </select>
-          )}
-
-          {activeTab === 'users' && (
-            <button
-              style={{ backgroundColor: '#0B5388', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: '5px', fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.2s', marginLeft: 'auto' }}
-              onClick={() => handleExport(filteredUsers, `User_Management_Report_${currentDateStr}.csv`)}
-              disabled={filteredUsers.length === 0}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#08406b'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#0B5388'}
-            >
-              Export CSV
-            </button>
-          )}
-        </div>
-
-        {(activeTab === 'transactions' || activeTab === 'consultations') && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', backgroundColor: '#f8fafc', padding: '12px 15px', borderRadius: '6px', border: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label htmlFor='dateFrom' style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', margin: 0 }}>From Date:</label>
-                <input id='dateFrom' type='date' value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} style={{...filterFieldStyle, padding: '6px 10px'}} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label htmlFor='dateTo' style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', margin: 0 }}>To Date:</label>
-                <input id='dateTo' type='date' value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} style={{...filterFieldStyle, padding: '6px 10px'}} />
-              </div>
-            </div>
-            
-            <button
-              style={{ backgroundColor: '#0B5388', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: '5px', fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.2s' }}
-              onClick={() => {
-                const targetData = activeTab === 'transactions' ? sortedTransactions : filteredConsultations;
-                const targetFilename = activeTab === 'transactions' ? `Transaction_History_Report_${currentDateStr}.csv` : `Consultation_History_Report_${currentDateStr}.csv`;
-                handleExport(targetData, targetFilename);
-              }}
-              disabled={(activeTab === 'transactions' ? sortedTransactions.length : filteredConsultations.length) === 0}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#08406b'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#0B5388'}
-            >
-              Export CSV
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className='dashboard admin-dashboard'>
       <div className='dashboard-header'>
@@ -516,121 +435,259 @@ const SpecialistDashboard = () => {
           <img src={OkieDocLogo} alt='Okie-Doc+' className='logo-image' />
         </div>
         <h3 className='dashboard-title'>Admin Dashboard</h3>
-
-        <div className='user-account' style={{ marginLeft: 'auto' }}>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleAvatarChange} 
-            accept="image/png, image/jpeg" 
-            style={{ display: 'none' }} 
-          />
-
-          <img 
-            src={adminAvatar} 
-            alt='Account' 
-            className='account-icon' 
-            style={{ cursor: 'pointer', borderRadius: '50%', objectFit: 'cover' }} 
-            onClick={() => fileInputRef.current.click()}
-            onError={(e) => { e.target.onerror = null; e.target.src = '/account.svg'; }}
-            title="Click to Upload Blob Storage Avatar"
-          />
-          <span className='account-name'>Admin</span>
-          <div className='account-dropdown'>
-            <button className='dropdown-item logout-item' onClick={handleLogout}>Logout</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <NotificationBell />
+          <div className='user-account'>
+            <img src={adminAvatar} alt='Account' className='account-icon' />
+            <span className='account-name'>Admin</span>
+            <div className='account-dropdown'>
+              <button className='dropdown-item logout-item' onClick={handleLogout}>
+                Logout
+              </button>
+            </div>
           </div>
         </div>
-        
         <div className='dashboard-nav'>
-          <button className={`nav-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}>
+          <button
+            className={`nav-tab ${activeTab === 'pending' ? 'active' : ''}`}
+            onClick={() => setActiveTab('pending')}
+          >
             Pending Applications
-            {filteredPending.length > 0 && <span className='badge'>{filteredPending.length}</span>}
+            {filteredPending.length > 0 && (
+              <span className='badge'>{filteredPending.length}</span>
+            )}
           </button>
-          <button className={`nav-tab ${activeTab === 'list' ? 'active' : ''}`} onClick={() => setActiveTab('list')}>
+          <button
+            className={`nav-tab ${activeTab === 'list' ? 'active' : ''}`}
+            onClick={() => setActiveTab('list')}
+          >
             OkieDoc+ Specialists
           </button>
-          <button className={`nav-tab ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+          <button
+            className={`nav-tab ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => setActiveTab('users')}
+          >
             User Management
           </button>
-          <button className={`nav-tab ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')}>
+          <button
+            className={`nav-tab ${activeTab === 'transactions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('transactions')}
+          >
             Transaction History
           </button>
-          <button className={`nav-tab ${activeTab === 'chats' ? 'active' : ''}`} onClick={() => setActiveTab('chats')}>
+          <button
+            className={`nav-tab ${activeTab === 'chats' ? 'active' : ''}`}
+            onClick={() => setActiveTab('chats')}
+          >
             Chat Consultations
           </button>
-          <button className={`nav-tab ${activeTab === 'consultations' ? 'active' : ''}`} onClick={() => setActiveTab('consultations')}>
+          <button
+            className={`nav-tab ${activeTab === 'consultations' ? 'active' : ''}`}
+            onClick={() => setActiveTab('consultations')}
+          >
             Consultation History
           </button>
-          <button className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+          <button
+            className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('settings')}
+          >
             System Fee Settings
           </button>
         </div>
       </div>
 
-      <div style={{ padding: '0 24px', marginTop: '20px', marginBottom: '-5px' }}>
-        <div style={{ backgroundColor: '#f8fafc', padding: '12px 20px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#0B5388', fontSize: '0.95rem', display: 'flex', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-          <span style={{ marginRight: '10px', fontSize: '1.2rem' }}>📍</span>
-          <span style={{ fontWeight: '700', marginRight: '8px' }}>Service Area:</span> 
-          <span style={{ color: '#475569', fontWeight: '500' }}>Bicol Region, Camarines Sur, Naga</span>
-        </div>
+      <div
+        style={{
+          backgroundColor: '#f3e5f5',
+          padding: '12px 20px',
+          borderBottom: '1px solid #e1bee7',
+          fontSize: '14px',
+          fontWeight: '500',
+          color: '#6a1b9a',
+        }}
+      >
+        <strong>Service Area:</strong> Bicol Region, Camarines Sur, Naga
       </div>
 
       <main className='dashboard-container'>
-        {activeTab === 'pending' && <PendingTable applications={filteredPending} onApprove={handleApproveSpecialist} onDeny={handleDenySpecialist} toolbar={renderToolbar()} />}
-        {activeTab === 'list' && <SpecialistTable specialists={filteredSpecialists} onStatusChange={handleUpdateSpecialistStatus} toolbar={renderToolbar()} />}
-        {activeTab === 'users' && <UserTable users={filteredUsers} onView={setViewingUser} onUpdate={handleUpdateUser} onDelete={setDeletingUser} onCreateStaff={handleCreateStaff} toolbar={renderToolbar()} />}
+        {activeTab !== 'settings' &&
+          activeTab !== 'chats' &&
+          activeTab !== 'consultations' && (
+            <div className='toolbar'>
+              <div className='filters' style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '20px', width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <input 
+                    type='text' 
+                    placeholder={getSearchPlaceholder()} 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                    style={{ ...filterFieldStyle, width: '380px', flexShrink: 0 }} 
+                  />
+                  {uniqueRegions.length > 0 && (
+                    <select value={selectedRegion} onChange={(e) => { setSelectedRegion(e.target.value); setSelectedProvince(''); setSelectedCity(''); setSelectedBarangay(''); }} style={filterFieldStyle}>
+                      <option value="">All Regions</option>
+                      {uniqueRegions.map((r) => (<option key={r} value={r}>{r}</option>))}
+                    </select>
+                  )}
+                  {uniqueProvinces.length > 0 && (
+                    <select value={selectedProvince} onChange={(e) => { setSelectedProvince(e.target.value); setSelectedCity(''); setSelectedBarangay(''); }} style={filterFieldStyle}>
+                      <option value="">All Provinces</option>
+                      {uniqueProvinces.map((p) => (<option key={p} value={p}>{p}</option>))}
+                    </select>
+                  )}
+                  {uniqueCities.length > 0 && (
+                    <select value={selectedCity} onChange={(e) => { setSelectedCity(e.target.value); setSelectedBarangay(''); }} style={filterFieldStyle}>
+                      <option value="">All Cities</option>
+                      {uniqueCities.map((c) => (<option key={c} value={c}>{c}</option>))}
+                    </select>
+                  )}
+                  {uniqueBarangays.length > 0 && (
+                    <select value={selectedBarangay} onChange={(e) => setSelectedBarangay(e.target.value)} style={filterFieldStyle}>
+                      <option value="">All Barangays</option>
+                      {uniqueBarangays.map((b) => (<option key={b} value={b}>{b}</option>))}
+                    </select>
+                  )}
+                  {(activeTab === 'pending' || activeTab === 'list' || activeTab === 'transactions') && (
+                    <select value={filterSpecialization} onChange={(e) => setFilterSpecialization(e.target.value)} disabled={dynamicSpecializations.length === 0} style={filterFieldStyle}>
+                      <option value=''>All Specializations</option>
+                      {dynamicSpecializations.map((spec) => (<option key={spec} value={spec}>{spec}</option>))}
+                    </select>
+                  )}
+                  {activeTab === 'transactions' && (
+                    <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={filterFieldStyle}>
+                      <option value=''>All Statuses</option>
+                      <option value='Pending'>Pending</option>
+                      <option value='Processing'>Processing</option>
+                      <option value='For Payment'>For Payment</option>
+                      <option value='Active'>Active</option>
+                      <option value='Completed'>Completed</option>
+                      <option value='Cancelled'>Cancelled</option>
+                    </select>
+                  )}
+
+                  {activeTab === 'users' && (
+                    <button
+                      style={{ backgroundColor: '#0B5388', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: '5px', fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.2s', marginLeft: 'auto' }}
+                      onClick={() => handleExport(filteredUsers, `User_Management_Report_${new Date().toISOString().split('T')[0]}.csv`)}
+                      disabled={filteredUsers.length === 0}
+                      onMouseOver={(e) => e.target.style.backgroundColor = '#08406b'}
+                      onMouseOut={(e) => e.target.style.backgroundColor = '#0B5388'}
+                    >
+                      Export CSV
+                    </button>
+                  )}
+                </div>
+
+                {(activeTab === 'transactions' || activeTab === 'consultations') && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', backgroundColor: '#f8fafc', padding: '12px 15px', borderRadius: '6px', border: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <label htmlFor='dateFrom' style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', margin: 0 }}>From Date:</label>
+                        <input id='dateFrom' type='date' value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} style={{...filterFieldStyle, padding: '6px 10px'}} />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <label htmlFor='dateTo' style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', margin: 0 }}>To Date:</label>
+                        <input id='dateTo' type='date' value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} style={{...filterFieldStyle, padding: '6px 10px'}} />
+                      </div>
+                    </div>
+                    
+                    <button
+                      style={{ backgroundColor: '#0B5388', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: '5px', fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.2s' }}
+                      onClick={() => {
+                        const currentDateStr = new Date().toISOString().split('T')[0];
+                        const targetData = activeTab === 'transactions' ? sortedTransactions : filteredConsultations;
+                        const targetFilename = activeTab === 'transactions' ? `Transaction_History_Report_${currentDateStr}.csv` : `Consultation_History_Report_${currentDateStr}.csv`;
+                        handleExport(targetData, targetFilename);
+                      }}
+                      disabled={(activeTab === 'transactions' ? sortedTransactions.length : filteredConsultations.length) === 0}
+                      onMouseOver={(e) => e.target.style.backgroundColor = '#08406b'}
+                      onMouseOut={(e) => e.target.style.backgroundColor = '#0B5388'}
+                    >
+                      Export CSV
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+        {activeTab === 'pending' && (
+          <PendingTable
+            applications={filteredPending}
+            onApprove={handleApproveSpecialist}
+            onDeny={handleDenySpecialist}
+          />
+        )}
+        {activeTab === 'list' && (
+          <SpecialistTable specialists={filteredSpecialists} />
+        )}
+
+        {activeTab === 'users' && (
+          <UserTable
+            users={filteredUsers}
+            onView={setViewingUser}
+            onUpdate={handleUpdateUser}
+            onDelete={setDeletingUser}
+            onCreateStaff={handleCreateStaff}
+          />
+        )}
 
         {activeTab === 'transactions' && (
           <div id='transactions' className='tab-content active'>
-            <div style={{ paddingBottom: '12px', borderBottom: '1px solid #e2e8f0', marginBottom: '15px' }}>
-               <h2 style={{ margin: 0, padding: 0, border: 'none' }}>Transaction History & Management</h2>
-            </div>
-            {renderToolbar()}
+            <h2>Transaction History & Management</h2>
             <div className='table-wrapper'>
               <table className='dashboard-table'>
                 <thead>
                   <tr>
-                    <th onClick={() => requestSortTx('ticketNumber')} style={{ cursor: 'pointer', userSelect: 'none' }}>Ticket ID{getSortIndicatorTx('ticketNumber')}</th>
-                    <th onClick={() => requestSortTx('patientName')} style={{ cursor: 'pointer', userSelect: 'none' }}>Patient Name{getSortIndicatorTx('patientName')}</th>
-                    <th onClick={() => requestSortTx('chiefComplaint')} style={{ cursor: 'pointer', userSelect: 'none' }}>Chief Complaint{getSortIndicatorTx('chiefComplaint')}</th>
-                    <th onClick={() => requestSortTx('specialistName')} style={{ cursor: 'pointer', userSelect: 'none' }}>Specialist{getSortIndicatorTx('specialistName')}</th>
-                    <th onClick={() => requestSortTx('specialty')} style={{ cursor: 'pointer', userSelect: 'none' }}>Specialty{getSortIndicatorTx('specialty')}</th>
-                    <th onClick={() => requestSortTx('date')} style={{ cursor: 'pointer', userSelect: 'none' }}>Date{getSortIndicatorTx('date')}</th>
-                    <th onClick={() => requestSortTx('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>Status{getSortIndicatorTx('status')}</th>
-                    <th onClick={() => requestSortTx('channel')} style={{ cursor: 'pointer', userSelect: 'none' }}>Channel{getSortIndicatorTx('channel')}</th>
-                    <th onClick={() => requestSortTx('barangay')} style={{ cursor: 'pointer', userSelect: 'none' }}>Location (Brgy, City){getSortIndicatorTx('barangay')}</th>
+                    <th onClick={() => requestSortTx('patientName')} style={{cursor: 'pointer'}}>Patient Name{getSortIndicatorTx('patientName')}</th>
+                    <th onClick={() => requestSortTx('specialistName')} style={{cursor: 'pointer'}}>Specialist{getSortIndicatorTx('specialistName')}</th>
+                    <th onClick={() => requestSortTx('specialty')} style={{cursor: 'pointer'}}>Specialty{getSortIndicatorTx('specialty')}</th>
+                    <th onClick={() => requestSortTx('date')} style={{cursor: 'pointer'}}>Date{getSortIndicatorTx('date')}</th>
+                    <th onClick={() => requestSortTx('status')} style={{cursor: 'pointer'}}>Status{getSortIndicatorTx('status')}</th>
+                    <th onClick={() => requestSortTx('channel')} style={{cursor: 'pointer'}}>Channel{getSortIndicatorTx('channel')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedTransactions.length > 0 ? (
                     sortedTransactions.map((t) => (
                       <tr key={t.id}>
-                        <td>{t.ticketNumber || t.id}</td>
                         <td>{t.patientName}</td>
-                        <td>{t.chiefComplaint}</td>
                         <td>{t.specialistName}</td>
                         <td>{t.specialty}</td>
-                        <td>{t.date ? new Date(t.date).toLocaleDateString() : 'N/A'}</td>
+                        <td>{new Date(t.date).toLocaleDateString()}</td>
                         <td>{t.status}</td>
                         <td>{t.channel}</td>
-                        <td>{t.barangay ? `${t.barangay}, ${t.city || ''}` : 'N/A'}</td>
                       </tr>
                     ))
-                  ) : (<tr><td colSpan='9' style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>No transactions found matching your criteria.</td></tr>)}
+                  ) : (
+                    <tr>
+                      <td colSpan='6' style={{ textAlign: 'center' }}>
+                        No transactions found.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {activeTab === 'chats' && <div className='tab-content active' id='chat-consultations-wrapper'><ChatOversight /></div>}
-        {activeTab === 'consultations' && <ConsultationHistory consultations={filteredConsultations} toolbar={renderToolbar()} />}
+        {activeTab === 'chats' && (
+          <div className='tab-content active' id='chat-consultations-wrapper'>
+            <ChatOversight />
+          </div>
+        )}
+
+        {activeTab === 'consultations' && (
+          <ConsultationHistory consultations={filteredConsultations} />
+        )}
 
         {activeTab === 'settings' && (
-          <div id='settings' className='tab-content active settings-tab-content'>
-            <div style={{ paddingBottom: '12px', borderBottom: '1px solid #e2e8f0', marginBottom: '15px' }}>
-               <h2 style={{ margin: 0, padding: 0, border: 'none' }}>System Fee & Discount Settings</h2>
-            </div>
+          <div
+            id='settings'
+            className='tab-content active settings-tab-content'
+          >
+            <h2>System Fee & Discount Settings</h2>
             <div className='settings-grid'>
               <div className='settings-card'>
                 <h3>System Fees</h3>
@@ -638,18 +695,88 @@ const SpecialistDashboard = () => {
                   <div className='settings-item' key={key}>
                     <span>{fee.name}</span>
                     <label className='switch'>
-                      <input type='checkbox' checked={fee.isActive} onChange={() => handleFeeToggle(key)} />
+                      <input
+                        type='checkbox'
+                        checked={fee.isActive}
+                        onChange={() => handleFeeToggle(key)}
+                      />
                       <span className='slider round'></span>
                     </label>
                   </div>
                 ))}
               </div>
+              <div className='settings-card'>
+                <h3>Discount</h3>
+                <div className='settings-item'>
+                  <span>Activate Discount</span>
+                  <label className='switch'>
+                    <input
+                      type='checkbox'
+                      checked={discount.isActive}
+                      onChange={handleDiscountToggle}
+                    />
+                    <span className='slider round'></span>
+                  </label>
+                </div>
+                {discount.isActive && (
+                  <>
+                    <div className='settings-item'>
+                      <label>Discount Type:</label>
+                      <select
+                        value={discount.type}
+                        onChange={(e) =>
+                          setDiscount({ ...discount, type: e.target.value })
+                        }
+                      >
+                        <option value='percentage'>Percentage (%)</option>
+                        <option value='peso'>Peso (₱)</option>
+                      </select>
+                    </div>
+                    <div className='settings-item'>
+                      <label>Discount Value:</label>
+                      <input
+                        type='number'
+                        value={discount.value}
+                        onChange={(e) =>
+                          setDiscount({
+                            ...discount,
+                            value: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
               <div className='settings-card notes-card'>
                 <h3>Checkout Notes</h3>
                 <div className='settings-item'>
                   <span>Display Notes on Checkout</span>
-                  <label className='switch'><input type='checkbox' checked={notes.isActive} onChange={handleNotesToggle} /><span className='slider round'></span></label>
+                  <label className='switch'>
+                    <input
+                      type='checkbox'
+                      checked={notes.isActive}
+                      onChange={handleNotesToggle}
+                    />
+                    <span className='slider round'></span>
+                  </label>
                 </div>
+                {notes.isActive && (
+                  <div className='settings-item-full'>
+                    <label htmlFor='checkout-notes-textarea'>
+                      Notes to Display:
+                    </label>
+                    <textarea
+                      id='checkout-notes-textarea'
+                      value={notes.checkout}
+                      onChange={(e) =>
+                        setNotes({ ...notes, checkout: e.target.value })
+                      }
+                      rows='4'
+                      placeholder='Enter notes to show...'
+                    ></textarea>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -657,72 +784,79 @@ const SpecialistDashboard = () => {
       </main>
 
       {viewingUser && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setViewingUser(null)}>
-          <div style={{ maxWidth: '750px', width: '95%', maxHeight: '90vh', overflowY: 'auto', backgroundColor: '#fff', borderRadius: '8px', padding: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '15px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#0B5388' }}>User Details</h2>
-              <button onClick={() => setViewingUser(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#7f8c8d' }}>✕</button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', textAlign: 'left', backgroundColor: '#f9fbfd', padding: '20px', borderRadius: '8px', border: '1px solid #e1e8ed' }}>
-              <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-                <img
-                  src={viewingUser.profileUrl || (viewingUser.gender === 'Male' ? MaleAvatar : FemaleAvatar)}
-                  alt={`${viewingUser.firstName}'s profile`}
-                  style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #fff', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
-                />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</span>
-                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '600' }}>{`${viewingUser.firstName} ${viewingUser.lastName}`}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email Address</span>
-                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>{viewingUser.email || 'N/A'}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mobile Number</span>
-                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>{viewingUser.mobileNumber || 'N/A'}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>User Type</span>
-                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500', textTransform: 'capitalize' }}>{viewingUser.userType || 'N/A'}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gridColumn: '1 / -1' }}>
-                <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Subscription</span>
-                <span style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '500' }}>{viewingUser.subscription || 'Free'}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gridColumn: '1 / -1' }}>
-                <span style={{ fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Address</span>
-                <span style={{ fontSize: '16px', color: '#2c3e50' }}>
-                  {[viewingUser.addressLine1, viewingUser.addressLine2, viewingUser.barangay, viewingUser.city, viewingUser.province, viewingUser.region, viewingUser.zipCode].filter(Boolean).join(', ') || 'N/A'}
-                </span>
-              </div>
-            </div>
-            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button className='action-btn btn-primary' onClick={() => setViewingUser(null)}>Close</button>
-            </div>
+        <Modal title='User Details' onClose={() => setViewingUser(null)}>
+          <div id='modal-body'>
+            <p>
+              <strong>User Type:</strong> {viewingUser.userType}
+            </p>
+            <p>
+              <strong>First Name:</strong> {viewingUser.firstName}
+            </p>
+            <p>
+              <strong>Last Name:</strong> {viewingUser.lastName}
+            </p>
+            <p>
+              <strong>Email:</strong> {viewingUser.email}
+            </p>
+            <p>
+              <strong>Mobile:</strong> {viewingUser.mobileNumber}
+            </p>
+            <p>
+              <strong>Address:</strong>{' '}
+              {[
+                viewingUser.addressLine1,
+                viewingUser.addressLine2,
+                viewingUser.barangay,
+                viewingUser.city,
+                viewingUser.province,
+                viewingUser.region,
+                viewingUser.zipCode,
+              ]
+                .filter(Boolean)
+                .join(', ') || 'N/A'}
+            </p>
+            <p>
+              <strong>Subscription:</strong> {viewingUser.subscription}
+            </p>
           </div>
-        </div>
+          <div className='modal-actions'>
+            <button
+              className='action-btn btn-primary'
+              onClick={() => setViewingUser(null)}
+            >
+              Close
+            </button>
+          </div>
+        </Modal>
       )}
 
       {deletingUser && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setDeletingUser(null)}>
-          <div style={{ maxWidth: '500px', width: '95%', backgroundColor: '#fff', borderRadius: '8px', padding: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '15px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#0B5388' }}>Confirm Deletion</h2>
-              <button onClick={() => setDeletingUser(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#7f8c8d' }}>✕</button>
-            </div>
-            <div>
-              <p>Are you sure you want to delete this user?</p>
-              <p><strong>{deletingUser.firstName} {deletingUser.lastName} ({deletingUser.email})</strong></p>
-              <p>This action cannot be undone.</p>
-            </div>
-            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button className='action-btn btn-primary' onClick={() => setDeletingUser(null)}>Cancel</button>
-              <button className='action-btn btn-danger' onClick={handleDeleteUser}>Delete User</button>
-            </div>
+        <Modal title='Confirm Deletion' onClose={() => setDeletingUser(null)}>
+          <div id='modal-body'>
+            <p>Are you sure you want to delete this user?</p>
+            <p>
+              <strong>
+                {deletingUser.firstName} {deletingUser.lastName} (
+                {deletingUser.email})
+              </strong>
+            </p>
+            <p>This action cannot be undone.</p>
           </div>
-        </div>
+          <div className='modal-actions'>
+            <button
+              className='action-btn btn-primary'
+              onClick={() => setDeletingUser(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className='action-btn btn-danger'
+              onClick={handleDeleteUser}
+            >
+              Delete User
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

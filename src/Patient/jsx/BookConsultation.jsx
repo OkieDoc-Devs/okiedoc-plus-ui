@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   FaPhoneAlt,
   FaComments,
@@ -15,9 +15,6 @@ const BookConsultation = ({ onAppointmentAdded }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [datePopupError, setDatePopupError] = useState('');
-  const [timePopupError, setTimePopupError] = useState('');
-  const schedulePopupTimerRef = useRef(null);
 
   const [formData, setFormData] = useState({
     chiefComplaint: '',
@@ -34,36 +31,13 @@ const BookConsultation = ({ onAppointmentAdded }) => {
   });
 
   const handleChange = (e) => {
-    if (
-      ['prefMonth', 'prefDay', 'prefYear', 'prefHour', 'prefMinute', 'prefAmPm'].includes(e.target.name)
-    ) {
-      setDatePopupError('');
-      setTimePopupError('');
-    }
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const showSchedulePopupError = (message, target = 'time') => {
-    if (target === 'date') {
-      setDatePopupError(message);
-    } else {
-      setTimePopupError(message);
-    }
-    if (schedulePopupTimerRef.current) {
-      clearTimeout(schedulePopupTimerRef.current);
-    }
-    schedulePopupTimerRef.current = setTimeout(() => {
-      setDatePopupError('');
-      setTimePopupError('');
-    }, 5000);
   };
 
   const handleBookingClick = () => {
     setShowModal(true);
     setError('');
     setSuccess('');
-    setDatePopupError('');
-    setTimePopupError('');
     setFormData({
       chiefComplaint: '',
       symptoms: '',
@@ -81,15 +55,6 @@ const BookConsultation = ({ onAppointmentAdded }) => {
 
   const closeModal = () => {
     setShowModal(false);
-    setDatePopupError('');
-    setTimePopupError('');
-  };
-
-  const to24HourTime = (hourStr, minuteStr, amPm) => {
-    let hour24 = parseInt(hourStr, 10);
-    if (amPm === 'PM' && hour24 !== 12) hour24 += 12;
-    if (amPm === 'AM' && hour24 === 12) hour24 = 0;
-    return `${hour24.toString().padStart(2, '0')}:${minuteStr}`;
   };
 
   const handleSubmit = async (e) => {
@@ -111,22 +76,14 @@ const BookConsultation = ({ onAppointmentAdded }) => {
       }
 
       const combinedDate = `${formData.prefYear}-${formData.prefMonth}-${formData.prefDay}`;
-      const combinedTime24 = to24HourTime(
-        formData.prefHour,
-        formData.prefMinute,
-        formData.prefAmPm,
-      );
+      const combinedTime = `${formData.prefHour}:${formData.prefMinute} ${formData.prefAmPm}`;
 
-      const selectedDate = new Date(
-        Number(formData.prefYear),
-        Number(formData.prefMonth) - 1,
-        Number(formData.prefDay),
-      );
+      const selectedDate = new Date(combinedDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       if (selectedDate < today) {
-        showSchedulePopupError('Please select future date', 'date');
+        setError('Please select a future date');
         setLoading(false);
         return;
       }
@@ -134,19 +91,20 @@ const BookConsultation = ({ onAppointmentAdded }) => {
       if (selectedDate.getTime() === today.getTime()) {
         const now = new Date();
         const appointmentTime = new Date();
-        const [hour24, minute24] = combinedTime24.split(':').map(Number);
+        let hour24 = parseInt(formData.prefHour, 10);
+        if (formData.prefAmPm === 'PM' && hour24 !== 12) hour24 += 12;
+        if (formData.prefAmPm === 'AM' && hour24 === 12) hour24 = 0;
 
         appointmentTime.setHours(
           hour24,
-          minute24,
+          parseInt(formData.prefMinute, 10),
           0,
           0,
         );
 
         if (appointmentTime <= now) {
-          showSchedulePopupError(
-            'Please select future time',
-            'time',
+          setError(
+            'Cannot book appointments for times that have already passed',
           );
           setLoading(false);
           return;
@@ -154,9 +112,8 @@ const BookConsultation = ({ onAppointmentAdded }) => {
 
         const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60000);
         if (appointmentTime < thirtyMinutesFromNow) {
-          showSchedulePopupError(
-            'Please select future time',
-            'time',
+          setError(
+            'Appointments must be scheduled at least 30 minutes from the current time',
           );
           setLoading(false);
           return;
@@ -166,7 +123,7 @@ const BookConsultation = ({ onAppointmentAdded }) => {
       const payload = {
         ...formData,
         preferredDate: combinedDate,
-        preferredTime: combinedTime24,
+        preferredTime: combinedTime,
       };
 
       const response = await createTicket(payload);
@@ -347,10 +304,7 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                   </select>
                 </div>
 
-                <div
-                  className='form-group'
-                  style={{ marginBottom: '1rem', position: 'relative' }}
-                >
+                <div className='form-group' style={{ marginBottom: '1rem' }}>
                   <label
                     style={{
                       display: 'block',
@@ -360,59 +314,6 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                   >
                     Preferred Date *
                   </label>
-                  {datePopupError && (
-                    <div
-                      role='alert'
-                      style={{
-                        position: 'absolute',
-                        right: 0,
-                        top: '1.2rem',
-                        transform: 'translateY(-100%)',
-                        backgroundColor: '#fff',
-                        color: '#333',
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        fontSize: '0.9rem',
-                        maxWidth: '380px',
-                        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-                        zIndex: 10,
-                        border: '1px solid #ccc',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                      }}
-                    >
-                      <div
-                        style={{
-                          backgroundColor: '#ff9800',
-                          color: '#fff',
-                          width: '20px',
-                          height: '20px',
-                          borderRadius: '4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        !
-                      </div>
-                      {datePopupError}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: '-6px',
-                          left: '20px',
-                          width: '10px',
-                          height: '10px',
-                          backgroundColor: '#fff',
-                          borderRight: '1px solid #ccc',
-                          borderBottom: '1px solid #ccc',
-                          transform: 'rotate(45deg)',
-                        }}
-                      ></div>
-                    </div>
-                  )}
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <select
                       name='prefMonth'
@@ -480,10 +381,7 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                   </div>
                 </div>
 
-                <div
-                  className='form-group'
-                  style={{ marginBottom: '1rem', position: 'relative' }}
-                >
+                <div className='form-group' style={{ marginBottom: '1rem' }}>
                   <label
                     style={{
                       display: 'block',
@@ -493,59 +391,6 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                   >
                     Preferred Time *
                   </label>
-                  {timePopupError && (
-                    <div
-                      role='alert'
-                      style={{
-                        position: 'absolute',
-                        right: 0,
-                        top: '1.2rem',
-                        transform: 'translateY(-100%)',
-                        backgroundColor: '#fff',
-                        color: '#333',
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        fontSize: '0.9rem',
-                        maxWidth: '380px',
-                        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-                        zIndex: 10,
-                        border: '1px solid #ccc',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                      }}
-                    >
-                      <div
-                        style={{
-                          backgroundColor: '#ff9800',
-                          color: '#fff',
-                          width: '20px',
-                          height: '20px',
-                          borderRadius: '4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        !
-                      </div>
-                      {timePopupError}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: '-6px',
-                          left: '20px',
-                          width: '10px',
-                          height: '10px',
-                          backgroundColor: '#fff',
-                          borderRight: '1px solid #ccc',
-                          borderBottom: '1px solid #ccc',
-                          transform: 'rotate(45deg)',
-                        }}
-                      ></div>
-                    </div>
-                  )}
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <select
                       name='prefHour'

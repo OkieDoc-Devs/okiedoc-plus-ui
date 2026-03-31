@@ -1,6 +1,8 @@
 import "./App.css";
 import { useNavigate } from "react-router";
 import { useState } from "react";
+import { apiRequest } from "./api/apiClient";
+
 
 function App() {
   const navigate = useNavigate();
@@ -66,9 +68,8 @@ function App() {
       return;
     }
     try {
-      const response = await fetch("http://localhost:1337/api/callback-requests", {
+      await apiRequest("/api/v1/callback-requests", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           firstName: callbackForm.firstName,
           lastName: callbackForm.lastName,
@@ -78,16 +79,13 @@ function App() {
           contactMethod: callbackForm.contactMethod,
         }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Submission failed");
       showToast("Your callback request has been submitted!", "success");
-    } catch (err) {
-      showToast(err.message || "Something went wrong. Please try again.", "error");
-    } finally {
       setShowCallbackModal(false);
       setCallbackForm({ firstName: "", lastName: "", email: "", contactNumber: "", philHealthNumber: "", contactMethod: "" });
       setCallbackErrors({});
       setHasPhilHealth(false);
+    } catch (err) {
+      showToast(err.message || "Something went wrong. Please try again.", "error");
     }
   };
 

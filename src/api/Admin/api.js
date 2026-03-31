@@ -1,6 +1,28 @@
 import { apiRequest, API_BASE_URL } from '../apiClient';
 
 /**
+ * Utility to format database enums (e.g., "platform_call" -> "Platform Call")
+ */
+const formatString = (str) => {
+  if (!str) return 'N/A';
+  return str
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
+/**
+ * Formats a raw status string (e.g., "for_payment") into a readable string ("For Payment")
+ */
+const formatStatus = (status) => {
+  if (!status) return 'Unknown';
+  return status
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
+/**
  * Handles the admin login.
  * This triggers the 'last_login' update on the backend for the audit trail.
  */
@@ -13,9 +35,7 @@ export const loginAdmin = async (email, password) => {
 
     const role = data?.user?.role || data?.user?.userType;
     if (role !== 'admin') {
-      await apiRequest('/api/v1/auth/logout', { method: 'POST' }).catch(
-        () => {},
-      );
+      await apiRequest('/api/v1/auth/logout', { method: 'POST' }).catch(() => {});
       throw new Error('Access denied: this portal is for admin accounts.');
     }
 
@@ -43,7 +63,17 @@ export const logoutAdmin = async () => {
  */
 export const getSpecialists = async () => {
   try {
-    return await apiRequest('/api/v1/admin/specialists');
+    const data = await apiRequest('/api/v1/admin/specialists');
+    const rawData = Array.isArray(data) ? data : data?.specialists || data?.data || [];
+    
+    return rawData.map(spec => ({
+      ...spec,
+      barangay: spec.barangay || '',
+      city: spec.city || '',
+      province: spec.province || '',
+      region: spec.region || '',
+      zipCode: spec.zipCode || ''
+    }));
   } catch (error) {
     console.error('Failed to fetch specialists:', error);
     throw error;
@@ -65,20 +95,14 @@ export const getPendingApplications = async () => {
       return {
         id: app.id,
         userId: u.id,
-        name:
-          `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
-          'Pending Specialist',
+        name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Pending Specialist',
         email: u.email || 'N/A',
         role: 'Specialist',
         status: app.applicationStatus || 'Pending',
-        date: app.createdAt
-          ? new Date(app.createdAt).toISOString().split('T')[0]
-          : 'N/A',
+        date: app.createdAt ? new Date(app.createdAt).toISOString().split('T')[0] : 'N/A',
         details: {
           specializations: app.primarySpecialty ? [app.primarySpecialty] : [],
-          subspecializations: app.subSpecialties
-            ? app.subSpecialties.split(',').map((s) => s.trim())
-            : [],
+          subspecializations: app.subSpecialties ? app.subSpecialties.split(',').map((s) => s.trim()) : [],
           prcId: {
             number: app.licenseNumber || u.licenseNumber || 'N/A',
             imageUrl: app.prcIdUrl || null,
@@ -91,9 +115,7 @@ export const getPendingApplications = async () => {
             number: app.ptrNumber || 'N/A',
             imageUrl: app.ptrUrl || null,
           },
-          eSig: app.eSignatureUrl
-            ? `${API_BASE_URL}${app.eSignatureUrl}`
-            : null,
+          eSig: app.eSignatureUrl ? `${API_BASE_URL}${app.eSignatureUrl}` : null,
           profilePicture: app.profilePictureUrl || u.profileImage || null,
           addressLine1: app.addressLine1 || '',
           addressLine2: app.addressLine2 || '',
@@ -117,7 +139,20 @@ export const getPendingApplications = async () => {
 export const getTransactions = async () => {
   try {
     const data = await apiRequest('/api/v1/admin/transactions');
-    return Array.isArray(data) ? data : data?.transactions || data?.data || [];
+    const rawData = Array.isArray(data) ? data : data?.transactions || data?.data || [];
+    
+    return rawData.map(t => ({
+      ...t,
+      patientName: t.patientName || 'N/A',
+      specialistName: t.specialistName || 'Unassigned',
+      specialty: t.specialty || 'N/A',
+      date: t.date || t.transactionDate || t.createdAt,
+      channel: formatString(t.channel),
+      chiefComplaint: t.chiefComplaint || 'N/A',
+      barangay: t.barangay || '',
+      city: t.city || '',
+      status: formatStatus(t.status)
+    }));
   } catch (error) {
     console.error('Failed to fetch transactions:', error);
     throw error;
@@ -130,7 +165,19 @@ export const getTransactions = async () => {
 export const getConsultations = async () => {
   try {
     const data = await apiRequest('/api/v1/admin/consultations');
-    return Array.isArray(data) ? data : data?.consultations || data?.data || [];
+    const rawData = Array.isArray(data) ? data : data?.consultations || data?.data || [];
+    
+    return rawData.map(c => ({
+      ...c,
+      patientName: c.patientName || 'N/A',
+      specialistName: c.specialistName || 'Unassigned',
+      date: c.date || c.createdAt,
+      ticket: c.ticket || c.ticketNumber,
+      chiefComplaint: c.chiefComplaint || 'N/A',
+      barangay: c.barangay || '',
+      city: c.city || '',
+      status: formatStatus(c.status)
+    }));
   } catch (error) {
     console.error('Failed to fetch consultations:', error);
     throw error;
@@ -143,36 +190,15 @@ export const getConsultations = async () => {
 export const getPatientAndNurseUsers = async () => {
   try {
     const data = await apiRequest('/api/v1/admin/users');
-    const users = Array.isArray(data) ? data : data?.users || data?.data || [];
-    return users;
+    return Array.isArray(data) ? data : data?.users || data?.data || [];
   } catch (error) {
     console.error('Failed to fetch users:', error);
-    return [
-      {
-        id: 'p1',
-        userType: 'Patient',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'patient@gmail.com',
-        mobileNumber: '98765485',
-        subscription: 'Paid',
-      },
-      {
-        id: 'n1',
-        userType: 'Nurse',
-        firstName: 'Leslie',
-        lastName: 'Rowland',
-        email: 'les@row@gmail.com',
-        mobileNumber: '97685334',
-        subscription: 'Free',
-      },
-    ];
+    return [];
   }
 };
 
 /**
  * Approve or deny a pending specialist application.
- * @param {object} payload - { specialistId, action ('approve' | 'deny'), reason }
  */
 export const approveSpecialist = async (payload) => {
   try {
@@ -188,7 +214,6 @@ export const approveSpecialist = async (payload) => {
 
 /**
  * Create a new staff account (Nurse or Admin).
- * @param {object} payload - { fullName, email, password, mobileNumber, role, licenseNumber, prcExpiryDate }
  */
 export const createStaff = async (payload) => {
   try {
@@ -204,8 +229,6 @@ export const createStaff = async (payload) => {
 
 /**
  * Updates a user's information.
- * @param {string} userId - The ID of the user to update.
- * @param {object} userData - The data to update.
  */
 export const updateUser = async (userId, userData) => {
   try {
@@ -221,7 +244,6 @@ export const updateUser = async (userId, userData) => {
 
 /**
  * Deletes a user.
- * @param {string} userId - The ID of the user to delete.
  */
 export const deleteUser = async (userId) => {
   try {
@@ -231,5 +253,90 @@ export const deleteUser = async (userId) => {
   } catch (error) {
     console.error(`Failed to delete user ${userId}:`, error);
     throw error;
+  }
+};
+
+/**
+ * Update Specialist Status
+ */
+export const updateSpecialistStatus = async ({ specialistId, status }) => {
+  try {
+    const token = localStorage.getItem('admin_token');
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/update-specialist-status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      credentials: 'include',
+      body: JSON.stringify({ specialistId, status })
+    });
+    
+    if (!response.ok) throw new Error('Failed to update specialist status');
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Fetches a single ticket by its ID or Ticket Number for the Admin
+ */
+export const getTicketById = async (ticketId) => {
+  try {
+    return await apiRequest(`/api/v1/admin/ticket/${ticketId}`);
+  } catch (error) {
+    console.error(`Failed to fetch ticket ${ticketId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Uploads a profile picture for the Admin (Triggers the Blob Storage PoC)
+ */
+export const uploadAdminAvatar = async (file) => {
+  const formData = new FormData();
+  formData.append('photo', file);
+
+  const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/user/upload-profile-picture`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      credentials: 'include', 
+      body: formData,
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.message || data.error || `Server error: ${response.status}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error uploading admin avatar:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetches the saved Blob avatar on refresh for the Admin dashboard.
+ */
+export const getAdminProfile = async () => {
+  try {
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/profile`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      credentials: 'include'
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch admin profile:', error);
+    return null;
   }
 };

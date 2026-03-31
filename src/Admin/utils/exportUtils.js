@@ -1,56 +1,57 @@
-/**
- * Exports filtered transaction data to a CSV file.
- * Creates a CSV string from the data and triggers a download.
- *
- * @param {Array<object>} filteredTransactions - The array of transaction objects to export.
- * Each object should ideally have keys like id, patientName, specialistName, etc.
- */
-export const handleExport = (filteredTransactions) => {
-    if (!filteredTransactions || filteredTransactions.length === 0) {
-      alert("No data to export.");
-      return;
+export const handleExport = (data, filename = 'export.csv') => {
+  if (!data || data.length === 0) {
+    alert("No data available to export.");
+    return;
+  }
+
+  const headers = Object.keys(data[0]).filter(key => typeof data[0][key] !== 'object');
+
+  const csvRows = [];
+
+  csvRows.push(headers.map(header => `"${header}"`).join(','));
+
+  const formatDateValue = (key, value) => {
+    if (value === null || value === undefined || value === '') return '';
+    
+    const lowerKey = key.toLowerCase();
+
+    const isDateColumn = 
+      lowerKey.includes('date') || 
+      lowerKey.endsWith('at') || 
+      lowerKey.includes('time') || 
+      lowerKey === 'birthday';
+
+    if (isDateColumn) {
+      if (value === 0 || value === '0') return 'N/A';
+
+      const isNumeric = !isNaN(value) && !isNaN(parseFloat(value));
+      const dateObj = isNumeric ? new Date(Number(value)) : new Date(value);
+
+      if (!isNaN(dateObj.getTime())) {
+        return dateObj.toLocaleString(); 
+      }
     }
+    
+    return String(value);
+  };
 
-    const headers = [
-        "ID",
-        "Patient Name",
-        "Specialist Name",
-        "Specialty",
-        "Date",
-        "Status",
-        "Channel",
-        "Payment Method"
-    ];
+  data.forEach(row => {
+    const values = headers.map(header => {
+      let val = formatDateValue(header, row[header]);
+      return `"${val.replace(/"/g, '""')}"`;
+    });
+    csvRows.push(values.join(','));
+  });
 
-    const rows = filteredTransactions.map(t =>
-      [
-        t.id || '', // Use empty string if id is missing
-        `"${t.patientName || ''}"`, // Enclose in quotes, use empty string if missing
-        `"${t.specialistName || ''}"`,
-        t.specialty || '',
-        t.date || '',
-        t.status || '',
-        t.channel || '',
-        t.paymentMethod || ''
-      ].join(',') // Join array elements with a comma
-    );
-
-    // Combine headers and rows into a single CSV string
-    const csvContent = "data:text/csv;charset=utf-8,"
-        + headers.join(',') + "\n"
-        + rows.join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-
-    // Create a temporary link element to trigger the download
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "transaction_history.csv");
-
-    document.body.appendChild(link);
-
-    // Programmatically click the link to start the download
-    link.click();
-
-    document.body.removeChild(link);
+  const csvString = csvRows.join('\n');
+  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+  
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };

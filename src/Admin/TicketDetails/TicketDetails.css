@@ -11,9 +11,17 @@
 .ticket-details-page {
     background-color: var(--td-bg);
     min-height: 100vh;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
     padding: 24px;
     font-family: 'Inter', sans-serif;
     color: var(--td-text);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
 }
 
 .td-header {
@@ -25,6 +33,7 @@
     padding: 16px 24px;
     border-radius: 12px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    flex-shrink: 0;
 }
 
 .td-title {
@@ -76,7 +85,7 @@
     display: grid;
     grid-template-columns: 300px 1fr 320px;
     gap: 24px;
-    height: calc(100vh - 140px); /* Fill remaining height */
+    flex-grow: 1;
 }
 
 .td-card {
@@ -188,9 +197,8 @@
     z-index: 1;
 }
 
-
 .td-main-content { 
-    overflow-y: auto; 
+    overflow-y: visible;
     padding-right: 4px; 
 }
 
@@ -228,7 +236,6 @@
 .td-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .td-table th { text-align: left; background: #f1f3f5; padding: 8px; color: var(--td-gray); font-weight: 600; }
 .td-table td { border-bottom: 1px solid var(--td-border); padding: 8px; }
-
 
 .td-chat-panel { 
     height: 100%; 
@@ -354,12 +361,10 @@
    PRINT STYLES - Fixes empty print preview
    ========================================= */
 @media print {
-    /* 1. Hide buttons and non-printable elements */
     .td-header-right {
         display: none !important;
     }
     
-    /* 2. Reset Layout to Block (Stacking) */
     .ticket-details-page {
         background-color: white;
         padding: 0;
@@ -367,6 +372,7 @@
         height: auto;
         overflow: visible;
         width: 100%;
+        position: relative;
     }
 
     .td-grid-layout {
@@ -377,7 +383,6 @@
         gap: 20px;
     }
 
-    /* 3. Fix the Sidebar */
     .td-sidebar {
         width: 100%;
         margin-bottom: 20px;
@@ -385,6 +390,7 @@
         display: flex;
         gap: 20px;
     }
+    
     .td-sidebar .td-card {
         flex: 1;
         margin-bottom: 0;
@@ -399,13 +405,13 @@
         display: block;
     }
 
-    /* 5. Fix Chat Panel */
     .td-chat-panel {
         width: 100%;
         height: auto !important;
         overflow: visible !important;
         page-break-before: always;
     }
+    
     .chat-card, .chat-feed {
         overflow: visible !important;
         height: auto !important;

@@ -1,6 +1,6 @@
 import './auth.css';
 import { useNavigate } from 'react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { FiUpload } from 'react-icons/fi';
 import { usePSGC } from '../hooks/usePSGC';

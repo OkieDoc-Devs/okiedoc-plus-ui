@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import authService from '../Specialists/authService';
 import { apiRequest } from '../api/apiClient';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -28,32 +30,20 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const result = await apiRequest('/api/v1/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
+      const user = await login({
+        email: formData.email,
+        password: formData.password,
+        roleMode: 'deny',
+        role: 'specialist',
       });
 
-      if (result.success) {
-        const role = result.user?.userType || result.user?.role;
-        if (role === 'specialist') {
-          await apiRequest('/api/v1/auth/logout', { method: 'POST' }).catch(
-            () => {},
-          );
-          setError('Specialists must login via the Specialist Portal.');
-          setIsLoading(false);
-          return;
-        }
+      const role = user.role;
+      localStorage.setItem('okiedoc_user_type', role);
+      localStorage.setItem('okiedoc_specialist_user', JSON.stringify(user));
 
-        localStorage.setItem('okiedoc_user_type', role);
-
-        const redirectPath = authService.getRedirectPath(role);
-        navigate(redirectPath);
-      } else {
-        setError(result.message || result.error || 'Invalid email or password');
-      }
+      const { getRedirectPathForRole } = await import('../contexts/AuthContext');
+      const redirectPath = getRedirectPathForRole(role);
+      navigate(redirectPath);
     } catch (error) {
       console.error('Login error:', error);
       setError(error.message || 'An error occurred. Please try again.');

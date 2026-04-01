@@ -12,8 +12,10 @@ import {
   FaHeart,
   FaExclamationTriangle,
   FaHistory,
-  FaSave
+  FaSave,
+  FaSpinner
 } from 'react-icons/fa';
+import { fetchPatientProfile, updatePatientProfile } from '../services/apiService';
 
 const MedicalRecords = () => {
   const [medicalData, setMedicalData] = useState({
@@ -26,31 +28,63 @@ const MedicalRecords = () => {
     allergies: []
   });
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [editingCategory, setEditingCategory] = useState('');
 
-  // Load data from localStorage on component mount
+  // Load data from API on component mount
   useEffect(() => {
-    const savedData = localStorage.getItem('patient-medical-records');
-    if (savedData) {
-      setMedicalData(JSON.parse(savedData));
-    }
+    const loadProfile = async () => {
+      try {
+        setIsLoading(true);
+        const profile = await fetchPatientProfile();
+        
+        // Helper to parse JSON string or return empty array
+        const parseField = (field) => {
+          try {
+            return field ? JSON.parse(field) : [];
+          } catch (e) {
+            // Handle legacy plain text data by wrapping it in an object
+            return field ? [{ id: Date.now(), name: field, date: '', description: '' }] : [];
+          }
+        };
+
+        setMedicalData({
+          activeDiseases: parseField(profile.activeDiseases),
+          pastDiseases: parseField(profile.pastDiseases), // If backend supports it
+          medications: parseField(profile.medications),
+          allergies: parseField(profile.allergies),
+          surgeries: parseField(profile.surgeries || '[]'),
+          familyHistory: parseField(profile.familyHistory || '[]'),
+          socialHistory: parseField(profile.socialHistory || '[]'),
+        });
+      } catch (error) {
+        console.error('Failed to load medical records:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadProfile();
   }, []);
 
-  // Save data to localStorage whenever medicalData changes
-  useEffect(() => {
-    localStorage.setItem('patient-medical-records', JSON.stringify(medicalData));
-  }, [medicalData]);
-
-  const categories = [
-    { key: 'activeDiseases', label: 'Active Diseases', icon: FaStethoscope, color: '#dc3545' },
-    { key: 'pastDiseases', label: 'Past Diseases', icon: FaHistory, color: '#6c757d' },
-    { key: 'medications', label: 'Medications', icon: FaPills, color: '#007bff' },
-    { key: 'surgeries', label: 'Surgeries', icon: FaCut, color: '#fd7e14' },
-    { key: 'familyHistory', label: 'Family History', icon: FaUsers, color: '#20c997' },
-    { key: 'socialHistory', label: 'Social History', icon: FaHeart, color: '#e83e8c' },
-    { key: 'allergies', label: 'Allergies', icon: FaExclamationTriangle, color: '#ffc107' }
-  ];
+  const saveToBackend = async (updatedData) => {
+    try {
+      setIsSaving(true);
+      const payload = {
+        activeDiseases: JSON.stringify(updatedData.activeDiseases),
+        medications: JSON.stringify(updatedData.medications),
+        allergies: JSON.stringify(updatedData.allergies),
+        // Add other fields if backend schema is updated
+      };
+      await updatePatientProfile(payload);
+    } catch (error) {
+      console.error('Failed to save to backend:', error);
+      alert('Failed to save changes to the server.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleInputChange = (category, field, value) => {
     setMedicalData(prev => ({
@@ -85,34 +119,48 @@ const MedicalRecords = () => {
     setEditingCategory(category);
   };
 
-  const handleDeleteItem = (id, category) => {
+  const handleDeleteItem = async (id, category) => {
     if (window.confirm('Are you sure you want to delete this record?')) {
-      setMedicalData(prev => ({
-        ...prev,
-        [category]: prev[category].filter(item => item.id !== id)
-      }));
+      const updatedCategory = medicalData[category].filter(item => item.id !== id);
+      const newData = {
+        ...medicalData,
+        [category]: updatedCategory
+      };
+      setMedicalData(newData);
+      await saveToBackend(newData);
     }
   };
 
-  const handleSaveItem = () => {
+  const handleSaveItem = async (category) => {
     setEditingItem(null);
     setEditingCategory('');
+    await saveToBackend(medicalData);
   };
 
   const handleCancelEdit = (category) => {
     if (editingItem) {
       // If it's a new item (empty name), remove it
       const item = medicalData[category].find(item => item.id === editingItem);
-      if (item && !item.name.trim()) {
+      if (item && !item.name?.trim()) {
         setMedicalData(prev => ({
           ...prev,
-          [category]: prev[category].filter(item => item.id !== editingItem)
+          [category]: prev[category].filter(i => i.id !== editingItem)
         }));
       }
     }
     setEditingItem(null);
     setEditingCategory('');
   };
+
+  const categories = [
+    { key: 'activeDiseases', label: 'Active Diseases', icon: FaStethoscope, color: '#dc3545' },
+    { key: 'pastDiseases', label: 'Past Diseases', icon: FaHistory, color: '#6c757d' },
+    { key: 'medications', label: 'Medications', icon: FaPills, color: '#007bff' },
+    { key: 'surgeries', label: 'Surgeries', icon: FaCut, color: '#fd7e14' },
+    { key: 'familyHistory', label: 'Family History', icon: FaUsers, color: '#20c997' },
+    { key: 'socialHistory', label: 'Social History', icon: FaHeart, color: '#e83e8c' },
+    { key: 'allergies', label: 'Allergies', icon: FaExclamationTriangle, color: '#ffc107' }
+  ];
 
   const getFormFields = (category) => {
     const baseFields = [
@@ -288,7 +336,17 @@ const MedicalRecords = () => {
 
   return (
     <div className="patient-page-content">
-      <h2>Medical Records</h2>
+      {isSaving && (
+        <div className="patient-saving-overlay">
+          <FaSpinner className="patient-spinner" />
+          <span>Saving records...</span>
+        </div>
+      )}
+      
+      <div className="patient-medical-header">
+        <h2>Medical Records</h2>
+        {isLoading && <FaSpinner className="patient-spinner" />}
+      </div>
 
       <div className="patient-unified-medical-form">
         {categories.map(category => renderCategorySection(category.key))}

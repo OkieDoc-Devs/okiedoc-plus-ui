@@ -3527,3 +3527,61 @@ html:has(body.specialist-dashboard-body) {
     padding: 8px 10px;
   }
 }
+/* Medical History Request Card Specialist UI */
+.medical-history-request-sent,
+.medical-history-shared-spec {
+  background: #f0f7ff;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 6px 0;
+  border: 1px solid #d0e7ff;
+  min-width: 250px;
+}
+
+.medical-history-request-sent .request-title {
+  font-weight: 600 !important;
+  color: #0b5388 !important;
+  margin-bottom: 4px !important;
+  font-size: 0.95rem !important;
+}
+
+.medical-history-request-sent .request-status {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: #6c757d;
+}
+
+.request-denied-status-spec {
+  color: #f44336 !important;
+  font-weight: 600 !important;
+  font-style: italic !important;
+}
+
+.request-approved-status-spec {
+  color: #4caf50 !important;
+  font-weight: 600 !important;
+  font-style: italic !important;
+}
+
+.medical-history-shared-spec .request-content-status {
+  color: #4caf50 !important;
+  font-weight: 600 !important;
+  margin-bottom: 8px !important;
+}
+
+.view-history-btn {
+  width: 100%;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.view-history-btn:hover {
+  background: #0056b3;
+}

@@ -171,6 +171,7 @@ const SpecialistDashboard = () => {
   });
 
   const [selectedTicketId, setSelectedTicketId] = useState(null);
+  const [selectedPatientDetailed, setSelectedPatientDetailed] = useState(null);
   const [encounter, setEncounter] = useState(createDefaultEncounter());
 
   const [medForm, setMedForm] = useState(null);
@@ -361,6 +362,17 @@ const SpecialistDashboard = () => {
     }
   }, []);
 
+  // Expose refresh function to chat messages
+  useEffect(() => {
+    window.refreshSpecialistDashboard = () => {
+      console.log("[SpecialistDashboard] Refreshing data from window callback...");
+      loadTicketsData();
+    };
+    return () => {
+      delete window.refreshSpecialistDashboard;
+    };
+  }, [loadTicketsData]);
+
   const loadDashboardData = useCallback(async () => {
     try {
       const response = await specialistApi.fetchDashboard();
@@ -544,8 +556,52 @@ const SpecialistDashboard = () => {
         setEncounter(createDefaultEncounter());
       }
       setMhRequests(loadMedicalHistoryData(selectedTicketId));
+
+      // Fetch full patient profile if possible
+      const currentTicket = tickets.find((t) => t.id === selectedTicketId);
+      if (currentTicket && currentTicket.rawTicket?.patient?.id) {
+        specialistApi
+          .getPatientProfile(currentTicket.rawTicket.patient.id)
+          .then((profile) => {
+            console.log(
+              '[SpecialistDashboard] Fetched detailed patient profile:',
+              profile,
+            );
+            setSelectedPatientDetailed(profile);
+            // Check if profile actually contains clinical data
+            const hasClinicalData = profile.activeDiseases || profile.medicalHistory || profile.allergies;
+            if (!hasClinicalData) {
+              console.log('[SpecialistDashboard] Profile received but no clinical data (likely not shared yet)');
+            }
+          })
+          .catch((err) => {
+            console.warn(
+              '[SpecialistDashboard] No access to detailed patient profile yet:',
+              err,
+            );
+            setSelectedPatientDetailed(null);
+          });
+      } else {
+        setSelectedPatientDetailed(null);
+      }
     }
-  }, [selectedTicketId]);
+  }, [selectedTicketId, tickets]);
+
+  const handleRequestMedicalHistory = async () => {
+    if (!selectedTicketId) return;
+    try {
+      // Check if we already have the profile in memory or need to fetch it
+      const currentTicket = tickets.find(t => t.id === selectedTicketId);
+      
+      // Send the request directly via API
+      await specialistApi.requestMedicalHistory(selectedTicketId);
+      
+      alert(`Medical history request sent to ${currentTicket?.patientName || 'patient'}'s chat.`);
+    } catch (error) {
+      console.error('Error requesting medical history:', error);
+      alert(error.message || 'Failed to request medical history');
+    }
+  };
 
   const handleNavigation = (target, title) => {
     setActiveTab(target);
@@ -1327,20 +1383,22 @@ const SpecialistDashboard = () => {
     };
 
     const getAgeText = (t) => {
-      if (!t) return '';
+      if (!t) return 'Not provided';
       if (t.age) return `${t.age} years old`;
-      if (t.patientBirthdate) {
-        const birth = new Date(t.patientBirthdate);
+      const bday = t.patientBirthdate || t.birthday;
+      if (bday) {
+        const birth = new Date(bday);
         const diff = Date.now() - birth.getTime();
         const age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
-        return `${age} years old`;
+        return isNaN(age) ? 'Not provided' : `${age} years old`;
       }
       return 'Not provided';
     };
 
-    const selectedPatient = selectedTicket || tickets[0] || null;
+    const basePatientInfo = tickets.find((x) => x.id === selectedTicketId) || tickets[0] || null;
+    const selectedPatient = selectedPatientDetailed || basePatientInfo;
 
-    const patientStatus = selectedPatient?.status || 'Unknown';
+    const patientStatus = basePatientInfo?.status || 'Unknown';
 
     return (
       <div className='dashboard-content dashboard-1to1'>
@@ -1404,9 +1462,9 @@ const SpecialistDashboard = () => {
         <div className='patient-details-panel'>
           <div className='patient-details-header'>
             <div>
-              <h2>{selectedPatient?.patientFullName || selectedPatient?.patient || 'No patient selected'}</h2>
+              <h2>{selectedPatient?.patientFullName || selectedPatient?.patient || (selectedPatient?.firstName ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : 'No patient selected')}</h2>
               <p className='patient-specialization'>
-                {selectedPatient?.service || 'General Consultation'}
+                {basePatientInfo?.service || 'General Consultation'}
               </p>
             </div>
             <button
@@ -1442,7 +1500,7 @@ const SpecialistDashboard = () => {
               <div className='info-item'>
                 <span className='info-label'>Contact</span>
                 <span className='info-value'>
-                  {selectedPatient?.mobile || selectedPatient?.contact || 'Not provided'}
+                  {selectedPatient?.mobile || selectedPatient?.phone || selectedPatient?.contact || 'Not provided'}
                 </span>
               </div>
             </div>
@@ -1451,30 +1509,107 @@ const SpecialistDashboard = () => {
           <div className='info-card'>
             <div className='info-card-title'>Allergies</div>
             <div className='info-card-body'>
-              {selectedPatient?.allergies?.length > 0 ? (
-                selectedPatient.allergies.map((a) => (
-                  <span key={a} className='pill'>
-                    {a}
-                  </span>
-                ))
-              ) : (
-                <span className='info-placeholder'>No known allergies</span>
-              )}
+              {(() => {
+                // Hide allergies if history hasn't been shared yet
+                if (!selectedPatientDetailed || !selectedPatientDetailed.allergies) {
+                  return <span className='info-placeholder'>Request medical history to view.</span>;
+                }
+                const allergiesSource = selectedPatientDetailed.allergies;
+                if (!allergiesSource) {
+                  return <span className='info-placeholder'>No known allergies</span>;
+                }
+                try {
+                  const data = typeof allergiesSource === 'string'
+                    ? JSON.parse(allergiesSource)
+                    : allergiesSource;
+                  
+                  if (Array.isArray(data) && data.length > 0) {
+                    return data.map((a, idx) => (
+                      <span key={idx} className='pill'>
+                        {typeof a === 'object' ? a.name || a.allergy : a}
+                      </span>
+                    ));
+                  }
+                  if (typeof data === 'string' && data.length > 0) {
+                    return <span className='pill'>{data}</span>;
+                  }
+                } catch (e) {
+                  return <span className='info-placeholder'>No known allergies</span>;
+                }
+                return <span className='info-placeholder'>No known allergies</span>;
+              })()}
             </div>
           </div>
 
           <div className='info-card'>
             <div className='info-card-title'>Medical History</div>
             <div className='info-card-body'>
-              {selectedPatient?.medicalHistory?.length > 0 ? (
-                <ul className='history-list'>
-                  {selectedPatient.medicalHistory.map((item, idx) => (
-                    <li key={idx}>{item}</li>
-                  ))}
-                </ul>
-              ) : (
-                <span className='info-placeholder'>No history available</span>
-              )}
+              {(() => {
+                // If the specialist HAS NOT received detailed patient data (meaning they haven't requested/allowed),
+                // we only show the Triage info or placeholder.
+                // We use selectedPatientDetailed as the source of truth for "Shared Access"
+                // IMPORTANT: If history hasn't been shared, we MUST return a placeholder.
+                const activeDiseaseSource = selectedPatientDetailed?.activeDiseases;
+                const medicalHistorySource = selectedPatientDetailed?.medicalHistory;
+
+                // Checking for presence of data because getPatientProfile now filters clinical files 
+                // if history has NOT been shared.
+                const isAuthorized = activeDiseaseSource || medicalHistorySource;
+
+                if (!selectedPatientDetailed || !isAuthorized) {
+                  return <span className='info-placeholder'>Request medical history to view detailed conditions and history.</span>;
+                }
+
+                try {
+                  const diseaseData = typeof activeDiseaseSource === 'string' ? JSON.parse(activeDiseaseSource) : activeDiseaseSource;
+                  const historyData = typeof medicalHistorySource === 'string' ? JSON.parse(medicalHistorySource) : medicalHistorySource;
+                  
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      {/* Active Diseases Sub-section */}
+                      <div>
+                        <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Active Diseases / Conditions</h4>
+                        {Array.isArray(diseaseData) && diseaseData.length > 0 ? (
+                           <ul className='history-list'>
+                            {diseaseData.map((item, idx) => (
+                              <li key={idx}>
+                                <strong>{item.name || item.condition}</strong> {item.date && <span>({item.date})</span>}
+                                {item.description && <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#666' }}>{item.description}</p>}
+                                {item.severity && <span className='pill' style={{ background: '#f8d7da', color: '#721c24', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', marginLeft: '8px' }}>{item.severity}</span>}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className='info-placeholder'>No active diseases recorded.</span>
+                        )}
+                      </div>
+
+                      {/* Past Medical History Sub-section */}
+                      <div>
+                        <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Past Medical History</h4>
+                        {Array.isArray(historyData) && historyData.length > 0 ? (
+                          <ul className='history-list'>
+                            {historyData.map((item, idx) => (
+                              <li key={idx}>
+                                {typeof item === 'object' ? (
+                                  <>
+                                    <strong>{item.name || item.condition || item.specialistName}</strong> { (item.visitDate || item.date) && <span>({item.visitDate || item.date})</span>}
+                                    {(item.description || item.chiefComplaint) && <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#666' }}>{item.description || item.chiefComplaint}</p>}
+                                  </>
+                                ) : item}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className='info-placeholder'>No past history recorded.</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                } catch (e) {
+                  return <p>Error loading shared history.</p>;
+                }
+              })()}
             </div>
           </div>
 
@@ -2101,7 +2236,7 @@ const SpecialistDashboard = () => {
             />
           </div>
           <button
-            onClick={openMhModal}
+            onClick={handleRequestMedicalHistory}
             style={{
               background: '#0d6efd',
               color: '#ffffff',
@@ -2727,7 +2862,12 @@ const SpecialistDashboard = () => {
 
       <div className='main-content'>
         {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'messages' && <Messages currentUser={currentUser} />}
+        {activeTab === 'messages' && (
+          <Messages 
+            currentUser={currentUser} 
+            onNavigateToDashboard={() => setActiveTab('dashboard')} 
+          />
+        )}
         {activeTab === 'profile' && renderProfile()}
         {activeTab === 'schedule' && renderSchedules()}
         {activeTab === 'services' && renderServices()}
@@ -3082,6 +3222,7 @@ const SpecialistDashboard = () => {
         </div>
       )}
 
+      {/* Modal for Requesting Medical History is commented out for now as requested
       {mhModal.open && (
         <div
           className='modal'
@@ -3187,13 +3328,14 @@ const SpecialistDashboard = () => {
               >
                 Cancel
               </button>
-              <button className='btn-primary' onClick={submitMh}>
+              <button className='btn-primary' onClick={handleRequestMedicalHistory}>
                 Submit Request
               </button>
             </div>
           </div>
         </div>
       )}
+      */}
 
       {/* Generate Invoice Modal */}
       {showInvoiceModal && (

@@ -1586,7 +1586,11 @@ const PatientDashboard = () => {
       case 'appointments':
         return <Appointments onAppointmentAdded={refreshAppointments} />;
       case 'messages':
-        return <Messages />;
+        return (
+          <div className="patient-messages-container" style={{ height: 'calc(100vh - 120px)', width: '100%', padding: '0', margin: '0' }}>
+            <Messages />
+          </div>
+        );
       case 'medical-records':
         return <MedicalRecords />;
       case 'lab-results':

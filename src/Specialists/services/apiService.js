@@ -87,6 +87,22 @@ export async function changePassword(currentPassword, newPassword) {
   });
 }
 
+export async function getMedicalHistoryData(patientId) {
+  return apiRequest(`/api/v1/patients/view-medical-history?patientId=${patientId}`);
+}
+
+export async function getPatientProfile(patientId) {
+  const data = await apiRequest(`/api/v1/specialist/patient-profile/${patientId}`);
+  return data.data || data;
+}
+
+export async function requestMedicalHistory(ticketId) {
+  return apiRequest('/api/v1/specialist/request-medical-history', {
+    method: 'POST',
+    body: JSON.stringify({ ticketId }),
+  });
+}
+
 // ==========================================
 // Tickets
 // ==========================================

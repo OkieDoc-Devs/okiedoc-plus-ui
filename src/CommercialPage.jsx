@@ -7,6 +7,7 @@ import doc1 from './assets/doc1.jpg';
 import doc2 from './assets/doc2.jpg';
 import doc3 from './assets/doc3.jpg';
 import doc4 from './assets/doc4.jpg';
+import okieDocLogo from './assets/okie-doc-logo.png';
 import { FaTimes } from 'react-icons/fa';
 import {
   Search,
@@ -18,6 +19,11 @@ import {
   Video,
   ChevronLeft,
   ChevronRight,
+  Mail,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Stethoscope,
 } from 'lucide-react';
 import { fetchFeaturedSpecialists } from './api/specialistsPublicApi';
 
@@ -303,7 +309,7 @@ function CommercialPage() {
     <div className='splash-container'>
       <header className='header'>
         <div className='logo-section'>
-          <img src='/okie-doc-logo.png' alt='OkieDoc+' className='logo-image' />
+          <img src={okieDocLogo} alt='OkieDoc+' className='logo-image' />
         </div>
 
         <button
@@ -846,6 +852,76 @@ function CommercialPage() {
           </button>
         </div>
       )}
+
+      <footer className='footer-v2'>
+        <div className='footer-container'>
+          <div className='footer-grid'>
+            <div className='footer-brand'>
+              <div className='footer-brand-logo'>
+                <div className='footer-logo-icon-wrapper'>
+                  <Stethoscope size={28} className='footer-logo-icon' />
+                </div>
+                <span className='footer-brand-name'>OkieDoc+</span>
+              </div>
+              <p className='footer-brand-desc'>
+                Your Digital Health Partner. Connecting you with quality healthcare, anytime, anywhere.
+              </p>
+              <div className="footer-contact-info">
+                <div className="footer-contact-item">
+                  <Phone size={18} />
+                  <span>(02) 8802-5555</span>
+                </div>
+                <div className="footer-contact-item">
+                  <Mail size={18} />
+                  <span>support@okiedoc.com</span>
+                </div>
+              </div>
+            </div>
+
+            <div className='footer-links-group'>
+              <h3 className='footer-links-title'>General</h3>
+              <ul className='footer-links-list'>
+                <li><a href='#'>About Us</a></li>
+                <li><a href='#'>How It Works</a></li>
+                <li><a href='#'>Terms & Conditions</a></li>
+                <li><a href='#'>Privacy Policy</a></li>
+                <li><a href='#'>Contact Us</a></li>
+              </ul>
+            </div>
+
+            <div className='footer-links-group'>
+              <h3 className='footer-links-title'>For Doctors</h3>
+              <ul className='footer-links-list'>
+                <li><a href='#' onClick={(e) => { e.preventDefault(); navigate('/specialist-registration'); }}>Apply as Specialist</a></li>
+                <li><a href='#'>Request Demo</a></li>
+                <li><a href='#' onClick={(e) => { e.preventDefault(); navigate('/specialist-login'); }}>Doctor Login</a></li>
+                <li><a href='#'>Benefits</a></li>
+              </ul>
+            </div>
+
+            <div className='footer-links-group'>
+              <h3 className='footer-links-title'>For Patients</h3>
+              <ul className='footer-links-list'>
+                <li><a href='#'>Find a Doctor</a></li>
+                <li><a href='#'>Services</a></li>
+                <li><a href='#' onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Patient Login</a></li>
+                <li><a href='#' onClick={(e) => { e.preventDefault(); navigate('/registration'); }}>Register</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className='footer-bottom'>
+            <p className='footer-copyright'>
+              © 2026 OkieDoc+. All rights reserved.
+            </p>
+            <div className='footer-social-links'>
+              <a href='#' className='footer-social-link'><Facebook size={20} /></a>
+              <a href='#' className='footer-social-link'><Instagram size={20} /></a>
+              <a href='#' className='footer-social-link'><Linkedin size={20} /></a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -128,6 +128,18 @@ export async function getConversationById(conversationId) {
   }
 }
 
+export async function respondToMedicalHistoryRequest(ticketId, approved, messageId) {
+  try {
+    return await apiRequest('/api/v1/patients/respond-medical-history-request', {
+      method: 'POST',
+      body: JSON.stringify({ ticketId, approved, messageId }),
+    });
+  } catch (error) {
+    console.error('Error responding to medical history request:', error);
+    throw error;
+  }
+}
+
 export async function addParticipant(conversationId, userId) {
   try {
     return await apiRequest(
@@ -361,6 +373,8 @@ export function setupChatSocketListeners(handlers) {
     onSpecialistJoined,
     onCallStarted,
     onCallEnded,
+    onMessageUpdated,
+    onHistoryShared,
   } = handlers;
 
   const processedMessageIds = new Set();
@@ -430,6 +444,12 @@ export function setupChatSocketListeners(handlers) {
   if (onCallEnded) {
     socket.on("call:ended", onCallEnded);
     // console.log("[Chat] Listening for call:ended events");
+  }
+  if (onMessageUpdated) {
+    socket.on("chat:message_updated", onMessageUpdated);
+  }
+  if (onHistoryShared) {
+    socket.on("chat:history_shared", onHistoryShared);
   }
 
   return () => {

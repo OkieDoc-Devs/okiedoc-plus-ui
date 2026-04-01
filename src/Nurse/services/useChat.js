@@ -23,6 +23,7 @@ import {
   transformMessageForUI,
   isSocketConnected,
   authenticateSocket,
+  respondToMedicalHistoryRequest as respondToHistoryApi,
 } from "./chatService.js";
 
 export function useChat({ currentUserId, currentUserType = "n" } = {}) {
@@ -73,7 +74,8 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
 
       if (socketReady) {
         if (connected) {
-          timeoutId = setTimeout(initSocket, 5000);
+          // Socket is healthy, check again in 30 seconds instead of 5
+          timeoutId = setTimeout(initSocket, 30000);
           return;
         } else {
           console.warn("[useChat] Socket disconnected. Resetting state.");
@@ -88,25 +90,24 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         try {
           const authenticated = await authenticateSocket(currentUserId);
           if (mounted) {
-            // console.log("[useChat] Socket auth result:", authenticated);
-
             if (authenticated) {
               subscribedIdsRef.current.clear();
             }
 
             setSocketReady(authenticated);
-            timeoutId = setTimeout(initSocket, 2000);
+            // If auth succeeded, wait 10s before next check
+            timeoutId = setTimeout(initSocket, 10000);
           }
         } catch (err) {
           console.error("[useChat] Auth failed", err);
-          timeoutId = setTimeout(initSocket, 2000);
+          timeoutId = setTimeout(initSocket, 3000);
         }
       } else {
         // Not yet connected — trigger a connection attempt then retry
         if (!connected) {
           connectSocket();
         }
-        timeoutId = setTimeout(initSocket, 1000);
+        timeoutId = setTimeout(initSocket, 2000);
       }
     };
 
@@ -127,6 +128,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         transformConversationForUI(conv, currentUserId)
       );
       setConversations(transformed);
+      return transformed;
     } catch (err) {
       if (err.message && err.message.includes("404")) {
         console.warn("Chat API not available yet. Using empty state.");
@@ -280,7 +282,14 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
 
   const loadMessages = useCallback(
     async (conversationId, options = {}) => {
-      setLoading(true);
+      // Avoid frequent full-screen loading spinners if we already have messages loaded
+      // or if we're doing a background/refresh load
+      const isInitialLoad = !options.beforeId && messages.length === 0;
+
+      // Only set loading true for the initial empty-state load
+      if (isInitialLoad) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const response = await getMessages(conversationId, options);
@@ -305,10 +314,12 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         setError(err.message);
         return [];
       } finally {
-        setLoading(false);
+        if (isInitialLoad || options.showLoading !== false) {
+          setLoading(false);
+        }
       }
     },
-    [currentUserId, currentUserType]
+    [currentUserId, currentUserType, messages.length]
   );
 
   const setupActiveConversationListeners = useCallback(
@@ -364,6 +375,29 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
           }
         },
 
+        onMessageUpdated: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (Number(data.conversationId) === Number(currentActive?.id)) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                Number(msg.id) === Number(data.messageId)
+                  ? { ...msg, text: data.newContent }
+                  : msg
+              )
+            );
+          }
+        },
+
+        onHistoryShared: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (Number(data.ticketId) === Number(currentActive?.id)) {
+            // Trigger dashboard refresh if available
+            if (window.refreshSpecialistDashboard) {
+              window.refreshSpecialistDashboard();
+            }
+          }
+        },
+
         onCallStarted: (data) => {
           const currentActive = activeConversationRef.current;
           if (Number(data.ticketId) === Number(currentActive?.id)) {
@@ -383,6 +417,21 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
             );
           }
         },
+
+        // Add real-time message update handling
+        onMessageUpdated: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (Number(data.conversationId) === Number(currentActive?.id)) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                Number(msg.id) === Number(data.messageId)
+                  ? { ...msg, text: data.newContent }
+                  : msg
+              )
+            );
+          }
+        },
+
         onMessageDeleted: (data) => {
           const currentActive = activeConversationRef.current;
           if (data.conversationId === currentActive?.id) {
@@ -438,12 +487,11 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
 
   const openConversation = useCallback(
     async (conversation) => {
-      if (activeConversation?.id && cleanupRef.current) {
-        cleanupRef.current();
-        cleanupRef.current = null;
-      }
+      // Avoid flickering if we're already on this conversation
+      if (activeConversationRef.current?.id === conversation.id) return;
 
       setActiveConversation(conversation);
+      // We don't clear messages if the ID is the same, but here we're switching
       setMessages([]);
       setTypingUsers([]);
       setHasMoreMessages(true);
@@ -454,18 +502,16 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         )
       );
 
-      await loadMessages(conversation.id);
+      // Start loading and socket setup simultaneously
+      const loadTask = loadMessages(conversation.id);
 
       if (socketReady) {
         setupActiveConversationListeners(conversation.id);
       }
+
+      await loadTask;
     },
-    [
-      activeConversation,
-      loadMessages,
-      socketReady,
-      setupActiveConversationListeners,
-    ]
+    [loadMessages, socketReady, setupActiveConversationListeners]
   );
 
   const closeConversation = useCallback(() => {
@@ -658,7 +704,13 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
   }, []);
 
   useEffect(() => {
-    if (currentUserId) loadConversations();
+    if (currentUserId) {
+      // Small delay on first load to prevent double-firing and race conditions
+      const timer = setTimeout(() => {
+        loadConversations();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
   }, [currentUserId, loadConversations]);
 
   useEffect(() => {
@@ -690,6 +742,44 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
     startConversation,
     searchUsers: handleSearchUsers,
     getAllUsers: handleGetAllUsers,
+    loadMessages,
+    respondToMedicalHistoryRequest: async (ticketId, approved, messageId) => {
+      // Optimistically update the messaging UI immediately
+      if (messageId) {
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === messageId) {
+              const patientName = activeConversationRef.current?.patientName || "Patient";
+              return {
+                ...msg,
+                text: approved
+                  ? "MEDICAL_HISTORY_CONTENT:System"
+                  : `MEDICAL_HISTORY_DENIED:${patientName}`,
+              };
+            }
+            return msg;
+          })
+        );
+      }
+
+      // Perform the API call
+      const result = await respondToHistoryApi(ticketId, approved, messageId);
+
+      // After successful API call, we can update the conversations list's last message too
+      setConversations((prev) => {
+        const index = prev.findIndex((c) => Number(c.id) === Number(ticketId));
+        if (index === -1) return prev;
+        const newArr = [...prev];
+        newArr[index] = {
+          ...newArr[index],
+          lastMessage: approved ? "Medical history shared" : "Request denied",
+          timestamp: "Just now"
+        };
+        return newArr;
+      });
+
+      return result;
+    },
     setError,
     setConversations,
     activeCallHost,

@@ -100,6 +100,81 @@
   flex: 1;
 }
 
+/* Medical History Request Card */
+.medical-history-request {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 8px 0;
+  border: 1px solid #e9ecef;
+}
+
+.request-title {
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 12px !important;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.request-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-allow {
+  flex: 1;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-allow:hover {
+  background-color: #43a047;
+}
+
+.btn-deny {
+  flex: 1;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-deny:hover {
+  background-color: #d32f2f;
+}
+
+.request-denied-status {
+  color: #f44336;
+  font-weight: 600;
+  font-style: italic;
+  margin: 8px 0;
+}
+
+.request-approved-status {
+  color: #4caf50;
+  font-weight: 600;
+  font-style: italic;
+  margin: 8px 0;
+}
+
+.request-content-status {
+  color: #6c757d;
+  font-weight: 500;
+  font-style: italic;
+  margin: 8px 0;
+}
+
 .patient-result-status {
   font-size: 14px;
   padding: 4px 8px;

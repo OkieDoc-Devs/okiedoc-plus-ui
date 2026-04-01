@@ -19,7 +19,7 @@ import {
 import SpecialistCall from "./SpecialistCall";
 import "./SpecialistDashboard.css";
 
-const Messages = ({ currentUser }) => {
+const Messages = ({ currentUser, onNavigateToDashboard }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -474,7 +474,48 @@ const Messages = ({ currentUser }) => {
                                 )}
                               </div>
                             ) : (
-                              <p className="message-text">{message.text}</p>
+                              <div className="message-text">
+                                {message.text && message.text.startsWith && message.text.startsWith("MEDICAL_HISTORY_REQUEST:") ? (
+                                  <div className="medical-history-request-sent">
+                                    <p className="request-title">
+                                      You requested {message.text.split(":")[1]}'s medical history.
+                                    </p>
+                                    <p className="request-status">Waiting for patient response...</p>
+                                  </div>
+                                ) : message.text && message.text.startsWith && message.text.startsWith("MEDICAL_HISTORY_DENIED:") ? (
+                                  <div className="medical-history-response-status denied">
+                                    <p className="request-denied-status-spec">Patient {message.text.split(":")[1]} has denied your request.</p>
+                                  </div>
+                                ) : message.text && message.text.startsWith && (message.text.startsWith("MEDICAL_HISTORY_APPROVED:") || message.text.startsWith("MEDICAL_HISTORY_CONTENT:")) ? (
+                                  <div className="medical-history-shared-spec">
+                                    <p className="request-content-status">Medical history has been shared!</p>
+                                    <button 
+                                      className="view-history-btn"
+                                      onClick={() => {
+                                        try {
+                                          // Trigger dashboard refresh
+                                          if (window.refreshSpecialistDashboard) {
+                                            window.refreshSpecialistDashboard();
+                                          }
+
+                                          // Switch to dashboard tab
+                                          if (typeof onNavigateToDashboard === 'function') {
+                                            onNavigateToDashboard();
+                                          }
+                                        } catch (e) {
+                                          console.error("Failed to navigate to dashboard", e);
+                                        }
+                                      }}
+                                    >
+                                      View in Dashboard
+                                    </button>
+                                  </div>
+                                ) : message.text && message.text.startsWith && message.text.startsWith("MEDICAL_HISTORY_CONTENT:") ? (
+                                  null
+                                ) : (
+                                  message.text
+                                )}
+                              </div>
                             )}
                             <span className="message-time">
                               {message.timestamp}

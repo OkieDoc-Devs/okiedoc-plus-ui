@@ -18,8 +18,10 @@ import {
   getUserTypeLabel,
 } from "../services/chatService";
 import JitsiMeetCall from "../../components/VideoCall/JitsiMeetCall.jsx";
+import { useAuth } from "../../contexts/AuthContext";
 
 const Messages = () => {
+  const { user: authUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -37,6 +39,7 @@ const Messages = () => {
   const CHARACTER_LIMIT = 500;
 
   const getCurrentUserId = () => {
+    if (authUser?.id) return authUser.id;
     try {
       const currentUser = localStorage.getItem("currentUser");
       if (currentUser) {
@@ -80,8 +83,36 @@ const Messages = () => {
     searchUsers,
     getAllUsers,
     loadConversations,
+    loadMessages,
+    respondToMedicalHistoryRequest,
     isCallActive,
+    socketReady,
   } = useChat({ currentUserId, currentUserType: "p" });
+
+  useEffect(() => {
+    if (socketReady && !chatLoading) {
+      loadConversations();
+    }
+  }, [socketReady, chatLoading, loadConversations]);
+
+  const handleMedicalHistoryResponse = async (approved, messageId) => {
+    if (!activeConversation) return;
+
+    try {
+      // The respondToMedicalHistoryRequest in useChat now updates state optimistically
+      // so the UI status will change to "Shared" or "Denied" instantly.
+      await respondToMedicalHistoryRequest(
+        activeConversation.id,
+        approved,
+        messageId
+      );
+    } catch (error) {
+      console.error("Error responding to medical history request:", error);
+      alert("Failed to send response. Please try again.");
+      // Rollback UI state by reloading messages only on failure
+      loadMessages(activeConversation.id);
+    }
+  };
 
   useEffect(() => {
     if (chatMessagesRef.current && activeConversation) {
@@ -546,7 +577,41 @@ const Messages = () => {
                                 )}
                               </div>
                             ) : (
-                              <p className="message-text">{message.text}</p>
+                              <div className="message-text">
+                                {message.text && message.text.startsWith && message.text.startsWith("MEDICAL_HISTORY_REQUEST:") ? (
+                                  <div className="medical-history-request">
+                                    <p className="request-title">
+                                      Specialist {message.text.split(":")[1]} is requesting your medical history:
+                                    </p>
+                                    <div className="request-buttons">
+                                      <button 
+                                        className="btn-allow" 
+                                        onClick={() => handleMedicalHistoryResponse(true, message.id)}
+                                      >
+                                        Allow
+                                      </button>
+                                      <button 
+                                        className="btn-deny" 
+                                        onClick={() => handleMedicalHistoryResponse(false, message.id)}
+                                      >
+                                        Deny
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : message.text && message.text.startsWith && message.text.startsWith("MEDICAL_HISTORY_DENIED:") ? (
+                                  <div className="medical-history-response-status denied">
+                                    <p className="request-denied-status">Patient {message.text.split(":")[1]} has denied the request.</p>
+                                  </div>
+                                ) : message.text && message.text.startsWith && message.text.startsWith("MEDICAL_HISTORY_APPROVED:") ? (
+                                  <div className="medical-history-response-status shared">
+                                    <p className="request-content-status">Medical history has been shared.</p>
+                                  </div>
+                                ) : message.text && message.text.startsWith && message.text.startsWith("MEDICAL_HISTORY_CONTENT:") ? (
+                                  null
+                                ) : (
+                                  message.text
+                                )}
+                              </div>
                             )}
                             <span className="message-time">
                               {message.timestamp}

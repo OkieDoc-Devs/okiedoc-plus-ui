@@ -359,6 +359,82 @@
   word-wrap: break-word;
 }
 
+/* Medical History Request Card */
+.patient-messages-container .medical-history-request {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 8px 0;
+  border: 1px solid #e9ecef;
+  min-width: 250px;
+}
+
+.patient-messages-container .request-title {
+  font-weight: 600 !important;
+  color: #212529 !important;
+  margin-bottom: 12px !important;
+  font-size: 0.95rem !important;
+  line-height: 1.4 !important;
+}
+
+.patient-messages-container .request-buttons {
+  display: flex !important;
+  gap: 12px !important;
+}
+
+.patient-messages-container .btn-allow {
+  flex: 1 !important;
+  background-color: #4caf50 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 10px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+}
+
+.patient-messages-container .btn-allow:hover {
+  background-color: #43a047 !important;
+}
+
+.patient-messages-container .btn-deny {
+  flex: 1 !important;
+  background-color: #f44336 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 10px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+}
+
+.patient-messages-container .btn-deny:hover {
+  background-color: #d32f2f !important;
+}
+
+.patient-messages-container .request-denied-status {
+  color: #f44336 !important;
+  font-weight: 600 !important;
+  font-style: italic !important;
+  margin: 8px 0 !important;
+}
+
+.patient-messages-container .request-approved-status {
+  color: #4caf50 !important;
+  font-weight: 600 !important;
+  font-style: italic !important;
+  margin: 8px 0 !important;
+}
+
+.patient-messages-container .request-content-status {
+  color: #6c757d !important;
+  font-weight: 500 !important;
+  font-style: italic !important;
+  margin: 8px 0 !important;
+}
+
 .patient-messages-container .message-time {
   font-size: 0.75rem;
   color: #7a7a7a;

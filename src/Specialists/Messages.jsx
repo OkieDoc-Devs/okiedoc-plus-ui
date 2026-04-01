@@ -10,6 +10,7 @@ import {
   FaFileAlt,
 } from "react-icons/fa";
 import useChat from "../Nurse/services/useChat";
+import Avatar from "../components/Avatar";
 import {
   isAllowedFileType,
   getMaxFileSize,
@@ -69,6 +70,32 @@ const Messages = ({ currentUser }) => {
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
     }
   }, [chatMessages, activeConversation]);
+
+  const getConversationUserType = (conversation) => {
+    const role = (conversation.role || conversation.otherUserType || "").toLowerCase();
+    if (role.includes("nurse")) return "nurse";
+    if (role.includes("specialist") || role.includes("dr")) return "specialist";
+    if (role.includes("admin")) return "admin";
+    if (role.includes("patient")) return "patient";
+    return "patient";
+  };
+
+  const getUserTypeFromSender = (sender) => {
+    const normalized = (sender || "").toLowerCase();
+    if (normalized === "nurse") return "nurse";
+    if (normalized === "specialist" || normalized === "doctor" || normalized === "dr") return "specialist";
+    if (normalized === "admin") return "admin";
+    if (normalized === "patient") return "patient";
+    return "patient";
+  };
+
+  const getNameParts = (name) => {
+    const parts = (name || "").split(" ").filter(Boolean);
+    return {
+      firstName: parts[0] || "",
+      lastName: parts.slice(1).join(" ") || "",
+    };
+  };
 
   const handleUserSearch = useCallback(
     async (query) => {
@@ -285,11 +312,14 @@ const Messages = ({ currentUser }) => {
                   onClick={() => openChat(conversation)}
                 >
                   <div className="conversation-avatar">
-                    {conversation.avatar ? (
-                      <img src={conversation.avatar} alt={conversation.name} />
-                    ) : (
-                      <FaUser />
-                    )}
+                    <Avatar
+                      profileImageUrl={conversation.avatar}
+                      firstName={getNameParts(conversation.name).firstName}
+                      lastName={getNameParts(conversation.name).lastName}
+                      userType={getConversationUserType(conversation)}
+                      size={40}
+                      alt={conversation.name}
+                    />
                     <div
                       className={`online-indicator ${
                         conversation.isOnline ? "online" : "offline"
@@ -346,14 +376,14 @@ const Messages = ({ currentUser }) => {
               <div className="chat-header">
                 <div className="chat-user-info">
                   <div className="chat-avatar">
-                    {activeConversation.avatar ? (
-                      <img
-                        src={activeConversation.avatar}
-                        alt={activeConversation.name}
-                      />
-                    ) : (
-                      <FaUser />
-                    )}
+                    <Avatar
+                      profileImageUrl={activeConversation.avatar}
+                      firstName={getNameParts(activeConversation.name).firstName}
+                      lastName={getNameParts(activeConversation.name).lastName}
+                      userType={getConversationUserType(activeConversation)}
+                      size={40}
+                      alt={activeConversation.name}
+                    />
                     <div
                       className={`online-indicator ${
                         activeConversation.isOnline ? "online" : "offline"
@@ -421,14 +451,14 @@ const Messages = ({ currentUser }) => {
                       <>
                         {!message.isSent && (
                           <div className="message-avatar">
-                            {message.avatar ? (
-                              <img
-                                src={message.avatar}
-                                alt={message.senderName || "User"}
-                              />
-                            ) : (
-                              <FaUser className="avatar-icon-small" />
-                            )}
+                            <Avatar
+                              profileImageUrl={message.avatar}
+                              firstName={getNameParts(message.senderName).firstName}
+                              lastName={getNameParts(message.senderName).lastName}
+                              userType={getUserTypeFromSender(message.sender)}
+                              size={32}
+                              alt={message.senderName || "User"}
+                            />
                           </div>
                         )}
 

@@ -9,6 +9,7 @@ import SpecialistCall from './SpecialistCall';
 import Messages from './Messages';
 import ImageCropperModal from '../components/ImageCropperModal';
 import ICDCodeSelector from './components/ICDCodeSelector';
+import Avatar from '../components/Avatar';
 import { usePSGC } from '../hooks/usePSGC';
 import {
   formatDateLabel,
@@ -2131,28 +2132,15 @@ const SpecialistDashboard = () => {
       <div className='profile-section'>
         <h2 className='section-title'>Personal Information</h2>
         <div className='profile-image-upload'>
-          {profileData.profileUrl ? (
-            <img
-              src={`${API_BASE_URL}${profileData.profileUrl}`}
-              alt='Profile'
-              className='profile-img'
-            />
-          ) : (
-            <div
-              className='profile-img'
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '2.5rem',
-                fontWeight: 'bold',
-                color: '#0b5388',
-                backgroundColor: '#e0f2fe',
-              }}
-            >
-              {userInitials}
-            </div>
-          )}
+          <Avatar
+            profileImageUrl={profileData.profileUrl}
+            firstName={profileData.firstName}
+            lastName={profileData.lastName}
+            userType='specialist'
+            size={80}
+            alt='Profile'
+            className='profile-img'
+          />
           <div>
             <label htmlFor='profile-photo-upload' className='upload-btn'>
               <FaUpload /> Upload Photo
@@ -2651,27 +2639,15 @@ const SpecialistDashboard = () => {
         </div>
         <h3 className='dashboard-title'>Specialist Dashboard</h3>
         <div className='user-account'>
-          {profileData.profileUrl ? (
-            <img
-              src={`${API_BASE_URL}${profileData.profileUrl}`}
-              alt='Account'
-              className='account-icon'
-            />
-          ) : (
-            <div
-              className='account-icon'
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.2rem',
-                fontWeight: 'bold',
-                color: '#0b5388',
-              }}
-            >
-              {userInitials}
-            </div>
-          )}
+          <Avatar
+            profileImageUrl={profileData.profileUrl}
+            firstName={profileData.firstName}
+            lastName={profileData.lastName}
+            userType='specialist'
+            size={40}
+            alt='Account'
+            className='account-icon'
+          />
           <span className='account-name'>
             {currentUser?.firstName || currentUser?.fName || 'Specialist'}{' '}
             {currentUser?.lastName || currentUser?.lName || ''}

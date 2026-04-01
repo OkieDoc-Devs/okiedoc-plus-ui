@@ -31,6 +31,7 @@ import PTR from '../../assets/PTR.png';
 import esig from '../../assets/esig.png';
 import OkieDocLogo from '../../assets/okie-doc-logo.png';
 import NotificationBell from '../../components/Notifications/NotificationBell';
+import Avatar from '../../components/Avatar';
 
 const SpecialistDashboard = ({ isNurseAdmin = false }) => {
   const navigate = useNavigate();
@@ -479,7 +480,14 @@ const SpecialistDashboard = ({ isNurseAdmin = false }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <NotificationBell />
           <div className='user-account'>
-            <img src='/account.svg' alt='Account' className='account-icon' />
+            <Avatar
+              firstName={isNurseAdmin ? 'Nurse' : 'Admin'}
+              lastName={isNurseAdmin ? 'Admin' : ''}
+              userType={isNurseAdmin ? 'nurse_admin' : 'admin'}
+              size={40}
+              alt='Account'
+              className='account-icon'
+            />
             <span className='account-name'>
               {isNurseAdmin ? 'Nurse Admin' : 'Admin'}
             </span>

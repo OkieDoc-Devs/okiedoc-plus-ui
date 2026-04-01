@@ -21,6 +21,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { transformProfileFromAPI } from './services/profileService.js';
 import NotificationBell from '../components/Notifications/NotificationBell';
+import Avatar from '../components/Avatar';
 import { disconnectSocket } from '../utils/socketClient';
 
 export default function Dashboard() {
@@ -268,8 +269,12 @@ export default function Dashboard() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <NotificationBell />
           <div className='user-account'>
-            <img
-              src={nurseProfileImage}
+            <Avatar
+              profileImageUrl={nurseProfileImage !== '/account.svg' ? nurseProfileImage : null}
+              firstName={nurseName}
+              lastName={localStorage.getItem('nurse.lastName') || ''}
+              userType='nurse'
+              size={40}
               alt='Account'
               className='account-icon'
             />

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  FaUser,
   FaComments,
   FaTimes,
   FaFileAlt,
@@ -11,6 +10,7 @@ import {
   FaSearch,
   FaSpinner,
 } from 'react-icons/fa';
+import Avatar from '../components/Avatar';
 import { useNavigate } from 'react-router';
 import {
   getNurseFirstName,
@@ -67,6 +67,23 @@ const Messages = () => {
   } = useChat({ currentUserId, currentUserType: 'n' });
 
   const CHARACTER_LIMIT = 500;
+
+  const getNameParts = (name) => {
+    const parts = (name || '').split(' ').filter(Boolean);
+    return {
+      firstName: parts[0] || '',
+      lastName: parts.slice(1).join(' ') || '',
+    };
+  };
+
+  const getUserTypeFromRole = (role) => {
+    const normalized = (role || '').toString().toLowerCase();
+    if (normalized.includes('nurse')) return 'nurse';
+    if (normalized.includes('specialist') || normalized.includes('dr') || normalized.includes('doctor')) return 'specialist';
+    if (normalized.includes('admin')) return 'admin';
+    if (normalized.includes('patient')) return 'patient';
+    return 'patient';
+  };
 
   const handleLogout = async () => {
     try {
@@ -386,14 +403,14 @@ const Messages = () => {
                     onClick={() => openChat(conversation)}
                   >
                     <div className='nurse-conversation-avatar'>
-                      {conversation.avatar ? (
-                        <img
-                          src={conversation.avatar}
-                          alt={conversation.name}
-                        />
-                      ) : (
-                        <FaUser className='nurse-avatar-icon' />
-                      )}
+                      <Avatar
+                        profileImageUrl={conversation.avatar}
+                        firstName={getNameParts(conversation.name).firstName}
+                        lastName={getNameParts(conversation.name).lastName}
+                        userType={getUserTypeFromRole(conversation.role || conversation.type)}
+                        size={40}
+                        alt={conversation.name}
+                      />
                       <div
                         className={`nurse-online-indicator ${
                           conversation.isOnline ? 'online' : 'offline'
@@ -547,14 +564,14 @@ const Messages = () => {
                       <>
                         {!message.isSent && (
                           <div className='nurse-message-avatar'>
-                            {message.avatar ? (
-                              <img
-                                src={message.avatar}
-                                alt={message.senderName || 'User'}
-                              />
-                            ) : (
-                              <FaUser className='nurse-avatar-icon-small' />
-                            )}
+                            <Avatar
+                              profileImageUrl={message.avatar}
+                              firstName={getNameParts(message.senderName).firstName}
+                              lastName={getNameParts(message.senderName).lastName}
+                              userType={getUserTypeFromRole(message.sender)}
+                              size={32}
+                              alt={message.senderName || 'User'}
+                            />
                           </div>
                         )}
 
@@ -625,14 +642,14 @@ const Messages = () => {
 
                         {message.isSent && (
                           <div className='nurse-message-avatar'>
-                            {message.avatar ? (
-                              <img
-                                src={message.avatar}
-                                alt={message.senderName || 'You'}
-                              />
-                            ) : (
-                              <FaUser className='nurse-avatar-icon-small' />
-                            )}
+                            <Avatar
+                              profileImageUrl={message.avatar}
+                              firstName={getNameParts(message.senderName).firstName}
+                              lastName={getNameParts(message.senderName).lastName}
+                              userType={getUserTypeFromRole(message.sender)}
+                              size={32}
+                              alt={message.senderName || 'You'}
+                            />
                           </div>
                         )}
                       </>
@@ -643,14 +660,14 @@ const Messages = () => {
                 {typingUsers.length > 0 && (
                   <div className='nurse-message nurse-message-received nurse-typing-bubble'>
                     <div className='nurse-message-avatar'>
-                      {activeConversation.avatar ? (
-                        <img
-                          src={activeConversation.avatar}
-                          alt={activeConversation.name}
-                        />
-                      ) : (
-                        <FaUser className='nurse-avatar-icon-small' />
-                      )}
+                      <Avatar
+                        profileImageUrl={activeConversation.avatar}
+                        firstName={getNameParts(activeConversation.name).firstName}
+                        lastName={getNameParts(activeConversation.name).lastName}
+                        userType={getUserTypeFromRole(activeConversation.role || activeConversation.type)}
+                        size={32}
+                        alt={activeConversation.name}
+                      />
                     </div>
                     <div className='nurse-message-bubble-wrapper'>
                       <div className='nurse-message-content nurse-typing-content'>

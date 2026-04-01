@@ -91,7 +91,10 @@ html:has(body.specialist-dashboard-body) {
   border: 1px solid #e0e0e0;
   box-shadow: none;
   filter: none;
-  display: block;
+  /* keep Avatar component flex centering for initials and images */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .specialist-dashboard .account-name {

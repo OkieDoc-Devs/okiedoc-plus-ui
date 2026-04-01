@@ -148,11 +148,18 @@ const BookConsultation = ({ onAppointmentAdded }) => {
         if (onAppointmentAdded) onAppointmentAdded(tempTicket);
       }, 3000);
     } catch (err) {
-      setError(
-        err.response?.data?.error ||
-          err.message ||
-          'Failed to create consultation ticket. Please try again.',
-      );
+      console.log("Raw Error Object:", err.response);
+
+  // Look for the message in multiple possible hiding spots
+  const errorMessage = 
+    err.response?.data?.error ||
+    err.response?.data?.message ||
+    (typeof err.response?.data === 'string' ? err.response.data : null) ||
+    err.message ||
+    (typeof err === 'string' ? err : null) ||
+    'Failed to create consultation ticket. Please try again.';
+
+  setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -261,11 +268,11 @@ const BookConsultation = ({ onAppointmentAdded }) => {
                     onChange={handleChange}
                     className="patient-form-textarea"
                     placeholder='Provide detailed symptoms'
-                    maxLength={500}
+                    maxLength={5000}
                     disabled={loading || success}
                   />
                   <span className='patient-form-char-count'>
-                    {formData.symptoms.length}/500
+                    {formData.symptoms.length}/5000
                   </span>
                 </div>
 

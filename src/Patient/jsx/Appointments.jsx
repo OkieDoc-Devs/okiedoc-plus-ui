@@ -979,7 +979,7 @@ const Appointments = ({ onAppointmentAdded }) => {
                     </span>
                   )}
                   <span className='patient-form-char-count'>
-                    {appointmentForm.symptoms.length}/500
+                    {appointmentForm.symptoms.length}/5000
                   </span>
                 </div>
 
@@ -998,7 +998,7 @@ const Appointments = ({ onAppointmentAdded }) => {
                     rows='2'
                   />
                   <span className='patient-form-char-count'>
-                    {appointmentForm.otherSymptoms.length}/500
+                    {appointmentForm.otherSymptoms.length}/5000
                   </span>
                 </div>
 

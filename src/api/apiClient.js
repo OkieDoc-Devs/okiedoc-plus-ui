@@ -153,16 +153,19 @@ export async function apiRequest(endpoint, options = {}) {
         }
       }
 
-      const errorPayload =
-        typeof responseData === 'object'
-          ? responseData
-          : { error: responseData };
-      throw (
-        errorPayload.error ||
-        errorPayload.message ||
-        errorPayload ||
-        new Error(`HTTP error! status: ${response.status}`)
-      );
+      const message = 
+        responseData?.error || 
+        responseData?.message || 
+        (typeof responseData === 'string' ? responseData : `HTTP error! status: ${response.status}`);
+
+      const error = new Error(message);
+
+      error.response = {
+        data: responseData,
+        status: response.status
+      };
+
+      throw error;
     }
 
     return responseData;

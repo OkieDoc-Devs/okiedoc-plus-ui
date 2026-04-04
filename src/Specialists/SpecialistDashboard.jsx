@@ -64,7 +64,6 @@ import {
   exportTransactionsToCSV,
   generateMedicalHistoryHTML,
   openPrintWindow,
-  downloadMedicalHistoryPDF,
   generateEncounterSummaryHTML,
   downloadEncounterSummaryPDF,
   exportToJSON,
@@ -179,13 +178,6 @@ const SpecialistDashboard = () => {
   const [labForm, setLabForm] = useState(null);
 
   const [mhRequests, setMhRequests] = useState([]);
-  const [mhModal, setMhModal] = useState({
-    open: false,
-    reason: '',
-    from: '',
-    to: '',
-    consent: false,
-  });
 
   const [centerTab, setCenterTab] = useState('medicine');
 
@@ -971,34 +963,25 @@ const SpecialistDashboard = () => {
     saveEncounter({ labRequests: updatedEncounter.labRequests });
   };
 
-  const openMhModal = () => {
-    setMhModal({ open: true, reason: '', from: '', to: '', consent: false });
-  };
+  const requestPatientRecords = () => {
+    if (!selectedTicketId) {
+      alert('Please select a patient ticket first.');
+      return;
+    }
 
-  const submitMh = () => {
     try {
-      const item = createMedicalHistoryRequest(mhModal);
+      const item = createMedicalHistoryRequest({
+        reason: 'Medical records requested by specialist',
+        from: '',
+        to: '',
+        consent: true,
+      });
       const list = loadMedicalHistoryData(selectedTicketId).concat([item]);
       saveMedicalHistoryData(selectedTicketId, list);
       setMhRequests(list);
-      setMhModal({ open: false, reason: '', from: '', to: '', consent: false });
-      downloadMhPdf(item);
     } catch (error) {
       alert(error.message);
     }
-  };
-
-  const updateMhStatus = (id, status) => {
-    const list = loadMedicalHistoryData(selectedTicketId).map((x) =>
-      updateMedicalHistoryStatus(x, status),
-    );
-    saveMedicalHistoryData(selectedTicketId, list);
-    setMhRequests(list);
-  };
-
-  const downloadMhPdf = (item) => {
-    const t = tickets.find((x) => x.id === selectedTicketId) || {};
-    downloadMedicalHistoryPDF(item, t);
   };
 
   const filteredTickets = useMemo(() => {
@@ -2101,27 +2084,43 @@ const SpecialistDashboard = () => {
               placeholder='Treatment plan includes...'
             />
           </div>
-          <button
-            onClick={openMhModal}
-            style={{
-              background: '#0d6efd',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '12px 28px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              marginTop: 'auto',
-              marginBottom: '8px',
-              display: 'block',
-              marginLeft: 'auto',
-              transition: 'all 0.3s ease',
-            }}
-            onMouseEnter={(e) => (e.target.style.background = '#0b5ed7')}
-            onMouseLeave={(e) => (e.target.style.background = '#0d6efd')}
-          >
-            Request Medical History
-          </button>
+          <div className='soap-card medical-records-access-card'>
+            <div className='medical-records-header'>
+              <div>
+                <div className='soap-card-title'>Medical Records Access</div>
+                <p className='medical-records-description'>Patient record permissions and shared details.</p>
+              </div>
+              {mhRequests.length > 0 && (
+                <span className='status-pill status-pill--shared'>Shared</span>
+              )}
+            </div>
+            {mhRequests.length === 0 ? (
+              <div className='medical-records-empty'>
+                <div className='medical-records-icon'>🔒</div>
+                <div className='medical-records-empty-text'>
+                  No medical records shared yet
+                </div>
+                <button className='request-record-btn' onClick={requestPatientRecords}>
+                  Request Record from Patient
+                </button>
+              </div>
+            ) : (
+              <div className='medical-records-list'>
+                {[
+                  { label: 'Previous Consultations', icon: '📄' },
+                  { label: 'Prescriptions', icon: '💊' },
+                  { label: 'Lab Results', icon: '🧪' },
+                  { label: 'Treatment Plans', icon: '🩺' },
+                ].map((item) => (
+                  <div key={item.label} className='medical-records-item'>
+                    <span className='medical-records-item-icon'>{item.icon}</span>
+                    <span className='medical-records-item-label'>{item.label}</span>
+                    <span className='medical-records-item-arrow'>▸</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -3052,119 +3051,6 @@ const SpecialistDashboard = () => {
             <div style={{ marginTop: '1.5rem' }}>
               <button className='btn-primary' onClick={addSchedule}>
                 Add Schedule
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {mhModal.open && (
-        <div
-          className='modal'
-          style={{
-            display: 'flex',
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000,
-          }}
-          onClick={(e) => {
-            if (e.target.classList.contains('modal'))
-              setMhModal({
-                open: false,
-                reason: '',
-                from: '',
-                to: '',
-                consent: false,
-              });
-          }}
-        >
-          <div
-            className='modal-content'
-            style={{
-              background: '#fff',
-              padding: '1.6rem',
-              borderRadius: '12px',
-              width: '90%',
-              maxWidth: '520px',
-            }}
-          >
-            <h3 style={{ marginBottom: '1rem' }}>Request Medical History</h3>
-            <div className='input-group'>
-              <label>Reason</label>
-              <textarea
-                rows='3'
-                value={mhModal.reason}
-                onChange={(e) =>
-                  setMhModal((m) => ({ ...m, reason: e.target.value }))
-                }
-              ></textarea>
-            </div>
-            <div className='form-grid'>
-              <div className='input-group'>
-                <label>From</label>
-                <input
-                  type='date'
-                  value={mhModal.from}
-                  onChange={(e) =>
-                    setMhModal((m) => ({ ...m, from: e.target.value }))
-                  }
-                />
-              </div>
-              <div className='input-group'>
-                <label>To</label>
-                <input
-                  type='date'
-                  value={mhModal.to}
-                  onChange={(e) =>
-                    setMhModal((m) => ({ ...m, to: e.target.value }))
-                  }
-                />
-              </div>
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                margin: '8px 0 16px',
-              }}
-            >
-              <input
-                id='mhConsent'
-                type='checkbox'
-                checked={mhModal.consent}
-                onChange={(e) =>
-                  setMhModal((m) => ({ ...m, consent: e.target.checked }))
-                }
-              />
-              <label htmlFor='mhConsent'>I have the patient's consent</label>
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                gap: '10px',
-                justifyContent: 'flex-end',
-              }}
-            >
-              <button
-                className='edit-btn'
-                onClick={() =>
-                  setMhModal({
-                    open: false,
-                    reason: '',
-                    from: '',
-                    to: '',
-                    consent: false,
-                  })
-                }
-              >
-                Cancel
-              </button>
-              <button className='btn-primary' onClick={submitMh}>
-                Submit Request
               </button>
             </div>
           </div>

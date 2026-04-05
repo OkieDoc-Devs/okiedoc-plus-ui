@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
-  FaUser,
   FaTimes,
   FaPaperclip,
   FaPhone,
@@ -10,6 +9,7 @@ import {
   FaSpinner,
   FaComments,
 } from "react-icons/fa";
+import Avatar from "../../components/Avatar";
 import { useSearchParams } from "react-router-dom";
 import { useChat } from "../services/chatService";
 import {
@@ -88,6 +88,23 @@ const Messages = () => {
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
     }
   }, [chatMessages, activeConversation]);
+
+  const getNameParts = (name) => {
+    const parts = (name || '').split(' ').filter(Boolean);
+    return {
+      firstName: parts[0] || '',
+      lastName: parts.slice(1).join(' ') || '',
+    };
+  };
+
+  const getUserTypeFromRole = (role) => {
+    const normalized = (role || '').toString().toLowerCase();
+    if (normalized.includes('nurse')) return 'nurse';
+    if (normalized.includes('specialist') || normalized.includes('dr') || normalized.includes('doctor')) return 'specialist';
+    if (normalized.includes('admin')) return 'admin';
+    if (normalized.includes('patient')) return 'patient';
+    return 'patient';
+  };
 
   const startNewChatFlow = useCallback(async (userId) => {
     try {
@@ -334,14 +351,16 @@ const Messages = () => {
                   onClick={() => openChat(conversation)}
                 >
                   <div className="conversation-avatar">
-                    {conversation.avatar ? (
-                      <img src={conversation.avatar} alt={conversation.name} />
-                    ) : (
-                      <FaUser />
-                    )}
+                    <Avatar
+                      profileImageUrl={conversation.avatar}
+                      firstName={getNameParts(conversation.name).firstName}
+                      lastName={getNameParts(conversation.name).lastName}
+                      userType={getUserTypeFromRole(conversation.role || conversation.type)}
+                      size={40}
+                      alt={conversation.name}
+                    />
                     <div
-                      className={`online-indicator ${conversation.isOnline ? "online" : "offline"
-                        }`}
+                      className={`online-indicator ${conversation.isOnline ? "online" : "offline"}`}
                     ></div>
                   </div>
 
@@ -487,14 +506,14 @@ const Messages = () => {
                       <>
                         {!message.isSent && (
                           <div className="message-avatar">
-                            {message.avatar ? (
-                              <img
-                                src={message.avatar}
-                                alt={message.senderName || "User"}
-                              />
-                            ) : (
-                              <FaUser className="avatar-icon-small" />
-                            )}
+                            <Avatar
+                              profileImageUrl={message.avatar}
+                              firstName={getNameParts(message.senderName).firstName}
+                              lastName={getNameParts(message.senderName).lastName}
+                              userType={getUserTypeFromRole(message.sender)}
+                              size={32}
+                              alt={message.senderName || "User"}
+                            />
                           </div>
                         )}
 

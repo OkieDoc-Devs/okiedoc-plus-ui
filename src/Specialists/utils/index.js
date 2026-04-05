@@ -6,6 +6,9 @@ export * from './dateUtils';
 // Data utilities
 export * from './dataUtils';
 
+// ICD utilities
+export * from './icdData';
+
 // UI utilities
 export * from './uiUtils';
 

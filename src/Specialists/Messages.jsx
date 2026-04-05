@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   FaUser,
   FaTimes,
@@ -8,26 +8,26 @@ import {
   FaPlus,
   FaSearch,
   FaFileAlt,
-} from 'react-icons/fa';
-import useChat from '../Nurse/services/useChat';
-import { useAuth } from '../contexts/AuthContext';
+} from "react-icons/fa";
+import useChat from "../Nurse/services/useChat";
+import Avatar from "../components/Avatar";
 import {
   isAllowedFileType,
   getMaxFileSize,
+  formatFileSize,
   getUserTypeLabel,
-} from '../Nurse/services/chatService';
-import JitsiMeetCall from '../components/VideoCall/JitsiMeetCall.jsx';
-import './SpecialistDashboard.css';
+} from "../Nurse/services/chatService";
+import SpecialistCall from "./SpecialistCall";
+import "./SpecialistDashboard.css";
 
 const Messages = ({ currentUser }) => {
-  const { user: authenticatedUser } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [newMessage, setNewMessage] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [newMessage, setNewMessage] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [isVideoCall, setIsVideoCall] = useState(true);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const chatMessagesRef = useRef(null);
@@ -35,7 +35,20 @@ const Messages = ({ currentUser }) => {
 
   const CHARACTER_LIMIT = 500;
 
-  const currentUserId = authenticatedUser?.id || currentUser?.id || null;
+  const getCurrentUserId = () => {
+    try {
+      const user = localStorage.getItem("okiedoc_specialist_user");
+      if (user) {
+        const parsed = JSON.parse(user);
+        return parsed.id;
+      }
+      return currentUser?.id || null;
+    } catch {
+      return currentUser?.id || null;
+    }
+  };
+
+  const currentUserId = getCurrentUserId();
 
   const {
     conversations,
@@ -50,14 +63,39 @@ const Messages = ({ currentUser }) => {
     startConversation,
     searchUsers,
     getAllUsers,
-    isCallActive,
-  } = useChat({ currentUserId, currentUserType: 's' });
+  } = useChat({ currentUserId, currentUserType: "s" });
 
   useEffect(() => {
     if (chatMessagesRef.current && activeConversation) {
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
     }
   }, [chatMessages, activeConversation]);
+
+  const getConversationUserType = (conversation) => {
+    const role = (conversation.role || conversation.otherUserType || "").toLowerCase();
+    if (role.includes("nurse")) return "nurse";
+    if (role.includes("specialist") || role.includes("dr")) return "specialist";
+    if (role.includes("admin")) return "admin";
+    if (role.includes("patient")) return "patient";
+    return "patient";
+  };
+
+  const getUserTypeFromSender = (sender) => {
+    const normalized = (sender || "").toLowerCase();
+    if (normalized === "nurse") return "nurse";
+    if (normalized === "specialist" || normalized === "doctor" || normalized === "dr") return "specialist";
+    if (normalized === "admin") return "admin";
+    if (normalized === "patient") return "patient";
+    return "patient";
+  };
+
+  const getNameParts = (name) => {
+    const parts = (name || "").split(" ").filter(Boolean);
+    return {
+      firstName: parts[0] || "",
+      lastName: parts.slice(1).join(" ") || "",
+    };
+  };
 
   const handleUserSearch = useCallback(
     async (query) => {
@@ -71,7 +109,7 @@ const Messages = ({ currentUser }) => {
           setUserSearchResults(results);
         }
       } catch (error) {
-        console.error('Error searching users:', error);
+        console.error("Error searching users:", error);
         setUserSearchResults([]);
       } finally {
         setIsSearchingUsers(false);
@@ -82,7 +120,7 @@ const Messages = ({ currentUser }) => {
 
   useEffect(() => {
     if (showNewChatModal) {
-      handleUserSearch('');
+      handleUserSearch("");
     }
   }, [showNewChatModal, handleUserSearch]);
 
@@ -96,12 +134,12 @@ const Messages = ({ currentUser }) => {
 
   const handleStartNewChat = async (userId) => {
     try {
-      await startConversation('direct', userId);
+      await startConversation("direct", userId);
       setShowNewChatModal(false);
-      setUserSearchQuery('');
+      setUserSearchQuery("");
       setUserSearchResults([]);
     } catch (error) {
-      console.error('Error starting new chat:', error);
+      console.error("Error starting new chat:", error);
     }
   };
 
@@ -112,7 +150,7 @@ const Messages = ({ currentUser }) => {
 
   const closeChat = () => {
     closeConversation();
-    setNewMessage('');
+    setNewMessage("");
     setUploadedFiles([]);
   };
 
@@ -136,13 +174,13 @@ const Messages = ({ currentUser }) => {
       if (uploadedFiles.length > 0) {
         for (const fileData of uploadedFiles) {
           if (!isAllowedFileType(fileData.file)) {
-            console.warn('Skipping invalid file type:', fileData.type);
+            console.warn("Skipping invalid file type:", fileData.type);
             continue;
           }
 
           const maxSize = getMaxFileSize(fileData.type);
           if (fileData.size > maxSize) {
-            console.warn('Skipping file too large:', fileData.name);
+            console.warn("Skipping file too large:", fileData.name);
             continue;
           }
 
@@ -150,7 +188,7 @@ const Messages = ({ currentUser }) => {
         }
       }
 
-      setNewMessage('');
+      setNewMessage("");
       setUploadedFiles([]);
 
       if (chatMessagesRef.current) {
@@ -158,8 +196,8 @@ const Messages = ({ currentUser }) => {
           chatMessagesRef.current.scrollHeight;
       }
     } catch (error) {
-      console.error('Error sending message or uploading file:', error);
-      alert('Failed to send message. Please try again.');
+      console.error("Error sending message or uploading file:", error);
+      alert("Failed to send message. Please try again.");
     }
   };
 
@@ -178,13 +216,13 @@ const Messages = ({ currentUser }) => {
     const newFiles = files
       .filter((file) => {
         if (!isAllowedFileType(file)) {
-          console.error('File type not allowed:', file.type);
+          console.error("File type not allowed:", file.type);
           return false;
         }
 
         const maxSize = getMaxFileSize(file.type);
         if (file.size > maxSize) {
-          console.error('File too large:', file.name);
+          console.error("File too large:", file.name);
           return false;
         }
         return true;
@@ -204,19 +242,14 @@ const Messages = ({ currentUser }) => {
     setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId));
   };
 
-  const openPopoutCall = (callMode) => {
-    if (!activeConversation) return;
-    const { id, name, avatar } = activeConversation;
-    const url = `/video-call?ticketId=${id}&callType=${callMode}&patientId=${id}&patientName=${encodeURIComponent(name || '')}&patientAvatar=${encodeURIComponent(avatar || '')}`;
-    window.open(url, 'OkieDocVideoCall', 'width=1000,height=800,menubar=no,toolbar=no,location=no,status=no');
-  };
-
   const handleVoiceCall = () => {
-    openPopoutCall('audio');
+    setIsVideoCall(false);
+    setShowVideoCall(true);
   };
 
   const handleVideoCallClick = () => {
-    openPopoutCall('video');
+    setIsVideoCall(true);
+    setShowVideoCall(true);
   };
 
   const handleCloseVideoCall = () => {
@@ -225,12 +258,12 @@ const Messages = ({ currentUser }) => {
 
   const handleCallEnd = async (callInfo) => {
     if (activeConversation && callInfo.duration > 0) {
-      const callType = callInfo.type === 'video' ? 'Video call' : 'Voice call';
+      const callType = callInfo.type === "video" ? "Video call" : "Voice call";
       const callMessage = `${callType} ended - ${callInfo.formattedDuration}`;
       try {
         await sendChatMessage(callMessage);
       } catch (error) {
-        console.error('Error sending call message:', error);
+        console.error("Error sending call message:", error);
       }
     }
   };
@@ -239,86 +272,89 @@ const Messages = ({ currentUser }) => {
     const query = searchQuery.toLowerCase();
     return (
       conversation.name.toLowerCase().includes(query) ||
-      (conversation.role || '').toLowerCase().includes(query) ||
-      (conversation.lastMessage || '').toLowerCase().includes(query)
+      (conversation.role || "").toLowerCase().includes(query) ||
+      (conversation.lastMessage || "").toLowerCase().includes(query)
     );
   });
 
   return (
-    <div className='specialist-messages-container'>
-      <div className='messages-layout'>
-        <div className='conversations-sidebar'>
-          <div className='conversations-header'>
+    <div className="specialist-messages-container">
+      <div className="messages-layout">
+        <div className="conversations-sidebar">
+          <div className="conversations-header">
             <h3>Messages</h3>
             <button
-              className='new-chat-btn'
+              className="new-chat-btn"
               onClick={() => setShowNewChatModal(true)}
-              title='Start New Chat'
+              title="Start New Chat"
             >
               <FaPlus />
             </button>
           </div>
 
-          <div className='conversations-search-box'>
+          <div className="conversations-search-box">
             <input
-              type='text'
-              placeholder='Search conversations...'
+              type="text"
+              placeholder="Search conversations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <div className='conversations-list'>
+          <div className="conversations-list">
             {filteredConversations.length > 0 ? (
               filteredConversations.map((conversation) => (
                 <div
                   key={conversation.id}
                   className={`conversation-item ${
-                    activeConversation?.id === conversation.id ? 'active' : ''
-                  } ${conversation.unreadCount > 0 ? 'unread' : ''}`}
+                    activeConversation?.id === conversation.id ? "active" : ""
+                  } ${conversation.unreadCount > 0 ? "unread" : ""}`}
                   onClick={() => openChat(conversation)}
                 >
-                  <div className='conversation-avatar'>
-                    {conversation.avatar ? (
-                      <img src={conversation.avatar} alt={conversation.name} />
-                    ) : (
-                      <FaUser />
-                    )}
+                  <div className="conversation-avatar">
+                    <Avatar
+                      profileImageUrl={conversation.avatar}
+                      firstName={getNameParts(conversation.name).firstName}
+                      lastName={getNameParts(conversation.name).lastName}
+                      userType={getConversationUserType(conversation)}
+                      size={40}
+                      alt={conversation.name}
+                    />
                     <div
                       className={`online-indicator ${
-                        conversation.isOnline ? 'online' : 'offline'
+                        conversation.isOnline ? "online" : "offline"
                       }`}
                     ></div>
                   </div>
 
-                  <div className='conversation-info'>
-                    <div className='conversation-header-row'>
-                      <span className='conversation-name'>
+                  <div className="conversation-info">
+                    <div className="conversation-header-row">
+                      <span className="conversation-name">
                         {conversation.name}
                       </span>
-                      <span className='conversation-time'>
-                        {conversation.timestamp || ''}
+                      <span className="conversation-time">
+                        {conversation.timestamp || ""}
                       </span>
                     </div>
-                    <div className='conversation-preview'>
-                      <p className='last-message'>
+                    <div className="conversation-preview">
+                      <p className="last-message">
                         {conversation.lastMessage &&
-                        conversation.lastMessage !== 'No messages yet'
+                        conversation.lastMessage !== "No messages yet"
                           ? conversation.lastMessageSentByMe
-                            ? 'You: '
+                            ? "You: "
                             : conversation.lastMessageSenderName
                               ? `${conversation.lastMessageSenderName}: `
-                              : ''
-                          : ''}
+                              : ""
+                          : ""}
                         {conversation.lastMessage}
                       </p>
                       {conversation.unreadCount > 0 && (
-                        <span className='unread-badge'>
+                        <span className="unread-badge">
                           {conversation.unreadCount}
                         </span>
                       )}
                     </div>
-                    <div className='conversation-role'>
+                    <div className="conversation-role">
                       {conversation.role ||
                         getUserTypeLabel(conversation.otherUserType)}
                     </div>
@@ -326,7 +362,7 @@ const Messages = ({ currentUser }) => {
                 </div>
               ))
             ) : (
-              <div className='no-conversations'>
+              <div className="no-conversations">
                 <p>No conversations found</p>
                 <span>Start a new chat to begin messaging</span>
               </div>
@@ -334,35 +370,35 @@ const Messages = ({ currentUser }) => {
           </div>
         </div>
 
-        <div className='chat-area'>
+        <div className="chat-area">
           {activeConversation ? (
             <>
-              <div className='chat-header'>
-                <div className='chat-user-info'>
-                  <div className='chat-avatar'>
-                    {activeConversation.avatar ? (
-                      <img
-                        src={activeConversation.avatar}
-                        alt={activeConversation.name}
-                      />
-                    ) : (
-                      <FaUser />
-                    )}
+              <div className="chat-header">
+                <div className="chat-user-info">
+                  <div className="chat-avatar">
+                    <Avatar
+                      profileImageUrl={activeConversation.avatar}
+                      firstName={getNameParts(activeConversation.name).firstName}
+                      lastName={getNameParts(activeConversation.name).lastName}
+                      userType={getConversationUserType(activeConversation)}
+                      size={40}
+                      alt={activeConversation.name}
+                    />
                     <div
                       className={`online-indicator ${
-                        activeConversation.isOnline ? 'online' : 'offline'
+                        activeConversation.isOnline ? "online" : "offline"
                       }`}
                     ></div>
                   </div>
-                  <div className='chat-user-details'>
+                  <div className="chat-user-details">
                     <h4>{activeConversation.name}</h4>
-                    <p className='user-status'>
+                    <p className="user-status">
                       {activeConversation.role ||
                         getUserTypeLabel(activeConversation.otherUserType)}
                     </p>
                     {typingUsers.length > 0 && (
-                      <div className='typing-indicator'>
-                        <div className='typing-dots'>
+                      <div className="typing-indicator">
+                        <div className="typing-dots">
                           <span></span>
                           <span></span>
                           <span></span>
@@ -371,118 +407,92 @@ const Messages = ({ currentUser }) => {
                     )}
                   </div>
                 </div>
-                <div className='chat-actions'>
+                <div className="chat-actions">
                   <button
-                    className='icon-btn'
+                    className="icon-btn"
                     onClick={handleVoiceCall}
-                    title='Voice Call'
+                    title="Voice Call"
                   >
                     <FaPhone />
                   </button>
                   <button
-                    className='icon-btn video-btn'
+                    className="icon-btn video-btn"
                     onClick={handleVideoCallClick}
-                    title='Video Call'
+                    title="Video Call"
                   >
                     <FaVideo />
                   </button>
                   <button
-                    className='icon-btn'
+                    className="icon-btn"
                     onClick={closeChat}
-                    title='Back to Messages'
+                    title="Back to Messages"
                   >
                     <FaTimes />
                   </button>
                 </div>
               </div>
 
-              <div className='chat-messages' ref={chatMessagesRef}>
+              <div className="chat-messages" ref={chatMessagesRef}>
                 {chatMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={
-                      message.sender === 'system' || message.isSystem
-                        ? 'system-message'
-                        : `message ${message.isSent ? 'own-message' : 'other-message'} message-type-${message.sender}`
-                    }
+                    className={`message ${
+                      message.isSent ? "own-message" : "other-message"
+                    } message-type-${message.sender}`}
                   >
-                    {message.sender === 'system' || message.isSystem ? (
-                      <>
-                        <p className='message-text'>{message.text}</p>
+                    {message.sender === "system" ? (
+                      <div className="system-message">
+                        <p className="message-text">{message.text}</p>
                         {message.subtext && (
-                          <p className='message-subtext'>{message.subtext}</p>
+                          <p className="message-subtext">{message.subtext}</p>
                         )}
-                        {message.text &&
-                          message.text.includes(
-                            'started a secure consultation call',
-                          ) &&
-                          isCallActive && (
-                            <button
-                              className='btn-primary join-call-btn'
-                              style={{
-                                marginTop: '8px',
-                                padding: '6px 12px',
-                                fontSize: '0.85rem',
-                              }}
-                              onClick={() => handleVideoCallClick()}
-                            >
-                              <FaVideo style={{ marginRight: '6px' }} /> Join
-                              Call
-                            </button>
-                          )}
-                      </>
+                      </div>
                     ) : (
                       <>
                         {!message.isSent && (
-                          <div className='message-avatar'>
-                            {message.avatar ? (
-                              <img
-                                src={message.avatar}
-                                alt={message.senderName || 'User'}
-                              />
-                            ) : (
-                              <FaUser className='avatar-icon-small' />
-                            )}
+                          <div className="message-avatar">
+                            <Avatar
+                              profileImageUrl={message.avatar}
+                              firstName={getNameParts(message.senderName).firstName}
+                              lastName={getNameParts(message.senderName).lastName}
+                              userType={getUserTypeFromSender(message.sender)}
+                              size={32}
+                              alt={message.senderName || "User"}
+                            />
                           </div>
                         )}
 
-                        <div className='message-bubble-wrapper'>
-                          {/* Sender name label — shown above received messages in group chats, like Messenger */}
-                          {!message.isSent && message.senderName && (
-                            <span className='specialist-message-sender-name'>
-                              {message.senderName}
-                            </span>
-                          )}
-                          <div className='message-content'>
-                            {message.messageType === 'file' ||
-                            message.messageType === 'image' ? (
-                              <div className='message-media-wrapper'>
-                                {message.messageType === 'image' ? (
-                                  <div className='image-container'>
+                        <div className="message-bubble-wrapper">
+                          <div className="message-content">
+                            {message.messageType === "file" ||
+                            message.messageType === "image" ? (
+                              <div className="message-media-wrapper">
+                                {message.messageType === "image" ? (
+                                  <div className="image-container">
                                     <img
                                       src={message.fileUrl}
                                       alt={message.fileName}
-                                      className='message-image'
+                                      className="message-image"
                                       onClick={() =>
-                                        window.open(message.fileUrl, '_blank')
+                                        window.open(message.fileUrl, "_blank")
                                       }
-                                      style={{ cursor: 'pointer' }}
+                                      style={{ cursor: "pointer" }}
                                     />
                                   </div>
                                 ) : (
-                                  <div className='file-attachment'>
+                                  <div className="file-attachment">
                                     <a
                                       href={message.fileUrl}
-                                      target='_blank'
-                                      rel='noopener noreferrer'
-                                      className='file-link'
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="file-link"
                                     >
-                                      <FaFileAlt className='file-icon' />
-                                      <div className='file-info'>
-                                        <div className='file-name'>
+                                      <FaFileAlt className="file-icon" />
+                                      <div className="file-info">
+                                        <div className="file-name">
                                           {message.fileName}
                                         </div>
-                                        <div className='file-size'>
+                                        <div className="file-size">
                                           {formatFileSize(message.fileSize)}
                                         </div>
                                       </div>
@@ -490,13 +500,13 @@ const Messages = ({ currentUser }) => {
                                   </div>
                                 )}
                                 {message.text && (
-                                  <p className='caption'>{message.text}</p>
+                                  <p className="caption">{message.text}</p>
                                 )}
                               </div>
                             ) : (
-                              <p className='message-text'>{message.text}</p>
+                              <p className="message-text">{message.text}</p>
                             )}
-                            <span className='message-time'>
+                            <span className="message-time">
                               {message.timestamp}
                             </span>
                           </div>
@@ -507,19 +517,19 @@ const Messages = ({ currentUser }) => {
                 ))}
               </div>
 
-              <div className='chat-input-area'>
+              <div className="chat-input-area">
                 {uploadedFiles.length > 0 && (
-                  <div className='uploaded-files-preview'>
+                  <div className="uploaded-files-preview">
                     {uploadedFiles.map((file) => (
-                      <div key={file.id} className='uploaded-file-chip'>
+                      <div key={file.id} className="uploaded-file-chip">
                         <FaPaperclip />
-                        <span className='file-name'>{file.name}</span>
-                        <span className='file-size'>
+                        <span className="file-name">{file.name}</span>
+                        <span className="file-size">
                           {formatFileSize(file.size)}
                         </span>
                         <button
                           onClick={() => handleRemoveFile(file.id)}
-                          className='remove-file-btn'
+                          className="remove-file-btn"
                         >
                           <FaTimes />
                         </button>
@@ -527,42 +537,42 @@ const Messages = ({ currentUser }) => {
                     ))}
                   </div>
                 )}
-                <form onSubmit={handleSendMessage} className='input-row'>
+                <form onSubmit={handleSendMessage} className="input-row">
                   <button
-                    type='button'
-                    className='icon-btn'
+                    type="button"
+                    className="icon-btn"
                     onClick={() => fileInputRef.current?.click()}
-                    title='Attach File'
+                    title="Attach File"
                   >
                     <FaPaperclip />
                   </button>
                   <input
-                    type='file'
+                    type="file"
                     ref={fileInputRef}
-                    style={{ display: 'none' }}
+                    style={{ display: "none" }}
                     onChange={handleFileUpload}
                     multiple
-                    accept='image/*,.pdf,.doc,.docx,.txt'
+                    accept="image/*,.pdf,.doc,.docx,.txt"
                   />
                   <input
-                    type='text'
-                    placeholder='Type a message...'
+                    type="text"
+                    placeholder="Type a message..."
                     value={newMessage}
                     onChange={handleMessageChange}
                     maxLength={CHARACTER_LIMIT}
-                    className='message-input'
+                    className="message-input"
                   />
-                  <button type='submit' className='send-btn'>
+                  <button type="submit" className="send-btn">
                     Send
                   </button>
                 </form>
-                <div className='character-count'>
+                <div className="character-count">
                   {newMessage.length}/{CHARACTER_LIMIT}
                 </div>
               </div>
             </>
           ) : (
-            <div className='no-conversation-selected'>
+            <div className="no-conversation-selected">
               <FaUser size={48} />
               <p>Select a conversation to start messaging</p>
             </div>
@@ -571,36 +581,36 @@ const Messages = ({ currentUser }) => {
       </div>
 
       {showNewChatModal && (
-        <div className='modal' onClick={() => setShowNewChatModal(false)}>
-          <div className='modal-content' onClick={(e) => e.stopPropagation()}>
-            <div className='modal-header'>
+        <div className="modal" onClick={() => setShowNewChatModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
               <h3>Start New Chat</h3>
               <button
-                className='close-modal'
+                className="close-modal"
                 onClick={() => setShowNewChatModal(false)}
               >
                 <FaTimes />
               </button>
             </div>
-            <div className='search-box'>
+            <div className="search-box">
               <input
-                type='text'
-                placeholder='Search users...'
+                type="text"
+                placeholder="Search users..."
                 value={userSearchQuery}
                 onChange={(e) => setUserSearchQuery(e.target.value)}
               />
             </div>
-            <div className='user-search-results'>
+            <div className="user-search-results">
               {isSearchingUsers ? (
-                <div className='loading-state'>Searching...</div>
+                <div className="loading-state">Searching...</div>
               ) : userSearchResults.length > 0 ? (
                 userSearchResults.map((user) => (
                   <div
                     key={user.Id || user.id}
-                    className='user-result-item'
+                    className="user-result-item"
                     onClick={() => handleStartNewChat(user.Id || user.id)}
                   >
-                    <div className='user-avatar'>
+                    <div className="user-avatar">
                       {user.avatar ? (
                         <img
                           src={user.avatar}
@@ -608,38 +618,53 @@ const Messages = ({ currentUser }) => {
                             user.Display_Name ||
                             user.name ||
                             user.Email ||
-                            'User'
+                            "User"
                           }
                         />
                       ) : (
                         <FaUser />
                       )}
                     </div>
-                    <div className='user-info'>
-                      <div className='user-name'>
+                    <div className="user-info">
+                      <div className="user-name">
                         {user.Display_Name ||
                           user.name ||
-                          `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
+                          `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
                           user.Email ||
-                          'User'}
+                          "User"}
                       </div>
-                      <div className='user-role'>
+                      <div className="user-role">
                         {user.User_Type ||
                           getUserTypeLabel(
                             user.User_Type_Code || user.userType || user.type,
                           ) ||
                           user.role ||
-                          'User'}
+                          "User"}
                       </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className='no-results'>No users found</div>
+                <div className="no-results">No users found</div>
               )}
             </div>
           </div>
         </div>
+      )}
+
+      {showVideoCall && activeConversation && (
+        <SpecialistCall
+          isOpen={showVideoCall}
+          onClose={handleCloseVideoCall}
+          onCallEnd={handleCallEnd}
+          callType={isVideoCall ? "video" : "audio"}
+          patient={{
+            name: activeConversation?.name,
+            avatar: activeConversation?.avatar,
+            id: activeConversation?.id,
+          }}
+          currentUser={currentUser}
+        />
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import "./auth.css";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaCheck, FaEye, FaEyeSlash, FaStethoscope, FaUser } from "react-icons/fa";
 import { usePSGC } from "../hooks/usePSGC";
 import { apiRequest } from "../api/apiClient";
 
@@ -10,16 +10,22 @@ export default function SpecialistRegistration() {
   const navigate = useNavigate();
   const { regions, provinces, cities, barangays, fetchProvinces, fetchCities, fetchBarangays } = usePSGC();
   const [formData, setFormData] = useState({
+    specialistType: "",
     firstName: "",
     lastName: "",
     middleName: "",
     email: "",
     password: "",
     confirmPassword: "",
+    bMonth: "",
+    bDay: "",
+    bYear: "",
     primarySpecialty: "",
     subSpecialties: "",
     licenseNumber: "",
-    prcExpiryDate: "",
+    prcExpiryMonth: "",
+    prcExpiryDay: "",
+    prcExpiryYear: "",
     s2Number: "",
     ptrNumber: "",
     mobileNumber: "",
@@ -27,10 +33,12 @@ export default function SpecialistRegistration() {
     city: "",
     province: "",
     region: "",
-    zipCode: "4402",
+    zipCode: "",
     addressLine1: "",
     addressLine2: "",
   });
+  const [selectedRole, setSelectedRole] = useState("");
+  const [roleStepComplete, setRoleStepComplete] = useState(false);
   const [eSignatureFile, setESignatureFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState("");
@@ -57,7 +65,9 @@ export default function SpecialistRegistration() {
 
   useEffect(() => {
     if (cities.length > 0 && !formData.city) {
-      const defaultCity = cities.find((c) => /naga/i.test(c.name)) || cities[0];
+      const defaultCity = cities.find(
+        (c) => /naga/i.test(c.name) || c.name === 'City of Naga',
+      ) || cities[0];
       setFormData((prev) => ({ ...prev, city: defaultCity.name }));
       fetchBarangays(defaultCity.code);
     }
@@ -72,9 +82,22 @@ export default function SpecialistRegistration() {
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
+    let filteredValue = value;
+
+    // Apply character restrictions
+    if (['firstName', 'lastName', 'middleName'].includes(id)) {
+      filteredValue = value.replace(/[^a-zA-Z\s-]/g, '');
+    } else if (id === 'mobileNumber') {
+      filteredValue = value.replace(/[^0-9+]/g, '');
+    } else if (id === 'zipCode') {
+      filteredValue = value.replace(/[^0-9]/g, '').slice(0, 4);
+    } else if (['addressLine1', 'addressLine2'].includes(id)) {
+      filteredValue = value.replace(/[^a-zA-Z0-9\s,]/g, '');
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [id]: value,
+      [id]: filteredValue,
     }));
     if (errors[id]) {
       setErrors((prev) => ({ ...prev, [id]: "" }));
@@ -94,9 +117,48 @@ export default function SpecialistRegistration() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "Please enter a valid email address";
     }
-    if (!formData.primarySpecialty.trim()) newErrors.primarySpecialty = "Medical specialty is required";
-    if (!formData.licenseNumber.trim()) newErrors.licenseNumber = "License number is required";
-    if (!formData.mobileNumber.trim()) newErrors.mobileNumber = "Mobile number is required";
+
+    if (!formData.bMonth || !formData.bDay || !formData.bYear) {
+      newErrors.birthday = 'Complete birthday is required';
+    } else {
+      const birthDate = new Date(
+        `${formData.bYear}-${formData.bMonth}-${formData.bDay}`,
+      );
+      if (birthDate > new Date())
+        newErrors.birthday = 'Birthday cannot be in the future';
+    }
+
+    if (formData.specialistType === 'specialist' && !formData.primarySpecialty.trim())
+      newErrors.primarySpecialty = 'Medical specialty is required';
+    
+    if (!formData.licenseNumber.trim())
+      newErrors.licenseNumber = 'License number is required';
+    if (!formData.mobileNumber.trim()) {
+      newErrors.mobileNumber = 'Mobile number is required';
+    } else {
+      const mobileRegex = /^(09\d{9}|\+639\d{9})$/;
+      if (!mobileRegex.test(formData.mobileNumber.trim())) {
+        newErrors.mobileNumber =
+          'Must be a valid PH number (e.g., 09123456789 or +639123456789)';
+      }
+    }
+
+    if (
+      formData.prcExpiryMonth &&
+      formData.prcExpiryDay &&
+      formData.prcExpiryYear
+    ) {
+      const expiry = new Date(
+        `${formData.prcExpiryYear}-${formData.prcExpiryMonth}-${formData.prcExpiryDay}`,
+      );
+      const minDate = new Date();
+      minDate.setDate(minDate.getDate() + 15);
+      minDate.setHours(0, 0, 0, 0);
+      if (expiry < minDate) {
+        newErrors.prcExpiryDate =
+          'Expiry date must be at least 15 days from today';
+      }
+    }
     if (!formData.password) {
       newErrors.password = "Password is required";
     } else if (formData.password.length < 6) {
@@ -121,10 +183,17 @@ export default function SpecialistRegistration() {
       payload.append("mobileNumber", formData.mobileNumber);
       payload.append("password", formData.password);
       payload.append("licenseNumber", formData.licenseNumber);
-      payload.append("primarySpecialty", formData.primarySpecialty);
-      payload.append("subSpecialties", formData.subSpecialties || "");
-      if (formData.prcExpiryDate) payload.append("prcExpiryDate", formData.prcExpiryDate);
-      if (formData.s2Number) payload.append("s2Number", formData.s2Number);
+      payload.append("specialistType", formData.specialistType);
+      
+      if (formData.specialistType === 'specialist') {
+        payload.append("primarySpecialty", formData.primarySpecialty);
+        payload.append("subSpecialties", formData.subSpecialties || "");
+        if (formData.s2Number) payload.append("s2Number", formData.s2Number);
+      }
+      payload.append(
+        "birthday",
+        `${formData.bYear}-${formData.bMonth}-${formData.bDay}`,
+      );
       if (formData.ptrNumber) payload.append("ptrNumber", formData.ptrNumber);
       if (formData.barangay) payload.append("barangay", formData.barangay);
       if (formData.city) payload.append("city", formData.city);
@@ -144,16 +213,22 @@ export default function SpecialistRegistration() {
         setSuccess("Registration successful! Your application to become a specialist has been submitted.");
         window.scrollTo(0, 0);
         setFormData({
+          specialistType: "",
           firstName: "",
           lastName: "",
           middleName: "",
           email: "",
           password: "",
           confirmPassword: "",
+          bMonth: "",
+          bDay: "",
+          bYear: "",
           primarySpecialty: "",
           subSpecialties: "",
           licenseNumber: "",
-          prcExpiryDate: "",
+          prcExpiryMonth: "",
+          prcExpiryDay: "",
+          prcExpiryYear: "",
           s2Number: "",
           ptrNumber: "",
           mobileNumber: "",
@@ -165,6 +240,8 @@ export default function SpecialistRegistration() {
           addressLine1: "",
           addressLine2: "",
         });
+        setSelectedRole('');
+        setRoleStepComplete(false);
         setESignatureFile(null);
       } else {
         setErrors({ email: result.message || "Registration failed." });
@@ -180,6 +257,9 @@ export default function SpecialistRegistration() {
       window.scrollTo(0, 0);
     }
   };
+
+  // Determine if specialist fields should be shown
+  const showSpecialistFields = formData.specialistType === 'specialist';
 
   return (
     <>
@@ -207,11 +287,83 @@ export default function SpecialistRegistration() {
             <img src="/okie-doc-logo.png" alt="OkieDoc+" className="logo-image" />
             <div style={{ width: "2.5rem" }}></div>
           </div>
-          <h2 className="login-title">Specialist Registration</h2>
+          <h2 className="login-title">Medical Professional Registration</h2>
           <p className="login-subtitle">
-            Join as a verified specialist and start helping patients.
+            Choose your registration type before filling out the details.
           </p>
-          <form className="login-form" onSubmit={handleSubmit}>
+          <div className="practitioner-type-grid">
+            <button
+              type="button"
+              className={`practitioner-card ${selectedRole === 'gp' ? 'selected' : ''}`}
+              onClick={() => {
+                setSelectedRole('gp');
+                setFormData((prev) => ({
+                  ...prev,
+                  specialistType: 'gp',
+                }));
+                setErrors((prev) => ({
+                  ...prev,
+                  primarySpecialty: '',
+                  s2Number: '',
+                }));
+                setRoleStepComplete(true);
+              }}
+            >
+              <div className="practitioner-card-icon">
+                <FaUser />
+              </div>
+              {selectedRole === 'gp' && (
+                <span className="practitioner-card-badge">
+                  <FaCheck />
+                </span>
+              )}
+              <h3 className="practitioner-card-title">General Practitioner</h3>
+              <p className="practitioner-card-description">
+                Primary care physician providing comprehensive healthcare.
+              </p>
+            </button>
+            <button
+              type="button"
+              className={`practitioner-card ${selectedRole === 'specialist' ? 'selected' : ''}`}
+              onClick={() => {
+                setSelectedRole('specialist');
+                setFormData((prev) => ({
+                  ...prev,
+                  specialistType: 'specialist',
+                }));
+                setErrors((prev) => ({
+                  ...prev,
+                  primarySpecialty: '',
+                  s2Number: '',
+                }));
+                setRoleStepComplete(true);
+              }}
+            >
+              <div className="practitioner-card-icon">
+                <FaStethoscope />
+              </div>
+              {selectedRole === 'specialist' && (
+                <span className="practitioner-card-badge">
+                  <FaCheck />
+                </span>
+              )}
+              <h3 className="practitioner-card-title">Specialist Doctor</h3>
+              <p className="practitioner-card-description">
+                Medical specialist with focused expertise in a specific area.
+              </p>
+            </button>
+          </div>
+          {roleStepComplete && (
+            <>
+              <p className="login-subtitle" style={{ marginBottom: '1.5rem' }}>
+                Registering as{' '}
+                <strong>
+                  {formData.specialistType === 'gp'
+                    ? 'General Practitioner'
+                    : 'Specialist Doctor'}
+                </strong>
+              </p>
+              <form className="login-form" onSubmit={handleSubmit}>
 
             <label className="login-label" htmlFor="firstName">
               First Name
@@ -223,6 +375,7 @@ export default function SpecialistRegistration() {
               placeholder="Enter your first name"
               value={formData.firstName}
               onChange={handleInputChange}
+              maxLength={150}
             />
             {errors.firstName && (
               <span className="error-message">{errors.firstName}</span>
@@ -238,6 +391,7 @@ export default function SpecialistRegistration() {
               placeholder="Enter your last name"
               value={formData.lastName}
               onChange={handleInputChange}
+              maxLength={150}
             />
             {errors.lastName && (
               <span className="error-message">{errors.lastName}</span>
@@ -253,6 +407,7 @@ export default function SpecialistRegistration() {
               placeholder="Enter your middle name"
               value={formData.middleName}
               onChange={handleInputChange}
+              maxLength={150}
             />
 
             <label className="login-label" htmlFor="email">
@@ -270,32 +425,102 @@ export default function SpecialistRegistration() {
               <span className="error-message">{errors.email}</span>
             )}
 
-            <label className="login-label" htmlFor="primarySpecialty">
-              Medical Specialty
-            </label>
-            <input
-              className={`login-input ${errors.primarySpecialty ? "error" : ""}`}
-              id="primarySpecialty"
-              type="text"
-              placeholder="e.g. Cardiology, Pediatrics"
-              value={formData.primarySpecialty}
-              onChange={handleInputChange}
-            />
-            {errors.primarySpecialty && (
-              <span className="error-message">{errors.primarySpecialty}</span>
+            <label className="login-label">Birthday</label>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <select
+                className={`login-input ${errors.birthday ? "error" : ""}`}
+                id="bMonth"
+                value={formData.bMonth}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value="">Month</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m.toString().padStart(2, "0")}>
+                    {new Date(0, m - 1).toLocaleString("en-US", {
+                      month: "short",
+                    })}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={`login-input ${errors.birthday ? "error" : ""}`}
+                id="bDay"
+                value={formData.bDay}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value="">Day</option>
+                {Array.from(
+                  {
+                    length: new Date(
+                      formData.bYear || 2000,
+                      formData.bMonth || 1,
+                      0,
+                    ).getDate(),
+                  },
+                  (_, i) => i + 1,
+                ).map((d) => (
+                  <option key={d} value={d.toString().padStart(2, "0")}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={`login-input ${errors.birthday ? "error" : ""}`}
+                id="bYear"
+                value={formData.bYear}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value="">Year</option>
+                {Array.from(
+                  { length: new Date().getFullYear() - 1920 + 1 },
+                  (_, i) => new Date().getFullYear() - i,
+                ).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {errors.birthday && (
+              <span className="error-message">{errors.birthday}</span>
             )}
 
-            <label className="login-label" htmlFor="subSpecialties">
-              Sub-specialties (Optional, comma-separated)
-            </label>
-            <input
-              className="login-input"
-              id="subSpecialties"
-              type="text"
-              placeholder="e.g. Interventional, Electrophysiology"
-              value={formData.subSpecialties}
-              onChange={handleInputChange}
-            />
+            {/* Show specialist fields only for specialist registration */}
+            {showSpecialistFields && (
+              <>
+                <label className="login-label" htmlFor="primarySpecialty">
+                  Medical Specialty
+                </label>
+                <input
+                  className={`login-input ${errors.primarySpecialty ? "error" : ""}`}
+                  id="primarySpecialty"
+                  type="text"
+                  placeholder="e.g. Cardiology, Pediatrics"
+                  value={formData.primarySpecialty}
+                  onChange={handleInputChange}
+                  maxLength={100}
+                />
+                {errors.primarySpecialty && (
+                  <span className="error-message">{errors.primarySpecialty}</span>
+                )}
+
+                <label className="login-label" htmlFor="subSpecialties">
+                  Sub-specialties (Optional, comma-separated)
+                </label>
+                <input
+                  className="login-input"
+                  id="subSpecialties"
+                  type="text"
+                  placeholder="e.g. Interventional, Electrophysiology"
+                  value={formData.subSpecialties}
+                  onChange={handleInputChange}
+                  maxLength={255}
+                />
+              </>
+            )}
 
             <label className="login-label" htmlFor="licenseNumber">
               License Number
@@ -307,34 +532,91 @@ export default function SpecialistRegistration() {
               placeholder="Enter your license number"
               value={formData.licenseNumber}
               onChange={handleInputChange}
+              maxLength={10}
             />
             {errors.licenseNumber && (
               <span className="error-message">{errors.licenseNumber}</span>
             )}
 
-            <label className="login-label" htmlFor="prcExpiryDate">
-              PRC Expiry Date (Optional)
-            </label>
-            <input
-              className="login-input"
-              id="prcExpiryDate"
-              type="date"
-              value={formData.prcExpiryDate}
-              onChange={handleInputChange}
-            />
+            <label className="login-label">PRC Expiry Date (Optional)</label>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <select
+                className={`login-input ${errors.prcExpiryDate ? "error" : ""}`}
+                id="prcExpiryMonth"
+                value={formData.prcExpiryMonth}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value="">Month</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m.toString().padStart(2, "0")}>
+                    {new Date(0, m - 1).toLocaleString("en-US", {
+                      month: "short",
+                    })}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={`login-input ${errors.prcExpiryDate ? "error" : ""}`}
+                id="prcExpiryDay"
+                value={formData.prcExpiryDay}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value="">Day</option>
+                {Array.from(
+                  {
+                    length: new Date(
+                      formData.prcExpiryYear || 2000,
+                      formData.prcExpiryMonth || 1,
+                      0,
+                    ).getDate(),
+                  },
+                  (_, i) => i + 1,
+                ).map((d) => (
+                  <option key={d} value={d.toString().padStart(2, "0")}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={`login-input ${errors.prcExpiryDate ? "error" : ""}`}
+                id="prcExpiryYear"
+                value={formData.prcExpiryYear}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value="">Year</option>
+                {Array.from(
+                  { length: new Date().getFullYear() - 2020 + 20 },
+                  (_, i) => new Date().getFullYear() - i + 10,
+                ).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {errors.prcExpiryDate && (
+              <span className="error-message">{errors.prcExpiryDate}</span>
+            )}
 
-            <label className="login-label" htmlFor="s2Number">
-              S2 License Number (Optional)
-            </label>
-            <input
-              className="login-input"
-              id="s2Number"
-              type="text"
-              placeholder="For prescribing dangerous drugs"
-              value={formData.s2Number}
-              onChange={handleInputChange}
-            />
-
+            {showSpecialistFields && (
+              <>
+                <label className="login-label" htmlFor="s2Number">
+                  S2 License Number (Optional)
+                </label>
+                <input
+                  className="login-input"
+                  id="s2Number"
+                  type="text"
+                  placeholder="For prescribing dangerous drugs"
+                  value={formData.s2Number}
+                  onChange={handleInputChange}
+                  maxLength={20}
+                />
+              </>
+            )}
             <label className="login-label" htmlFor="ptrNumber">
               PTR Number (Optional)
             </label>
@@ -345,19 +627,36 @@ export default function SpecialistRegistration() {
               placeholder="Professional Tax Receipt No."
               value={formData.ptrNumber}
               onChange={handleInputChange}
+              maxLength={12}
             />
 
             <label className="login-label" htmlFor="eSignature">
               E-Signature Upload (Optional)
             </label>
             <input
-              className="login-input"
+              className={`login-input ${errors.eSignature ? "error" : ""}`}
               id="eSignature"
               type="file"
-              accept="image/png, image/jpeg"
-              onChange={(e) => setESignatureFile(e.target.files[0])}
+              accept="image/png"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file && file.type !== 'image/png') {
+                  setErrors((prev) => ({
+                    ...prev,
+                    eSignature: 'Only PNG files are accepted for e-signature',
+                  }));
+                  setESignatureFile(null);
+                  e.target.value = '';
+                } else {
+                  setErrors((prev) => ({ ...prev, eSignature: '' }));
+                  setESignatureFile(file);
+                }
+              }}
               style={{ padding: '10px' }}
             />
+            {errors.eSignature && (
+              <span className='error-message'>{errors.eSignature}</span>
+            )}
 
             <label className="login-label" htmlFor="mobileNumber">
               Mobile Number
@@ -369,6 +668,7 @@ export default function SpecialistRegistration() {
               placeholder="+63 912 345 6789"
               value={formData.mobileNumber}
               onChange={handleInputChange}
+              maxLength={13}
             />
             {errors.mobileNumber && (
               <span className="error-message">{errors.mobileNumber}</span>
@@ -482,6 +782,7 @@ export default function SpecialistRegistration() {
               placeholder="Enter your address line 1"
               value={formData.addressLine1}
               onChange={handleInputChange}
+              maxLength={150}
             />
             {errors.addressLine1 && (
               <span className="error-message">{errors.addressLine1}</span>
@@ -497,10 +798,11 @@ export default function SpecialistRegistration() {
               placeholder="Enter your address line 2 (optional)"
               value={formData.addressLine2}
               onChange={handleInputChange}
+              maxLength={150}
             />
 
             <label className="login-label" htmlFor="zipCode">
-              Zip Code
+              ZIP Code
             </label>
             <input
               className={`login-input ${errors.zipCode ? "error" : ""}`}
@@ -509,6 +811,7 @@ export default function SpecialistRegistration() {
               placeholder="Enter your zip code"
               value={formData.zipCode}
               onChange={handleInputChange}
+              maxLength={4}
             />
             {errors.zipCode && (
               <span className="error-message">{errors.zipCode}</span>
@@ -578,6 +881,8 @@ export default function SpecialistRegistration() {
               </a>
             </p>
           </form>
+            </>
+          )}
         </div>
       </div>
     </>

@@ -1798,8 +1798,14 @@ html:has(body.specialist-dashboard-body) {
   transition: background 0.2s ease;
 }
 
-.request-record-btn:hover {
+.request-record-btn:hover:not(:disabled) {
   background: #0b5ed7;
+}
+
+.request-record-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .medical-records-list {

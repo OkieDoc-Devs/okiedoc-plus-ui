@@ -514,8 +514,11 @@ const SpecialistDashboard = () => {
   }, [navigate, loadTicketsData, loadDashboardData]);
 
   useEffect(() => {
-    if (tickets.length > 0 && !selectedTicketId) {
-      setSelectedTicketId(tickets[0].id);
+    if (tickets.length > 0) {
+      const hasSelectedTicket = selectedTicketId && tickets.some((t) => String(t.id) === String(selectedTicketId));
+      if (!hasSelectedTicket) {
+        setSelectedTicketId(tickets[0].id);
+      }
     }
   }, [tickets, selectedTicketId]);
 
@@ -536,7 +539,7 @@ const SpecialistDashboard = () => {
       } else {
         setEncounter(createDefaultEncounter());
       }
-      setMhRequests(loadMedicalHistoryData(selectedTicketId));
+      setMhRequests([]);
     }
   }, [selectedTicketId]);
 
@@ -976,7 +979,7 @@ const SpecialistDashboard = () => {
         to: '',
         consent: true,
       });
-      const list = loadMedicalHistoryData(selectedTicketId).concat([item]);
+      const list = mhRequests.concat([item]);
       saveMedicalHistoryData(selectedTicketId, list);
       setMhRequests(list);
     } catch (error) {
@@ -2100,9 +2103,19 @@ const SpecialistDashboard = () => {
                 <div className='medical-records-empty-text'>
                   No medical records shared yet
                 </div>
-                <button className='request-record-btn' onClick={requestPatientRecords}>
+                <button 
+                  className='request-record-btn' 
+                  onClick={requestPatientRecords}
+                  disabled={profileData.specialization === 'General Practitioner'}
+                  title={profileData.specialization === 'General Practitioner' ? 'General practitioners cannot request medical history' : ''}
+                >
                   Request Record from Patient
                 </button>
+                {profileData.specialization === 'General Practitioner' && (
+                  <p style={{ color: '#66788d', fontSize: '0.87rem', margin: '8px 0 0 0', textAlign: 'center' }}>
+                    General practitioners cannot request patient medical history
+                  </p>
+                )}
               </div>
             ) : (
               <div className='medical-records-list'>

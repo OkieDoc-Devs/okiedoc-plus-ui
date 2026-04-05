@@ -20,6 +20,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { fetchFeaturedSpecialists } from './api/specialistsPublicApi';
+import { apiRequest } from './api/apiClient';
 
 function CommercialPage() {
   const navigate = useNavigate();
@@ -76,11 +77,11 @@ function CommercialPage() {
     ],
     [],
   );
-
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % slides.length);
     }, 5000);
+
     return () => clearInterval(interval);
   }, [slides.length]);
 
@@ -135,10 +136,10 @@ function CommercialPage() {
   };
   const [showCallbackModal, setShowCallbackModal] = useState(false);
   const [callbackForm, setCallbackForm] = useState({
-    firstName: '',
-    lastName: '',
+    fullName: '',
     email: '',
     contactNumber: '',
+    healthConcern: '',
     philHealthNumber: '',
     contactMethod: '',
   });
@@ -151,9 +152,20 @@ function CommercialPage() {
     setTimeout(() => setToast({ visible: false, message: '', type: '' }), 4000);
   };
 
+  const openCallbackModal = () => {
+    setCallbackErrors({});
+    setShowCallbackModal(true);
+  };
+
+  const closeCallbackModal = () => {
+    setShowCallbackModal(false);
+    setCallbackErrors({});
+  };
+
   const handleCallbackChange = (e) => {
     const { name, value } = e.target;
-    setCallbackForm((prev) => ({ ...prev, [name]: value }));
+    const nextValue = name === 'healthConcern' ? value.slice(0, 500) : value;
+    setCallbackForm((prev) => ({ ...prev, [name]: nextValue }));
     if (callbackErrors[name]) {
       setCallbackErrors((prev) => ({ ...prev, [name]: '' }));
     }
@@ -176,12 +188,14 @@ function CommercialPage() {
   const handleCallbackSubmit = async (e) => {
     e.preventDefault();
     const errors = {};
-    if (!callbackForm.firstName.trim()) errors.firstName = 'Required';
-    if (!callbackForm.lastName.trim()) errors.lastName = 'Required';
+    if (!callbackForm.fullName.trim()) errors.fullName = 'Required';
     if (!callbackForm.email.trim()) errors.email = 'Required';
     else if (!/\S+@\S+\.\S+/.test(callbackForm.email))
       errors.email = 'Invalid email';
     if (!callbackForm.contactNumber.trim()) errors.contactNumber = 'Required';
+    if (!callbackForm.healthConcern.trim()) errors.healthConcern = 'Required';
+    else if (callbackForm.healthConcern.length > 500)
+      errors.healthConcern = 'Maximum 500 characters';
     if (!callbackForm.contactMethod)
       errors.contactMethod = 'Please select a contact method';
     if (hasPhilHealth) {
@@ -198,43 +212,41 @@ function CommercialPage() {
       return;
     }
     try {
-      const response = await fetch(
-        'http://localhost:1337/api/callback-requests',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            firstName: callbackForm.firstName,
-            lastName: callbackForm.lastName,
-            email: callbackForm.email,
-            contactNumber: callbackForm.contactNumber,
-            philHealthNumber: hasPhilHealth
-              ? callbackForm.philHealthNumber
-              : null,
-            contactMethod: callbackForm.contactMethod,
-          }),
-        },
-      );
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Submission failed');
+      await apiRequest('/api/callback-requests', {
+        method: 'POST',
+        disableAuthRedirect: true,
+        body: JSON.stringify({
+          fullName: callbackForm.fullName,
+          email: callbackForm.email,
+          contactNumber: callbackForm.contactNumber,
+          healthConcern: callbackForm.healthConcern,
+          philHealthNumber: hasPhilHealth ? callbackForm.philHealthNumber : '',
+          contactMethod: callbackForm.contactMethod,
+        }),
+      });
+
       showToast('Your callback request has been submitted!', 'success');
-    } catch (err) {
-      showToast(
-        err.message || 'Something went wrong. Please try again.',
-        'error',
-      );
-    } finally {
       setShowCallbackModal(false);
       setCallbackForm({
-        firstName: '',
-        lastName: '',
+        fullName: '',
         email: '',
         contactNumber: '',
+        healthConcern: '',
         philHealthNumber: '',
         contactMethod: '',
       });
       setCallbackErrors({});
       setHasPhilHealth(false);
+    } catch (err) {
+      const message =
+        (typeof err === 'string' && err) ||
+        err?.message ||
+        err?.error ||
+        'Something went wrong. Please try again.';
+      showToast(
+        message,
+        'error',
+      );
     }
   };
 
@@ -411,7 +423,7 @@ function CommercialPage() {
                   </button>
                   <button
                     className='callback-request-btn'
-                    onClick={() => setShowCallbackModal(true)}
+                    onClick={openCallbackModal}
                   >
                     Callback Request
                   </button>
@@ -668,63 +680,56 @@ function CommercialPage() {
       {showCallbackModal && (
         <div className='callback-overlay'>
           <div className='callback-modal' onClick={(e) => e.stopPropagation()}>
-            <button
-              type='button'
-              className='callback-modal__close'
-              onClick={() => setShowCallbackModal(false)}
-              aria-label='Close'
-            >
-              ✕
-            </button>
             <form
               className='callback-form'
               onSubmit={handleCallbackSubmit}
               noValidate
             >
-              <div className='callback-row'>
-                <div className='callback-field'>
-                  {callbackErrors.firstName && (
-                    <span className='cb-error'>{callbackErrors.firstName}</span>
-                  )}
-                  <input
-                    type='text'
-                    name='firstName'
-                    placeholder='First Name'
-                    value={callbackForm.firstName}
-                    onChange={handleCallbackChange}
-                    className={
-                      callbackErrors.firstName
-                        ? 'cb-input cb-input-error'
-                        : 'cb-input'
-                    }
-                  />
+              <div className='callback-field'>
+                <div className='cb-label-row'>
+                  <label htmlFor='commercial-callback-full-name' className='cb-label'>
+                    Full Name
+                  </label>
+                  <span className='cb-tip' tabIndex='0' data-tip='Enter your complete name as shown on your valid ID.' aria-label='Full name input help'>
+                    i
+                  </span>
                 </div>
-                <div className='callback-field'>
-                  {callbackErrors.lastName && (
-                    <span className='cb-error'>{callbackErrors.lastName}</span>
-                  )}
-                  <input
-                    type='text'
-                    name='lastName'
-                    placeholder='Last Name'
-                    value={callbackForm.lastName}
-                    onChange={handleCallbackChange}
-                    className={
-                      callbackErrors.lastName
-                        ? 'cb-input cb-input-error'
-                        : 'cb-input'
-                    }
-                  />
-                </div>
+                {callbackErrors.fullName && (
+                  <span className='cb-error'>{callbackErrors.fullName}</span>
+                )}
+                <input
+                  id='commercial-callback-full-name'
+                  type='text'
+                  name='fullName'
+                  placeholder='Full Name'
+                  title='Enter your complete name as shown on your valid ID.'
+                  value={callbackForm.fullName}
+                  onChange={handleCallbackChange}
+                  className={
+                    callbackErrors.fullName
+                      ? 'cb-input cb-input-error'
+                      : 'cb-input'
+                  }
+                />
               </div>
               <div className='callback-field'>
+                <div className='cb-label-row'>
+                  <label htmlFor='commercial-callback-email' className='cb-label'>
+                    Email Address
+                  </label>
+                  <span className='cb-tip' tabIndex='0' data-tip='Use an active email address where we can contact you.' aria-label='Email input help'>
+                    i
+                  </span>
+                </div>
                 {callbackErrors.email && (
                   <span className='cb-error'>{callbackErrors.email}</span>
                 )}
                 <input
+                  id='commercial-callback-email'
                   type='email'
                   name='email'
                   placeholder='Email Address'
+                  title='Use an active email address where we can contact you.'
                   value={callbackForm.email}
                   onChange={handleCallbackChange}
                   className={
@@ -735,15 +740,28 @@ function CommercialPage() {
                 />
               </div>
               <div className='callback-field'>
+                <div className='cb-label-row'>
+                  <label
+                    htmlFor='commercial-callback-contact-number'
+                    className='cb-label'
+                  >
+                    Contact Number
+                  </label>
+                  <span className='cb-tip' tabIndex='0' data-tip='Enter your mobile number with area code so we can call you.' aria-label='Contact number input help'>
+                    i
+                  </span>
+                </div>
                 {callbackErrors.contactNumber && (
                   <span className='cb-error'>
                     {callbackErrors.contactNumber}
                   </span>
                 )}
                 <input
+                  id='commercial-callback-contact-number'
                   type='tel'
                   name='contactNumber'
                   placeholder='Contact Number'
+                  title='Enter your mobile number with area code so we can call you.'
                   value={callbackForm.contactNumber}
                   onChange={handleCallbackChange}
                   className={
@@ -754,6 +772,45 @@ function CommercialPage() {
                 />
               </div>
               <div className='callback-field'>
+                <div className='cb-label-row'>
+                  <label
+                    htmlFor='commercial-callback-health-concern'
+                    className='cb-label'
+                  >
+                    Health Concern / Message
+                  </label>
+                  <span className='cb-tip' tabIndex='0' data-tip='Describe your symptoms, concern, and how long you have had them. Maximum 500 characters.' aria-label='Health concern input help'>
+                    i
+                  </span>
+                </div>
+                {callbackErrors.healthConcern && (
+                  <span className='cb-error'>{callbackErrors.healthConcern}</span>
+                )}
+                <textarea
+                  id='commercial-callback-health-concern'
+                  name='healthConcern'
+                  placeholder='Please describe your symptoms or health concerns...'
+                  value={callbackForm.healthConcern}
+                  onChange={handleCallbackChange}
+                  maxLength={500}
+                  title='Describe your symptoms, concern, and how long you have had them. Maximum 500 characters.'
+                  className={
+                    callbackErrors.healthConcern
+                      ? 'cb-textarea cb-input-error'
+                      : 'cb-textarea'
+                  }
+                />
+                <span
+                  className={
+                    callbackForm.healthConcern.length >= 500
+                      ? 'cb-char-counter is-limit'
+                      : 'cb-char-counter'
+                  }
+                >
+                  {callbackForm.healthConcern.length}/500
+                </span>
+              </div>
+              <div className='callback-field cb-field-tight'>
                 <label className='cb-checkbox-label'>
                   <input
                     type='checkbox'
@@ -768,15 +825,25 @@ function CommercialPage() {
                     className='callback-field'
                     style={{ marginTop: '0.4rem' }}
                   >
+                    <div className='cb-label-row'>
+                      <label htmlFor='commercial-callback-philhealth' className='cb-label'>
+                        PhilHealth ID Number
+                      </label>
+                      <span className='cb-tip' tabIndex='0' data-tip='Enter your PhilHealth ID in this format: XX-XXXXXXXXX-X.' aria-label='PhilHealth input help'>
+                        i
+                      </span>
+                    </div>
                     {callbackErrors.philHealthNumber && (
                       <span className='cb-error'>
                         {callbackErrors.philHealthNumber}
                       </span>
                     )}
                     <input
+                      id='commercial-callback-philhealth'
                       type='text'
                       name='philHealthNumber'
                       placeholder='Philhealth ID Number (XX-XXXXXXXXX-X)'
+                      title='Enter your PhilHealth ID in this format: XX-XXXXXXXXX-X.'
                       value={callbackForm.philHealthNumber}
                       onChange={handlePhilHealthChange}
                       maxLength={14}
@@ -828,9 +895,27 @@ function CommercialPage() {
                   </span>
                 )}
               </div>
-              <button type='submit' className='cb-submit-btn'>
-                Submit
-              </button>
+              <div className='cb-expect-box'>
+                <p className='cb-expect-title'>What to expect:</p>
+                <ul className='cb-expect-list'>
+                  <li>Response within 24 hours</li>
+                  <li>Free nurse triage consultation</li>
+                  <li>Matched with appropriate specialist</li>
+                  <li>Flexible scheduling options</li>
+                </ul>
+              </div>
+              <div className='cb-actions'>
+                <button
+                  type='button'
+                  className='cb-cancel-btn'
+                  onClick={closeCallbackModal}
+                >
+                  Cancel
+                </button>
+                <button type='submit' className='cb-submit-btn'>
+                  Submit Request
+                </button>
+              </div>
             </form>
           </div>
         </div>

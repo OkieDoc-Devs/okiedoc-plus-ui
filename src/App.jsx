@@ -284,7 +284,7 @@ function App() {
                 </div>
                 {callbackErrors.contactMethod && <span className="cb-error">{callbackErrors.contactMethod}</span>}
               </div>
-              <button type="submit" className="cb-submit-btn">Submit</button>
+              <button type="submit" className="app-cb-submit-btn">Submit</button>
             </form>
           </div>
         </div>

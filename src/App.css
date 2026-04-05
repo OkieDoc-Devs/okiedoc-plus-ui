@@ -1173,7 +1173,7 @@ body {
   background: white;
 }
 
-.cb-submit-btn {
+.app-cb-submit-btn {
   background: white;
   color: #4aa7ed;
   border: 2px solid #4aa7ed;
@@ -1186,7 +1186,7 @@ body {
   margin-top: 0.55rem;
 }
 
-.cb-submit-btn:hover {
+.app-cb-submit-btn:hover {
   background: #f0f8ff;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(74, 167, 237, 0.2);

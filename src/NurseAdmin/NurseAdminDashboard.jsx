@@ -3,6 +3,6 @@ import SpecialistDashboard from "../Admin/Specialistdashboard/SpecialistDashboar
 
 export default function NurseAdminDashboard() {
   return (
-    <SpecialistDashboard isNurseAdmin={true} />
+    <SpecialistDashboard />
   );
 }

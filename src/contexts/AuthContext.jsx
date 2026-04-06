@@ -15,7 +15,6 @@ const DEFAULT_REDIRECTS = {
   patient: '/patient-dashboard',
   nurse: '/nurse-dashboard',
   admin: '/admin/specialist-dashboard',
-  nurse_admin: '/nurse-admin-dashboard',
 };
 
 function normalizeUser(rawUser) {
@@ -40,8 +39,11 @@ export const AuthProvider = ({ children }) => {
       const data = await apiRequest('/api/v1/auth/me', {
         disableAuthRedirect: true,
       });
-      setUser(normalizeUser(data?.user));
-      return normalizeUser(data?.user);
+      console.log('AuthContext received from /auth/me:', data);
+      const normalizedUser = normalizeUser(data?.user);
+      console.log('AuthContext normalized user:', normalizedUser);
+      setUser(normalizedUser);
+      return normalizedUser;
     } catch {
       setUser(null);
       return null;

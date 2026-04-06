@@ -103,7 +103,7 @@ export default function Login() {
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
             <p className='login-text'>
-              Don't have an Okie-Doc+ account?{' '}
+              Don't have an OkieDoc+ account?{' '}
               <a href='/registration'>Register</a>
             </p>
             <p className='specialist-text'>

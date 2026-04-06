@@ -29,14 +29,16 @@ export default function SpecialistRegistration() {
     primarySpecialty: '',
     subSpecialties: '',
     licenseNumber: '',
-    prcExpiryDate: '',
+    prcExpiryMonth: '',
+    prcExpiryDay: '',
+    prcExpiryYear: '',
     s2Number: '',
     ptrNumber: '',
     mobileNumber: '',
     barangay: '',
-    city: '',
-    province: '',
-    region: '',
+    city: 'City of Naga',
+    province: 'Camarines Sur',
+    region: 'Bicol Region',
     zipCode: '',
     addressLine1: '',
     addressLine2: '',
@@ -49,44 +51,27 @@ export default function SpecialistRegistration() {
 
   // Set default location and fetch provinces and cities on component mount
   useEffect(() => {
-    if (regions.length > 0 && formData.region === '') {
-      const bicolRegion = regions.find((r) => r.name === 'Bicol Region');
-      if (bicolRegion) {
-        setFormData((prev) => ({ ...prev, region: bicolRegion.name }));
-        fetchProvinces(bicolRegion.code);
-      }
+    const bicolRegion = regions.find((r) => r.name === 'Bicol Region');
+    if (bicolRegion) {
+      fetchProvinces(bicolRegion.code);
     }
-  }, [regions, formData.region, fetchProvinces]);
+  }, [regions, fetchProvinces]);
 
   useEffect(() => {
-    if (
-      provinces.length > 0 &&
-      formData.region === 'Bicol Region' &&
-      formData.province === ''
-    ) {
-      const camarinesSur = provinces.find((p) => p.name === 'Camarines Sur');
-      if (camarinesSur) {
-        setFormData((prev) => ({ ...prev, province: camarinesSur.name }));
-        fetchCities(camarinesSur.code);
-      }
+    const camarinesSur = provinces.find((p) => p.name === 'Camarines Sur');
+    if (camarinesSur) {
+      fetchCities(camarinesSur.code);
     }
-  }, [provinces, formData.region, formData.province, fetchCities]);
+  }, [provinces, fetchCities]);
 
   useEffect(() => {
-    if (
-      cities.length > 0 &&
-      formData.province === 'Camarines Sur' &&
-      formData.city === ''
-    ) {
-      const nagaCity = cities.find(
-        (c) => c.name === 'City of Naga' || c.name === 'Naga',
-      );
-      if (nagaCity) {
-        setFormData((prev) => ({ ...prev, city: nagaCity.name }));
-        fetchBarangays(nagaCity.code);
-      }
+    const nagaCity = cities.find(
+      (c) => c.name === 'City of Naga' || c.name === 'Naga',
+    );
+    if (nagaCity) {
+      fetchBarangays(nagaCity.code);
     }
-  }, [cities, formData.province, formData.city, fetchBarangays]);
+  }, [cities, fetchBarangays]);
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -97,6 +82,8 @@ export default function SpecialistRegistration() {
       filteredValue = value.replace(/[^a-zA-Z\s-]/g, '');
     } else if (id === 'mobileNumber') {
       filteredValue = value.replace(/[^0-9+]/g, '');
+    } else if (id === 'zipCode') {
+      filteredValue = value.replace(/[^0-9]/g, '').slice(0, 4);
     } else if (['addressLine1', 'addressLine2'].includes(id)) {
       filteredValue = value.replace(/[^a-zA-Z0-9\s,]/g, '');
     }
@@ -124,12 +111,15 @@ export default function SpecialistRegistration() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
-    
+
     if (!formData.bMonth || !formData.bDay || !formData.bYear) {
       newErrors.birthday = 'Complete birthday is required';
     } else {
-      const birthDate = new Date(`${formData.bYear}-${formData.bMonth}-${formData.bDay}`);
-      if (birthDate > new Date()) newErrors.birthday = 'Birthday cannot be in the future';
+      const birthDate = new Date(
+        `${formData.bYear}-${formData.bMonth}-${formData.bDay}`,
+      );
+      if (birthDate > new Date())
+        newErrors.birthday = 'Birthday cannot be in the future';
     }
 
     if (!formData.primarySpecialty.trim())
@@ -141,17 +131,25 @@ export default function SpecialistRegistration() {
     } else {
       const mobileRegex = /^(09\d{9}|\+639\d{9})$/;
       if (!mobileRegex.test(formData.mobileNumber.trim())) {
-        newErrors.mobileNumber = 'Must be a valid PH number (e.g., 09123456789 or +639123456789)';
+        newErrors.mobileNumber =
+          'Must be a valid PH number (e.g., 09123456789 or +639123456789)';
       }
     }
 
-    if (formData.prcExpiryDate) {
-      const expiry = new Date(formData.prcExpiryDate);
+    if (
+      formData.prcExpiryMonth &&
+      formData.prcExpiryDay &&
+      formData.prcExpiryYear
+    ) {
+      const expiry = new Date(
+        `${formData.prcExpiryYear}-${formData.prcExpiryMonth}-${formData.prcExpiryDay}`,
+      );
       const minDate = new Date();
       minDate.setDate(minDate.getDate() + 15);
-      minDate.setHours(0,0,0,0);
+      minDate.setHours(0, 0, 0, 0);
       if (expiry < minDate) {
-        newErrors.prcExpiryDate = 'Expiry date must be at least 15 days from today';
+        newErrors.prcExpiryDate =
+          'Expiry date must be at least 15 days from today';
       }
     }
     if (!formData.password) {
@@ -180,9 +178,19 @@ export default function SpecialistRegistration() {
       payload.append('licenseNumber', formData.licenseNumber);
       payload.append('primarySpecialty', formData.primarySpecialty);
       payload.append('subSpecialties', formData.subSpecialties || '');
-      payload.append('birthday', `${formData.bYear}-${formData.bMonth}-${formData.bDay}`);
-      if (formData.prcExpiryDate)
-        payload.append('prcExpiryDate', formData.prcExpiryDate);
+      payload.append(
+        'birthday',
+        `${formData.bYear}-${formData.bMonth}-${formData.bDay}`,
+      );
+      if (
+        formData.prcExpiryMonth &&
+        formData.prcExpiryDay &&
+        formData.prcExpiryYear
+      )
+        payload.append(
+          'prcExpiryDate',
+          `${formData.prcExpiryYear}-${formData.prcExpiryMonth}-${formData.prcExpiryDay}`,
+        );
       if (formData.s2Number) payload.append('s2Number', formData.s2Number);
       if (formData.ptrNumber) payload.append('ptrNumber', formData.ptrNumber);
       if (formData.barangay) payload.append('barangay', formData.barangay);
@@ -219,7 +227,9 @@ export default function SpecialistRegistration() {
           primarySpecialty: '',
           subSpecialties: '',
           licenseNumber: '',
-          prcExpiryDate: '',
+          prcExpiryMonth: '',
+          prcExpiryDay: '',
+          prcExpiryYear: '',
           s2Number: '',
           ptrNumber: '',
           mobileNumber: '',
@@ -409,7 +419,9 @@ export default function SpecialistRegistration() {
                 <option value=''>Month</option>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                   <option key={m} value={m.toString().padStart(2, '0')}>
-                    {new Date(0, m - 1).toLocaleString('en-US', { month: 'short' })}
+                    {new Date(0, m - 1).toLocaleString('en-US', {
+                      month: 'short',
+                    })}
                   </option>
                 ))}
               </select>
@@ -422,8 +434,14 @@ export default function SpecialistRegistration() {
               >
                 <option value=''>Day</option>
                 {Array.from(
-                  { length: new Date(formData.bYear || 2000, formData.bMonth || 1, 0).getDate() },
-                  (_, i) => i + 1
+                  {
+                    length: new Date(
+                      formData.bYear || 2000,
+                      formData.bMonth || 1,
+                      0,
+                    ).getDate(),
+                  },
+                  (_, i) => i + 1,
                 ).map((d) => (
                   <option key={d} value={d.toString().padStart(2, '0')}>
                     {d}
@@ -440,7 +458,7 @@ export default function SpecialistRegistration() {
                 <option value=''>Year</option>
                 {Array.from(
                   { length: new Date().getFullYear() - 1920 + 1 },
-                  (_, i) => new Date().getFullYear() - i
+                  (_, i) => new Date().getFullYear() - i,
                 ).map((y) => (
                   <option key={y} value={y}>
                     {y}
@@ -497,21 +515,65 @@ export default function SpecialistRegistration() {
               <span className='error-message'>{errors.licenseNumber}</span>
             )}
 
-            <label className='login-label' htmlFor='prcExpiryDate'>
-              PRC Expiry Date (Optional)
-            </label>
-            <input
-              className={`login-input ${errors.prcExpiryDate ? 'error' : ''}`}
-              id='prcExpiryDate'
-              type='date'
-              value={formData.prcExpiryDate}
-              onChange={handleInputChange}
-              min={
-                new Date(new Date().setDate(new Date().getDate() + 15))
-                  .toISOString()
-                  .split('T')[0]
-              }
-            />
+            <label className='login-label'>PRC Expiry Date (Optional)</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <select
+                className={`login-input ${errors.prcExpiryDate ? 'error' : ''}`}
+                id='prcExpiryMonth'
+                value={formData.prcExpiryMonth}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value=''>Month</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m.toString().padStart(2, '0')}>
+                    {new Date(0, m - 1).toLocaleString('en-US', {
+                      month: 'short',
+                    })}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={`login-input ${errors.prcExpiryDate ? 'error' : ''}`}
+                id='prcExpiryDay'
+                value={formData.prcExpiryDay}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value=''>Day</option>
+                {Array.from(
+                  {
+                    length: new Date(
+                      formData.prcExpiryYear || 2000,
+                      formData.prcExpiryMonth || 1,
+                      0,
+                    ).getDate(),
+                  },
+                  (_, i) => i + 1,
+                ).map((d) => (
+                  <option key={d} value={d.toString().padStart(2, '0')}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={`login-input ${errors.prcExpiryDate ? 'error' : ''}`}
+                id='prcExpiryYear'
+                value={formData.prcExpiryYear}
+                onChange={handleInputChange}
+                style={{ flex: 1 }}
+              >
+                <option value=''>Year</option>
+                {Array.from(
+                  { length: new Date().getFullYear() - 2020 + 20 },
+                  (_, i) => new Date().getFullYear() - i + 10,
+                ).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
             {errors.prcExpiryDate && (
               <span className='error-message'>{errors.prcExpiryDate}</span>
             )}
@@ -606,6 +668,7 @@ export default function SpecialistRegistration() {
                   barangay: '',
                 }));
               }}
+              disabled
             >
               <option value=''>Select Region</option>
               {regions.map((r) => (
@@ -633,7 +696,7 @@ export default function SpecialistRegistration() {
                 fetchCities(selectedProvince?.code);
                 setFormData((prev) => ({ ...prev, city: '', barangay: '' }));
               }}
-              disabled={!formData.region}
+              disabled
             >
               <option value=''>Select Province</option>
               {provinces.map((p) => (
@@ -661,7 +724,7 @@ export default function SpecialistRegistration() {
                 fetchBarangays(selectedCity?.code);
                 setFormData((prev) => ({ ...prev, barangay: '' }));
               }}
-              disabled={!formData.province}
+              disabled
             >
               <option value=''>Select City / Municipality</option>
               {cities.map((c) => (
@@ -725,7 +788,7 @@ export default function SpecialistRegistration() {
             />
 
             <label className='login-label' htmlFor='zipCode'>
-              Zip Code
+              ZIP Code
             </label>
             <input
               className={`login-input ${errors.zipCode ? 'error' : ''}`}
@@ -734,7 +797,7 @@ export default function SpecialistRegistration() {
               placeholder='Enter your zip code'
               value={formData.zipCode}
               onChange={handleInputChange}
-              maxLength={10}
+              maxLength={4}
             />
             {errors.zipCode && (
               <span className='error-message'>{errors.zipCode}</span>

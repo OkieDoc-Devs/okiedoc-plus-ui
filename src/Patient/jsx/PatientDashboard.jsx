@@ -10,6 +10,7 @@ import LabResults from './LabResults';
 import Billing from './Billing';
 import MyAccount from './MyAccount';
 import ConsultationHistory from './ConsultationHistory';
+import Avatar from '../../components/Avatar';
 import {
   fetchPatientProfile,
   fetchPatientActiveTickets,
@@ -1114,17 +1115,15 @@ const PatientDashboard = () => {
                 </div>
                 <div className='patient-mobile-profile-section'>
                   <div className='patient-profile-image-container'>
-                    {profileImage ? (
-                      <img
-                        src={profileImage}
-                        alt='Profile'
-                        className='patient-profile-image'
-                      />
-                    ) : (
-                      <div className='patient-profile-image-placeholder'>
-                        <FaUser className='patient-profile-icon' />
-                      </div>
-                    )}
+                    <Avatar
+                      profileImageUrl={profileImage}
+                      firstName={profileData.firstName}
+                      lastName={profileData.lastName}
+                      userType='patient'
+                      size={40}
+                      alt='Profile'
+                      className='patient-profile-image'
+                    />
                   </div>
                   <div className='patient-profile-name'>
                     <h3 className='patient-profile-full-name'>
@@ -1423,17 +1422,15 @@ const PatientDashboard = () => {
                   onClick={() => setShowMobileProfileModal(true)}
                 >
                   <div className='patient-profile-image-container'>
-                    {profileImage ? (
-                      <img
-                        src={profileImage}
-                        alt='Profile'
-                        className='patient-profile-image'
-                      />
-                    ) : (
-                      <div className='patient-profile-image-placeholder'>
-                        <FaUser className='patient-profile-icon' />
-                      </div>
-                    )}
+                    <Avatar
+                      profileImageUrl={profileImage}
+                      firstName={profileData.firstName}
+                      lastName={profileData.lastName}
+                      userType='patient'
+                      size={40}
+                      alt='Profile'
+                      className='patient-profile-image'
+                    />
                   </div>
                   <div className='patient-profile-name'>
                     <h3 className='patient-profile-full-name'>
@@ -1650,15 +1647,15 @@ const PatientDashboard = () => {
               onClick={() => setActivePage('my-account')}
             >
               <span className='patient-profile-avatar'>
-                {profileImage ? (
-                  <img
-                    src={profileImage}
-                    alt='Profile'
-                    className='patient-header-profile-image'
-                  />
-                ) : (
-                  <FaUser className='patient-header-profile-icon' />
-                )}
+                <Avatar
+                  profileImageUrl={profileImage}
+                  firstName={profileData.firstName}
+                  lastName={profileData.lastName}
+                  userType='patient'
+                  size={40}
+                  alt='Profile'
+                  className='patient-header-profile-image'
+                />
               </span>
               <span className='patient-profile-name'>{displayName}</span>
             </button>

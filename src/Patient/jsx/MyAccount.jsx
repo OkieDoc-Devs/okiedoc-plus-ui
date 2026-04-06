@@ -6,6 +6,7 @@ import {
 } from '../services/apiService';
 import { API_BASE_URL } from '../../api/apiClient';
 import ImageCropperModal from '../../components/ImageCropperModal';
+import Avatar from '../../components/Avatar';
 import { usePSGC } from '../../hooks/usePSGC';
 
 const MyAccount = ({
@@ -185,17 +186,15 @@ const MyAccount = ({
       <div className='patient-account-container'>
         <div className='patient-profile-image-section'>
           <div className='patient-profile-image-container'>
-            {profileImage ? (
-              <img
-                src={profileImage}
-                alt='Profile'
-                className='patient-profile-image'
-              />
-            ) : (
-              <div className='patient-profile-image-placeholder'>
-                <FaUser className='patient-profile-icon' />
-              </div>
-            )}
+            <Avatar
+              profileImageUrl={profileImage}
+              firstName={profileData.firstName}
+              lastName={profileData.lastName}
+              userType='patient'
+              size={120}
+              alt='Profile'
+              className='patient-profile-image'
+            />
             <button
               className='patient-upload-btn'
               onClick={() => fileInputRef.current?.click()}

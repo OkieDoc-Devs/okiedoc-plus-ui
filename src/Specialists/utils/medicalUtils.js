@@ -71,6 +71,12 @@ export const SUB_SPECIALIZATIONS = {
     "Female Urology",
     "N/A",
   ],
+  "General Practitioner": [
+    "Family Medicine",
+    "Preventive Care",
+    "Primary Care",
+    "N/A",
+  ],
 };
 
 /**

@@ -2796,14 +2796,14 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #ffffff;
+  background: transparent; /* remove white side/border backing */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
   overflow: hidden;
-  border: 1px solid #e0e0e0;
+  border: none;
   box-shadow: none;
 }
 

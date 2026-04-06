@@ -1507,41 +1507,6 @@ const SpecialistDashboard = () => {
           </div>
 
           <div className='info-card'>
-            <div className='info-card-title'>Allergies</div>
-            <div className='info-card-body'>
-              {(() => {
-                // Hide allergies if history hasn't been shared yet
-                if (!selectedPatientDetailed || !selectedPatientDetailed.allergies) {
-                  return <span className='info-placeholder'>Request medical history to view.</span>;
-                }
-                const allergiesSource = selectedPatientDetailed.allergies;
-                if (!allergiesSource) {
-                  return <span className='info-placeholder'>No known allergies</span>;
-                }
-                try {
-                  const data = typeof allergiesSource === 'string'
-                    ? JSON.parse(allergiesSource)
-                    : allergiesSource;
-                  
-                  if (Array.isArray(data) && data.length > 0) {
-                    return data.map((a, idx) => (
-                      <span key={idx} className='pill'>
-                        {typeof a === 'object' ? a.name || a.allergy : a}
-                      </span>
-                    ));
-                  }
-                  if (typeof data === 'string' && data.length > 0) {
-                    return <span className='pill'>{data}</span>;
-                  }
-                } catch (e) {
-                  return <span className='info-placeholder'>No known allergies</span>;
-                }
-                return <span className='info-placeholder'>No known allergies</span>;
-              })()}
-            </div>
-          </div>
-
-          <div className='info-card'>
             <div className='info-card-title'>Medical History</div>
             <div className='info-card-body'>
               {(() => {
@@ -1549,66 +1514,159 @@ const SpecialistDashboard = () => {
                 // we only show the Triage info or placeholder.
                 // We use selectedPatientDetailed as the source of truth for "Shared Access"
                 // IMPORTANT: If history hasn't been shared, we MUST return a placeholder.
+                const allergiesSource = selectedPatientDetailed?.allergies;
                 const activeDiseaseSource = selectedPatientDetailed?.activeDiseases;
-                const medicalHistorySource = selectedPatientDetailed?.medicalHistory;
+                const pastDiseasesSource = selectedPatientDetailed?.pastDiseases;
+                const medicationsSource = selectedPatientDetailed?.medications;
+                const surgeriesSource = selectedPatientDetailed?.surgeries;
+                const familyHistorySource = selectedPatientDetailed?.familyHistory;
+                const socialHistorySource = selectedPatientDetailed?.socialHistory;
 
                 // Checking for presence of data because getPatientProfile now filters clinical files 
                 // if history has NOT been shared.
-                const isAuthorized = activeDiseaseSource || medicalHistorySource;
+                const isAuthorized = allergiesSource || activeDiseaseSource || pastDiseasesSource || medicationsSource || surgeriesSource || familyHistorySource || socialHistorySource;
 
                 if (!selectedPatientDetailed || !isAuthorized) {
                   return <span className='info-placeholder'>Request medical history to view detailed conditions and history.</span>;
                 }
 
-                try {
-                  const diseaseData = typeof activeDiseaseSource === 'string' ? JSON.parse(activeDiseaseSource) : activeDiseaseSource;
-                  const historyData = typeof medicalHistorySource === 'string' ? JSON.parse(medicalHistorySource) : medicalHistorySource;
-                  
-                  return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                      {/* Active Diseases Sub-section */}
-                      <div>
-                        <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Active Diseases / Conditions</h4>
-                        {Array.isArray(diseaseData) && diseaseData.length > 0 ? (
-                           <ul className='history-list'>
-                            {diseaseData.map((item, idx) => (
-                              <li key={idx}>
-                                <strong>{item.name || item.condition}</strong> {item.date && <span>({item.date})</span>}
-                                {item.description && <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#666' }}>{item.description}</p>}
-                                {item.severity && <span className='pill' style={{ background: '#f8d7da', color: '#721c24', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', marginLeft: '8px' }}>{item.severity}</span>}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <span className='info-placeholder'>No active diseases recorded.</span>
-                        )}
-                      </div>
+                const parseData = (source) => {
+                  if (!source) return [];
+                  try {
+                    return typeof source === 'string' ? JSON.parse(source) : source;
+                  } catch (e) {
+                    return [];
+                  }
+                };
 
-                      {/* Past Medical History Sub-section */}
-                      <div>
-                        <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Past Medical History</h4>
-                        {Array.isArray(historyData) && historyData.length > 0 ? (
-                          <ul className='history-list'>
-                            {historyData.map((item, idx) => (
-                              <li key={idx}>
-                                {typeof item === 'object' ? (
-                                  <>
-                                    <strong>{item.name || item.condition || item.specialistName}</strong> { (item.visitDate || item.date) && <span>({item.visitDate || item.date})</span>}
-                                    {(item.description || item.chiefComplaint) && <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#666' }}>{item.description || item.chiefComplaint}</p>}
-                                  </>
-                                ) : item}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <span className='info-placeholder'>No past history recorded.</span>
-                        )}
-                      </div>
+                const allergies = parseData(allergiesSource);
+                const activeDiseases = parseData(activeDiseaseSource);
+                const pastDiseases = parseData(pastDiseasesSource);
+                const medications = parseData(medicationsSource);
+                const surgeries = parseData(surgeriesSource);
+                const familyHistory = parseData(familyHistorySource);
+                const socialHistory = parseData(socialHistorySource);
+                
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Allergies Sub-section */}
+                    <div>
+                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Allergies</h4>
+                      {Array.isArray(allergies) && allergies.length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {allergies.map((a, idx) => (
+                            <span key={idx} className='pill'>
+                              {typeof a === 'object' ? a.name || a.allergy : a}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className='info-placeholder'>No known allergies recorded.</span>
+                      )}
                     </div>
-                  );
-                } catch (e) {
-                  return <p>Error loading shared history.</p>;
-                }
+
+                    {/* Active Diseases Sub-section */}
+                    <div>
+                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Active Diseases / Conditions</h4>
+                      {Array.isArray(activeDiseases) && activeDiseases.length > 0 ? (
+                         <ul className='history-list'>
+                          {activeDiseases.map((item, idx) => (
+                            <li key={idx}>
+                              <strong>{item.name || item.condition}</strong> {item.date && <span>({item.date})</span>}
+                              {item.description && <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#666' }}>{item.description}</p>}
+                              {item.severity && <span className='pill' style={{ background: '#f8d7da', color: '#721c24', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', marginLeft: '8px' }}>{item.severity}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className='info-placeholder'>No active diseases recorded.</span>
+                      )}
+                    </div>
+
+                    {/* Medications Sub-section */}
+                    <div>
+                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Current Medications</h4>
+                      {Array.isArray(medications) && medications.length > 0 ? (
+                        <ul className='history-list'>
+                          {medications.map((item, idx) => (
+                            <li key={idx}>
+                              <strong>{item.name}</strong> {item.dosage && <span> - {item.dosage}</span>}
+                              {item.frequency && <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>Frequency: {item.frequency}</p>}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className='info-placeholder'>No current medications recorded.</span>
+                      )}
+                    </div>
+
+                    {/* Past Diseases Sub-section */}
+                    <div>
+                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Past Diseases</h4>
+                      {Array.isArray(pastDiseases) && pastDiseases.length > 0 ? (
+                        <ul className='history-list'>
+                          {pastDiseases.map((item, idx) => (
+                            <li key={idx}>
+                              <strong>{item.name}</strong> {item.date && <span>({item.date})</span>}
+                              {item.status && <span className='pill' style={{ marginLeft: '8px', fontSize: '0.7rem' }}>{item.status}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className='info-placeholder'>No past diseases recorded.</span>
+                      )}
+                    </div>
+
+                    {/* Surgeries Sub-section */}
+                    <div>
+                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Surgeries</h4>
+                      {Array.isArray(surgeries) && surgeries.length > 0 ? (
+                        <ul className='history-list'>
+                          {surgeries.map((item, idx) => (
+                            <li key={idx}>
+                              <strong>{item.name}</strong> {item.date && <span>({item.date})</span>}
+                              {item.hospital && <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>{item.hospital}</p>}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className='info-placeholder'>No surgeries recorded.</span>
+                      )}
+                    </div>
+
+                    {/* Family History Sub-section */}
+                    <div>
+                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Family History</h4>
+                      {Array.isArray(familyHistory) && familyHistory.length > 0 ? (
+                        <ul className='history-list'>
+                          {familyHistory.map((item, idx) => (
+                            <li key={idx}>
+                              <strong>{item.name}</strong> {item.relationship && <span>({item.relationship})</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className='info-placeholder'>No family history recorded.</span>
+                      )}
+                    </div>
+
+                    {/* Social History Sub-section */}
+                    <div>
+                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Social History</h4>
+                      {Array.isArray(socialHistory) && socialHistory.length > 0 ? (
+                        <ul className='history-list'>
+                          {socialHistory.map((item, idx) => (
+                            <li key={idx}>
+                              <strong>{item.name}</strong> {item.details && <span>: {item.details}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className='info-placeholder'>No social history recorded.</span>
+                      )}
+                    </div>
+                  </div>
+                );
               })()}
             </div>
           </div>

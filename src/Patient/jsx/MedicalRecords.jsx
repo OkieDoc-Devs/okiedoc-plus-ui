@@ -52,12 +52,12 @@ const MedicalRecords = () => {
 
         setMedicalData({
           activeDiseases: parseField(profile.activeDiseases),
-          pastDiseases: parseField(profile.pastDiseases), // If backend supports it
+          pastDiseases: parseField(profile.pastDiseases),
           medications: parseField(profile.medications),
           allergies: parseField(profile.allergies),
-          surgeries: parseField(profile.surgeries || '[]'),
-          familyHistory: parseField(profile.familyHistory || '[]'),
-          socialHistory: parseField(profile.socialHistory || '[]'),
+          surgeries: parseField(profile.surgeries),
+          familyHistory: parseField(profile.familyHistory),
+          socialHistory: parseField(profile.socialHistory),
         });
       } catch (error) {
         console.error('Failed to load medical records:', error);
@@ -73,9 +73,12 @@ const MedicalRecords = () => {
       setIsSaving(true);
       const payload = {
         activeDiseases: JSON.stringify(updatedData.activeDiseases),
+        pastDiseases: JSON.stringify(updatedData.pastDiseases),
         medications: JSON.stringify(updatedData.medications),
         allergies: JSON.stringify(updatedData.allergies),
-        // Add other fields if backend schema is updated
+        surgeries: JSON.stringify(updatedData.surgeries),
+        familyHistory: JSON.stringify(updatedData.familyHistory),
+        socialHistory: JSON.stringify(updatedData.socialHistory),
       };
       await updatePatientProfile(payload);
     } catch (error) {

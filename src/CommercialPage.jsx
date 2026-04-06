@@ -1000,9 +1000,9 @@ function CommercialPage() {
               © 2026 OkieDoc+. All rights reserved.
             </p>
             <div className='footer-social-links'>
-              <a href='#' className='footer-social-link'><Facebook size={20} /></a>
+              <a href='https://www.facebook.com/share/1KzqWD82pz/' target='_blank' rel='noopener noreferrer' className='footer-social-link'><Facebook size={20} /></a>
               <a href='#' className='footer-social-link'><Instagram size={20} /></a>
-              <a href='#' className='footer-social-link'><Linkedin size={20} /></a>
+              <a href='https://www.linkedin.com/company/okiedocplus/' target='_blank' rel='noopener noreferrer' className='footer-social-link'><Linkedin size={20} /></a>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUpload, FaTimes } from 'react-icons/fa';
+import { FaUpload, FaTimes, FaRegComment, FaPaperPlane } from 'react-icons/fa';
 import './SpecialistDashboard.css';
 import authService from './authService';
 import * as specialistApi from './services/apiService';
@@ -143,9 +143,8 @@ const SpecialistDashboard = () => {
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketFilter, setTicketFilter] = useState('All');
-
-  const [quickMessage, setQuickMessage] = useState('');
-  const [quickMessages, setQuickMessages] = useState([]);
+  const [patientChatDraft, setPatientChatDraft] = useState('');
+  const [patientChatThreads, setPatientChatThreads] = useState({});
 
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
@@ -187,6 +186,32 @@ const SpecialistDashboard = () => {
     completedToday: 0,
     upcomingAppointments: 0,
   });
+  const patientChatMessagesRef = useRef(null);
+
+  const createPatientChatMessages = useCallback((ticket) => {
+    const patientName = ticket?.patientFullName || ticket?.patient || 'the patient';
+    const startedAt =
+      ticket?.consultationStartedAt ||
+      ticket?.startedAt ||
+      ticket?.createdAt ||
+      '';
+    const startedTime = startedAt
+      ? new Date(startedAt).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : '16:50';
+
+    return [
+      {
+        id: `${ticket?.id || 'ticket'}-system`,
+        sender: 'system',
+        text: `Started consultation with ${patientName}`,
+        subtext: startedTime,
+        timestamp: startedTime,
+      },
+    ];
+  }, []);
 
   const loadTicketsData = useCallback(async () => {
     console.log('[SpecialistDashboard] Loading tickets from API...');
@@ -543,6 +568,33 @@ const SpecialistDashboard = () => {
     }
   }, [selectedTicketId]);
 
+  useEffect(() => {
+    if (!selectedTicketId) return;
+
+    const selectedTicketForChat = tickets.find(
+      (ticket) => String(ticket.id) === String(selectedTicketId),
+    );
+
+    setPatientChatThreads((prev) => {
+      if (prev[selectedTicketId]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [selectedTicketId]: createPatientChatMessages(selectedTicketForChat),
+      };
+    });
+
+    setPatientChatDraft('');
+  }, [selectedTicketId, tickets, createPatientChatMessages]);
+
+  useEffect(() => {
+    const messagePanel = patientChatMessagesRef.current;
+    if (!messagePanel) return;
+    messagePanel.scrollTop = messagePanel.scrollHeight;
+  }, [selectedTicketId, patientChatThreads]);
+
   const handleNavigation = (target, title) => {
     setActiveTab(target);
     if (target === 'dashboard') {
@@ -809,25 +861,36 @@ const SpecialistDashboard = () => {
     }
   };
 
-  const handleQuickSend = async (e) => {
+  const handlePatientChatSend = async (e) => {
     e.preventDefault();
-    const trimmedMessage = quickMessage.trim();
-    if (!trimmedMessage) return;
+
+    const trimmedMessage = patientChatDraft.trim();
+    if (!trimmedMessage || !selectedTicketId) return;
+    const activeTicket = tickets.find(
+      (ticket) => String(ticket.id) === String(selectedTicketId),
+    );
 
     const newMessage = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      text: trimmedMessage,
+      sender: 'specialist',
+      message: trimmedMessage,
       timestamp: new Date().toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
       }),
-      sender: 'you',
     };
 
-    setQuickMessages((prev) => [...prev, newMessage]);
-    setQuickMessage('');
+    setPatientChatThreads((prev) => ({
+      ...prev,
+      [selectedTicketId]: [
+        ...(prev[selectedTicketId] ||
+          createPatientChatMessages(activeTicket)),
+        newMessage,
+      ],
+    }));
+    setPatientChatDraft('');
 
-    // TODO: wire up real message sending API call when available
+    // TODO: wire up real message sending API call when available.
     // await specialistApi.sendMessageToPatient(selectedTicketId, trimmedMessage);
   };
 
@@ -1328,6 +1391,12 @@ const SpecialistDashboard = () => {
     const selectedPatient = selectedTicket || tickets[0] || null;
 
     const patientStatus = selectedPatient?.status || 'Unknown';
+    const patientChatMessages =
+      patientChatThreads[selectedTicketId] ||
+      createPatientChatMessages(selectedPatient);
+    const isStarterThread =
+      patientChatMessages.length === 1 &&
+      patientChatMessages[0]?.sender === 'system';
 
     return (
       <div className='dashboard-content dashboard-1to1'>
@@ -1389,6 +1458,7 @@ const SpecialistDashboard = () => {
         </div>
 
         <div className='patient-details-panel'>
+          <div className='patient-details-scroll'>
           <div className='patient-details-header'>
             <div>
               <h2>{selectedPatient?.patientFullName || selectedPatient?.patient || 'No patient selected'}</h2>
@@ -2013,32 +2083,60 @@ const SpecialistDashboard = () => {
             )}
           </div>
 
-          <div className='info-card quick-message-card'>
-            <div className='info-card-title'>Quick Message</div>
-            <div className='quick-message-list'>
-              {quickMessages.length === 0 ? (
-                <div className='no-quick-message'>
-                  Type a message below to send a quick note to the patient.
-                </div>
-              ) : (
-                quickMessages.map((msg) => (
-                  <div key={msg.id} className='quick-message-item'>
-                    <span className='quick-message-text'>{msg.text}</span>
-                    <span className='quick-message-time'>{msg.timestamp}</span>
-                  </div>
-                ))
-              )}
+          </div>
+
+          <div className='patient-chat-panel'>
+            <div className='patient-chat-header'>
+              <div className='patient-chat-title-row'>
+                <FaRegComment className='patient-chat-title-icon' />
+                <div className='patient-chat-title'>Patient Communication</div>
+              </div>
             </div>
-            <form className='quick-message-form' onSubmit={handleQuickSend}>
+
+            <div
+              className={`patient-chat-messages ${
+                isStarterThread ? 'patient-chat-messages--centered' : ''
+              }`}
+              ref={patientChatMessagesRef}
+            >
+              {patientChatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`patient-chat-message ${
+                    message.sender === 'system'
+                      ? 'patient-chat-message--system'
+                      : message.sender === 'specialist'
+                      ? 'patient-chat-message--own'
+                      : 'patient-chat-message--patient'
+                  }`}
+                >
+                  <div className='patient-chat-bubble'>
+                    {message.sender === 'system' ? (
+                      <>
+                        <p>{message.text}</p>
+                        <span>{message.subtext || message.timestamp}</span>
+                      </>
+                    ) : (
+                      <>
+                        <p>{message.message}</p>
+                        <span>{message.timestamp}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <form className='patient-chat-form' onSubmit={handlePatientChatSend}>
               <input
                 type='text'
-                value={quickMessage}
-                onChange={(e) => setQuickMessage(e.target.value)}
+                value={patientChatDraft}
+                onChange={(e) => setPatientChatDraft(e.target.value)}
                 placeholder='Type a message...'
-                className='message-input'
+                className='patient-chat-input'
               />
-              <button type='submit' className='send-btn'>
-                Send
+              <button type='submit' className='patient-chat-send-btn' aria-label='Send message'>
+                <FaPaperPlane />
               </button>
             </form>
           </div>

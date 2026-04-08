@@ -1419,6 +1419,7 @@ html:has(body.specialist-dashboard-body) {
   gap: 16px;
   align-items: stretch;
   width: 100%;
+  min-height: calc(100vh - 170px);
 }
 
 .assigned-patients-panel,
@@ -1446,7 +1447,17 @@ html:has(body.specialist-dashboard-body) {
 .patient-details-panel {
   flex: 1;
   max-height: calc(100vh - 160px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.patient-details-scroll {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  padding-right: 6px;
 }
 
 .chart-layout {
@@ -1640,79 +1651,176 @@ html:has(body.specialist-dashboard-body) {
   color: #111827;
 }
 
-.quick-message-card {
-  border: 1px solid #d5e8fb;
+.patient-chat-panel {
+  flex: 0 0 auto;
+  margin-top: 12px;
+  border: 1px solid #d9e3ef;
   background: #ffffff;
-  border-radius: 10px;
-  padding: 12px;
-  margin-top: 10px;
-}
-
-.quick-message-list {
-  max-height: 140px;
-  overflow-y: auto;
-  margin-bottom: 10px;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  min-height: 280px;
+  overflow: hidden;
 }
 
-.quick-message-item {
+.patient-chat-header {
   display: flex;
-  justify-content: space-between;
-  background: #f5faff;
-  border: 1px solid #e2ecf9;
-  border-radius: 8px;
-  padding: 8px;
-  font-size: 0.87rem;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #d9e3ef;
+  background: #edf3fb;
 }
 
-.quick-message-time {
-  color: #687b91;
-  font-size: 0.75rem;
-  margin-left: 8px;
-  white-space: nowrap;
-}
-
-.no-quick-message {
-  color: #66788d;
-  font-size: 0.88rem;
-  padding: 8px;
-}
-
-.quick-message-form {
+.patient-chat-title-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
 }
 
-.quick-message-form .message-input {
+.patient-chat-title-icon {
+  color: #0d58d6;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+
+.patient-chat-title {
+  color: #00308f;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.patient-chat-messages {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 18px 24px 22px;
   flex: 1;
-  padding: 8px 10px;
-  border: 1px solid #c7d9ee;
-  border-radius: 8px;
-  background: #fff;
+  background: #ffffff;
 }
 
-.quick-message-form .message-input:focus {
+.patient-chat-messages--centered {
+  justify-content: center;
+}
+
+.patient-chat-message {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
+.patient-chat-message--patient {
+  justify-content: flex-start;
+}
+
+.patient-chat-message--own {
+  justify-content: flex-end;
+}
+
+.patient-chat-message--system {
+  justify-content: center;
+}
+
+.patient-chat-bubble {
+  max-width: min(78%, 420px);
+  padding: 10px 18px 8px;
+  border-radius: 999px;
+  background: #f3f5f9;
+  border: 1px solid #eef2f7;
+  text-align: center;
+  box-shadow: none;
+  min-width: 0;
+}
+
+.patient-chat-message--system .patient-chat-bubble {
+  background: #f1f3f8;
+  border-color: #edf0f5;
+}
+
+.patient-chat-message--own .patient-chat-bubble {
+  background: linear-gradient(180deg, #7aa5ff 0%, #5f8cf8 100%);
+  border-color: #5f8cf8;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(95, 140, 248, 0.2);
+}
+
+.patient-chat-message--patient .patient-chat-bubble {
+  background: #f4f7fb;
+}
+
+.patient-chat-bubble p {
+  margin: 0;
+  line-height: 1.45;
+  font-size: 0.93rem;
+  color: inherit;
+}
+
+.patient-chat-bubble span {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  color: inherit;
+  opacity: 0.65;
+}
+
+.patient-chat-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid #d9e3ef;
+  background: #fafbfd;
+  padding: 16px 18px 12px;
+}
+
+.patient-chat-input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid #eef2f7;
+  border-radius: 10px;
+  background: #ffffff;
+  font-size: 0.95rem;
+  color: #253247;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.patient-chat-input:focus {
   outline: none;
-  border-color: #4aa7ed;
-  box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.15);
+  border-color: #93b4fb;
+  box-shadow: 0 0 0 3px rgba(125, 165, 255, 0.16);
 }
 
-.quick-message-form .send-btn {
-  background-color: #0d6efd;
+.patient-chat-send-btn {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #7ea7ff 0%, #5d8cf0 100%);
   color: #ffffff;
   border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-weight: 700;
+  border-radius: 10px;
+  padding: 0;
+  font-size: 0.95rem;
+  box-shadow: 0 8px 18px rgba(93, 140, 240, 0.25);
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
-.quick-message-form .send-btn:hover {
-  background-color: #0b5ed7;
+.patient-chat-send-btn:hover {
+  filter: brightness(1.02);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(93, 140, 240, 0.3);
 }
 
 .soap-card-title {
@@ -1865,8 +1973,9 @@ html:has(body.specialist-dashboard-body) {
 .dashboard-content.dashboard-1to1 {
   display: flex;
   gap: 16px;
-  align-items: flex-start;
+  align-items: stretch;
   width: 100%;
+  min-height: calc(100vh - 170px);
 }
 
 /* preserve existing style from before in case .chart-layout still used */

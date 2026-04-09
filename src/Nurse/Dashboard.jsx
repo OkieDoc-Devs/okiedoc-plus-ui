@@ -1,6 +1,6 @@
 import '../App.css';
 import './NurseStyles.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   getNurseFirstName,
@@ -8,32 +8,201 @@ import {
   saveNurseProfileImage,
 } from './services/storageService.js';
 import {
+  fetchDashboardFromAPI,
+  fetchDoctorsFromAPI,
   fetchNurseProfile,
+  fetchTicketsFromAPI,
   logoutFromAPI,
   updateTicket,
   claimTicket,
   triageTicket,
   assignSpecialist,
-  fetchDoctorsFromAPI,
-  fetchTicketsFromAPI,
 } from './services/apiService.js';
-import { useNotification } from '../contexts/NotificationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { transformProfileFromAPI } from './services/profileService.js';
 import NotificationBell from '../components/Notifications/NotificationBell';
 import Avatar from '../components/Avatar';
 import { disconnectSocket } from '../utils/socketClient';
+import { useChat } from './services/useChat.js';
+
+const DEFAULT_TEXT = 'N/A';
+const DASHBOARD_REFRESH_MS = 30000;
+const QUICK_MESSAGE_LIMIT = 8;
+const NURSE_QUEUE_VISIBLE_STATUSES = new Set(['', 'pending']);
+const PROCESS_STEP_LABELS = [
+  'Review HMO Details',
+  'Schedule a Specialist',
+  'Review and Transfer',
+];
+
+const readValue = (source, keys, fallback = DEFAULT_TEXT) => {
+  for (const key of keys) {
+    if (
+      Object.prototype.hasOwnProperty.call(source || {}, key) &&
+      source[key] !== null &&
+      source[key] !== undefined &&
+      String(source[key]).trim() !== ''
+    ) {
+      return source[key];
+    }
+  }
+  return fallback;
+};
+
+const toList = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => String(entry || '').trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((entry) => String(entry || '').trim())
+          .filter(Boolean);
+      }
+    } catch {
+      // Keep plain text parsing path below when value is not JSON.
+    }
+
+    return trimmed
+      .split(/\n|,|;/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return DEFAULT_TEXT;
+
+  try {
+    let date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return String(dateString);
+
+    if (
+      typeof dateString === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(dateString.split('T')[0])
+    ) {
+      date = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+    }
+
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch {
+    return String(dateString);
+  }
+};
+
+const formatTime = (dateString) => {
+  if (!dateString) return '--:--';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '--:--';
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const calculateAge = (birthdate) => {
+  if (!birthdate) return DEFAULT_TEXT;
+  const today = new Date();
+  const birth = new Date(birthdate);
+  if (Number.isNaN(birth.getTime())) return DEFAULT_TEXT;
+
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+
+  return age >= 0 ? age : DEFAULT_TEXT;
+};
+
+const normalizeStatus = (ticket, isSelected) => {
+  if (isSelected) {
+    return 'active';
+  }
+
+  const urgency = String(ticket.urgency || ticket.priority || '').toLowerCase();
+  const status = String(ticket.status || '').toLowerCase();
+
+  if (urgency === 'high' || status === 'urgent' || status.includes('urgent')) {
+    return 'urgent';
+  }
+
+  return 'pending';
+};
+
+const getStatusLabel = (status) => {
+  if (!status) return 'pending';
+  if (status === 'active') return 'active';
+  if (status === 'urgent') return 'Urgent';
+  return status;
+};
+
+const getPatientIdFromTicket = (ticket) => {
+  const id = readValue(
+    ticket,
+    ['patientId', 'Patient_ID', 'patientUserId', 'User_ID', 'userId'],
+    null,
+  );
+
+  if (id === null || id === undefined || id === '') {
+    return null;
+  }
+
+  const parsed = Number(id);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const normalizeTicketStatus = (status) => String(status || '').trim().toLowerCase();
+
+const isVisibleInNurseQueue = (status) =>
+  NURSE_QUEUE_VISIBLE_STATUSES.has(normalizeTicketStatus(status));
+
+const formatScheduleTime = (timeString) => {
+  if (!timeString) return DEFAULT_TEXT;
+
+  const parsed = new Date(`1970-01-01T${timeString}`);
+  if (Number.isNaN(parsed.getTime())) {
+    return timeString;
+  }
+
+  return parsed.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const { unreadCount } = useNotification();
-  const { logout } = useAuth();
 
   const [nurseName, setNurseName] = useState(getNurseFirstName());
-  const [nurseProfileImage, setNurseProfileImage] = useState(
-    getNurseProfileImage(),
-  );
+  const [nurseProfileImage, setNurseProfileImage] = useState(getNurseProfileImage());
+  const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [quickMessage, setQuickMessage] = useState('');
+  const [quickMessageError, setQuickMessageError] = useState('');
+  const [isSendingQuickMessage, setIsSendingQuickMessage] = useState(false);
   const [showTicketDetailModal, setShowTicketDetailModal] = useState(false);
   const [ticketDetailTab, setTicketDetailTab] = useState('assessment');
   const [doctors, setDoctors] = useState([]);
@@ -42,43 +211,21 @@ export default function Dashboard() {
   const [assignedSpecialist, setAssignedSpecialist] = useState('');
   const [isTriaging, setIsTriaging] = useState(false);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    try {
-      let date = new Date(dateString);
-      if (isNaN(date.getTime())) return dateString;
+  const selectedPatientId = useMemo(
+    () => (selectedTicket ? getPatientIdFromTicket(selectedTicket) : null),
+    [selectedTicket],
+  );
 
-      if (
-        typeof dateString === 'string' &&
-        /^\d{4}-\d{2}-\d{2}$/.test(dateString.split('T')[0])
-      ) {
-        date = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
-      }
+  const creatingConversationFor = useRef(null);
 
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-    } catch {
-      return dateString;
-    }
-  };
-
-  const calculateAge = (birthdate) => {
-    if (!birthdate) return null;
-    const today = new Date();
-    const birth = new Date(birthdate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birth.getDate())
-    ) {
-      age--;
-    }
-    return age;
-  };
+  const {
+    conversations,
+    activeConversation,
+    messages,
+    openConversation,
+    startConversation,
+    sendMessage: sendChatMessage,
+  } = useChat({ currentUserId: user?.id || null, currentUserType: 'n' });
 
   const handleLogout = async () => {
     try {
@@ -90,135 +237,209 @@ export default function Dashboard() {
     navigate('/');
   };
 
-  const [tickets, setTickets] = useState([]);
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadDoctors = async () => {
+      try {
+        const data = await fetchDoctorsFromAPI();
+        if (isMounted) {
+          setDoctors(data || []);
+        }
+      } catch (error) {
+        console.error('Dashboard: Error loading doctors:', error);
+      }
+    };
+
+    loadDoctors();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      console.log(
-        'Dashboard: Starting to load dashboard data for logged-in nurse...',
-      );
+    let isMounted = true;
 
+    const loadDashboardData = async () => {
       try {
-        console.log('Dashboard: Fetching nurse profile...');
         const nurse = await fetchNurseProfile();
         const profileData = transformProfileFromAPI(nurse);
+
+        if (!isMounted) {
+          return;
+        }
 
         if (profileData.firstName) {
           setNurseName(profileData.firstName);
           localStorage.setItem('nurse.firstName', profileData.firstName);
-          console.log(
-            'Dashboard: Updated nurse name to:',
-            profileData.firstName,
-          );
         }
 
         if (profileData.profileImage) {
           saveNurseProfileImage(profileData.profileImage);
           setNurseProfileImage(getNurseProfileImage());
-          console.log(
-            'Dashboard: Updated profile image to:',
-            getNurseProfileImage(),
-          );
         } else {
           localStorage.removeItem('nurse.profileImage');
           setNurseProfileImage('/account.svg');
-          console.log('Dashboard: Cleared nurse avatar (no image from API)');
         }
       } catch (profileError) {
-        console.log(
-          'Dashboard: Could not fetch nurse profile:',
-          profileError.message,
-        );
+        console.error('Could not fetch nurse profile:', profileError.message);
       }
 
       try {
         console.log('Dashboard: Fetching from dashboard API...');
         const dashboardData = await fetchDashboardFromAPI();
         console.log('Dashboard: Dashboard API response:', dashboardData);
-        if (dashboardData) {
-          if (dashboardData.nurse) {
-            const nurseData = dashboardData.nurse;
-            if (nurseData.First_Name) {
-              setNurseName(nurseData.First_Name);
-              localStorage.setItem('nurse.firstName', nurseData.First_Name);
-            }
-            if (nurseData.Profile_Image_Data_URL) {
-              saveNurseProfileImage(nurseData.Profile_Image_Data_URL);
-              setNurseProfileImage(getNurseProfileImage());
-              console.log(
-                'Dashboard: Updated profile image from dashboard API:',
-                getNurseProfileImage(),
-              );
-            } else {
-              localStorage.removeItem('nurse.profileImage');
-              setNurseProfileImage('/account.svg');
-              console.log(
-                'Dashboard: Cleared nurse avatar (no image from dashboard API)',
-              );
-            }
-          }
+        const dashboardTickets = Array.isArray(dashboardData?.tickets)
+          ? dashboardData.tickets
+          : [];
+        console.log('Dashboard: Dashboard tickets:', dashboardTickets);
 
-          if (dashboardData.tickets && Array.isArray(dashboardData.tickets)) {
-            console.log(
-              'Dashboard: Received tickets from dashboard API:',
-              dashboardData.tickets.length,
-              'tickets',
-            );
-            setTickets(dashboardData.tickets);
-          } else {
-            console.log('Dashboard: No tickets in dashboard response');
-            setTickets([]);
-          }
-          return;
-        } else {
-          console.log('Dashboard: Empty dashboard response, setting defaults');
-          setTickets([]);
+        if (!isMounted) {
           return;
         }
-      } catch (error) {
-        console.log(
-          'Dashboard API not available, trying individual endpoints:',
-          error.message,
-        );
 
-        try {
-          console.log('Dashboard: Fetching tickets from individual API...');
-          const apiTickets = await fetchTicketsFromAPI();
-          console.log('Dashboard: Tickets API response:', apiTickets);
-          if (apiTickets && apiTickets.length > 0) {
-            console.log(
-              'Dashboard: Received tickets from API:',
-              apiTickets.length,
-              'tickets',
-            );
-            setTickets(apiTickets);
-          } else {
-            console.log('Dashboard: No tickets received from API');
-            setTickets([]);
-          }
-        } catch (ticketError) {
-          console.error('Dashboard: Tickets API error:', ticketError.message);
+        if (dashboardTickets.length > 0) {
+          console.log('Dashboard: Setting tickets from dashboard API:', dashboardTickets.length);
+          setTickets(dashboardTickets);
+          return;
+        }
+      } catch (dashboardError) {
+        console.log('Dashboard API not available, trying individual endpoints:', dashboardError.message);
+      }
+
+      try {
+        console.log('Dashboard: Fetching from tickets API...');
+        const apiTickets = await fetchTicketsFromAPI();
+        console.log('Dashboard: Tickets API response:', apiTickets);
+        if (isMounted) {
+          const ticketsArray = Array.isArray(apiTickets) ? apiTickets : [];
+          console.log('Dashboard: Setting tickets from individual API:', ticketsArray.length);
+          setTickets(ticketsArray);
+        }
+      } catch (ticketError) {
+        console.error('Dashboard: Tickets API error:', ticketError.message);
+        if (isMounted) {
           setTickets([]);
         }
       }
     };
 
     loadDashboardData();
-    const interval = setInterval(loadDashboardData, 30000);
-    return () => clearInterval(interval);
+    const interval = setInterval(loadDashboardData, DASHBOARD_REFRESH_MS);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
-    const loadDoctors = async () => {
-      try {
-        const data = await fetchDoctorsFromAPI();
-        setDoctors(data || []);
-      } catch (error) {
-        console.error('Dashboard: Error loading doctors:', error);
+    if (!selectedTicket || !selectedPatientId) {
+      return;
+    }
+
+    const existingConversation = conversations.find((conversation) =>
+      (conversation.participants || []).some(
+        (participant) => Number(participant.id) === Number(selectedPatientId),
+      ),
+    );
+
+    if (existingConversation) {
+      if (Number(activeConversation?.id) !== Number(existingConversation.id)) {
+        openConversation(existingConversation).catch((error) => {
+          console.error('Failed to open quick conversation:', error);
+        });
       }
+      return;
+    }
+
+    if (creatingConversationFor.current === selectedPatientId) {
+      return;
+    }
+
+    creatingConversationFor.current = selectedPatientId;
+
+    startConversation('direct', selectedPatientId)
+      .catch((error) => {
+        console.error('Failed to create quick conversation:', error);
+      })
+      .finally(() => {
+        creatingConversationFor.current = null;
+      });
+  }, [
+    activeConversation?.id,
+    conversations,
+    openConversation,
+    selectedPatientId,
+    selectedTicket,
+    startConversation,
+  ]);
+
+  const selectedPatient = useMemo(() => {
+    if (!selectedTicket) {
+      return null;
+    }
+
+    const bloodType = readValue(selectedTicket, ['bloodType', 'Blood_Type']);
+    const allergies = toList(
+      readValue(selectedTicket, ['allergies', 'Allergies', 'patientAllergies'], ''),
+    );
+    const medicalHistory = toList(
+      readValue(selectedTicket, ['medicalHistory', 'Medical_History', 'history'], ''),
+    );
+
+    return {
+      fullName: readValue(selectedTicket, ['patientName', 'fullName', 'name']),
+      age:
+        readValue(selectedTicket, ['age'], null) ||
+        calculateAge(readValue(selectedTicket, ['patientBirthdate', 'birthdate', 'dob'], null)),
+      gender: readValue(selectedTicket, ['gender', 'sex']),
+      phone: readValue(selectedTicket, ['mobile', 'phone', 'contactNumber']),
+      email: readValue(selectedTicket, ['email', 'patientEmail']),
+      address: readValue(
+        selectedTicket,
+        [
+          'address',
+          'fullAddress',
+          'patientAddress',
+          'addressLine1',
+          'streetAddress',
+        ],
+      ),
+      bloodType,
+      allergies,
+      medicalHistory,
+      lastVisit: formatDate(
+        readValue(
+          selectedTicket,
+          ['lastVisit', 'lastVisitDate', 'lastConsultationDate', 'updatedAt'],
+          null,
+        ),
+      ),
+      chiefComplaint: readValue(selectedTicket, ['chiefComplaint', 'consultationType']),
+      symptoms: readValue(selectedTicket, ['symptoms', 'symptomDescription']),
+      temperature: readValue(selectedTicket, ['temperature', 'temp', 'vitalTemperature']),
+      bloodPressure: readValue(
+        selectedTicket,
+        ['bloodPressure', 'bp', 'vitalBloodPressure'],
+      ),
+      heartRate: readValue(selectedTicket, ['heartRate', 'bpm', 'vitalHeartRate']),
+      respiratoryRate: readValue(
+        selectedTicket,
+        ['respiratoryRate', 'respRate', 'vitalRespiratoryRate'],
+      ),
+      additionalNotes: readValue(
+        selectedTicket,
+        ['additionalNotes', 'notes', 'assessment'],
+      ),
     };
-    loadDoctors();
-  }, []);
+  }, [selectedTicket]);
+
+  const quickMessages = useMemo(
+    () => messages.slice(-QUICK_MESSAGE_LIMIT),
+    [messages],
+  );
 
   const handleCompleteTriage = async (ticketId) => {
     if (!targetSpecialty) {
@@ -254,19 +475,41 @@ export default function Dashboard() {
     }
   };
 
+  const handleQuickSendMessage = async (event) => {
+    event.preventDefault();
+
+    if (!quickMessage.trim()) {
+      return;
+    }
+
+    if (!activeConversation?.id) {
+      setQuickMessageError('No conversation is available for this patient yet.');
+      return;
+    }
+
+    setIsSendingQuickMessage(true);
+    setQuickMessageError('');
+
+    try {
+      await sendChatMessage(quickMessage.trim());
+      setQuickMessage('');
+    } catch (error) {
+      console.error('Failed to send quick message:', error);
+      setQuickMessageError('Unable to send your message right now.');
+    } finally {
+      setIsSendingQuickMessage(false);
+    }
+  };
+
   return (
     <div className='dashboard'>
       <div className='dashboard-header'>
         <div className='header-center'>
-          <img
-            src='/okie-doc-logo.png'
-            alt='Okie-Doc+'
-            className='logo-image'
-          />
+          <img src='/okie-doc-logo.png' alt='Okie-Doc+' className='logo-image' />
         </div>
         <h3 className='dashboard-title'>Nurse Dashboard</h3>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div className='nurse-header-actions'>
           <NotificationBell />
           <div className='user-account'>
             <Avatar
@@ -286,198 +529,255 @@ export default function Dashboard() {
               >
                 My Account
               </button>
-              <button
-                className='dropdown-item logout-item'
-                onClick={handleLogout}
-              >
+              <button className='dropdown-item logout-item' onClick={handleLogout}>
                 Logout
               </button>
             </div>
           </div>
         </div>
         <div className='dashboard-nav'>
-          <button
-            className={`nav-tab active`}
-            onClick={() => navigate('/dashboard')}
-          >
+          <button className='nav-tab active' onClick={() => navigate('/dashboard')}>
             Dashboard
           </button>
           <button
-            className={`nav-tab`}
+            className='nav-tab'
             onClick={() => navigate('/nurse-manage-appointments')}
           >
             Manage Appointments
           </button>
-          <button
-            className={`nav-tab`}
-            onClick={() => navigate('/nurse-messages')}
-          >
+          <button className='nav-tab' onClick={() => navigate('/nurse-messages')}>
             Messages
           </button>
         </div>
       </div>
 
-      <div
-        style={{
-          backgroundColor: '#e3f2fd',
-          padding: '12px 20px',
-          borderBottom: '1px solid #bbdefb',
-          fontSize: '14px',
-          fontWeight: '500',
-          color: '#1565c0',
-        }}
-      >
+      <div className='nurse-service-area-banner'>
         <strong>Service Area:</strong> Bicol Region, Camarines Sur, Naga
       </div>
 
-      <div className='appointments-section'>
-        <div className='processing-tickets'>
-          <h2>All Tickets ({tickets.length})</h2>
-          {tickets.map((ticket) => (
-            <div
-              key={ticket.id}
-              className='ticket-card-new'
-              onClick={() => {
-                setSelectedTicket(ticket);
-                setShowTicketDetailModal(true);
-                setTicketDetailTab('assessment');
-              }}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className='ticket-card-header'>
-                <span className='ticket-number'>TICKET #{ticket.id}</span>
-              </div>
+      <div className='nurse-dashboard-3col'>
+        <section className='nurse-dashboard-queue'>
+          <div className='nurse-panel-title'>Patient Queue</div>
+          <div className='nurse-queue-list'>
+            {tickets.length > 0 ? (
+              tickets.map((ticket) => {
+                const isSelected = Number(selectedTicket?.id) === Number(ticket.id);
+                const status = normalizeStatus(ticket, isSelected);
+                const statusLabel = getStatusLabel(status);
 
-              <div className='ticket-card-body'>
-                <div className='ticket-left-section'>
-                  <div className='ticket-patient-details'>
-                    <h4 className='ticket-section-title'>PATIENT DETAILS</h4>
-                    <div className='ticket-details-grid'>
-                      <div className='ticket-details-col'>
-                        <p>
-                          <strong>Name:</strong> {ticket.patientName}
-                        </p>
-                        <p>
-                          <strong>Age:</strong>{' '}
-                          {ticket.age ||
-                            calculateAge(ticket.patientBirthdate) ||
-                            'N/A'}
-                        </p>
-                        <p>
-                          <strong>Birthdate:</strong>{' '}
-                          {formatDate(ticket.patientBirthdate) ||
-                            ticket.birthdate ||
-                            'N/A'}
-                        </p>
+                return (
+                  <button
+                    key={ticket.id}
+                    type='button'
+                    className={`nurse-queue-card ${isSelected ? 'selected' : ''}`}
+                    onClick={() => {
+                      setSelectedTicket(ticket);
+                      setShowTicketDetailModal(true);
+                      setTicketDetailTab('assessment');
+                      setQuickMessageError('');
+                    }}
+                  >
+                    <div className='nurse-queue-card-top'>
+                      <div>
+                        <div className='nurse-ticket-code'>
+                          T-{String(ticket.id).padStart(3, '0')}
+                        </div>
+                        <div className='nurse-ticket-name'>
+                          {readValue(ticket, ['patientName', 'fullName', 'name'])}
+                        </div>
                       </div>
-                      <div className='ticket-details-col'>
-                        <p>
-                          <strong>Email:</strong> {ticket.email}
-                        </p>
-                        <p>
-                          <strong>Mobile:</strong> {ticket.mobile}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className='ticket-assignments'>
-                    <p>
-                      <strong>Assigned Nurse:</strong>{' '}
-                      {ticket.assignedNurse || 'Unassigned'}
-                    </p>
-                    <p>
-                      <strong>Assigned Specialist:</strong>{' '}
-                      {ticket.assignedSpecialist ||
-                        ticket.preferredSpecialist ||
-                        'Not specified'}
-                    </p>
-                    <p>
-                      <strong>Consultation Type:</strong>{' '}
-                      {ticket.consultationType || ticket.chiefComplaint}
-                    </p>
-                  </div>
-                </div>
-
-                <div className='ticket-right-section'>
-                  <div className='ticket-meta'>
-                    <p>
-                      <strong>Date Created:</strong>{' '}
-                      {formatDate(ticket.createdAt) ||
-                        ticket.dateCreated ||
-                        ticket.preferredDate}
-                    </p>
-                    <p>
-                      <strong>Status:</strong>{' '}
-                      <span
-                        className={`ticket-status-text ${ticket.status?.toLowerCase()}`}
-                      >
-                        {ticket.status}
+                      <span className={`nurse-status-badge ${status}`}>
+                        {statusLabel}
                       </span>
-                    </p>
+                    </div>
+                    <div className='nurse-ticket-time'>
+                      {formatTime(readValue(ticket, ['preferredDate', 'createdAt'], null))}
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <div className='nurse-empty-note'>No tickets available</div>
+            )}
+          </div>
+        </section>
+
+        <section className='nurse-dashboard-patient'>
+          <div className='nurse-panel-title'>Patient Information</div>
+
+          {!selectedPatient ? (
+            <div className='nurse-patient-placeholder'>patient information</div>
+          ) : (
+            <>
+              <div className='nurse-patient-header'>
+                <div className='nurse-patient-avatar'>
+                  {(selectedPatient.fullName || '?').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h2>{selectedPatient.fullName}</h2>
+                  <p>
+                    {selectedPatient.age} years old - {selectedPatient.gender}
+                  </p>
+                </div>
+                <button
+                  className='nurse-transfer-btn'
+                  type='button'
+                  onClick={() => navigate('/nurse-manage-appointments')}
+                >
+                  Process Ticket
+                </button>
+              </div>
+
+              <div className='nurse-patient-grid'>
+                <article className='nurse-patient-card'>
+                  <h4>Phone</h4>
+                  <p>{selectedPatient.phone}</p>
+                </article>
+                <article className='nurse-patient-card'>
+                  <h4>Email</h4>
+                  <p>{selectedPatient.email}</p>
+                </article>
+                <article className='nurse-patient-card'>
+                  <h4>Address</h4>
+                  <p>{selectedPatient.address}</p>
+                </article>
+                <article className='nurse-patient-card'>
+                  <h4>Blood Type</h4>
+                  <p>{selectedPatient.bloodType}</p>
+                </article>
+              </div>
+
+              <article className='nurse-patient-wide-card'>
+                <h4>Allergies</h4>
+                {selectedPatient.allergies.length > 0 ? (
+                  <div className='nurse-tag-list'>
+                    {selectedPatient.allergies.map((allergy) => (
+                      <span key={allergy} className='nurse-danger-tag'>
+                        {allergy}
+                      </span>
+                    ))}
                   </div>
+                ) : (
+                  <p>{DEFAULT_TEXT}</p>
+                )}
+              </article>
 
-                  {ticket.status === 'pending' && !ticket.assignedNurse && (
-                    <button
-                      className='ticket-history-btn'
-                      style={{ background: '#28a745', color: '#fff' }}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (
-                          window.confirm('Do you want to claim this ticket?')
-                        ) {
-                          try {
-                            await claimTicket(ticket.id);
-                            alert('Ticket claimed successfully!');
-                            window.location.reload();
-                          } catch (err) {
-                            alert('Failed to claim ticket: ' + err.message);
-                          }
-                        }
-                      }}
-                    >
-                      Claim Ticket
-                    </button>
-                  )}
+              <article className='nurse-patient-wide-card'>
+                <h4>Medical History</h4>
+                {selectedPatient.medicalHistory.length > 0 ? (
+                  <ul>
+                    {selectedPatient.medicalHistory.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>{DEFAULT_TEXT}</p>
+                )}
+              </article>
 
-                  <button
-                    className='ticket-history-btn'
-                    style={{ marginTop: '8px' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      alert('Feature in progress');
-                    }}
-                  >
-                    Consultation Histories
-                  </button>
-                  <button
-                    className='ticket-history-btn'
-                    style={{
-                      marginTop: '8px',
-                      background: '#0b5388',
-                      color: '#fff',
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (ticket.patientId) {
-                        navigate(`/nurse-messages?userId=${ticket.patientId}`);
-                      } else {
-                        alert('No patient ID found for this ticket.');
-                      }
-                    }}
-                  >
-                    Message Patient
-                  </button>
+              <article className='nurse-patient-wide-card'>
+                <h4>Last Visit</h4>
+                <p>{selectedPatient.lastVisit}</p>
+              </article>
+
+              <div className='nurse-subsection-title'>Consultation Information</div>
+              <div className='nurse-consultation-body'>
+                <div className='nurse-consultation-field'>
+                  <label>Chief Complaint</label>
+                  <p>{selectedPatient.chiefComplaint}</p>
+                </div>
+
+                <div className='nurse-consultation-field'>
+                  <label>Symptoms</label>
+                  <p>{selectedPatient.symptoms}</p>
+                </div>
+
+                <div className='nurse-vitals-grid'>
+                  <div className='nurse-vital-card'>
+                    <label>Temperature (C)</label>
+                    <p>{selectedPatient.temperature}</p>
+                  </div>
+                  <div className='nurse-vital-card'>
+                    <label>Blood Pressure</label>
+                    <p>{selectedPatient.bloodPressure}</p>
+                  </div>
+                  <div className='nurse-vital-card'>
+                    <label>Heart Rate (bpm)</label>
+                    <p>{selectedPatient.heartRate}</p>
+                  </div>
+                  <div className='nurse-vital-card'>
+                    <label>Respiratory Rate</label>
+                    <p>{selectedPatient.respiratoryRate}</p>
+                  </div>
+                </div>
+
+                <div className='nurse-consultation-field'>
+                  <label>Additional Notes</label>
+                  <p>{selectedPatient.additionalNotes}</p>
                 </div>
               </div>
-            </div>
-          ))}
-          {tickets.length === 0 && (
-            <div className='empty-state'>
-              <p>No tickets available</p>
-            </div>
+            </>
           )}
-        </div>
+        </section>
+
+        <section className='nurse-dashboard-right'>
+          <div className='nurse-right-top'>
+            <div className='nurse-right-panel-header'>
+              <div className='nurse-panel-title'>Consultation</div>
+              <button
+                type='button'
+                className='nurse-messages-arrow-btn'
+                onClick={() => navigate('/nurse-messages')}
+                title='Go to Messages'
+                aria-label='Go to Messages'
+              >
+                {'→'}
+              </button>
+            </div>
+
+            {!selectedTicket ? (
+              <div className='nurse-empty-note'>Select a ticket to open quick messaging.</div>
+            ) : (
+              <>
+                <div className='nurse-quick-chat-list'>
+                  {quickMessages.length > 0 ? (
+                    quickMessages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`nurse-quick-chat-bubble ${message.isSent ? 'sent' : 'received'}`}
+                      >
+                        <p>{message.text}</p>
+                        <span>{message.timestamp}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className='nurse-empty-note'>No messages yet for this patient.</div>
+                  )}
+                </div>
+
+                <form className='nurse-quick-chat-form' onSubmit={handleQuickSendMessage}>
+                  <input
+                    type='text'
+                    placeholder='Type a message...'
+                    value={quickMessage}
+                    onChange={(event) => setQuickMessage(event.target.value)}
+                    disabled={!activeConversation?.id || isSendingQuickMessage}
+                  />
+                  <button
+                    type='submit'
+                    disabled={!quickMessage.trim() || isSendingQuickMessage}
+                  >
+                    Send
+                  </button>
+                </form>
+
+                {quickMessageError && (
+                  <p className='nurse-quick-error'>{quickMessageError}</p>
+                )}
+              </>
+            )}
+          </div>
+        </section>
       </div>
 
       {showTicketDetailModal && selectedTicket && (
@@ -734,7 +1034,7 @@ export default function Dashboard() {
                   }}
                 >
                   <h3 style={{ marginBottom: 16, color: '#0b5388' }}>
-                    Triage & specialist Assignment
+                    Triage & specialist assignment
                   </h3>
 
                   <div style={{ marginBottom: 12 }}>

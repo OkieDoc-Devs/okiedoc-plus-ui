@@ -9,7 +9,7 @@ import Notifications from './Nurse/Notifications.jsx';
 import MyAccount from './Nurse/MyAccount.jsx';
 import ManageAppointments from './Nurse/ManageAppointments.jsx';
 import Messages from './Nurse/Messages.jsx';
-import SpecialistDashboard from './Admin/Specialistdashboard/SpecialistDashboard.jsx';
+import SuperAdminDashboard from './Admin/SuperAdminDashboard';
 import PatientDashboard from './Patient/jsx/PatientDashboard.jsx';
 import SpecialistDashboard2 from './Specialists/SpecialistDashboard.jsx';
 import SpecialistLogin from './Login & Registration/SpecialistLogin.jsx';
@@ -121,8 +121,8 @@ createRoot(document.getElementById('root')).render(
             <Route
               path='/admin/specialist-dashboard'
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <SpecialistDashboard />
+                <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                  <SuperAdminDashboard />
                 </ProtectedRoute>
               }
             />

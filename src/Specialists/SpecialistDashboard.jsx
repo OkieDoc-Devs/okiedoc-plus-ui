@@ -170,12 +170,6 @@ const SpecialistDashboard = () => {
     patient: null,
   });
 
-  const [callState, setCallState] = useState({
-    isOpen: false,
-    callType: 'audio',
-    patient: null,
-  });
-
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [selectedPatientDetailed, setSelectedPatientDetailed] = useState(null);
   const [encounter, setEncounter] = useState(createDefaultEncounter());
@@ -361,7 +355,6 @@ const SpecialistDashboard = () => {
     }
   }, []);
 
-  // Expose refresh function to chat messages
   useEffect(() => {
     window.refreshSpecialistDashboard = () => {
       console.log("[SpecialistDashboard] Refreshing data from window callback...");
@@ -559,7 +552,6 @@ const SpecialistDashboard = () => {
       }
       setMhRequests(loadMedicalHistoryData(selectedTicketId));
 
-      // Fetch full patient profile if possible
       const currentTicket = tickets.find((t) => t.id === selectedTicketId);
       if (currentTicket && currentTicket.rawTicket?.patient?.id) {
         specialistApi
@@ -570,7 +562,6 @@ const SpecialistDashboard = () => {
               profile,
             );
             setSelectedPatientDetailed(profile);
-            // Check if profile actually contains clinical data
             const hasClinicalData = profile.activeDiseases || profile.medicalHistory || profile.allergies;
             if (!hasClinicalData) {
               console.log('[SpecialistDashboard] Profile received but no clinical data (likely not shared yet)');
@@ -592,12 +583,8 @@ const SpecialistDashboard = () => {
   const handleRequestMedicalHistory = async () => {
     if (!selectedTicketId) return;
     try {
-      // Check if we already have the profile in memory or need to fetch it
       const currentTicket = tickets.find(t => t.id === selectedTicketId);
-      
-      // Send the request directly via API
       await specialistApi.requestMedicalHistory(selectedTicketId);
-      
       alert(`Medical history request sent to ${currentTicket?.patientName || 'patient'}'s chat.`);
     } catch (error) {
       console.error('Error requesting medical history:', error);
@@ -888,9 +875,6 @@ const SpecialistDashboard = () => {
 
     setQuickMessages((prev) => [...prev, newMessage]);
     setQuickMessage('');
-
-    // TODO: wire up real message sending API call when available
-    // await specialistApi.sendMessageToPatient(selectedTicketId, trimmedMessage);
   };
 
   const handleCropComplete = async (croppedFile) => {
@@ -1503,10 +1487,6 @@ const SpecialistDashboard = () => {
             <div className='info-card-title'>Medical History</div>
             <div className='info-card-body'>
               {(() => {
-                // If the specialist HAS NOT received detailed patient data (meaning they haven't requested/allowed),
-                // we only show the Triage info or placeholder.
-                // We use selectedPatientDetailed as the source of truth for "Shared Access"
-                // IMPORTANT: If history hasn't been shared, we MUST return a placeholder.
                 const allergiesSource = selectedPatientDetailed?.allergies;
                 const activeDiseaseSource = selectedPatientDetailed?.activeDiseases;
                 const pastDiseasesSource = selectedPatientDetailed?.pastDiseases;
@@ -1515,8 +1495,6 @@ const SpecialistDashboard = () => {
                 const familyHistorySource = selectedPatientDetailed?.familyHistory;
                 const socialHistorySource = selectedPatientDetailed?.socialHistory;
 
-                // Checking for presence of data because getPatientProfile now filters clinical files 
-                // if history has NOT been shared.
                 const isAuthorized = allergiesSource || activeDiseaseSource || pastDiseasesSource || medicationsSource || surgeriesSource || familyHistorySource || socialHistorySource;
 
                 if (!selectedPatientDetailed || !isAuthorized) {
@@ -1542,7 +1520,6 @@ const SpecialistDashboard = () => {
                 
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {/* Allergies Sub-section */}
                     <div>
                       <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Allergies</h4>
                       {Array.isArray(allergies) && allergies.length > 0 ? (
@@ -1558,7 +1535,6 @@ const SpecialistDashboard = () => {
                       )}
                     </div>
 
-                    {/* Active Diseases Sub-section */}
                     <div>
                       <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Active Diseases / Conditions</h4>
                       {Array.isArray(activeDiseases) && activeDiseases.length > 0 ? (
@@ -1576,7 +1552,6 @@ const SpecialistDashboard = () => {
                       )}
                     </div>
 
-                    {/* Medications Sub-section */}
                     <div>
                       <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Current Medications</h4>
                       {Array.isArray(medications) && medications.length > 0 ? (
@@ -1593,7 +1568,6 @@ const SpecialistDashboard = () => {
                       )}
                     </div>
 
-                    {/* Past Diseases Sub-section */}
                     <div>
                       <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Past Diseases</h4>
                       {Array.isArray(pastDiseases) && pastDiseases.length > 0 ? (
@@ -1610,7 +1584,6 @@ const SpecialistDashboard = () => {
                       )}
                     </div>
 
-                    {/* Surgeries Sub-section */}
                     <div>
                       <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Surgeries</h4>
                       {Array.isArray(surgeries) && surgeries.length > 0 ? (
@@ -1627,7 +1600,6 @@ const SpecialistDashboard = () => {
                       )}
                     </div>
 
-                    {/* Family History Sub-section */}
                     <div>
                       <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Family History</h4>
                       {Array.isArray(familyHistory) && familyHistory.length > 0 ? (
@@ -1643,7 +1615,6 @@ const SpecialistDashboard = () => {
                       )}
                     </div>
 
-                    {/* Social History Sub-section */}
                     <div>
                       <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Social History</h4>
                       {Array.isArray(socialHistory) && socialHistory.length > 0 ? (
@@ -2878,7 +2849,7 @@ const SpecialistDashboard = () => {
             </button>
           </div>
         </div>
-        <div className='dashboard-nav'>
+        
         <div className='dashboard-nav'>
           <button
             className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}

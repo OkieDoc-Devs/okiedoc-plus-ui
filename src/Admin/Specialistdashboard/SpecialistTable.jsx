@@ -1,266 +1,90 @@
-import React, { useState } from "react";
-import Modal from "../Components/Modal";
+import React, { useState } from 'react';
+import Modal from '../Components/Modal';
 
-const SpecialistTable = ({ specialists = [] }) => {
-  const [viewModalSpec, setViewModalSpec] = useState(null);
-  const [denyModalSpec, setDenyModalSpec] = useState(null);
-  const [denyReason, setDenyReason] = useState("");
-  const [imageViewUrl, setImageViewUrl] = useState(null);
-
-  const handleAccept = (specId) => {
-    alert(`Specialist ${specId} status confirmed/activated. (Simulated)`);
-    setViewModalSpec(null);
-  };
-
-  const handleSubmitDenial = () => {
-    if (denyReason && denyModalSpec) {
-      alert(
-        `Specialist ${denyModalSpec.id} has been denied/deactivated. Reason: ${denyReason}. (Simulated)`,
-      );
-      setDenyModalSpec(null);
-      setDenyReason("");
-    } else {
-      alert("A reason is required for denying/deactivating the specialist.");
-    }
-  };
-
-  const viewButtonStyle = {
-    marginLeft: "10px",
-    padding: "2px 8px",
-    fontSize: "12px",
-    cursor: "pointer",
-    backgroundColor: "#e3f2fd",
-    border: "1px solid #4aa7ed",
-    color: "#0b5388",
-    borderRadius: "4px",
-  };
+const SpecialistTable = ({ specialists, onStatusChange, toolbar }) => {
+  const [viewingSpecialist, setViewingSpecialist] = useState(null);
 
   return (
-    <>
-      <div id="list" className="tab-content active">
-        <h2>OkieDoc+ Specialists</h2>
-        <div className="table-wrapper">
-          <table className="dashboard-table">
-            <thead>
-              <tr>
-                <th>UID</th>
-                <th>First Name</th>
-                <th>Last Name</th>
-                <th>Email</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {specialists.length > 0 ? (
-                specialists.map((spec) => (
-                  <tr key={spec.id}>
-                    <td>{spec.id || "N/A"}</td>
-                    <td>{spec.firstName || "N/A"}</td>
-                    <td>{spec.lastName || "N/A"}</td>
-                    <td>{spec.email || "N/A"}</td>
-                    <td>
-                      <button
-                        className="action-btn btn-primary"
-                        onClick={() => setViewModalSpec(spec)}
-                      >
-                        View
-                      </button>
-                      <button
-                        className="action-btn btn-success"
-                        onClick={() => handleAccept(spec.id)}
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        className="action-btn btn-danger"
-                        onClick={() => setDenyModalSpec(spec)}
-                      >
-                        Deactivate
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" style={{ textAlign: "center" }}>
-                    No specialists found or matching current filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+    <div className="table-section">
+      <div className="table-header-row">
+        <h2>Approved Specialists</h2>
       </div>
 
-      {viewModalSpec && (
-        <Modal
-          title="Specialist Information"
-          onClose={() => setViewModalSpec(null)}
-        >
-          <div id="modal-body">
-            {viewModalSpec.details?.profilePicture && (
-              <img
-                src={viewModalSpec.details.profilePicture}
-                alt={`${viewModalSpec.firstName}'s profile`}
-                style={{
-                  width: "100px",
-                  height: "100px",
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                  display: "block",
-                  margin: "0 auto 15px",
-                }}
-              />
-            )}
-            <p>
-              <strong>UID:</strong> {viewModalSpec.id || "N/A"}
-            </p>
-            <p>
-              <strong>Name:</strong>{" "}
-              {`${viewModalSpec.firstName || ""} ${viewModalSpec.lastName || ""}`.trim() ||
-                "N/A"}
-            </p>
-            <p>
-              <strong>Email:</strong> {viewModalSpec.email || "N/A"}
-            </p>
-            <p>
-              <strong>Status:</strong> {viewModalSpec.status || "Active"}
-            </p>
-            <p>
-              <strong>Specializations:</strong>{" "}
-              {viewModalSpec.details?.specializations?.join(", ") || "N/A"}
-            </p>
-            <p>
-              <strong>Subspecializations:</strong>{" "}
-              {viewModalSpec.details?.subspecializations?.join(", ") || "N/A"}
-            </p>
+      {toolbar}
+      
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Specialist Name</th>
+            <th>Specialty</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {specialists && specialists.length > 0 ? (
+            specialists.map((spec) => (
+              <tr key={spec.id}>
+                <td style={{fontWeight: 500}}>{spec.name || `${spec.firstName} ${spec.lastName}`}</td>
+                <td>{spec.primarySpecialty || spec.details?.specializations?.[0] || 'N/A'}</td>
+                <td>{spec.email}</td>
+                <td>
+                  <span className={`status-pill ${spec.status === 'active' ? 'status-completed' : spec.status === 'suspended' ? 'status-cancelled' : 'status-pending'}`}>
+                    {spec.status || 'Active'}
+                  </span>
+                </td>
+                <td>
+                  <button className="view-btn" onClick={() => setViewingSpecialist(spec)}>View</button>
+                  <button className="action-btn" onClick={() => onStatusChange(spec.id, spec.status === 'active' ? 'suspended' : 'active')}>
+                    {spec.status === 'active' ? 'Suspend' : 'Activate'}
+                  </button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5" style={{textAlign: 'center', padding: '32px', color: '#64748b'}}>
+                No approved specialists found.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
 
-            <p>
-              <strong>PRC ID No.:</strong>{" "}
-              {viewModalSpec.details?.prcId?.number || "N/A"}
-              {viewModalSpec.details?.prcId?.imageUrl && (
-                <button
-                  style={viewButtonStyle}
-                  onClick={() =>
-                    setImageViewUrl(viewModalSpec.details.prcId.imageUrl)
-                  }
-                >
-                  View
-                </button>
-              )}
-            </p>
-            <p>
-              <strong>S2 License No.:</strong>{" "}
-              {viewModalSpec.details?.s2?.number || "N/A"}
-              {viewModalSpec.details?.s2?.imageUrl && (
-                <button
-                  style={viewButtonStyle}
-                  onClick={() =>
-                    setImageViewUrl(viewModalSpec.details.s2.imageUrl)
-                  }
-                >
-                  View
-                </button>
-              )}
-            </p>
-            <p>
-              <strong>Address:</strong> {[
-                viewModalSpec.addressLine1,
-                viewModalSpec.addressLine2,
-                viewModalSpec.barangay,
-                viewModalSpec.city,
-                viewModalSpec.province,
-                viewModalSpec.region,
-                viewModalSpec.zipCode
-              ].filter(Boolean).join(", ") || "N/A"}
-            </p>
-            <p>
-              <strong>PTR No.:</strong>{" "}
-              {viewModalSpec.details?.ptr?.number || "N/A"}
-              {viewModalSpec.details?.ptr?.imageUrl && (
-                <button
-                  style={viewButtonStyle}
-                  onClick={() =>
-                    setImageViewUrl(viewModalSpec.details.ptr.imageUrl)
-                  }
-                >
-                  View
-                </button>
-              )}
-            </p>
-
-            {viewModalSpec.details?.eSig && (
-              <>
-                <p>
-                  <strong>E-Signature:</strong>
-                </p>
-                <img
-                  src={viewModalSpec.details.eSig}
-                  alt="E-Signature"
-                  style={{
-                    maxWidth: "200px",
-                    border: "1px solid #ddd",
-                    padding: "5px",
-                    marginTop: "5px",
-                    display: "block",
-                  }}
-                />
-              </>
-            )}
+      {viewingSpecialist && (
+        <Modal title="Specialist Details" onClose={() => setViewingSpecialist(null)}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
+            <div>
+              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Full Name</span>
+              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingSpecialist.name || `${viewingSpecialist.firstName} ${viewingSpecialist.lastName}`}</p>
+            </div>
+            <div>
+              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Email Address</span>
+              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingSpecialist.email}</p>
+            </div>
+            <div>
+              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Mobile Number</span>
+              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingSpecialist.mobileNumber || 'N/A'}</p>
+            </div>
+            <div>
+              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Primary Specialty</span>
+              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingSpecialist.primarySpecialty || viewingSpecialist.details?.specializations?.[0] || 'N/A'}</p>
+            </div>
+            <div>
+              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Sub-Specialty</span>
+              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingSpecialist.subSpecialties || 'None'}</p>
+            </div>
+            <div>
+              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>PRC License Number</span>
+              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingSpecialist.licenseNumber || viewingSpecialist.details?.prcId?.number || 'N/A'}</p>
+            </div>
           </div>
-          <div className="modal-actions">
-            <button
-              className="action-btn btn-primary"
-              onClick={() => setViewModalSpec(null)}
-            >
-              Close
-            </button>
-          </div>
+          
+          <button className="admin-modal-close-btn" onClick={() => setViewingSpecialist(null)}>Close Details</button>
         </Modal>
       )}
-
-      {denyModalSpec && (
-        <Modal
-          title={`Reason for Deactivating ${denyModalSpec.firstName}`}
-          onClose={() => setDenyModalSpec(null)}
-        >
-          <textarea
-            id="deny-reason-textarea"
-            placeholder="Provide a reason for deactivating this specialist..."
-            value={denyReason}
-            onChange={(e) => setDenyReason(e.target.value)}
-            rows={5}
-            style={{ width: "100%", padding: "10px", boxSizing: "border-box" }}
-          />
-          <div className="modal-actions">
-            <button
-              className="action-btn btn-danger"
-              onClick={handleSubmitDenial}
-            >
-              Submit Deactivation
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {imageViewUrl && (
-        <Modal title="View Document" onClose={() => setImageViewUrl(null)}>
-          <img
-            src={imageViewUrl}
-            alt="Document"
-            style={{ width: "100%", height: "auto", display: "block" }}
-          />
-          <div className="modal-actions">
-            <button
-              className="action-btn btn-primary"
-              onClick={() => setImageViewUrl(null)}
-            >
-              Close
-            </button>
-          </div>
-        </Modal>
-      )}
-    </>
+    </div>
   );
 };
 

@@ -49,7 +49,6 @@ export default function SpecialistRegistration() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Set default location and fetch provinces and cities on component mount
   useEffect(() => {
     const bicolRegion = regions.find((r) => r.name === 'Bicol Region');
     if (bicolRegion) {
@@ -77,7 +76,6 @@ export default function SpecialistRegistration() {
     const { id, value } = e.target;
     let filteredValue = value;
 
-    // Apply character restrictions
     if (['firstName', 'lastName', 'middleName'].includes(id)) {
       filteredValue = value.replace(/[^a-zA-Z\s-]/g, '');
     } else if (id === 'mobileNumber') {
@@ -245,7 +243,6 @@ export default function SpecialistRegistration() {
         setESignatureFile(null);
       } else {
         setErrors({ email: result.message || 'Registration failed.' });
-        // Handle specific error structure from backend if needed
         if (result.emailAlreadyInUse) {
           setErrors({
             email:
@@ -262,7 +259,6 @@ export default function SpecialistRegistration() {
     }
   };
 
-  // Determine if specialist fields should be shown
   const showSpecialistFields = formData.specialistType === 'specialist';
 
   return (
@@ -871,8 +867,6 @@ export default function SpecialistRegistration() {
               </a>
             </p>
           </form>
-            </>
-          )}
         </div>
       </div>
     </>

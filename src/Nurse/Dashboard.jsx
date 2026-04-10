@@ -9,6 +9,8 @@ import {
 } from './services/storageService.js';
 import {
   fetchDashboardFromAPI,
+  fetchDoctorsFromAPI,
+  fetchNursesFromAPI,
   fetchNurseProfile,
   fetchTicketsFromAPI,
   updateTicket,
@@ -86,6 +88,15 @@ const ROS_GROUPS = [
 ];
 const URGENCY_LEVEL_OPTIONS = ['Low', 'Normal', 'Urgent', 'Critical'];
 const TRIAGE_DRAFTS_STORAGE_KEY = 'nurse.triageDraftsByTicket';
+const FALLBACK_DEPARTMENTS = [
+  'General Medicine',
+  'Cardiology',
+  'Pediatrics',
+  'Orthopedics',
+  'Dermatology',
+  'Internal Medicine',
+  'Surgery',
+];
 
 const readValue = (source, keys, fallback = DEFAULT_TEXT) => {
   for (const key of keys) {
@@ -353,6 +364,19 @@ export default function Dashboard() {
     temperature: '',
     oxygenSaturation: '',
   });
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferTarget, setTransferTarget] = useState('doctor');
+  const [availableDoctors, setAvailableDoctors] = useState([]);
+  const [availableDepartments, setAvailableDepartments] = useState(FALLBACK_DEPARTMENTS);
+  const [availableNurses, setAvailableNurses] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedDoctorId, setSelectedDoctorId] = useState('');
+  const [selectedNurseId, setSelectedNurseId] = useState('');
+  const [transferReason, setTransferReason] = useState('');
+  const [isTransferSubmitting, setIsTransferSubmitting] = useState(false);
+  const [isDepartmentMenuOpen, setIsDepartmentMenuOpen] = useState(false);
+  const [isDoctorMenuOpen, setIsDoctorMenuOpen] = useState(false);
+  const [isNurseMenuOpen, setIsNurseMenuOpen] = useState(false);
 
   const selectedPatientId = useMemo(
     () => (selectedTicket ? getPatientIdFromTicket(selectedTicket) : null),
@@ -378,6 +402,32 @@ export default function Dashboard() {
       console.error('Logout error:', error);
     }
     navigate('/');
+  };
+
+  const closeTransferModal = () => {
+    setShowTransferModal(false);
+    setIsDepartmentMenuOpen(false);
+    setIsDoctorMenuOpen(false);
+    setIsNurseMenuOpen(false);
+    setTransferReason('');
+  };
+
+  const closeTransferMenus = () => {
+    setIsDepartmentMenuOpen(false);
+    setIsDoctorMenuOpen(false);
+    setIsNurseMenuOpen(false);
+  };
+
+  const openTransferModal = () => {
+    setShowTransferModal(true);
+    setTransferTarget('doctor');
+    setSelectedDepartment('');
+    setSelectedDoctorId('');
+    setSelectedNurseId('');
+    setTransferReason('');
+    setIsDepartmentMenuOpen(false);
+    setIsDoctorMenuOpen(false);
+    setIsNurseMenuOpen(false);
   };
 
   const persistTriageDraft = (ticketId, patch) => {
@@ -472,6 +522,63 @@ export default function Dashboard() {
       clearInterval(interval);
     };
   }, []);
+
+  useEffect(() => {
+    if (!showTransferModal) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadTransferOptions = async () => {
+      try {
+        const doctors = await fetchDoctorsFromAPI();
+        if (isMounted) {
+          setAvailableDoctors(Array.isArray(doctors) ? doctors : []);
+          const departments = Array.from(
+            new Set(
+              (doctors || [])
+                .map((doctor) =>
+                  String(
+                    readValue(doctor, ['specialization', 'department', 'specialty'], ''),
+                  ).trim(),
+                )
+                .filter(Boolean),
+            ),
+          );
+          if (departments.length > 0) {
+            setAvailableDepartments(departments);
+          }
+        }
+      } catch {
+        // Keep fallback departments.
+      }
+
+      try {
+        const nurses = await fetchNursesFromAPI();
+        if (isMounted) {
+          setAvailableNurses(
+            (nurses || [])
+              .filter((entry) => Number(entry?.id) !== Number(user?.id))
+              .map((entry) => ({
+                id: Number(entry?.id),
+                name: String(entry?.name || '').trim() || 'Unknown Nurse',
+              })),
+          );
+        }
+      } catch {
+        if (isMounted) {
+          setAvailableNurses([]);
+        }
+      }
+    };
+
+    loadTransferOptions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [showTransferModal, user?.id]);
 
   useEffect(() => {
     if (!selectedTicket || !selectedPatientId) {
@@ -831,6 +938,77 @@ export default function Dashboard() {
     });
   };
 
+  const selectedNurse = useMemo(
+    () =>
+      availableNurses.find((nurse) => Number(nurse.id) === Number(selectedNurseId)) || null,
+    [availableNurses, selectedNurseId],
+  );
+
+  const filteredDoctorsByDepartment = useMemo(() => {
+    if (!selectedDepartment) {
+      return [];
+    }
+
+    return (availableDoctors || []).filter(
+      (doctor) =>
+        String(readValue(doctor, ['specialization', 'department'], ''))
+          .trim()
+          .toLowerCase() === selectedDepartment.toLowerCase(),
+    );
+  }, [availableDoctors, selectedDepartment]);
+
+  const selectedDoctor = useMemo(
+    () =>
+      filteredDoctorsByDepartment.find(
+        (doctor) => Number(doctor.id) === Number(selectedDoctorId),
+      ) || null,
+    [filteredDoctorsByDepartment, selectedDoctorId],
+  );
+
+  const canTransferToDoctor = Boolean(
+    selectedDepartment && selectedDoctorId && !isTransferSubmitting,
+  );
+  const canTransferToNurse = Boolean(selectedNurseId && !isTransferSubmitting);
+
+  const handleTransferSubmit = async () => {
+    if (!selectedTicket || isTransferSubmitting) {
+      return;
+    }
+
+    if (transferTarget === 'doctor' && (!selectedDepartment || !selectedDoctorId)) {
+      return;
+    }
+
+    if (transferTarget === 'nurse' && !selectedNurseId) {
+      return;
+    }
+
+    setIsTransferSubmitting(true);
+
+    try {
+      if (transferTarget === 'doctor') {
+        await applyTicketPatch(selectedTicket.id, {
+          specialist: Number(selectedDoctorId),
+          targetSpecialty: selectedDepartment,
+          assignedSpecialist: selectedDoctor?.name || selectedDepartment,
+          transferReason: transferReason.trim() || null,
+          status: 'processing',
+        });
+      } else {
+        await applyTicketPatch(selectedTicket.id, {
+          nurse: Number(selectedNurseId),
+          assignedNurse: selectedNurse?.name || null,
+          transferReason: transferReason.trim() || null,
+          status: 'processing',
+        });
+      }
+
+      closeTransferModal();
+    } finally {
+      setIsTransferSubmitting(false);
+    }
+  };
+
   const handleCloseReasonToggle = async (reason, checked) => {
     if (!selectedTicket) {
       return;
@@ -1066,7 +1244,7 @@ export default function Dashboard() {
           </div>
         </div>
         <div className='dashboard-nav'>
-          <button className='nav-tab active' onClick={() => navigate('/dashboard')}>
+          <button className='nav-tab active' onClick={() => navigate('/nurse-dashboard')}>
             Dashboard
           </button>
           <button
@@ -1630,7 +1808,7 @@ export default function Dashboard() {
                   <button
                     type='button'
                     className='triage-transfer-btn'
-                    onClick={() => navigate('/nurse-manage-appointments')}
+                    onClick={openTransferModal}
                   >
                     <UserRound size={16} strokeWidth={2.2} />
                     Transfer Patient
@@ -1657,6 +1835,206 @@ export default function Dashboard() {
           </section>
         </div>
       </div>
+
+      {showTransferModal && selectedPatient && (
+        <div
+          className='triage-transfer-modal-overlay'
+          onClick={closeTransferModal}
+          role='presentation'
+        >
+          <div
+            className='triage-transfer-modal'
+            onClick={(event) => event.stopPropagation()}
+            role='dialog'
+            aria-modal='true'
+            aria-label='Transfer patient'
+          >
+            <button
+              type='button'
+              className='triage-transfer-modal-close'
+              onClick={closeTransferModal}
+              aria-label='Close transfer modal'
+            >
+              &times;
+            </button>
+
+            <h3 className='triage-transfer-title'>Transfer Patient</h3>
+            <p className='triage-transfer-subtitle'>
+              Transfer {selectedPatient.fullName} to another healthcare provider.
+            </p>
+
+            <div className='triage-transfer-targets'>
+              <button
+                type='button'
+                className={`triage-transfer-target ${transferTarget === 'doctor' ? 'active' : ''}`}
+                onClick={() => {
+                  setTransferTarget('doctor');
+                  setIsDepartmentMenuOpen(false);
+                  setIsDoctorMenuOpen(false);
+                  setIsNurseMenuOpen(false);
+                }}
+              >
+                To Doctor
+              </button>
+              <button
+                type='button'
+                className={`triage-transfer-target ${transferTarget === 'nurse' ? 'active' : ''}`}
+                onClick={() => {
+                  setTransferTarget('nurse');
+                  setIsDepartmentMenuOpen(false);
+                  setIsDoctorMenuOpen(false);
+                  setIsNurseMenuOpen(false);
+                }}
+              >
+                To Nurse
+              </button>
+            </div>
+
+            {transferTarget === 'doctor' ? (
+              <div className='triage-transfer-field'>
+                <label>Select Specialist Department</label>
+                <div className='triage-transfer-select-wrap'>
+                  <button
+                    type='button'
+                    className={`triage-transfer-select ${selectedDepartment ? '' : 'placeholder'}`}
+                    onClick={() => setIsDepartmentMenuOpen((previous) => !previous)}
+                  >
+                    <span>{selectedDepartment || 'Choose a department'}</span>
+                    <ChevronDown size={17} strokeWidth={2.1} />
+                  </button>
+                  {isDepartmentMenuOpen && (
+                    <div className='triage-transfer-menu'>
+                      {availableDepartments.map((department) => (
+                        <button
+                          key={department}
+                          type='button'
+                          className={`triage-transfer-option ${selectedDepartment === department ? 'active' : ''}`}
+                          onClick={() => {
+                            setSelectedDepartment(department);
+                            setSelectedDoctorId('');
+                            setIsDepartmentMenuOpen(false);
+                            setIsDoctorMenuOpen(false);
+                          }}
+                        >
+                          {department}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <label style={{ marginTop: 14 }}>Select Doctor</label>
+                <div className='triage-transfer-select-wrap'>
+                  <button
+                    type='button'
+                    className={`triage-transfer-select ${selectedDepartment ? '' : 'disabled'} ${selectedDoctor ? '' : 'placeholder'}`}
+                    onClick={() => {
+                      if (!selectedDepartment) {
+                        return;
+                      }
+                      setIsDoctorMenuOpen((previous) => !previous);
+                    }}
+                  >
+                    <span>{selectedDoctor?.name || 'Choose a doctor'}</span>
+                    <ChevronDown size={17} strokeWidth={2.1} />
+                  </button>
+                  {isDoctorMenuOpen && selectedDepartment && (
+                    <div className='triage-transfer-menu'>
+                      {filteredDoctorsByDepartment.length > 0 ? (
+                        filteredDoctorsByDepartment.map((doctor) => (
+                          <button
+                            key={doctor.id}
+                            type='button'
+                            className={`triage-transfer-option ${Number(selectedDoctorId) === Number(doctor.id) ? 'active' : ''}`}
+                            onClick={() => {
+                              setSelectedDoctorId(String(doctor.id));
+                              setIsDoctorMenuOpen(false);
+                            }}
+                          >
+                            {doctor.name}
+                          </button>
+                        ))
+                      ) : (
+                        <div className='triage-transfer-empty'>No doctors found for this department</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className='triage-transfer-field'>
+                  <label>Select Nurse</label>
+                  <div className='triage-transfer-select-wrap'>
+                    <button
+                      type='button'
+                      className={`triage-transfer-select ${selectedNurse ? '' : 'placeholder'}`}
+                      onClick={() => setIsNurseMenuOpen((previous) => !previous)}
+                    >
+                      <span>{selectedNurse?.name || 'Choose a nurse'}</span>
+                      <ChevronDown size={17} strokeWidth={2.1} />
+                    </button>
+                    {isNurseMenuOpen && (
+                      <div className='triage-transfer-menu'>
+                        {availableNurses.length > 0 ? (
+                          availableNurses.map((nurse) => (
+                            <button
+                              key={nurse.id}
+                              type='button'
+                              className={`triage-transfer-option ${Number(selectedNurseId) === Number(nurse.id) ? 'active' : ''}`}
+                              onClick={() => {
+                                setSelectedNurseId(String(nurse.id));
+                                setIsNurseMenuOpen(false);
+                              }}
+                            >
+                              {nurse.name}
+                            </button>
+                          ))
+                        ) : (
+                          <div className='triage-transfer-empty'>No nurses available</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className='triage-transfer-field'>
+                  <label>Reason for Transfer (Optional)</label>
+                  <textarea
+                    className='triage-transfer-reason'
+                    placeholder='Enter reason or notes for the transfer...'
+                    value={transferReason}
+                    onFocus={closeTransferMenus}
+                    onClick={closeTransferMenus}
+                    onChange={(event) => setTransferReason(event.target.value)}
+                  />
+                </div>
+              </>
+            )}
+
+            <div className='triage-transfer-actions'>
+              <button
+                type='button'
+                className='triage-transfer-cancel'
+                onClick={closeTransferModal}
+                disabled={isTransferSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type='button'
+                className='triage-transfer-submit'
+                disabled={
+                  transferTarget === 'doctor' ? !canTransferToDoctor : !canTransferToNurse
+                }
+                onClick={handleTransferSubmit}
+              >
+                {transferTarget === 'doctor' ? 'Transfer to Doctor' : 'Transfer to Nurse'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

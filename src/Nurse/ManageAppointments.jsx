@@ -2,6 +2,7 @@ import '../App.css';
 import './NurseStyles.css';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import Avatar from '../components/Avatar';
 import NurseConsultationHistory from '../Patient/jsx/ConsultationHistory';
 import {
   getNurseFirstName,
@@ -30,7 +31,7 @@ import {
   assignSpecialist,
   fetchDoctorsFromAPI,
 } from './services/apiService.js';
-import { useNotification } from '../contexts/NotificationContext';
+import NotificationBell from '../components/Notifications/NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
 
 const USE_API = true;
@@ -39,7 +40,6 @@ const TRIAGE_DRAFTS_STORAGE_KEY = 'nurse.triageDraftsByTicket';
 export default function ManageAppointment() {
   const [showConsultationHistory, setShowConsultationHistory] = useState(false);
   const navigate = useNavigate();
-  const { unreadCount } = useNotification();
   const { logout, user } = useAuth();
   const [online] = useState(true);
   const [tickets, setTickets] = useState([]);
@@ -753,7 +753,6 @@ export default function ManageAppointment() {
     }
   };
 
-  const pendingTickets = filterTicketsByStatus(tickets, 'Pending');
   const processingTickets = filterTicketsByStatus(
     tickets,
     'Processing',
@@ -765,7 +764,7 @@ export default function ManageAppointment() {
   };
 
   return (
-    <div className='dashboard'>
+    <div className='dashboard nurse-manage-dashboard'>
       <div className='dashboard-header'>
         <div className='header-center'>
           <img
@@ -775,26 +774,33 @@ export default function ManageAppointment() {
           />
         </div>
         <h3 className='dashboard-title'>Manage Appointments</h3>
-        <div className='user-account'>
-          <img
-            src={getNurseProfileImage()}
-            alt='Account'
-            className='account-icon'
-          />
-          <span className='account-name'>{getNurseFirstName()}</span>
-          <div className='account-dropdown'>
-            <button
-              className='dropdown-item'
-              onClick={() => navigate('/nurse-myaccount')}
-            >
-              My Account
-            </button>
-            <button
-              className='dropdown-item logout-item'
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
+        <div className='nurse-header-actions'>
+          <NotificationBell />
+          <div className='user-account'>
+            <Avatar
+              profileImageUrl={getNurseProfileImage() !== '/account.svg' ? getNurseProfileImage() : null}
+              firstName={nurseName}
+              lastName={localStorage.getItem('nurse.lastName') || ''}
+              userType='nurse'
+              size={40}
+              alt='Account'
+              className='account-icon'
+            />
+            <span className='account-name'>{nurseName}</span>
+            <div className='account-dropdown'>
+              <button
+                className='dropdown-item'
+                onClick={() => navigate('/nurse-myaccount')}
+              >
+                My Account
+              </button>
+              <button
+                className='dropdown-item logout-item'
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
 
@@ -811,12 +817,6 @@ export default function ManageAppointment() {
             onClick={() => navigate('/nurse-messages')}
           >
             Messages
-          </button>
-          <button
-            className='nav-tab'
-            onClick={() => navigate('/nurse-notifications')}
-          >
-            Notifications ({unreadCount})
           </button>
         </div>
       </div>
@@ -952,132 +952,6 @@ export default function ManageAppointment() {
                         onClick={() => simulatePayment(ticket.id)}
                       >
                         Simulate Payment
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className='tickets-list'>
-            <h2>Pending Tickets ({pendingTickets.length})</h2>
-            {pendingTickets.map((ticket) => (
-              <div
-                key={ticket.id}
-                className='ticket-card-new'
-                onClick={() => {
-                  setSelectedTicket(ticket);
-                  setShowTicketDetailModal(true);
-                  setTicketDetailTab('assessment');
-                }}
-                style={{ cursor: 'pointer', borderLeftColor: '#ff9800' }}
-              >
-                <div className='ticket-card-header'>
-                  <span className='ticket-number'>TICKET #{ticket.id}</span>
-                </div>
-
-                <div className='ticket-card-body'>
-                  <div className='ticket-left-section'>
-                    <div className='ticket-patient-details'>
-                      <h4 className='ticket-section-title'>PATIENT DETAILS</h4>
-                      <div className='ticket-details-grid'>
-                        <div className='ticket-details-col'>
-                          <p>
-                            <strong>Name:</strong>{' '}
-                            {ticket.patientName || 'Unnamed'}
-                          </p>
-                          <p>
-                            <strong>Age:</strong>{' '}
-                            {ticket.age ||
-                              calculateAge(ticket.patientBirthdate) ||
-                              'N/A'}
-                          </p>
-                          <p>
-                            <strong>Birthdate:</strong>{' '}
-                            {formatDate(ticket.patientBirthdate) || 'N/A'}
-                          </p>
-                        </div>
-                        <div className='ticket-details-col'>
-                          <p>
-                            <strong>Email:</strong> {ticket.email}
-                          </p>
-                          <p>
-                            <strong>Mobile:</strong> {ticket.mobile}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className='ticket-assignments'>
-                      <p>
-                        <strong>Assigned Nurse:</strong>{' '}
-                        {ticket.assignedNurse || 'Unassigned'}
-                      </p>
-                      <p>
-                        <strong>Assigned Specialist:</strong>{' '}
-                        {ticket.assignedSpecialist ||
-                          ticket.preferredSpecialist ||
-                          'Not specified'}
-                      </p>
-                      <p>
-                        <strong>Chief Complaint:</strong>{' '}
-                        {ticket.chiefComplaint}
-                      </p>
-                      <p>
-                        <strong>Channel:</strong> {ticket.consultationChannel}
-                      </p>
-                      <p>
-                        <strong>HMO:</strong>{' '}
-                        {ticket.hasHMO ? 'Yes' : ticket.hmo ? 'Yes' : 'No'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className='ticket-right-section'>
-                    <div className='ticket-meta'>
-                      <p>
-                        <strong>Date Created:</strong>{' '}
-                        {new Date(ticket.createdAt).toLocaleString()}
-                      </p>
-                      <p>
-                        <strong>Preferred:</strong>{' '}
-                        {formatDate(ticket.preferredDate)} at{' '}
-                        {ticket.preferredTime}
-                      </p>
-                      <p>
-                        <strong>Status:</strong>{' '}
-                        <span className='ticket-status-text pending'>
-                          {ticket.status}
-                        </span>
-                      </p>
-                    </div>
-
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 8,
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        className='ticket-history-btn'
-                        onClick={() => setSelectedTicket(ticket)}
-                      >
-                        Manage
-                      </button>
-                      <button
-                        className='ticket-history-btn'
-                        style={{ background: '#4caf50' }}
-                        onClick={() => claimTicket(ticket.id)}
-                        disabled={ticket.claimedBy === nurseId}
-                      >
-                        {ticket.claimedBy === nurseId
-                          ? 'Already Claimed'
-                          : ticket.claimedBy
-                            ? 'Re-Claim Ticket'
-                            : 'Claim Ticket'}
                       </button>
                     </div>
                   </div>

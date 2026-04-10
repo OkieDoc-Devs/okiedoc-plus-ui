@@ -418,7 +418,7 @@ body::-webkit-scrollbar {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
+  padding: 18px 24px 12px;
 }
 
 .header-center {
@@ -1647,9 +1647,34 @@ body::-webkit-scrollbar {
 }
 
 .triage-dashboard .triage-shell {
-  margin-top: -6px;
+  margin-top: 8px;
   border-top: 1px solid #d6dbe3;
-  height: calc(100vh - 152px);
+  height: calc(100vh - 160px);
+}
+
+.nurse-messages-dashboard .dashboard-header {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.nurse-messages-dashboard .nurse-messenger-container {
+  margin-top: 8px;
+  height: calc(100vh - 138px);
+}
+
+.nurse-messages-dashboard .nurse-page-content,
+.nurse-messages-dashboard .nurse-messenger-container {
+  background: #f7f8fa;
+}
+
+.nurse-manage-dashboard .dashboard-header {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.nurse-manage-dashboard .appointments-section {
+  margin-top: 8px;
+  border-top: 1px solid #d6dbe3;
 }
 
 .triage-grid {
@@ -3046,6 +3071,254 @@ body::-webkit-scrollbar {
   margin: 8px 10px 12px;
   color: #677385;
   font-size: 12px;
+}
+
+.triage-transfer-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 12, 18, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 20px;
+}
+
+.triage-transfer-modal {
+  width: min(560px, 92vw);
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 22px 56px rgba(15, 23, 42, 0.26);
+  padding: 18px 20px 20px;
+  position: relative;
+  overflow: visible;
+}
+
+.triage-transfer-modal-close {
+  position: absolute;
+  right: 12px;
+  top: 8px;
+  border: none;
+  background: transparent;
+  color: #5f6672;
+  font-size: 34px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.triage-transfer-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.triage-transfer-subtitle {
+  margin: 4px 0 12px;
+  font-size: 14px;
+  color: #5f6f8a;
+}
+
+.triage-transfer-targets {
+  background: #e5e6eb;
+  border-radius: 14px;
+  padding: 2px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.triage-transfer-target {
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 12px;
+  min-height: 36px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  cursor: pointer;
+  outline: none;
+  box-shadow: none;
+}
+
+.triage-transfer-target.active {
+  background: #ffffff;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.triage-transfer-target:focus,
+.triage-transfer-target:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.triage-transfer-field {
+  margin-bottom: 10px;
+}
+
+.triage-transfer-field label {
+  display: block;
+  margin-bottom: 6px;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.triage-transfer-select-wrap {
+  position: relative;
+}
+
+.triage-transfer-select {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  background: #ebecef;
+  min-height: 42px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  box-shadow: none;
+}
+
+.triage-transfer-select.placeholder {
+  color: #6b7280;
+}
+
+.triage-transfer-select.disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.triage-transfer-select:focus,
+.triage-transfer-select:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.triage-transfer-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #d9dde6;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  padding: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.triage-transfer-option {
+  width: 100%;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  text-align: left;
+  min-height: 32px;
+  padding: 0 10px;
+  color: #0f172a;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.triage-transfer-option.active,
+.triage-transfer-option:hover {
+  background: #e1e4ea;
+}
+
+.triage-transfer-empty {
+  color: #6b7280;
+  font-size: 12px;
+  padding: 8px;
+}
+
+.triage-transfer-reason {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  background: #ebecef;
+  min-height: 88px;
+  padding: 10px 12px;
+  resize: none;
+  color: #0f172a;
+  font-size: 13px;
+  box-sizing: border-box;
+  outline: none;
+  box-shadow: none;
+}
+
+.triage-transfer-reason::placeholder {
+  color: #6a7993;
+}
+
+.triage-transfer-reason:focus,
+.triage-transfer-reason:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.triage-transfer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.triage-transfer-cancel,
+.triage-transfer-submit {
+  border-radius: 10px;
+  min-height: 44px;
+  border: none;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  box-shadow: none;
+}
+
+.triage-transfer-cancel:focus,
+.triage-transfer-cancel:focus-visible,
+.triage-transfer-submit:focus,
+.triage-transfer-submit:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.triage-transfer-cancel {
+  background: #ffffff;
+  border: 1px solid #d6dbe3;
+  color: #0f172a;
+}
+
+.triage-transfer-submit {
+  background: #8f929c;
+  color: #ffffff;
+}
+
+.triage-transfer-submit:not(:disabled) {
+  background: #0f172a;
+}
+
+.triage-transfer-submit:not(:disabled):hover {
+  background: #111827;
+}
+
+.triage-transfer-submit:disabled,
+.triage-transfer-cancel:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
 }
 
 .triage-empty-note {

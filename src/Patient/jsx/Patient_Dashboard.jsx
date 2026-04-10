@@ -8,17 +8,22 @@ import {
   IconPill,
   IconActivity,
   IconArrowRight,
+  IconUser,
+  IconUserPlus,
+  IconLink,
+  IconCreditCard,
 } from "@tabler/icons-react";
 import "../css/Patient_Dashboard.css";
+import { useModal } from "../contexts/Modals";
 
 export default function Dashboard_Patient({ setActive }) {
-  const handleDIY = (action) => alert(`DIY Action: ${action}`);
+  const { openDiyModal } = useModal();
 
   return (
     <div className="dashboard-container">
       {/* --- HERO SECTION --- */}
       <section className="hero-section">
-        <h2 className="hero-title">Good afternoon, Sarah 👋</h2>
+        <h2 className="hero-title">Good afternoon, Sarah!</h2>
         <p className="hero-subtitle">How can we help you today?</p>
 
         <div className="hero-grid">
@@ -34,7 +39,7 @@ export default function Dashboard_Patient({ setActive }) {
 
           <button
             className="hero-card"
-            onClick={() => setActive("Medical Records")}
+            onClick={() => setActive("MedicalRecords")}
           >
             <div className="hero-icon-box bg-teal">
               <IconFileDescription size={24} />
@@ -60,8 +65,10 @@ export default function Dashboard_Patient({ setActive }) {
       {/* --- NEXT APPOINTMENT --- */}
       <div className="dash-card appointment-card">
         <div className="appointment-header">
-          <div className="badge-group">
-            <span className="badge badge-cyan">TODAY</span>
+          <div className="patientdashboard-badge-group">
+            <span className="patientdashboard-badge patientdashboard-badge-cyan">
+              TODAY
+            </span>
             <span className="text-muted text-sm">Next Appointment</span>
           </div>
         </div>
@@ -81,7 +88,7 @@ export default function Dashboard_Patient({ setActive }) {
           </div>
           <button
             className="patientdashboard-btn patientdashboard-btn-cyan"
-            onClick={() => handleDIY("Join Call")}
+            onClick={() => openDiyModal("Join Video Call")}
           >
             Join Video Call
           </button>
@@ -91,33 +98,97 @@ export default function Dashboard_Patient({ setActive }) {
       {/* --- ACTION REQUIRED --- */}
       <div className="section-header">
         <div className="patientdashboard-section-title">
-          <IconAlertCircle color="#e67e22" size={20} />
+          <IconAlertCircle color="#f59f00" size={20} />
           <h4>Action Required</h4>
         </div>
-        <button className="patientdashboard-btn-link">
-          View All <IconArrowRight size={14} />
+        <button className="patientdashboard-btn-view-all">
+          View All <IconArrowRight size={16} />
         </button>
       </div>
 
       <div className="pending-list">
+        {/* 1. Specialist Referral Card */}
         <div className="dash-card pending-card">
           <div className="pending-content">
             <div className="pending-details">
-              <h5>Specialist Referral - Orthopedic Surgeon</h5>
+              <h5 className="pending-title">
+                Specialist Referral - Orthopedic Surgeon
+              </h5>
               <p className="text-muted text-sm referrer-text">
                 Referred by Dr. Sofia Lim (Cardiologist)
               </p>
-              <p className="text-sm">
-                <strong>Reason:</strong> Knee pain after exercise
-              </p>
+
+              <div className="pending-info-row">
+                <IconUser size={16} className="text-muted" />
+                <span className="text-sm">
+                  <strong>Reason:</strong> Knee pain after exercise
+                </span>
+              </div>
+
+              <div className="pending-info-row">
+                <IconCalendarEvent size={16} className="text-muted" />
+                <span className="text-sm">
+                  Referral Date: February 10, 2026
+                </span>
+              </div>
             </div>
-            <div className="pending-actions">
-              <span className="badge badge-orange">PENDING</span>
-              <button
-                className="patientdashboard-btn patientdashboard-btn-orange"
-                onClick={() => setActive("Services")}
-              >
-                Book Appointment
+
+            <div className="pending-actions-col">
+              <div className="pending-actions-top">
+                <span className="patientdashboard-badge badge-pending-yellow">
+                  Pending
+                </span>
+                <button
+                  className="patientdashboard-btn patientdashboard-btn-orange"
+                  onClick={() => setActive("Services")}
+                >
+                  <IconUserPlus size={16} /> Book Appointment
+                </button>
+              </div>
+              <button className="patientdashboard-btn patientdashboard-btn-outline w-full mt-8 flex-center">
+                View Details
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Pending Payment Card */}
+        <div className="dash-card pending-card">
+          <div className="pending-content">
+            <div className="pending-details">
+              <h5 className="pending-title">
+                Consultation with Dr. Maria Santos
+              </h5>
+              <p className="text-muted text-sm referrer-text">
+                Consultation Date: March 28, 2026
+              </p>
+
+              <div className="pending-info-row">
+                <IconLink size={16} className="text-muted" />
+                <span className="text-sm">
+                  <strong>Medical Certificate:</strong> $350 (unpaid)
+                </span>
+              </div>
+
+              <div className="pending-info-row">
+                <IconLink size={16} className="text-muted" />
+                <span className="text-sm">
+                  <strong>Medical Clearance:</strong> $450 (unpaid)
+                </span>
+              </div>
+            </div>
+
+            <div className="pending-actions-col">
+              <div className="pending-actions-top">
+                <span className="patientdashboard-badge badge-pending-yellow">
+                  Pending
+                </span>
+                <button className="patientdashboard-btn patientdashboard-btn-orange">
+                  <IconCreditCard size={16} /> Pay Now
+                </button>
+              </div>
+              <button className="patientdashboard-btn patientdashboard-btn-outline w-full mt-8 flex-center">
+                View Invoice
               </button>
             </div>
           </div>
@@ -144,7 +215,9 @@ export default function Dashboard_Patient({ setActive }) {
         </div>
 
         <div className="dash-card overview-card relative">
-          <span className="badge badge-orange new-badge">New</span>
+          <span className="patientdashboard-badge patientdashboard-badge-orange new-badge">
+            New
+          </span>
           <div className="icon-circle bg-light-cyan text-cyan">
             <IconActivity size={24} />
           </div>
@@ -171,7 +244,9 @@ export default function Dashboard_Patient({ setActive }) {
             <div className="dash-card prescription-card">
               <div className="prescription-header">
                 <h5>Lisinopril</h5>
-                <span className="badge badge-orange">DUE SOON</span>
+                <span className="patientdashboard-badge patientdashboard-badge-orange">
+                  DUE SOON
+                </span>
               </div>
               <p className="text-muted text-sm dose-text">10mg</p>
               <div className="prescription-actions">
@@ -226,7 +301,7 @@ export default function Dashboard_Patient({ setActive }) {
 
             <button
               className="quick-access-patientdashboard-btn"
-              onClick={() => handleDIY("PT")}
+              onClick={() => openDiyModal("PT")}
             >
               <div className="icon-square bg-light-teal text-teal">
                 <IconActivity size={20} />
@@ -240,7 +315,7 @@ export default function Dashboard_Patient({ setActive }) {
 
             <button
               className="quick-access-patientdashboard-btn"
-              onClick={() => handleDIY("Pharmacy")}
+              onClick={() => openDiyModal("Pharmacy")}
             >
               <div className="icon-square bg-light-orange text-orange">
                 <IconPill size={20} />

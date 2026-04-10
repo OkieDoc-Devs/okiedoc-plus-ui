@@ -13,6 +13,7 @@ import {
   IconSortAscending,
 } from "@tabler/icons-react";
 import "../css/Patient_Appointments.css";
+import { useModal } from "../contexts/Modals";
 
 const allAppointmentsMock = [
   {
@@ -84,6 +85,7 @@ const allAppointmentsMock = [
 ];
 
 export default function Appointments_Patient({ setActive }) {
+  const { openDiyModal } = useModal();
   const [filterOpen, setFilterOpen] = useState(false);
   const popoverRef = useRef(null);
 
@@ -96,8 +98,6 @@ export default function Appointments_Patient({ setActive }) {
     "Completed",
   ]);
   const [typeFilter, setTypeFilter] = useState(["Video", "Phone", "In-Person"]);
-
-  const handleDIY = (action) => alert(`DIY: ${action}`);
 
   // Helper to toggle arrays for standard HTML checkboxes
   const toggleArrayItem = (array, setArray, item) => {
@@ -398,14 +398,14 @@ export default function Appointments_Patient({ setActive }) {
                 {item.canJoin && (
                   <button
                     className="appt-btn appt-btn-primary full-width"
-                    onClick={() => handleDIY("Join Call")}
+                    onClick={() => openDiyModal("Join Call")}
                   >
                     <IconVideo size={16} /> Join Call
                   </button>
                 )}
                 <button
                   className="appt-btn appt-btn-outline full-width"
-                  onClick={() => handleDIY("Message")}
+                  onClick={() => openDiyModal("Message")}
                 >
                   <IconMessage size={16} /> Message
                 </button>

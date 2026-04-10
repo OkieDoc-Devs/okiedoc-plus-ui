@@ -139,7 +139,7 @@ h5 {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
-.badge {
+.patientdashboard-badge {
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
@@ -148,13 +148,19 @@ h5 {
   align-items: center;
 }
 
-.badge-cyan {
+.patientdashboard-badge-cyan {
   background-color: #0ba3b0;
   color: white;
 }
-.badge-orange {
+.patientdashboard-badge-orange {
   background-color: #f59f00;
   color: white;
+  background-color: #fff9db !important;
+  color: #f59f00 !important;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 12px;
 }
 
 .app-container .dashboard-container .patientdashboard-btn {
@@ -173,7 +179,7 @@ h5 {
   color: white;
 }
 .app-container .dashboard-container .patientdashboard-btn-orange {
-  background-color: #f59f00;
+  background: linear-gradient(90deg, #f59f00 0%, #cf9905 1000%);
   color: white;
 }
 
@@ -204,6 +210,26 @@ h5 {
   text-decoration: underline;
 }
 
+.patientdashboard-btn-view-all {
+  background: transparent;
+  border: none;
+  color: #0ba3b0;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.patientdashboard-btn-view-all:hover {
+  background-color: #0ba3b0;
+  color: white;
+}
+
 .app-container .dashboard-container .section-header {
   display: flex;
   justify-content: space-between;
@@ -230,7 +256,7 @@ h5 {
   margin-bottom: 16px;
 }
 
-.badge-group {
+.patientdashboard-badge-group {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -268,14 +294,49 @@ h5 {
 }
 
 .pending-card {
-  border-left: 4px solid #f59f00;
-  padding: 16px 24px;
+  border-left: 6px solid #f59f00 !important;
+  background: linear-gradient(135deg, #f59f00 -1000%, #ffffff 100%);
+  padding: 20px 24px;
+  background-color: #ffffff;
+  border-top: 1px solid #e9ecef;
+  border-right: 1px solid #e9ecef;
+  border-bottom: 1px solid #e9ecef;
+  border-radius: 12px;
+}
+
+.pending-title {
+  font-size: 18px;
+  color: #003366;
+  margin-bottom: 4px;
+}
+
+.pending-info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: #495057;
 }
 
 .pending-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.pending-actions-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 260px;
+}
+
+.pending-actions-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  width: 100%;
 }
 
 .referrer-text {
@@ -286,6 +347,25 @@ h5 {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.badge-pending-yellow {
+  background-color: #fff9db !important;
+  color: #f59f00 !important;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.patientdashboard-btn-outline {
+  background-color: white;
+  border: 1px solid #dee2e6 !important;
+  color: #495057;
+}
+
+.patientdashboard-btn-outline:hover {
+  background-color: #f8f9fa;
 }
 
 /* --- HEALTH OVERVIEW --- */
@@ -301,8 +381,6 @@ h5 {
 }
 
 .overview-card {
-  text-align: center;
-  display: flex;
   flex-direction: column;
   align-items: center;
 }
@@ -324,6 +402,12 @@ h5 {
   position: absolute;
   top: 16px;
   right: 16px;
+  background-color: #fff9db !important;
+  color: #f59f00 !important;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 12px;
 }
 
 /* --- BOTTOM GRID --- */
@@ -420,6 +504,17 @@ h5 {
   color: #868e96;
 }
 
+/* Utilities */
+.w-full {
+  width: 100%;
+}
+.mt-8 {
+  margin-top: 8px;
+}
+.flex-center {
+  justify-content: center;
+}
+
 /* --- MOBILE RESPONSIVENESS --- */
 @media (max-width: 768px) {
   .appointment-body {
@@ -430,12 +525,20 @@ h5 {
 
   .pending-content {
     flex-direction: column;
-    align-items: flex-start;
     gap: 16px;
+  }
+
+  .pending-actions-col {
+    width: 100%;
+    align-items: flex-start;
   }
 
   .pending-actions {
     margin-top: 8px;
+  }
+
+  .pending-actions-top {
+    justify-content: space-between;
   }
 
   .bottom-grid {

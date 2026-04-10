@@ -4,7 +4,6 @@ import {
   IconStethoscope,
   IconCalendarEvent,
   IconFileDescription,
-  IconPill,
   IconUser,
   IconBell,
   IconMenu2,
@@ -15,7 +14,6 @@ import "../css/Patient_App.css";
 import Dashboard_Patient from "./Patient_Dashboard";
 import Services_Patient from "./Patient_Services";
 import Appointments_Patient from "./Patient_Appointments";
-// import { Prescriptions } from "./Prescriptions";
 // import { MedicalRecords } from "./MedicalRecords";
 // import { Profile } from "./Profile";
 // import { BookSpecialist } from "./sub-page/BookSpecialist";
@@ -30,7 +28,6 @@ const navLinks = [
     route: "MedicalRecords",
     icon: IconFileDescription,
   },
-  { label: "Prescriptions", route: "Prescriptions", icon: IconPill },
   { label: "Profile", route: "Profile", icon: IconUser },
 ];
 

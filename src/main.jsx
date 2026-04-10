@@ -5,6 +5,7 @@ import "./index.css";
 import Login from "./Login & Registration/Login.jsx";
 import Registration from "./Login & Registration/Registration.jsx";
 import PatientDashboard from "./Patient/jsx/Patient_App.jsx";
+import ModalProvider from "./Patient/contexts/Modals.jsx";
 import Dashboard from "./Nurse/Dashboard.jsx";
 import Notifications from "./Nurse/Notifications.jsx";
 import MyAccount from "./Nurse/MyAccount.jsx";
@@ -143,7 +144,9 @@ createRoot(document.getElementById("root")).render(
               path="/patient-dashboard"
               element={
                 <ProtectedRoute allowedRoles={["patient"]}>
-                  <PatientDashboard />
+                  <ModalProvider>
+                    <PatientDashboard />
+                  </ModalProvider>
                 </ProtectedRoute>
               }
             />

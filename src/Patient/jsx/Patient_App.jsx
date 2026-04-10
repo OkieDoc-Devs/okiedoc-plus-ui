@@ -12,9 +12,9 @@ import {
 import "../css/Patient_App.css";
 
 // Import your pages
-import Dashboard_Patient from "./Dashboard_Patient";
+import Dashboard_Patient from "./Patient_Dashboard";
 import Services_Patient from "./Patient_Services";
-import Appointments_Patient from "./Appointments_Patient";
+import Appointments_Patient from "./Patient_Appointments";
 // import { Prescriptions } from "./Prescriptions";
 // import { MedicalRecords } from "./MedicalRecords";
 // import { Profile } from "./Profile";

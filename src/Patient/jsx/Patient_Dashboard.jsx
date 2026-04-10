@@ -9,7 +9,7 @@ import {
   IconActivity,
   IconArrowRight,
 } from "@tabler/icons-react";
-import "../css/Dashboard.css";
+import "../css/Patient_Dashboard.css";
 
 export default function Dashboard_Patient({ setActive }) {
   const handleDIY = (action) => alert(`DIY Action: ${action}`);
@@ -80,7 +80,7 @@ export default function Dashboard_Patient({ setActive }) {
             </div>
           </div>
           <button
-            className="btn btn-cyan"
+            className="patientdashboard-btn patientdashboard-btn-cyan"
             onClick={() => handleDIY("Join Call")}
           >
             Join Video Call
@@ -90,11 +90,11 @@ export default function Dashboard_Patient({ setActive }) {
 
       {/* --- ACTION REQUIRED --- */}
       <div className="section-header">
-        <div className="section-title">
+        <div className="patientdashboard-section-title">
           <IconAlertCircle color="#e67e22" size={20} />
           <h4>Action Required</h4>
         </div>
-        <button className="btn-link">
+        <button className="patientdashboard-btn-link">
           View All <IconArrowRight size={14} />
         </button>
       </div>
@@ -114,7 +114,7 @@ export default function Dashboard_Patient({ setActive }) {
             <div className="pending-actions">
               <span className="badge badge-orange">PENDING</span>
               <button
-                className="btn btn-orange"
+                className="patientdashboard-btn patientdashboard-btn-orange"
                 onClick={() => setActive("Services")}
               >
                 Book Appointment
@@ -160,14 +160,14 @@ export default function Dashboard_Patient({ setActive }) {
           <div className="section-header">
             <h4>Prescriptions</h4>
             <button
-              className="btn-link"
+              className="patientdashboard-btn-link"
               onClick={() => setActive("Prescriptions")}
             >
               View All <IconArrowRight size={14} />
             </button>
           </div>
 
-          <div className="prescription-list">
+          <div className="patient-prescription-list">
             <div className="dash-card prescription-card">
               <div className="prescription-header">
                 <h5>Lisinopril</h5>
@@ -177,7 +177,7 @@ export default function Dashboard_Patient({ setActive }) {
               <div className="prescription-actions">
                 <p className="text-muted text-sm">Refill in 5 days</p>
                 <button
-                  className="btn-outline-cyan btn-sm"
+                  className="patientdashboard-btn-outline-cyan patientdashboard-btn-sm"
                   onClick={() => handleDIY("Refill")}
                 >
                   Refill Now
@@ -193,7 +193,7 @@ export default function Dashboard_Patient({ setActive }) {
               <div className="prescription-actions">
                 <p className="text-muted text-sm">Refill in 30 days</p>
                 <button
-                  className="btn-outline-cyan btn-sm"
+                  className="patientdashboard-btn-outline-cyan patientdashboard-btn-sm"
                   onClick={() => handleDIY("Refill")}
                 >
                   Refill Now
@@ -211,8 +211,8 @@ export default function Dashboard_Patient({ setActive }) {
 
           <div className="quick-access-list">
             <button
-              className="quick-access-btn"
-              onClick={() => setActive("Medical Records")}
+              className="quick-access-patientdashboard-btn"
+              onClick={() => setActive("MedicalRecords")}
             >
               <div className="icon-square bg-light-blue text-blue">
                 <IconFileDescription size={20} />
@@ -225,7 +225,7 @@ export default function Dashboard_Patient({ setActive }) {
             </button>
 
             <button
-              className="quick-access-btn"
+              className="quick-access-patientdashboard-btn"
               onClick={() => handleDIY("PT")}
             >
               <div className="icon-square bg-light-teal text-teal">
@@ -239,7 +239,7 @@ export default function Dashboard_Patient({ setActive }) {
             </button>
 
             <button
-              className="quick-access-btn"
+              className="quick-access-patientdashboard-btn"
               onClick={() => handleDIY("Pharmacy")}
             >
               <div className="icon-square bg-light-orange text-orange">

@@ -12,7 +12,7 @@ import {
   IconSearch,
   IconSortAscending,
 } from "@tabler/icons-react";
-import "../css/Appointments.css";
+import "../css/Patient_Appointments.css";
 
 const allAppointmentsMock = [
   {

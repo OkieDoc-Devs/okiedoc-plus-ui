@@ -157,7 +157,7 @@ h5 {
   color: white;
 }
 
-.app-container .dashboard-container .btn {
+.app-container .dashboard-container .patientdashboard-btn {
   padding: 10px 20px;
   border-radius: 8px;
   font-weight: 600;
@@ -165,19 +165,19 @@ h5 {
   cursor: pointer;
   transition: opacity 0.2s;
 }
-.app-container .dashboard-container .btn:hover {
+.app-container .dashboard-container .patientdashboard-btn:hover {
   opacity: 0.9;
 }
-.app-container .dashboard-container .btn-cyan {
+.app-container .dashboard-container .patientdashboard-btn-cyan {
   background-color: #0ba3b0;
   color: white;
 }
-.app-container .dashboard-container .btn-orange {
+.app-container .dashboard-container .patientdashboard-btn-orange {
   background-color: #f59f00;
   color: white;
 }
 
-.app-container .dashboard-container .btn-outline-cyan {
+.app-container .dashboard-container .patientdashboard-btn-outline-cyan {
   background: transparent;
   border: 1px solid #0ba3b0;
   color: #0ba3b0;
@@ -186,11 +186,11 @@ h5 {
   cursor: pointer;
   font-weight: 500;
 }
-.app-container .dashboard-container .btn-outline-cyan:hover {
+.app-container .dashboard-container .patientdashboard-btn-outline-cyan:hover {
   background-color: #e0f6f2;
 }
 
-.app-container .dashboard-container .btn-link {
+.app-container .dashboard-container .patientdashboard-btn-link {
   background: none;
   border: none;
   color: #0ba3b0;
@@ -200,7 +200,7 @@ h5 {
   align-items: center;
   gap: 4px;
 }
-.app-container .dashboard-container .btn-link:hover {
+.app-container .dashboard-container .patientdashboard-btn-link:hover {
   text-decoration: underline;
 }
 
@@ -212,7 +212,7 @@ h5 {
   min-height: 30px;
 }
 
-.section-title {
+.patientdashboard-section-title {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -339,14 +339,14 @@ h5 {
 }
 
 /* Prescriptions */
-.prescription-list {
+.patient-prescription-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
   height: 100%;
 }
 
-.prescription-card {
+.patient-prescription-card {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -378,7 +378,7 @@ h5 {
   height: 100%;
 }
 
-.app-container .dashboard-container .quick-access-btn {
+.app-container .dashboard-container .quick-access-patientdashboard-btn {
   flex: 1;
   display: flex;
   align-items: center;
@@ -392,7 +392,7 @@ h5 {
   transition: border-color 0.2s;
 }
 
-.app-container .dashboard-container .quick-access-btn:hover {
+.app-container .dashboard-container .quick-access-patientdashboard-btn:hover {
   border-color: #0ba3b0;
   background-color: #f8f9fa;
 }

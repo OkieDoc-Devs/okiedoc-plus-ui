@@ -103,7 +103,7 @@ function Patient_App() {
       <div className="app-body">
         {/* --- SIDEBAR NAVBAR --- */}
         <nav className={`app-sidebar ${sidebarOpen ? "open" : ""}`}>
-          <div className="nav-links">
+          <div className="patientapp-nav-links">
             {navLinks.map((item) => (
               <button
                 key={item.label}

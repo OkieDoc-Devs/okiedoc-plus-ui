@@ -108,7 +108,7 @@ body {
   z-index: 20;
 }
 
-.nav-links {
+.patientapp-nav-links {
   display: flex;
   flex-direction: column;
   gap: 8px;

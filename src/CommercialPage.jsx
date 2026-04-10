@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Mail,
+  MessageSquare,
   Facebook,
   Instagram,
   Linkedin,
@@ -145,7 +146,6 @@ function CommercialPage() {
     fullName: '',
     email: '',
     contactNumber: '',
-    healthConcern: '',
     philHealthNumber: '',
     contactMethod: '',
   });
@@ -170,8 +170,7 @@ function CommercialPage() {
 
   const handleCallbackChange = (e) => {
     const { name, value } = e.target;
-    const nextValue = name === 'healthConcern' ? value.slice(0, 500) : value;
-    setCallbackForm((prev) => ({ ...prev, [name]: nextValue }));
+    setCallbackForm((prev) => ({ ...prev, [name]: value }));
     if (callbackErrors[name]) {
       setCallbackErrors((prev) => ({ ...prev, [name]: '' }));
     }
@@ -199,9 +198,6 @@ function CommercialPage() {
     else if (!/\S+@\S+\.\S+/.test(callbackForm.email))
       errors.email = 'Invalid email';
     if (!callbackForm.contactNumber.trim()) errors.contactNumber = 'Required';
-    if (!callbackForm.healthConcern.trim()) errors.healthConcern = 'Required';
-    else if (callbackForm.healthConcern.length > 500)
-      errors.healthConcern = 'Maximum 500 characters';
     if (!callbackForm.contactMethod)
       errors.contactMethod = 'Please select a contact method';
     if (hasPhilHealth) {
@@ -225,7 +221,6 @@ function CommercialPage() {
           fullName: callbackForm.fullName,
           email: callbackForm.email,
           contactNumber: callbackForm.contactNumber,
-          healthConcern: callbackForm.healthConcern,
           philHealthNumber: hasPhilHealth ? callbackForm.philHealthNumber : '',
           contactMethod: callbackForm.contactMethod,
         }),
@@ -237,7 +232,6 @@ function CommercialPage() {
         fullName: '',
         email: '',
         contactNumber: '',
-        healthConcern: '',
         philHealthNumber: '',
         contactMethod: '',
       });
@@ -691,6 +685,16 @@ function CommercialPage() {
               onSubmit={handleCallbackSubmit}
               noValidate
             >
+              <div className='cb-modal-top'>
+                <div className='cb-modal-icon-wrap' aria-hidden='true'>
+                  <MessageSquare className='cb-modal-icon' size={22} />
+                </div>
+                <h2 className='cb-modal-title'>Request a Callback</h2>
+                <p className='cb-modal-subtitle'>
+                  Our medical team will contact you to discuss your health
+                  concerns
+                </p>
+              </div>
               <div className='callback-field'>
                 <div className='cb-label-row'>
                   <label htmlFor='commercial-callback-full-name' className='cb-label'>
@@ -776,45 +780,6 @@ function CommercialPage() {
                       : 'cb-input'
                   }
                 />
-              </div>
-              <div className='callback-field'>
-                <div className='cb-label-row'>
-                  <label
-                    htmlFor='commercial-callback-health-concern'
-                    className='cb-label'
-                  >
-                    Health Concern / Message
-                  </label>
-                  <span className='cb-tip' tabIndex='0' data-tip='Describe your symptoms, concern, and how long you have had them. Maximum 500 characters.' aria-label='Health concern input help'>
-                    i
-                  </span>
-                </div>
-                {callbackErrors.healthConcern && (
-                  <span className='cb-error'>{callbackErrors.healthConcern}</span>
-                )}
-                <textarea
-                  id='commercial-callback-health-concern'
-                  name='healthConcern'
-                  placeholder='Please describe your symptoms or health concerns...'
-                  value={callbackForm.healthConcern}
-                  onChange={handleCallbackChange}
-                  maxLength={500}
-                  title='Describe your symptoms, concern, and how long you have had them. Maximum 500 characters.'
-                  className={
-                    callbackErrors.healthConcern
-                      ? 'cb-textarea cb-input-error'
-                      : 'cb-textarea'
-                  }
-                />
-                <span
-                  className={
-                    callbackForm.healthConcern.length >= 500
-                      ? 'cb-char-counter is-limit'
-                      : 'cb-char-counter'
-                  }
-                >
-                  {callbackForm.healthConcern.length}/500
-                </span>
               </div>
               <div className='callback-field cb-field-tight'>
                 <label className='cb-checkbox-label'>

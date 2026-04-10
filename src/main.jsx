@@ -4,6 +4,9 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
 import Login from './Login & Registration/Login.jsx';
 import Registration from './Login & Registration/Registration.jsx';
+import RegistrationOptions from './Login & Registration/RegistrationOptions.jsx';
+import GuardianRegistration from './Login & Registration/GuardianRegistration.jsx';
+import FamilyRegistration from './Login & Registration/FamilyRegistration.jsx';
 import Dashboard from './Nurse/Dashboard.jsx';
 import Notifications from './Nurse/Notifications.jsx';
 import MyAccount from './Nurse/MyAccount.jsx';
@@ -62,7 +65,10 @@ createRoot(document.getElementById('root')).render(
           <Routes>
             <Route path='/' element={<CommercialPage />} />
             <Route path='/login' element={<Login />} />
-            <Route path='/registration' element={<Registration />} />
+            <Route path='/registration' element={<RegistrationOptions />} />
+            <Route path='/registration-details' element={<Registration />} />
+            <Route path='/registration-child' element={<GuardianRegistration />} />
+            <Route path='/registration-family' element={<FamilyRegistration />} />
             <Route path='/specialist-login' element={<SpecialistLogin />} />
             <Route
               path='/video-call'

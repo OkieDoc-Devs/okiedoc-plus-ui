@@ -1,8 +1,11 @@
-import './auth.css';
+//import './auth.css';
+import './Registration.css';
 import { useNavigate } from 'react-router';
 import { useState, useEffect } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { usePSGC } from '../hooks/usePSGC';
+import { Lock } from 'lucide-react';
+import RegistrationHeader from './RegistrationHeader';
 
 import { apiRequest } from '../api/apiClient';
 
@@ -67,6 +70,8 @@ export default function Registration() {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showDeliveryAddress, setShowDeliveryAddress] = useState(false);
+  const [showEmergencyContact, setShowEmergencyContact] = useState(false);
 
   // Initialize defaults for Bicol Region, Camarines Sur, and Naga
   useEffect(() => {
@@ -137,6 +142,52 @@ export default function Registration() {
         [id]: '',
       }));
     }
+  };
+
+  const handleRegionChange = (e) => {
+    const selectedRegion = regions.find((r) => r.name === e.target.value);
+    setFormData((prev) => ({
+      ...prev,
+      region: e.target.value,
+      province: '',
+      city: '',
+      barangay: '',
+    }));
+    if (selectedRegion) {
+      fetchProvinces(selectedRegion.code);
+    }
+  };
+
+  const handleProvinceChange = (e) => {
+    const selectedProvince = provinces.find((p) => p.name === e.target.value);
+    setFormData((prev) => ({
+      ...prev,
+      province: e.target.value,
+      city: '',
+      barangay: '',
+    }));
+    if (selectedProvince) {
+      fetchCities(selectedProvince.code);
+    }
+  };
+
+  const handleCityChange = (e) => {
+    const selectedCity = cities.find((c) => c.name === e.target.value);
+    setFormData((prev) => ({
+      ...prev,
+      city: e.target.value,
+      barangay: '',
+    }));
+    if (selectedCity) {
+      fetchBarangays(selectedCity.code);
+    }
+  };
+
+  const handleBarangayChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      barangay: e.target.value,
+    }));
   };
 
   const handleCheckboxChange = (e) => {
@@ -283,59 +334,14 @@ export default function Registration() {
 
   return (
     <>
+      <RegistrationHeader backLabel='Back to Home' backPath='/' />
+
       {success && (
-        <div
-          className='modal-overlay'
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0,0,0,0.6)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000,
-            padding: '20px',
-          }}
-        >
-          <div
-            className='modal-content'
-            style={{
-              backgroundColor: '#fff',
-              padding: '40px',
-              borderRadius: '12px',
-              textAlign: 'center',
-              maxWidth: '400px',
-              width: '100%',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: '64px',
-                color: '#2ecc71',
-                marginBottom: '15px',
-              }}
-            >
-              ✓
-            </div>
-            <h3
-              style={{ color: '#333', marginBottom: '15px', fontSize: '24px' }}
-            >
-              Registration Successful
-            </h3>
-            <p
-              style={{
-                color: '#666',
-                marginBottom: '30px',
-                lineHeight: '1.6',
-                fontSize: '16px',
-              }}
-            >
-              {success}
-            </p>
+        <div className='modal-overlay'>
+          <div className='modal-content'>
+            <div className='modal-success-icon'>✓</div>
+            <h3 className='modal-title'>Registration Successful</h3>
+            <p className='modal-description'>{success}</p>
             <button
               className='login-btn'
               style={{ margin: 0, width: '100%' }}
@@ -346,434 +352,375 @@ export default function Registration() {
           </div>
         </div>
       )}
-      <div className='login-page-wrapper'>
-        <div className='login-container'>
-          <div className='header-inside-container'>
-            <button
-              className='back-btn login-back-btn'
-              onClick={() => navigate('/')}
-            >
-              <span className='material-symbols-outlined'>arrow_back_2</span>
-            </button>
-            <img
-              src='/okie-doc-logo.png'
-              alt='OkieDoc+'
-              className='logo-image'
-            />
-            <div style={{ width: '2.5rem' }}></div>
+      <div className='login-page-wrapper' style={{ backgroundColor: '#f1f5f9', minHeight: 'calc(100vh - 65px)', padding: '0 0 1.5rem', fontFamily: 'Inter, sans-serif' }}>
+        <div className='registration-container'>
+          <div className='registration-header-section'>
+            <h2 className='registration-title'>Create Your Account</h2>
+            <p className='registration-subtitle'>
+              Join OkieDoc+ and access quality healthcare from home
+            </p>
           </div>
-          <h2 className='login-title'>Register</h2>
-          <p className='login-subtitle'>
-            Create your OkieDoc+ account in a few steps.
-          </p>
-          <form className='login-form' onSubmit={handleSubmit}>
-            <label className='login-label' htmlFor='firstName'>
-              First Name
-            </label>
-            <input
-              className={`login-input ${errors.firstName ? 'error' : ''}`}
-              id='firstName'
-              type='text'
-              placeholder='Enter your first name'
-              value={formData.firstName}
-              onChange={handleInputChange}
-              maxLength={150}
-            />
-            {errors.firstName && (
-              <span className='error-message'>{errors.firstName}</span>
-            )}
 
-            <label className='login-label' htmlFor='lastName'>
-              Last Name
-            </label>
-            <input
-              className={`login-input ${errors.lastName ? 'error' : ''}`}
-              id='lastName'
-              type='text'
-              placeholder='Enter your last name'
-              value={formData.lastName}
-              onChange={handleInputChange}
-              maxLength={150}
-            />
-            {errors.lastName && (
-              <span className='error-message'>{errors.lastName}</span>
-            )}
-
-            <label className='login-label' htmlFor='middleName'>
-              Middle Name (Optional)
-            </label>
-            <input
-              className='login-input'
-              id='middleName'
-              type='text'
-              placeholder='Enter your middle name'
-              value={formData.middleName}
-              onChange={handleInputChange}
-              maxLength={150}
-            />
-
-            <label className='login-label' htmlFor='email'>
-              Email address
-            </label>
-            <input
-              className={`login-input ${errors.email ? 'error' : ''}`}
-              id='email'
-              type='email'
-              placeholder='Enter your email address'
-              value={formData.email}
-              onChange={handleInputChange}
-            />
-            {errors.email && (
-              <span className='error-message'>{errors.email}</span>
-            )}
-
-            <label className='login-label'>Birthday</label>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <select
-                className={`login-input ${errors.birthday ? 'error' : ''}`}
-                id='bMonth'
-                value={formData.bMonth}
-                onChange={handleInputChange}
-                style={{ flex: 1 }}
-              >
-                <option value=''>Month</option>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m.toString().padStart(2, '0')}>
-                    {new Date(0, m - 1).toLocaleString('en-US', {
-                      month: 'short',
-                    })}
-                  </option>
-                ))}
-              </select>
-              <select
-                className={`login-input ${errors.birthday ? 'error' : ''}`}
-                id='bDay'
-                value={formData.bDay}
-                onChange={handleInputChange}
-                style={{ flex: 1 }}
-              >
-                <option value=''>Day</option>
-                {Array.from(
-                  {
-                    length: new Date(
-                      formData.bYear || 2000,
-                      formData.bMonth || 1,
-                      0,
-                    ).getDate(),
-                  },
-                  (_, i) => i + 1,
-                ).map((d) => (
-                  <option key={d} value={d.toString().padStart(2, '0')}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-              <select
-                className={`login-input ${errors.birthday ? 'error' : ''}`}
-                id='bYear'
-                value={formData.bYear}
-                onChange={handleInputChange}
-                style={{ flex: 1 }}
-              >
-                <option value=''>Year</option>
-                {Array.from(
-                  { length: new Date().getFullYear() - 1920 + 1 },
-                  (_, i) => new Date().getFullYear() - i,
-                ).map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {errors.birthday && (
-              <span className='error-message'>{errors.birthday}</span>
-            )}
-
-            <label className='login-label' htmlFor='gender'>
-              Gender
-            </label>
-            <select
-              className={`login-input ${errors.gender ? 'error' : ''}`}
-              id='gender'
-              value={formData.gender}
-              onChange={handleInputChange}
-            >
-              <option value=''>Select your gender</option>
-              <option value='Male'>Male</option>
-              <option value='Female'>Female</option>
-              <option value='Other'>Other</option>
-              <option value='Prefer-not-to-say'>Prefer not to say</option>
-            </select>
-            {errors.gender && (
-              <span className='error-message'>{errors.gender}</span>
-            )}
-
-            <label className='login-label' htmlFor='mobileNumber'>
-              Mobile Number
-            </label>
-            <input
-              className={`login-input ${errors.mobileNumber ? 'error' : ''}`}
-              id='mobileNumber'
-              type='tel'
-              placeholder='+63 912 345 6789'
-              value={formData.mobileNumber}
-              onChange={handleInputChange}
-              maxLength={13}
-            />
-            {errors.mobileNumber && (
-              <span className='error-message'>{errors.mobileNumber}</span>
-            )}
-
-            <label className='login-label' htmlFor='region'>
-              Region
-            </label>
-            <select
-              className={`login-input ${errors.region ? 'error' : ''}`}
-              id='region'
-              value={formData.region}
-              onChange={(e) => {
-                const selectedRegion = regions.find(
-                  (r) => r.name === e.target.value,
-                );
-                handleInputChange(e);
-                fetchProvinces(selectedRegion?.code);
-                setFormData((prev) => ({
-                  ...prev,
-                  province: '',
-                  city: '',
-                  barangay: '',
-                }));
-              }}
-            >
-              <option value=''>Select Region</option>
-              {regions.map((r) => (
-                <option key={r.code} value={r.name}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-            {errors.region && (
-              <span className='error-message'>{errors.region}</span>
-            )}
-
-            <label className='login-label' htmlFor='province'>
-              Province
-            </label>
-            <select
-              className={`login-input ${errors.province ? 'error' : ''}`}
-              id='province'
-              value={formData.province}
-              onChange={(e) => {
-                const selectedProvince = provinces.find(
-                  (p) => p.name === e.target.value,
-                );
-                handleInputChange(e);
-                fetchCities(selectedProvince?.code);
-                setFormData((prev) => ({ ...prev, city: '', barangay: '' }));
-              }}
-              disabled={!formData.region}
-            >
-              <option value=''>Select Province</option>
-              {provinces.map((p) => (
-                <option key={p.code} value={p.name}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            {errors.province && (
-              <span className='error-message'>{errors.province}</span>
-            )}
-
-            <label className='login-label' htmlFor='city'>
-              City / Municipality
-            </label>
-            <select
-              className={`login-input ${errors.city ? 'error' : ''}`}
-              id='city'
-              value={formData.city}
-              onChange={(e) => {
-                const selectedCity = cities.find(
-                  (c) => c.name === e.target.value,
-                );
-                handleInputChange(e);
-                fetchBarangays(selectedCity?.code);
-                setFormData((prev) => ({ ...prev, barangay: '' }));
-              }}
-              disabled={!formData.province}
-            >
-              <option value=''>Select City / Municipality</option>
-              {cities.map((c) => (
-                <option key={c.code} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            {errors.city && (
-              <span className='error-message'>{errors.city}</span>
-            )}
-
-            <label className='login-label' htmlFor='barangay'>
-              Barangay
-            </label>
-            <select
-              className={`login-input ${errors.barangay ? 'error' : ''}`}
-              id='barangay'
-              value={formData.barangay}
-              onChange={handleInputChange}
-              disabled={!formData.city}
-            >
-              <option value=''>Select Barangay</option>
-              {barangays.map((b) => (
-                <option key={b.code} value={b.name}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-            {errors.barangay && (
-              <span className='error-message'>{errors.barangay}</span>
-            )}
-
-            <label className='login-label' htmlFor='addressLine1'>
-              Address Line 1 (House No., Street)
-            </label>
-            <input
-              className={`login-input ${errors.addressLine1 ? 'error' : ''}`}
-              id='addressLine1'
-              type='text'
-              placeholder='Enter your address line 1'
-              value={formData.addressLine1}
-              onChange={handleInputChange}
-              maxLength={150}
-            />
-            {errors.addressLine1 && (
-              <span className='error-message'>{errors.addressLine1}</span>
-            )}
-
-            <label className='login-label' htmlFor='addressLine2'>
-              Address Line 2 (Apartment, Suite, Unit)
-            </label>
-            <input
-              className='login-input'
-              id='addressLine2'
-              type='text'
-              placeholder='Enter your address line 2 (optional)'
-              value={formData.addressLine2}
-              onChange={handleInputChange}
-              maxLength={150}
-            />
-
-            <label className='login-label' htmlFor='zipCode'>
-              ZIP Code
-            </label>
-            <input
-              className={`login-input ${errors.zipCode ? 'error' : ''}`}
-              id='zipCode'
-              type='text'
-              placeholder='Enter your ZIP code'
-              value={formData.zipCode}
-              onChange={handleInputChange}
-              maxLength={4}
-            />
-            {errors.zipCode && (
-              <span className='error-message'>{errors.zipCode}</span>
-            )}
-
-            <label className='login-label' htmlFor='password'>
-              Password
-            </label>
-            <div className='login-password'>
-              <input
-                className={`login-input ${errors.password ? 'error' : ''}`}
-                id='password'
-                type={showPassword ? 'text' : 'password'}
-                placeholder='Enter your password'
-                value={formData.password}
-                onChange={handleInputChange}
-              />
-              <button
-                type='button'
-                className={`password-toggle ${showPassword ? 'visible' : 'hidden'}`}
-                onClick={togglePasswordVisibility}
-              >
-                {showPassword ? <FaEye /> : <FaEyeSlash />}
-              </button>
-            </div>
-            {errors.password && (
-              <span className='error-message'>{errors.password}</span>
-            )}
-
-            <label className='login-label' htmlFor='confirmPassword'>
-              Confirm Password
-            </label>
-            <div className='login-password'>
-              <input
-                className={`login-input ${errors.confirmPassword ? 'error' : ''}`}
-                id='confirmPassword'
-                type={showConfirmPassword ? 'text' : 'password'}
-                placeholder='Confirm your password'
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-              />
-              <button
-                type='button'
-                className={`password-toggle ${showConfirmPassword ? 'visible' : 'hidden'}`}
-                onClick={toggleConfirmPasswordVisibility}
-              >
-                {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
-              </button>
-            </div>
-            {errors.confirmPassword && (
-              <span className='error-message'>{errors.confirmPassword}</span>
-            )}
-
-            <div className='terms-container'>
-              <label className='terms-checkbox'>
+          <div className='registration-card'>
+            <h3 className='registration-section-title'>Personal Information</h3>
+            
+            <form className='registration-form' onSubmit={handleSubmit}>
+              <div className='registration-field'>
+                <label className='registration-label' htmlFor='firstName'>
+                  First Name <span className='required'>*</span>
+                </label>
                 <input
-                  type='checkbox'
-                  checked={termsAccepted}
-                  onChange={handleCheckboxChange}
+                  className={`registration-input ${errors.firstName ? 'error' : ''}`}
+                  id='firstName'
+                  type='text'
+                  placeholder='Juan'
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  maxLength={150}
                 />
-                <span className='checkmark'></span>I agree to the{' '}
-                <a href='#' className='terms-link'>
-                  Terms and Conditions
-                </a>
-              </label>
-              {errors.terms && (
-                <span className='error-message'>{errors.terms}</span>
-              )}
-            </div>
+                {errors.firstName && (
+                  <span className='registration-error-text'>{errors.firstName}</span>
+                )}
+              </div>
 
-            <div className='terms-container'>
-              <label className='terms-checkbox'>
+              <div className='registration-field'>
+                <label className='registration-label' htmlFor='lastName'>
+                  Last Name <span className='required'>*</span>
+                </label>
                 <input
-                  type='checkbox'
-                  checked={privacyAccepted}
-                  onChange={handlePrivacyChange}
+                  className={`registration-input ${errors.lastName ? 'error' : ''}`}
+                  id='lastName'
+                  type='text'
+                  placeholder='Dela Cruz'
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  maxLength={150}
                 />
-                <span className='checkmark'></span>I agree to the{' '}
-                <a href='#' className='terms-link'>
-                  Privacy Policy
-                </a>
-              </label>
-              {errors.privacy && (
-                <span className='error-message'>{errors.privacy}</span>
-              )}
-            </div>
+                {errors.lastName && (
+                  <span className='registration-error-text'>{errors.lastName}</span>
+                )}
+              </div>
 
-            <button className='login-btn' type='submit'>
-              Register
-            </button>
-            <p className='login-text'>
-              Already have an OkieDoc+ account? <a href='/login'>Login</a>
-            </p>
-            <p className='login-text'>
-              Are you a specialist?{' '}
-              <a href='/login?register=true&specialist=true'>
-                Register as a specialist
-              </a>
-            </p>
-          </form>
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                <label className='registration-label' htmlFor='email'>
+                  Email Address <span className='required'>*</span>
+                </label>
+                <input
+                  className={`registration-input ${errors.email ? 'error' : ''}`}
+                  id='email'
+                  type='email'
+                  placeholder='juan.delacruz@email.com'
+                  value={formData.email}
+                  onChange={handleInputChange}
+                />
+                {errors.email && (
+                  <span className='registration-error-text'>{errors.email}</span>
+                )}
+              </div>
+
+              <div className='registration-field full-width'>
+                <label className='registration-label' htmlFor='mobileNumber'>
+                  Mobile Number <span className='required'>*</span>
+                </label>
+                <input
+                  className={`registration-input ${errors.mobileNumber ? 'error' : ''}`}
+                  id='mobileNumber'
+                  type='tel'
+                  placeholder='+63 912 345 6789'
+                  value={formData.mobileNumber}
+                  onChange={handleInputChange}
+                  maxLength={13}
+                />
+                {errors.mobileNumber && (
+                  <span className='registration-error-text'>{errors.mobileNumber}</span>
+                )}
+              </div>
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                <label className='registration-label' htmlFor='password'>
+                  Password <span className='required'>*</span>
+                </label>
+                <div className='registration-password-wrapper'>
+                  <input
+                    className={`registration-input ${errors.password ? 'error' : ''}`}
+                    id='password'
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder='Enter a strong password'
+                    value={formData.password}
+                    onChange={handleInputChange}
+                  />
+                  <button
+                    type='button'
+                    className='registration-password-toggle'
+                    onClick={togglePasswordVisibility}
+                  >
+                    {showPassword ? <FaEye size={20} /> : <FaEyeSlash size={20} />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <span className='registration-error-text'>{errors.password}</span>
+                )}
+              </div>
+
+              <div className='registration-field full-width'>
+                <label className='registration-label' htmlFor='confirmPassword'>
+                  Confirm Password <span className='required'>*</span>
+                </label>
+                <div className='registration-password-wrapper'>
+                  <input
+                    className={`registration-input ${errors.confirmPassword ? 'error' : ''}`}
+                    id='confirmPassword'
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder='Re-enter your password'
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                  />
+                  <button
+                    type='button'
+                    className='registration-password-toggle'
+                    onClick={toggleConfirmPasswordVisibility}
+                  >
+                    {showConfirmPassword ? <FaEye size={20} /> : <FaEyeSlash size={20} />}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <span className='registration-error-text'>{errors.confirmPassword}</span>
+                )}
+              </div>
+
+              <div className='registration-field'>
+                <label className='registration-label'>
+                  Date of Birth <span className='required'>*</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    placeholder="dd/mm/yyyy"
+                    className='registration-input'
+                    readOnly
+                    onFocus={(e) => (e.target.type = "date")}
+                    onBlur={(e) => (e.target.type = "text")}
+                    style={{ color: '#64748b', cursor: 'pointer' }}
+                  />
+                </div>
+              </div>
+
+              <div className='registration-field'>
+                <label className='registration-label' htmlFor='gender'>
+                  Gender <span className='required'>*</span>
+                </label>
+                <select
+                  id='gender'
+                  className='registration-select'
+                  value={formData.gender}
+                  onChange={handleInputChange}
+                  style={{ color: '#64748b' }}
+                >
+                  <option value=''>Select gender</option>
+                  <option value='Male'>Male</option>
+                  <option value='Female'>Female</option>
+                  <option value='Other'>Other</option>
+                </select>
+              </div>
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                <div style={{ backgroundColor: '#eff6ff', padding: '1.25rem 1.5rem', borderRadius: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                <input type='checkbox' className='registration-checkbox' style={{ accentColor: '#2563eb' }} />
+                <div>
+                  <div style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '1.1rem' }}>I am a PhilHealth Member</div>
+                  <div style={{ color: '#3b82f6', fontSize: '0.95rem', marginTop: '0.25rem' }}>PhilHealth coverage helps reduce your consultation costs</div>
+                </div>
+                </div>
+              </div>
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                <button
+                  type='button'
+                  onClick={() => setShowDeliveryAddress(!showDeliveryAddress)}
+                  style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: '#2563eb', fontWeight: 600, fontSize: '1.05rem', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
+                >
+                  <span style={{ fontSize: '1.5rem', marginRight: '0.75rem', lineHeight: 1 }}>{showDeliveryAddress ? '−' : '+'}</span>
+                  {showDeliveryAddress ? 'Hide Delivery Address (Optional)' : 'Add Delivery Address (Optional)'}
+                </button>
+                {showDeliveryAddress && (
+                  <div className="registration-optional-section">
+                    <p className="registration-optional-description">Add your address for pharmacy delivery services</p>
+
+                    <div className="registration-field">
+                      <label className='registration-label'>Street Address</label>
+                      <input
+                        id='addressLine1'
+                        className='registration-input'
+                        type='text'
+                        placeholder='123 Main Street, Unit 456'
+                        value={formData.addressLine1}
+                        onChange={handleInputChange}
+                        style={{ backgroundColor: '#fff' }}
+                      />
+                    </div>
+
+                    <div className="registration-grid-2">
+                       <div className='registration-field'>
+                        <label className='registration-label'>Region</label>
+                        <select
+                          id='region'
+                          className='registration-select'
+                          value={formData.region}
+                          onChange={handleRegionChange}
+                          style={{ backgroundColor: '#fff' }}
+                        >
+                          <option value=''>Select Region</option>
+                          {regions.map((region) => (
+                            <option key={region.code} value={region.name}>
+                              {region.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className='registration-field'>
+                        <label className='registration-label'>Province</label>
+                        <select
+                          id='province'
+                          className='registration-select'
+                          value={formData.province}
+                          onChange={handleProvinceChange}
+                          style={{ backgroundColor: '#fff' }}
+                          disabled={!formData.region}
+                        >
+                          <option value=''>Select Province</option>
+                          {provinces.map((province) => (
+                            <option key={province.code} value={province.name}>
+                              {province.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className='registration-field'>
+                        <label className='registration-label'>City/Municipality</label>
+                        <select
+                          id='city'
+                          className='registration-select'
+                          value={formData.city}
+                          onChange={handleCityChange}
+                          style={{ backgroundColor: '#fff' }}
+                          disabled={!formData.province}
+                        >
+                          <option value=''>Select City/Municipality</option>
+                          {cities.map((city) => (
+                            <option key={city.code} value={city.name}>
+                              {city.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className='registration-field'>
+                        <label className='registration-label'>Barangay</label>
+                        <select
+                          id='barangay'
+                          className='registration-select'
+                          value={formData.barangay}
+                          onChange={handleBarangayChange}
+                          style={{ backgroundColor: '#fff' }}
+                          disabled={!formData.city}
+                        >
+                          <option value=''>Select Barangay</option>
+                          {barangays.map((barangay) => (
+                            <option key={barangay.code} value={barangay.name}>
+                              {barangay.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className='registration-field'>
+                        <label className='registration-label'>Zip Code</label>
+                        <input
+                          id='zipCode'
+                          className='registration-input'
+                          type='text'
+                          placeholder='1000'
+                          value={formData.zipCode}
+                          onChange={handleInputChange}
+                          style={{ backgroundColor: '#fff' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem' }}>
+                <button
+                  type='button'
+                  onClick={() => setShowEmergencyContact(!showEmergencyContact)}
+                  style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: '#2563eb', fontWeight: 600, fontSize: '1.05rem', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
+                >
+                  <span style={{ fontSize: '1.5rem', marginRight: '0.75rem', lineHeight: 1 }}>{showEmergencyContact ? '−' : '+'}</span>
+                  {showEmergencyContact ? 'Hide Emergency Contact (Optional)' : 'Add Emergency Contact (Optional)'}
+                </button>
+                {showEmergencyContact && (
+                  <div className="registration-optional-section">
+                    <p className="registration-optional-description">Person to contact in case of emergency</p>
+
+                    <div className="registration-field">
+                      <label className='registration-label'>Full Name</label>
+                      <input
+                        id='emergencyFullName'
+                        className='registration-input'
+                        type='text'
+                        placeholder='Maria Dela Cruz'
+                        value={formData.emergencyFullName || ''}
+                        onChange={handleInputChange}
+                        style={{ backgroundColor: '#fff' }}
+                      />
+                    </div>
+
+                    <div className="registration-grid-2">
+                      <div className='registration-field'>
+                        <label className='registration-label'>Relationship</label>
+                        <input
+                          id='emergencyRelationship'
+                          className='registration-input'
+                          type='text'
+                          placeholder='Mother, Spouse, etc.'
+                          value={formData.emergencyRelationship || ''}
+                          onChange={handleInputChange}
+                          style={{ backgroundColor: '#fff' }}
+                        />
+                      </div>
+                      <div className='registration-field'>
+                        <label className='registration-label'>Phone Number</label>
+                        <input
+                          id='emergencyPhoneNumber'
+                          className='registration-input'
+                          type='tel'
+                          placeholder='+63 912 345 6789'
+                          value={formData.emergencyPhoneNumber || ''}
+                          onChange={handleInputChange}
+                          style={{ backgroundColor: '#fff' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', marginTop: '0.5rem', paddingTop: '1.5rem' }}>
+                <button 
+                  className='registration-submit-btn' 
+                  type='submit' 
+                >
+                  Create Account
+                </button>
+                <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '1rem', color: '#64748b' }}>
+                  Already have an account? <span style={{ color: '#2563eb', fontWeight: 600, cursor: 'pointer' }} onClick={() => navigate('/login')}>Login</span>
+                </p>
+              </div>
+            </form>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#94a3b8', fontSize: '1rem' }}>
+            <Lock size={18} /> Your information is secure and encrypted
+          </div>
         </div>
       </div>
     </>

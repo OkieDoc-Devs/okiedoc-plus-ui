@@ -122,8 +122,9 @@ export default function SpecialistRegistration() {
         newErrors.birthday = 'Birthday cannot be in the future';
     }
 
-    if (!formData.primarySpecialty.trim())
+    if (formData.specialistType === 'specialist' && !formData.primarySpecialty.trim())
       newErrors.primarySpecialty = 'Medical specialty is required';
+    
     if (!formData.licenseNumber.trim())
       newErrors.licenseNumber = 'License number is required';
     if (!formData.mobileNumber.trim()) {
@@ -260,6 +261,9 @@ export default function SpecialistRegistration() {
       window.scrollTo(0, 0);
     }
   };
+
+  // Determine if specialist fields should be shown
+  const showSpecialistFields = formData.specialistType === 'specialist';
 
   return (
     <>
@@ -410,29 +414,29 @@ export default function SpecialistRegistration() {
             <label className='login-label'>Birthday</label>
             <div style={{ display: 'flex', gap: '10px' }}>
               <select
-                className={`login-input ${errors.birthday ? 'error' : ''}`}
-                id='bMonth'
+                className={`login-input ${errors.birthday ? "error" : ""}`}
+                id="bMonth"
                 value={formData.bMonth}
                 onChange={handleInputChange}
                 style={{ flex: 1 }}
               >
-                <option value=''>Month</option>
+                <option value="">Month</option>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m.toString().padStart(2, '0')}>
-                    {new Date(0, m - 1).toLocaleString('en-US', {
-                      month: 'short',
+                  <option key={m} value={m.toString().padStart(2, "0")}>
+                    {new Date(0, m - 1).toLocaleString("en-US", {
+                      month: "short",
                     })}
                   </option>
                 ))}
               </select>
               <select
-                className={`login-input ${errors.birthday ? 'error' : ''}`}
-                id='bDay'
+                className={`login-input ${errors.birthday ? "error" : ""}`}
+                id="bDay"
                 value={formData.bDay}
                 onChange={handleInputChange}
                 style={{ flex: 1 }}
               >
-                <option value=''>Day</option>
+                <option value="">Day</option>
                 {Array.from(
                   {
                     length: new Date(
@@ -443,19 +447,19 @@ export default function SpecialistRegistration() {
                   },
                   (_, i) => i + 1,
                 ).map((d) => (
-                  <option key={d} value={d.toString().padStart(2, '0')}>
+                  <option key={d} value={d.toString().padStart(2, "0")}>
                     {d}
                   </option>
                 ))}
               </select>
               <select
-                className={`login-input ${errors.birthday ? 'error' : ''}`}
-                id='bYear'
+                className={`login-input ${errors.birthday ? "error" : ""}`}
+                id="bYear"
                 value={formData.bYear}
                 onChange={handleInputChange}
                 style={{ flex: 1 }}
               >
-                <option value=''>Year</option>
+                <option value="">Year</option>
                 {Array.from(
                   { length: new Date().getFullYear() - 1920 + 1 },
                   (_, i) => new Date().getFullYear() - i,
@@ -467,7 +471,7 @@ export default function SpecialistRegistration() {
               </select>
             </div>
             {errors.birthday && (
-              <span className='error-message'>{errors.birthday}</span>
+              <span className="error-message">{errors.birthday}</span>
             )}
 
             <label className='login-label' htmlFor='primarySpecialty'>
@@ -518,29 +522,29 @@ export default function SpecialistRegistration() {
             <label className='login-label'>PRC Expiry Date (Optional)</label>
             <div style={{ display: 'flex', gap: '10px' }}>
               <select
-                className={`login-input ${errors.prcExpiryDate ? 'error' : ''}`}
-                id='prcExpiryMonth'
+                className={`login-input ${errors.prcExpiryDate ? "error" : ""}`}
+                id="prcExpiryMonth"
                 value={formData.prcExpiryMonth}
                 onChange={handleInputChange}
                 style={{ flex: 1 }}
               >
-                <option value=''>Month</option>
+                <option value="">Month</option>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m.toString().padStart(2, '0')}>
-                    {new Date(0, m - 1).toLocaleString('en-US', {
-                      month: 'short',
+                  <option key={m} value={m.toString().padStart(2, "0")}>
+                    {new Date(0, m - 1).toLocaleString("en-US", {
+                      month: "short",
                     })}
                   </option>
                 ))}
               </select>
               <select
-                className={`login-input ${errors.prcExpiryDate ? 'error' : ''}`}
-                id='prcExpiryDay'
+                className={`login-input ${errors.prcExpiryDate ? "error" : ""}`}
+                id="prcExpiryDay"
                 value={formData.prcExpiryDay}
                 onChange={handleInputChange}
                 style={{ flex: 1 }}
               >
-                <option value=''>Day</option>
+                <option value="">Day</option>
                 {Array.from(
                   {
                     length: new Date(
@@ -551,19 +555,19 @@ export default function SpecialistRegistration() {
                   },
                   (_, i) => i + 1,
                 ).map((d) => (
-                  <option key={d} value={d.toString().padStart(2, '0')}>
+                  <option key={d} value={d.toString().padStart(2, "0")}>
                     {d}
                   </option>
                 ))}
               </select>
               <select
-                className={`login-input ${errors.prcExpiryDate ? 'error' : ''}`}
-                id='prcExpiryYear'
+                className={`login-input ${errors.prcExpiryDate ? "error" : ""}`}
+                id="prcExpiryYear"
                 value={formData.prcExpiryYear}
                 onChange={handleInputChange}
                 style={{ flex: 1 }}
               >
-                <option value=''>Year</option>
+                <option value="">Year</option>
                 {Array.from(
                   { length: new Date().getFullYear() - 2020 + 20 },
                   (_, i) => new Date().getFullYear() - i + 10,
@@ -575,7 +579,7 @@ export default function SpecialistRegistration() {
               </select>
             </div>
             {errors.prcExpiryDate && (
-              <span className='error-message'>{errors.prcExpiryDate}</span>
+              <span className="error-message">{errors.prcExpiryDate}</span>
             )}
 
             <label className='login-label' htmlFor='s2Number'>
@@ -620,7 +624,7 @@ export default function SpecialistRegistration() {
                     eSignature: 'Only PNG files are accepted for e-signature',
                   }));
                   setESignatureFile(null);
-                  e.target.value = ''; // Reset the input
+                  e.target.value = '';
                 } else {
                   setErrors((prev) => ({ ...prev, eSignature: '' }));
                   setESignatureFile(file);

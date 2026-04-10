@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ImageCropperModal from "../components/ImageCropperModal";
+import Avatar from "../components/Avatar";
 import "../App.css";
 import "./NurseStyles.css";
 import {
@@ -644,7 +645,14 @@ export default function MyAccount() {
         }}
       >
         <div className="current-image" style={{ textAlign: "center" }}>
-          <img src={previewImage} alt="Profile" />
+          <Avatar
+            profileImageUrl={previewImage !== "/account.svg" ? previewImage : null}
+            firstName={localStorage.getItem('nurse.firstName') || ''}
+            lastName={localStorage.getItem('nurse.lastName') || ''}
+            userType='nurse'
+            size={120}
+            alt='Profile'
+          />
         </div>
 
         {uploadError && (

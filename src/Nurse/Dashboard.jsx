@@ -9,32 +9,83 @@ import {
 } from './services/storageService.js';
 import {
   fetchDashboardFromAPI,
-  fetchDoctorsFromAPI,
   fetchNurseProfile,
   fetchTicketsFromAPI,
-  logoutFromAPI,
   updateTicket,
-  claimTicket,
-  triageTicket,
-  assignSpecialist,
 } from './services/apiService.js';
 import { useAuth } from '../contexts/AuthContext';
-import { useNotification } from '../contexts/NotificationContext';
 import { transformProfileFromAPI } from './services/profileService.js';
 import NotificationBell from '../components/Notifications/NotificationBell';
 import Avatar from '../components/Avatar';
 import { disconnectSocket } from '../utils/socketClient';
 import { useChat } from './services/useChat.js';
+import {
+  Activity,
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ClipboardList,
+  Clock3,
+  Droplet,
+  FileText,
+  Info,
+  Mail,
+  MapPin,
+  MessageSquare,
+  Phone,
+  SendHorizontal,
+  Users,
+  UserRound,
+  Video,
+} from 'lucide-react';
 
 const DEFAULT_TEXT = 'N/A';
 const DASHBOARD_REFRESH_MS = 30000;
-const QUICK_MESSAGE_LIMIT = 8;
-const NURSE_QUEUE_VISIBLE_STATUSES = new Set(['', 'pending']);
-const PROCESS_STEP_LABELS = [
-  'Review HMO Details',
-  'Schedule a Specialist',
-  'Review and Transfer',
+const QUICK_MESSAGE_LIMIT = 60;
+const TRIAGE_STATUS_OPTIONS = [
+  'Waiting',
+  'In Triage',
+  'Ready for Doctor',
+  'Urgent',
+  'Completed',
 ];
+const SYMPTOM_PILL_OPTIONS = [
+  'Fever',
+  'Cough',
+  'Headache',
+  'Sore throat',
+  'Body pain',
+  'Nausea',
+  'Dizziness',
+  'Fatigue',
+  'Shortness of breath',
+  'Chest pain',
+];
+const ROS_GROUPS = [
+  {
+    title: 'General',
+    items: ['Fever', 'Fatigue', 'Weight Loss'],
+  },
+  {
+    title: 'Respiratory',
+    items: ['Cough', 'Shortness of Breath', 'Wheezing'],
+  },
+  {
+    title: 'Cardiovascular',
+    items: ['Chest Pain', 'Palpitations'],
+  },
+  {
+    title: 'Gastrointestinal',
+    items: ['Nausea', 'Vomiting', 'Diarrhea', 'Constipation', 'Abdominal Pain'],
+  },
+  {
+    title: 'Neurological',
+    items: ['Dizziness', 'Headache', 'Numbness', 'Weakness'],
+  },
+];
+const URGENCY_LEVEL_OPTIONS = ['Low', 'Normal', 'Urgent', 'Critical'];
+const TRIAGE_DRAFTS_STORAGE_KEY = 'nurse.triageDraftsByTicket';
 
 const readValue = (source, keys, fallback = DEFAULT_TEXT) => {
   for (const key of keys) {
@@ -138,10 +189,9 @@ const normalizeStatus = (ticket, isSelected) => {
     return 'active';
   }
 
-  const urgency = String(ticket.urgency || ticket.priority || '').toLowerCase();
   const status = String(ticket.status || '').toLowerCase();
 
-  if (urgency === 'high' || status === 'urgent' || status.includes('urgent')) {
+  if (status === 'urgent' || status.includes('urgent')) {
     return 'urgent';
   }
 
@@ -170,46 +220,139 @@ const getPatientIdFromTicket = (ticket) => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
-const normalizeTicketStatus = (status) => String(status || '').trim().toLowerCase();
-
-const isVisibleInNurseQueue = (status) =>
-  NURSE_QUEUE_VISIBLE_STATUSES.has(normalizeTicketStatus(status));
-
-const formatScheduleTime = (timeString) => {
-  if (!timeString) return DEFAULT_TEXT;
-
-  const parsed = new Date(`1970-01-01T${timeString}`);
-  if (Number.isNaN(parsed.getTime())) {
-    return timeString;
-  }
-
-  return parsed.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+const mapTicketStatusToTriageStatus = (statusValue) => {
+  const value = String(statusValue || '').trim().toLowerCase();
+  if (!value) return 'Waiting';
+  if (value === 'pending') return 'Waiting';
+  if (value === 'processing') return 'In Triage';
+  if (value === 'confirmed') return 'Ready for Doctor';
+  if (value === 'completed') return 'Completed';
+  if (value.includes('urgent')) return 'Urgent';
+  if (value === 'in triage') return 'In Triage';
+  if (value === 'ready for doctor') return 'Ready for Doctor';
+  return 'Waiting';
 };
 
+const mapTriageStatusToTicketStatus = (triageStatus) => {
+  const value = String(triageStatus || '').trim().toLowerCase();
+  if (value === 'waiting') return 'pending';
+  if (value === 'in triage') return 'processing';
+  if (value === 'ready for doctor') return 'confirmed';
+  if (value === 'completed') return 'completed';
+  if (value === 'urgent') return 'urgent';
+  return 'pending';
+};
 
+const normalizeUrgencyLevel = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return '';
+  if (normalized === 'high') return 'Urgent';
+  if (normalized === 'low') return 'Low';
+  if (normalized === 'normal') return 'Normal';
+  if (normalized === 'urgent') return 'Urgent';
+  if (normalized === 'critical') return 'Critical';
+  return '';
+};
+
+const toBooleanFlag = (value) => {
+  if (value === true || value === 1) return true;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+  }
+  return false;
+};
+
+const getTriageStatusKey = (statusValue) =>
+  String(statusValue || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-');
+
+const renderTriageStatusIcon = (statusValue) => {
+  const statusKey = getTriageStatusKey(statusValue);
+
+  if (statusKey === 'waiting') {
+    return <Clock3 size={16} strokeWidth={2.2} className='triage-status-icon' />;
+  }
+
+  if (statusKey === 'in-triage') {
+    return <Activity size={16} strokeWidth={2.2} className='triage-status-icon' />;
+  }
+
+  if (statusKey === 'ready-for-doctor') {
+    return <CheckCircle2 size={16} strokeWidth={2.2} className='triage-status-icon' />;
+  }
+
+  if (statusKey === 'urgent') {
+    return <AlertCircle size={16} strokeWidth={2.2} className='triage-status-icon' />;
+  }
+
+  if (statusKey === 'completed') {
+    return <span className='triage-status-icon triage-status-icon-x'>x</span>;
+  }
+
+  return <Clock3 size={16} strokeWidth={2.2} className='triage-status-icon' />;
+};
+
+const getChannelLabel = (ticket) => {
+  const channel = String(
+    readValue(ticket, ['consultationChannel', 'channel'], 'chat'),
+  ).toLowerCase();
+  if (channel.includes('video')) return 'Video';
+  if (channel.includes('voice') || channel.includes('call')) return 'Voice';
+  return 'Chat';
+};
+
+const getUrgencyLevelFromTicket = (ticket) => {
+  const fromFields = normalizeUrgencyLevel(
+    readValue(ticket, ['urgencyLevel', 'urgency', 'priority'], ''),
+  );
+
+  return fromFields;
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { unreadCount } = useNotification();
 
   const [nurseName, setNurseName] = useState(getNurseFirstName());
   const [nurseProfileImage, setNurseProfileImage] = useState(getNurseProfileImage());
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [hasManualDeselection, setHasManualDeselection] = useState(false);
   const [quickMessage, setQuickMessage] = useState('');
   const [quickMessageError, setQuickMessageError] = useState('');
   const [isSendingQuickMessage, setIsSendingQuickMessage] = useState(false);
-  const [showTicketDetailModal, setShowTicketDetailModal] = useState(false);
-  const [ticketDetailTab, setTicketDetailTab] = useState('assessment');
-  const [doctors, setDoctors] = useState([]);
-  const [urgency, setUrgency] = useState('medium');
-  const [targetSpecialty, setTargetSpecialty] = useState('');
-  const [assignedSpecialist, setAssignedSpecialist] = useState('');
-  const [isTriaging, setIsTriaging] = useState(false);
+  const [triageStatus, setTriageStatus] = useState('Waiting');
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [markInquiry, setMarkInquiry] = useState(false);
+  const [markIncomplete, setMarkIncomplete] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [chiefComplaintDraft, setChiefComplaintDraft] = useState('');
+  const [medicalHistoryDraft, setMedicalHistoryDraft] = useState('');
+  const [additionalRemarksDraft, setAdditionalRemarksDraft] = useState('');
+  const [selectedUrgencyLevel, setSelectedUrgencyLevel] = useState('');
+  const [urgencyOverridesByTicketId, setUrgencyOverridesByTicketId] = useState({});
+  const [selectedSymptomPills, setSelectedSymptomPills] = useState([]);
+  const [selectedRosItems, setSelectedRosItems] = useState([]);
+  const [isAdditionalDetailsOpen, setIsAdditionalDetailsOpen] = useState(false);
+  const [triageDraftsByTicketId, setTriageDraftsByTicketId] = useState(() => {
+    try {
+      const raw = localStorage.getItem(TRIAGE_DRAFTS_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
+  const [vitalsDraft, setVitalsDraft] = useState({
+    bloodPressure: '',
+    heartRate: '',
+    temperature: '',
+    oxygenSaturation: '',
+  });
 
   const selectedPatientId = useMemo(
     () => (selectedTicket ? getPatientIdFromTicket(selectedTicket) : null),
@@ -237,26 +380,30 @@ export default function Dashboard() {
     navigate('/');
   };
 
-  useEffect(() => {
-    let isMounted = true;
+  const persistTriageDraft = (ticketId, patch) => {
+    const normalizedTicketId = Number(ticketId);
+    if (!Number.isFinite(normalizedTicketId)) {
+      return;
+    }
 
-    const loadDoctors = async () => {
+    setTriageDraftsByTicketId((previous) => {
+      const next = {
+        ...previous,
+        [normalizedTicketId]: {
+          ...(previous[normalizedTicketId] || {}),
+          ...patch,
+        },
+      };
+
       try {
-        const data = await fetchDoctorsFromAPI();
-        if (isMounted) {
-          setDoctors(data || []);
-        }
-      } catch (error) {
-        console.error('Dashboard: Error loading doctors:', error);
+        localStorage.setItem(TRIAGE_DRAFTS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore localStorage write failures and keep in-memory draft.
       }
-    };
 
-    loadDoctors();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      return next;
+    });
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -287,38 +434,30 @@ export default function Dashboard() {
       }
 
       try {
-        console.log('Dashboard: Fetching from dashboard API...');
         const dashboardData = await fetchDashboardFromAPI();
-        console.log('Dashboard: Dashboard API response:', dashboardData);
         const dashboardTickets = Array.isArray(dashboardData?.tickets)
           ? dashboardData.tickets
           : [];
-        console.log('Dashboard: Dashboard tickets:', dashboardTickets);
 
         if (!isMounted) {
           return;
         }
 
         if (dashboardTickets.length > 0) {
-          console.log('Dashboard: Setting tickets from dashboard API:', dashboardTickets.length);
           setTickets(dashboardTickets);
           return;
         }
-      } catch (dashboardError) {
-        console.log('Dashboard API not available, trying individual endpoints:', dashboardError.message);
+      } catch {
+        // Fallback to tickets endpoint below.
       }
 
       try {
-        console.log('Dashboard: Fetching from tickets API...');
         const apiTickets = await fetchTicketsFromAPI();
-        console.log('Dashboard: Tickets API response:', apiTickets);
         if (isMounted) {
-          const ticketsArray = Array.isArray(apiTickets) ? apiTickets : [];
-          console.log('Dashboard: Setting tickets from individual API:', ticketsArray.length);
-          setTickets(ticketsArray);
+          setTickets(Array.isArray(apiTickets) ? apiTickets : []);
         }
       } catch (ticketError) {
-        console.error('Dashboard: Tickets API error:', ticketError.message);
+        console.error('Tickets API error:', ticketError.message);
         if (isMounted) {
           setTickets([]);
         }
@@ -376,6 +515,147 @@ export default function Dashboard() {
     startConversation,
   ]);
 
+  useEffect(() => {
+    if (!selectedTicket && tickets.length > 0 && !hasManualDeselection) {
+      setSelectedTicket(tickets[0]);
+    }
+  }, [hasManualDeselection, selectedTicket, tickets]);
+
+  useEffect(() => {
+    if (!selectedTicket) {
+      setTriageStatus('Waiting');
+      setMarkInquiry(false);
+      setMarkIncomplete(false);
+      setChiefComplaintDraft('');
+      setMedicalHistoryDraft('');
+      setAdditionalRemarksDraft('');
+      setSelectedUrgencyLevel('');
+      setSelectedSymptomPills([]);
+      setSelectedRosItems([]);
+      setIsAdditionalDetailsOpen(false);
+      setVitalsDraft({
+        bloodPressure: '',
+        heartRate: '',
+        temperature: '',
+        oxygenSaturation: '',
+      });
+      return;
+    }
+
+    const localDraft = triageDraftsByTicketId[Number(selectedTicket.id)] || {};
+
+    const hydratedStatus =
+      localDraft.status || localDraft.triageStatus || selectedTicket.status;
+    setTriageStatus(mapTicketStatusToTriageStatus(hydratedStatus));
+    const inquiryFlag = toBooleanFlag(
+      readValue(selectedTicket, ['isInquiry', 'is_inquiry', 'inquiry'], false),
+    );
+    const incompleteFlag = toBooleanFlag(
+      readValue(selectedTicket, ['isIncomplete', 'is_incomplete', 'incomplete'], false),
+    );
+
+    // Only allow one close reason at a time. If both are true from API, prefer Inquiry.
+    setMarkInquiry(inquiryFlag);
+    setMarkIncomplete(!inquiryFlag && incompleteFlag);
+    setIsAdditionalDetailsOpen(false);
+
+    const toDraftTextValue = (value) => {
+      if (value === DEFAULT_TEXT || value === null || value === undefined) {
+        return '';
+      }
+
+      if (Array.isArray(value)) {
+        return value
+          .map((entry) => String(entry || '').trim())
+          .filter(Boolean)
+          .join(', ');
+      }
+
+      return String(value);
+    };
+
+    setChiefComplaintDraft(
+      localDraft.chiefComplaintDraft ??
+        readValue(
+          selectedTicket,
+          ['chiefComplaint', 'consultationType', 'symptoms'],
+          '',
+        ),
+    );
+    setMedicalHistoryDraft(
+      localDraft.medicalHistoryDraft ??
+        toDraftTextValue(
+          readValue(
+            selectedTicket,
+            ['triageMedicalHistory', 'medicalHistory', 'Medical_History', 'history'],
+            '',
+          ),
+        ),
+    );
+    setAdditionalRemarksDraft(
+      localDraft.additionalRemarksDraft ??
+        toDraftTextValue(
+          readValue(
+            selectedTicket,
+            ['additionalRemarks', 'nurseRemarks', 'remarks', 'notes'],
+            '',
+          ),
+        ),
+    );
+    setSelectedUrgencyLevel(
+      localDraft.selectedUrgencyLevel ||
+        urgencyOverridesByTicketId[Number(selectedTicket.id)] ||
+        normalizeUrgencyLevel(
+          readValue(selectedTicket, ['urgencyLevel', 'urgency', 'priority'], ''),
+        ),
+    );
+    setSelectedSymptomPills(
+      Array.isArray(localDraft.selectedSymptomPills)
+        ? localDraft.selectedSymptomPills
+        : toList(readValue(selectedTicket, ['symptoms', 'symptomTags', 'symptomPills'], ''))
+            .map((entry) =>
+              SYMPTOM_PILL_OPTIONS.find(
+                (option) => option.toLowerCase() === String(entry || '').trim().toLowerCase(),
+              ),
+            )
+            .filter(Boolean),
+    );
+    setSelectedRosItems(
+      Array.isArray(localDraft.selectedRosItems)
+        ? localDraft.selectedRosItems
+        : toList(readValue(selectedTicket, ['reviewOfSystems', 'ros', 'rosItems'], ''))
+            .map((entry) => {
+              const needle = String(entry || '').trim().toLowerCase();
+              for (const group of ROS_GROUPS) {
+                const matched = group.items.find((item) => item.toLowerCase() === needle);
+                if (matched) return matched;
+              }
+              return null;
+            })
+            .filter(Boolean),
+    );
+
+    const toEditableValue = (value) =>
+      value === DEFAULT_TEXT || value === null || value === undefined ? '' : String(value);
+
+    setVitalsDraft({
+      bloodPressure:
+        localDraft.vitalsDraft?.bloodPressure ??
+        toEditableValue(readValue(selectedTicket, ['bloodPressure', 'bp', 'vitalBloodPressure'], '')),
+      heartRate:
+        localDraft.vitalsDraft?.heartRate ??
+        toEditableValue(readValue(selectedTicket, ['heartRate', 'bpm', 'vitalHeartRate'], '')),
+      temperature:
+        localDraft.vitalsDraft?.temperature ??
+        toEditableValue(readValue(selectedTicket, ['temperature', 'temp', 'vitalTemperature'], '')),
+      oxygenSaturation:
+        localDraft.vitalsDraft?.oxygenSaturation ??
+        toEditableValue(
+          readValue(selectedTicket, ['oxygenSaturation', 'spo2', 'vitalOxygenSaturation'], ''),
+        ),
+    });
+  }, [selectedTicket, triageDraftsByTicketId, urgencyOverridesByTicketId]);
+
   const selectedPatient = useMemo(() => {
     if (!selectedTicket) {
       return null;
@@ -388,6 +668,18 @@ export default function Dashboard() {
     const medicalHistory = toList(
       readValue(selectedTicket, ['medicalHistory', 'Medical_History', 'history'], ''),
     );
+    const addressLine = readValue(
+      selectedTicket,
+      ['address', 'patientAddress', 'fullAddress', 'streetAddress'],
+      '',
+    );
+    const city = readValue(selectedTicket, ['city', 'patientCity'], '');
+    const province = readValue(selectedTicket, ['province', 'state', 'patientProvince'], '');
+    const country = readValue(selectedTicket, ['country', 'patientCountry'], '');
+    const composedAddress = [addressLine, city, province, country]
+      .map((part) => String(part || '').trim())
+      .filter((part, index, array) => part && array.indexOf(part) === index)
+      .join(', ');
 
     return {
       fullName: readValue(selectedTicket, ['patientName', 'fullName', 'name']),
@@ -397,19 +689,10 @@ export default function Dashboard() {
       gender: readValue(selectedTicket, ['gender', 'sex']),
       phone: readValue(selectedTicket, ['mobile', 'phone', 'contactNumber']),
       email: readValue(selectedTicket, ['email', 'patientEmail']),
-      address: readValue(
-        selectedTicket,
-        [
-          'address',
-          'fullAddress',
-          'patientAddress',
-          'addressLine1',
-          'streetAddress',
-        ],
-      ),
       bloodType,
       allergies,
       medicalHistory,
+      address: composedAddress || DEFAULT_TEXT,
       lastVisit: formatDate(
         readValue(
           selectedTicket,
@@ -417,22 +700,9 @@ export default function Dashboard() {
           null,
         ),
       ),
-      chiefComplaint: readValue(selectedTicket, ['chiefComplaint', 'consultationType']),
-      symptoms: readValue(selectedTicket, ['symptoms', 'symptomDescription']),
       temperature: readValue(selectedTicket, ['temperature', 'temp', 'vitalTemperature']),
-      bloodPressure: readValue(
-        selectedTicket,
-        ['bloodPressure', 'bp', 'vitalBloodPressure'],
-      ),
+      bloodPressure: readValue(selectedTicket, ['bloodPressure', 'bp', 'vitalBloodPressure']),
       heartRate: readValue(selectedTicket, ['heartRate', 'bpm', 'vitalHeartRate']),
-      respiratoryRate: readValue(
-        selectedTicket,
-        ['respiratoryRate', 'respRate', 'vitalRespiratoryRate'],
-      ),
-      additionalNotes: readValue(
-        selectedTicket,
-        ['additionalNotes', 'notes', 'assessment'],
-      ),
     };
   }, [selectedTicket]);
 
@@ -441,38 +711,298 @@ export default function Dashboard() {
     [messages],
   );
 
-  const handleCompleteTriage = async (ticketId) => {
-    if (!targetSpecialty) {
-      alert('Please enter a target specialty.');
+  const chatEntries = useMemo(() => {
+    const patientName = String(selectedPatient?.fullName || '').trim();
+    if (!patientName || !selectedTicket?.id) {
+      return quickMessages;
+    }
+
+    const starterText = `Started consultation with ${patientName}`;
+    const normalizedStarter = starterText.toLowerCase();
+    const hasStarterMessage = quickMessages.some(
+      (message) =>
+        String(message?.text || '')
+          .trim()
+          .toLowerCase() === normalizedStarter,
+    );
+
+    if (hasStarterMessage) {
+      return quickMessages;
+    }
+
+    const starterTimestamp = formatTime(
+      readValue(selectedTicket, ['createdAt', 'preferredDate', 'updatedAt'], null),
+    );
+
+    return [
+      {
+        id: `starter-${selectedTicket.id}`,
+        text: starterText,
+        timestamp: starterTimestamp,
+        isSystem: true,
+      },
+      ...quickMessages,
+    ];
+  }, [quickMessages, selectedPatient?.fullName, selectedTicket]);
+
+  const queueCards = useMemo(() => {
+    return (tickets || []).map((ticket) => {
+      const queueStatus = normalizeStatus(
+        ticket,
+        Number(ticket?.id) === Number(selectedTicket?.id),
+      );
+      const statusLabel = getStatusLabel(queueStatus);
+      const channelLabel = getChannelLabel(ticket);
+      const persistedUrgencyLevel =
+        triageDraftsByTicketId[Number(ticket?.id)]?.selectedUrgencyLevel || '';
+      const urgencyLevel =
+        persistedUrgencyLevel ||
+        urgencyOverridesByTicketId[Number(ticket?.id)] ||
+        getUrgencyLevelFromTicket(ticket);
+      return {
+        ticket,
+        queueStatus,
+        statusLabel,
+        channelLabel,
+        urgencyLevel,
+      };
+    });
+  }, [selectedTicket?.id, tickets, triageDraftsByTicketId, urgencyOverridesByTicketId]);
+
+  const shouldEnableCloseTicket = markInquiry || markIncomplete;
+  const closeReasonLabel = markInquiry ? 'Inquiry' : markIncomplete ? 'Incomplete' : '';
+
+  const applyTicketPatch = async (ticketId, patch) => {
+    try {
+      await updateTicket(ticketId, patch);
+    } catch (error) {
+      console.error('Failed to update ticket:', error);
+    }
+
+    setTickets((previous) =>
+      previous.map((ticket) =>
+        Number(ticket.id) === Number(ticketId)
+          ? {
+              ...ticket,
+              ...patch,
+            }
+          : ticket,
+      ),
+    );
+
+    setSelectedTicket((previous) => {
+      if (!previous || Number(previous.id) !== Number(ticketId)) {
+        return previous;
+      }
+      return {
+        ...previous,
+        ...patch,
+      };
+    });
+
+    persistTriageDraft(ticketId, patch);
+  };
+
+  const handleStatusChange = async (nextStatus) => {
+    if (!selectedTicket) {
       return;
     }
 
-    setIsTriaging(true);
-    try {
-      const triageData = {
-        ticketId: parseInt(ticketId, 10),
-        targetSpecialty,
-        urgency,
+    setTriageStatus(nextStatus);
+    setShowStatusMenu(false);
+    setIsUpdatingStatus(true);
+
+    await applyTicketPatch(selectedTicket.id, {
+      status: mapTriageStatusToTicketStatus(nextStatus),
+    });
+
+    setIsUpdatingStatus(false);
+  };
+
+  const handleCloseTicket = async () => {
+    if (!selectedTicket || !shouldEnableCloseTicket) {
+      return;
+    }
+
+    await applyTicketPatch(selectedTicket.id, {
+      status: 'completed',
+      isInquiry: markInquiry,
+      isIncomplete: markIncomplete,
+    });
+  };
+
+  const handleCloseReasonToggle = async (reason, checked) => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    const nextInquiry = reason === 'inquiry' ? checked : checked ? false : markInquiry;
+    const nextIncomplete = reason === 'incomplete' ? checked : checked ? false : markIncomplete;
+
+    setMarkInquiry(nextInquiry);
+    setMarkIncomplete(nextIncomplete);
+
+    await applyTicketPatch(selectedTicket.id, {
+      isInquiry: nextInquiry,
+      isIncomplete: nextIncomplete,
+    });
+  };
+
+  const handleVitalChange = (field, value) => {
+    setVitalsDraft((previous) => {
+      const next = {
+        ...previous,
+        [field]: value,
       };
 
-      await triageTicket(triageData);
-
-      if (assignedSpecialist) {
-        await assignSpecialist(
-          parseInt(ticketId, 10),
-          parseInt(assignedSpecialist, 10),
-        );
+      if (selectedTicket?.id) {
+        persistTriageDraft(selectedTicket.id, { vitalsDraft: next });
       }
 
-      alert('Ticket triaged successfully!');
-      setShowTicketDetailModal(false);
-      window.location.reload();
-    } catch (error) {
-      console.error('Error triaging ticket:', error);
-      alert('Failed to triage ticket: ' + error.message);
-    } finally {
-      setIsTriaging(false);
+      return next;
+    });
+  };
+
+  const sanitizeNumericVital = (value, maxDigits = 3) =>
+    String(value || '')
+      .replace(/\D/g, '')
+      .slice(0, maxDigits);
+
+  const sanitizeTemperatureVital = (value, maxDigits = 3, maxDecimals = 1) => {
+    const cleaned = String(value || '').replace(/[^\d.]/g, '');
+    const firstDotIndex = cleaned.indexOf('.');
+
+    if (firstDotIndex === -1) {
+      return cleaned.slice(0, maxDigits);
     }
+
+    const integerPart = cleaned.slice(0, firstDotIndex).replace(/\./g, '').slice(0, maxDigits);
+    const decimalPart = cleaned
+      .slice(firstDotIndex + 1)
+      .replace(/\./g, '')
+      .slice(0, maxDecimals);
+
+    return `${integerPart}.${decimalPart}`;
+  };
+
+  const sanitizeBloodPressureVital = (value, maxDigitsPerSide = 3) => {
+    const cleaned = String(value || '').replace(/[^\d/]/g, '');
+    const [rawSystolic = '', ...rest] = cleaned.split('/');
+    const rawDiastolic = rest.join('');
+
+    const systolic = rawSystolic.replace(/\//g, '').slice(0, maxDigitsPerSide);
+    const diastolic = rawDiastolic.replace(/\//g, '').slice(0, maxDigitsPerSide);
+
+    if (cleaned.includes('/')) {
+      return `${systolic}/${diastolic}`;
+    }
+
+    return systolic;
+  };
+
+  const handleVitalBlur = async (field) => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    const value = String(vitalsDraft[field] || '').trim();
+    const patch = {
+      [field]: value || null,
+    };
+
+    await applyTicketPatch(selectedTicket.id, patch);
+  };
+
+  const handleMedicalHistoryBlur = async () => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    const value = String(medicalHistoryDraft || '').trim();
+
+    await applyTicketPatch(selectedTicket.id, {
+      triageMedicalHistory: value || null,
+      medicalHistory: value || null,
+    });
+  };
+
+  const handleChiefComplaintChange = (value) => {
+    setChiefComplaintDraft(value);
+    if (selectedTicket?.id) {
+      persistTriageDraft(selectedTicket.id, { chiefComplaintDraft: value });
+    }
+  };
+
+  const handleMedicalHistoryChange = (value) => {
+    setMedicalHistoryDraft(value);
+    if (selectedTicket?.id) {
+      persistTriageDraft(selectedTicket.id, { medicalHistoryDraft: value });
+    }
+  };
+
+  const handleAdditionalRemarksChange = (value) => {
+    setAdditionalRemarksDraft(value);
+    if (selectedTicket?.id) {
+      persistTriageDraft(selectedTicket.id, { additionalRemarksDraft: value });
+    }
+  };
+
+  const handleAdditionalRemarksBlur = async () => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    const value = String(additionalRemarksDraft || '').trim();
+    await applyTicketPatch(selectedTicket.id, {
+      additionalRemarks: value || null,
+      nurseRemarks: value || null,
+    });
+  };
+
+  const handleUrgencyLevelSelect = async (level) => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    setSelectedUrgencyLevel(level);
+    setUrgencyOverridesByTicketId((previous) => ({
+      ...previous,
+      [Number(selectedTicket.id)]: level,
+    }));
+    persistTriageDraft(selectedTicket.id, { selectedUrgencyLevel: level });
+    await applyTicketPatch(selectedTicket.id, {
+      urgencyLevel: level,
+      urgency: level,
+      priority: level,
+    });
+  };
+
+  const handleSymptomPillToggle = (pill) => {
+    setSelectedSymptomPills((previous) => {
+      const next = previous.includes(pill)
+        ? previous.filter((entry) => entry !== pill)
+        : [...previous, pill];
+
+      if (selectedTicket?.id) {
+        persistTriageDraft(selectedTicket.id, { selectedSymptomPills: next });
+      }
+
+      return next;
+    });
+  };
+
+  const handleRosItemToggle = (item) => {
+    setSelectedRosItems((previous) => {
+      const next = previous.includes(item)
+        ? previous.filter((entry) => entry !== item)
+        : [...previous, item];
+
+      if (selectedTicket?.id) {
+        persistTriageDraft(selectedTicket.id, { selectedRosItems: next });
+      }
+
+      return next;
+    });
   };
 
   const handleQuickSendMessage = async (event) => {
@@ -502,7 +1032,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className='dashboard'>
+    <div className='dashboard triage-dashboard'>
       <div className='dashboard-header'>
         <div className='header-center'>
           <img src='/okie-doc-logo.png' alt='Okie-Doc+' className='logo-image' />
@@ -551,877 +1081,582 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className='nurse-service-area-banner'>
-        <strong>Service Area:</strong> Bicol Region, Camarines Sur, Naga
-      </div>
-
-      <div className='nurse-dashboard-3col'>
-        <section className='nurse-dashboard-queue'>
-          <div className='nurse-panel-title'>Patient Queue</div>
-          <div className='nurse-queue-list'>
-            {tickets.length > 0 ? (
-              tickets.map((ticket) => {
-                const isSelected = Number(selectedTicket?.id) === Number(ticket.id);
-                const status = normalizeStatus(ticket, isSelected);
-                const statusLabel = getStatusLabel(status);
-
-                return (
-                  <button
-                    key={ticket.id}
-                    type='button'
-                    className={`nurse-queue-card ${isSelected ? 'selected' : ''}`}
-                    onClick={() => {
-                      setSelectedTicket(ticket);
-                      setShowTicketDetailModal(true);
-                      setTicketDetailTab('assessment');
-                      setQuickMessageError('');
-                    }}
-                  >
-                    <div className='nurse-queue-card-top'>
-                      <div>
-                        <div className='nurse-ticket-code'>
-                          T-{String(ticket.id).padStart(3, '0')}
-                        </div>
-                        <div className='nurse-ticket-name'>
-                          {readValue(ticket, ['patientName', 'fullName', 'name'])}
-                        </div>
-                      </div>
-                      <span className={`nurse-status-badge ${status}`}>
-                        {statusLabel}
-                      </span>
-                    </div>
-                    <div className='nurse-ticket-time'>
-                      {formatTime(readValue(ticket, ['preferredDate', 'createdAt'], null))}
-                    </div>
-                  </button>
-                );
-              })
-            ) : (
-              <div className='nurse-empty-note'>No tickets available</div>
-            )}
-          </div>
-        </section>
-
-        <section className='nurse-dashboard-patient'>
-          <div className='nurse-panel-title'>Patient Information</div>
-
-          {!selectedPatient ? (
-            <div className='nurse-patient-placeholder'>patient information</div>
-          ) : (
-            <>
-              <div className='nurse-patient-header'>
-                <div className='nurse-patient-avatar'>
-                  {(selectedPatient.fullName || '?').charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h2>{selectedPatient.fullName}</h2>
-                  <p>
-                    {selectedPatient.age} years old - {selectedPatient.gender}
-                  </p>
-                </div>
-                <button
-                  className='nurse-transfer-btn'
-                  type='button'
-                  onClick={() => navigate('/nurse-manage-appointments')}
-                >
-                  Process Ticket
-                </button>
-              </div>
-
-              <div className='nurse-patient-grid'>
-                <article className='nurse-patient-card'>
-                  <h4>Phone</h4>
-                  <p>{selectedPatient.phone}</p>
-                </article>
-                <article className='nurse-patient-card'>
-                  <h4>Email</h4>
-                  <p>{selectedPatient.email}</p>
-                </article>
-                <article className='nurse-patient-card'>
-                  <h4>Address</h4>
-                  <p>{selectedPatient.address}</p>
-                </article>
-                <article className='nurse-patient-card'>
-                  <h4>Blood Type</h4>
-                  <p>{selectedPatient.bloodType}</p>
-                </article>
-              </div>
-
-              <article className='nurse-patient-wide-card'>
-                <h4>Allergies</h4>
-                {selectedPatient.allergies.length > 0 ? (
-                  <div className='nurse-tag-list'>
-                    {selectedPatient.allergies.map((allergy) => (
-                      <span key={allergy} className='nurse-danger-tag'>
-                        {allergy}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p>{DEFAULT_TEXT}</p>
-                )}
-              </article>
-
-              <article className='nurse-patient-wide-card'>
-                <h4>Medical History</h4>
-                {selectedPatient.medicalHistory.length > 0 ? (
-                  <ul>
-                    {selectedPatient.medicalHistory.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>{DEFAULT_TEXT}</p>
-                )}
-              </article>
-
-              <article className='nurse-patient-wide-card'>
-                <h4>Last Visit</h4>
-                <p>{selectedPatient.lastVisit}</p>
-              </article>
-
-              <div className='nurse-subsection-title'>Consultation Information</div>
-              <div className='nurse-consultation-body'>
-                <div className='nurse-consultation-field'>
-                  <label>Chief Complaint</label>
-                  <p>{selectedPatient.chiefComplaint}</p>
-                </div>
-
-                <div className='nurse-consultation-field'>
-                  <label>Symptoms</label>
-                  <p>{selectedPatient.symptoms}</p>
-                </div>
-
-                <div className='nurse-vitals-grid'>
-                  <div className='nurse-vital-card'>
-                    <label>Temperature (C)</label>
-                    <p>{selectedPatient.temperature}</p>
-                  </div>
-                  <div className='nurse-vital-card'>
-                    <label>Blood Pressure</label>
-                    <p>{selectedPatient.bloodPressure}</p>
-                  </div>
-                  <div className='nurse-vital-card'>
-                    <label>Heart Rate (bpm)</label>
-                    <p>{selectedPatient.heartRate}</p>
-                  </div>
-                  <div className='nurse-vital-card'>
-                    <label>Respiratory Rate</label>
-                    <p>{selectedPatient.respiratoryRate}</p>
-                  </div>
-                </div>
-
-                <div className='nurse-consultation-field'>
-                  <label>Additional Notes</label>
-                  <p>{selectedPatient.additionalNotes}</p>
-                </div>
-              </div>
-            </>
-          )}
-        </section>
-
-        <section className='nurse-dashboard-right'>
-          <div className='nurse-right-top'>
-            <div className='nurse-right-panel-header'>
-              <div className='nurse-panel-title'>Consultation</div>
-              <button
-                type='button'
-                className='nurse-messages-arrow-btn'
-                onClick={() => navigate('/nurse-messages')}
-                title='Go to Messages'
-                aria-label='Go to Messages'
-              >
-                {'→'}
-              </button>
+      <div className='triage-shell'>
+        <div className='triage-grid'>
+          <section className='triage-queue-col'>
+            <div className='triage-col-header'>
+              <Users size={16} strokeWidth={2.2} />
+              <h3>Patient Queue</h3>
             </div>
-
-            {!selectedTicket ? (
-              <div className='nurse-empty-note'>Select a ticket to open quick messaging.</div>
-            ) : (
-              <>
-                <div className='nurse-quick-chat-list'>
-                  {quickMessages.length > 0 ? (
-                    quickMessages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`nurse-quick-chat-bubble ${message.isSent ? 'sent' : 'received'}`}
-                      >
-                        <p>{message.text}</p>
-                        <span>{message.timestamp}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className='nurse-empty-note'>No messages yet for this patient.</div>
-                  )}
-                </div>
-
-                <form className='nurse-quick-chat-form' onSubmit={handleQuickSendMessage}>
-                  <input
-                    type='text'
-                    placeholder='Type a message...'
-                    value={quickMessage}
-                    onChange={(event) => setQuickMessage(event.target.value)}
-                    disabled={!activeConversation?.id || isSendingQuickMessage}
-                  />
-                  <button
-                    type='submit'
-                    disabled={!quickMessage.trim() || isSendingQuickMessage}
-                  >
-                    Send
-                  </button>
-                </form>
-
-                {quickMessageError && (
-                  <p className='nurse-quick-error'>{quickMessageError}</p>
-                )}
-              </>
-            )}
-          </div>
-        </section>
-      </div>
-
-      {showTicketDetailModal && selectedTicket && (
-        <div className='modal-overlay'>
-          <div
-            className='ticket-detail-modal'
-            style={{ maxWidth: 900, width: '90%' }}
-          >
-            <div
-              className='modal-header'
-              style={{ borderBottom: '1px solid #e0e0e0', paddingBottom: 16 }}
-            >
-              <div>
-                <h2 style={{ margin: 0, color: '#0b5388' }}>
-                  TICKET #{selectedTicket.id}
-                </h2>
-              </div>
-              <button
-                onClick={() => {
-                  setShowTicketDetailModal(false);
-                  setSelectedTicket(null);
-                }}
-                className='close-btn'
-              >
-                ×
-              </button>
-            </div>
-
-            <div
-              style={{
-                padding: '16px 24px',
-                background: '#f8f9fa',
-                borderBottom: '1px solid #e0e0e0',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: 16,
-                }}
-              >
-                <div>
-                  <p
-                    style={{
-                      margin: '0 0 4px',
-                      fontSize: 12,
-                      color: '#666',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    Patient Details
-                  </p>
-                  <p style={{ margin: '0 0 4px' }}>
-                    <strong>Name:</strong> {selectedTicket.patientName}
-                  </p>
-                  <p style={{ margin: '0 0 4px' }}>
-                    <strong>Email:</strong> {selectedTicket.email}
-                  </p>
-                  <p style={{ margin: '0 0 4px' }}>
-                    <strong>Age:</strong>{' '}
-                    {selectedTicket.age ||
-                      calculateAge(selectedTicket.patientBirthdate) ||
-                      'N/A'}
-                  </p>
-                  <p style={{ margin: '0 0 4px' }}>
-                    <strong>Mobile:</strong> {selectedTicket.mobile}
-                  </p>
-                  <p style={{ margin: 0 }}>
-                    <strong>Birthdate:</strong>{' '}
-                    {formatDate(selectedTicket.patientBirthdate) || 'N/A'}
-                  </p>
-                  <p style={{ margin: '4px 0 0' }}>
-                    <strong>Address:</strong>{' '}
-                    {[
-                      selectedTicket.addressLine1,
-                      selectedTicket.addressLine2,
-                      selectedTicket.barangay,
-                      selectedTicket.city,
-                      selectedTicket.province,
-                      selectedTicket.region,
-                      selectedTicket.zipCode,
-                    ]
-                      .filter(Boolean)
-                      .join(', ') || 'N/A'}
-                  </p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ margin: '0 0 4px', color: '#0b5388' }}>
-                    <strong>Date Created:</strong>{' '}
-                    {formatDate(selectedTicket.createdAt)}
-                  </p>
-                  <p style={{ margin: 0 }}>
-                    <strong>Status:</strong>{' '}
-                    <span
-                      style={{
-                        color:
-                          selectedTicket.status === 'Confirmed'
-                            ? '#2196f3'
-                            : selectedTicket.status === 'Completed'
-                              ? '#4caf50'
-                              : selectedTicket.status === 'Processing'
-                                ? '#2196f3'
-                                : '#ff9800',
-                      }}
-                    >
-                      {selectedTicket.status}
-                    </span>
-                  </p>
-                </div>
-              </div>
-              <div
-                style={{
-                  marginTop: 16,
-                  paddingTop: 16,
-                  borderTop: '1px solid #e0e0e0',
-                }}
-              >
-                <p style={{ margin: '0 0 4px' }}>
-                  <strong>Assigned Nurse:</strong>{' '}
-                  {selectedTicket.assignedNurse || 'Unassigned'}
-                </p>
-                <p style={{ margin: '0 0 4px' }}>
-                  <strong>Assigned Specialist:</strong>{' '}
-                  {selectedTicket.assignedSpecialist ||
-                    selectedTicket.preferredSpecialist ||
-                    'Not specified'}
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong>Consultation Type:</strong>{' '}
-                  {selectedTicket.consultationChannel ||
-                    selectedTicket.chiefComplaint}
-                </p>
-              </div>
-              <div
-                style={{
-                  marginTop: 16,
-                  textAlign: 'right',
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: '8px',
-                }}
-              >
-                {selectedTicket.status === 'pending' &&
-                  !selectedTicket.assignedNurse && (
+            <div className='triage-queue-list'>
+              {queueCards.length > 0 ? (
+                queueCards.map(({ ticket, queueStatus, statusLabel, channelLabel, urgencyLevel }) => {
+                  const isSelected = Number(selectedTicket?.id) === Number(ticket.id);
+                  const urgencyKey = urgencyLevel.toLowerCase();
+                  return (
                     <button
-                      className='action-btn'
-                      style={{
-                        background: '#28a745',
-                        color: '#fff',
-                        padding: '8px 20px',
-                        borderRadius: 20,
-                      }}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (
-                          window.confirm('Do you want to claim this ticket?')
-                        ) {
-                          try {
-                            await claimTicket(selectedTicket.id);
-                            alert('Ticket claimed successfully!');
-                            setShowTicketDetailModal(false);
-                            window.location.reload();
-                          } catch (err) {
-                            alert('Failed to claim ticket: ' + err.message);
-                          }
+                      key={ticket.id}
+                      type='button'
+                      className={`triage-queue-card ${isSelected ? 'selected' : ''}`}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedTicket(null);
+                          setHasManualDeselection(true);
+                        } else {
+                          setSelectedTicket(ticket);
+                          setHasManualDeselection(false);
                         }
+                        setQuickMessageError('');
                       }}
                     >
-                      Claim Ticket
+                      <div className='triage-queue-card-top'>
+                        <div className='triage-queue-main'>
+                          <div className='triage-queue-avatar'>
+                            <UserRound size={15} strokeWidth={2.2} />
+                          </div>
+
+                          <div>
+                            <div className='triage-ticket-code'>
+                              T-{String(ticket.id).padStart(3, '0')}
+                            </div>
+                            <div className='triage-ticket-name'>
+                              {readValue(ticket, ['patientName', 'fullName', 'name'])}
+                            </div>
+                          </div>
+                        </div>
+                        <span className={`triage-status-badge ${queueStatus}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+
+                      <div className='triage-channel-chip'>
+                        {channelLabel === 'Video' ? (
+                          <Video size={14} strokeWidth={2.2} />
+                        ) : channelLabel === 'Voice' ? (
+                          <Phone size={14} strokeWidth={2.2} />
+                        ) : (
+                          <MessageSquare size={14} strokeWidth={2.2} />
+                        )}
+                        <span>{channelLabel}</span>
+                      </div>
+
+                      <div className='triage-queue-footer'>
+                        <div className='triage-ticket-time'>
+                          <Clock3 size={14} strokeWidth={2.2} />
+                          <span>{formatTime(readValue(ticket, ['preferredDate', 'createdAt'], null))}</span>
+                        </div>
+
+                        {urgencyLevel ? (
+                          <span className={`triage-urgency-badge ${urgencyKey}`}>{urgencyLevel}</span>
+                        ) : (
+                          <span className='triage-urgency-badge triage-urgency-badge-placeholder' aria-hidden='true'>
+                            Placeholder
+                          </span>
+                        )}
+                      </div>
                     </button>
-                  )}
-                <button
-                  className='action-btn'
-                  style={{
-                    background: '#0b5388',
-                    color: '#fff',
-                    padding: '8px 20px',
-                    borderRadius: 20,
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    alert('Feature in progress');
-                  }}
-                >
-                  Consultation Histories
-                </button>
-              </div>
+                  );
+                })
+              ) : (
+                <div className='triage-empty-note'>No tickets available.</div>
+              )}
             </div>
+          </section>
 
-            <div
-              style={{
-                display: 'flex',
-                borderBottom: '2px solid #e0e0e0',
-                background: '#fff',
-              }}
-            >
-              {[
-                'assessment',
-                'medicalHistory',
-                'laboratoryRequest',
-                'prescription',
-                ...(selectedTicket?.status === 'processing' &&
-                selectedTicket?.assignedNurse
-                  ? ['triage']
-                  : []),
-              ].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setTicketDetailTab(tab)}
-                  style={{
-                    flex: 1,
-                    padding: '12px 16px',
-                    border: 'none',
-                    background:
-                      ticketDetailTab === tab ? '#e3f2fd' : 'transparent',
-                    color: ticketDetailTab === tab ? '#0b5388' : '#666',
-                    fontWeight: ticketDetailTab === tab ? 600 : 400,
-                    cursor: 'pointer',
-                    borderBottom:
-                      ticketDetailTab === tab
-                        ? '2px solid #0b5388'
-                        : '2px solid transparent',
-                    marginBottom: '-2px',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  {tab === 'assessment' && 'Assessment'}
-                  {tab === 'medicalHistory' && 'Medical History'}
-                  {tab === 'laboratoryRequest' && 'Laboratory Request'}
-                  {tab === 'prescription' && 'Prescription'}
-                  {tab === 'triage' && 'Triage'}
-                </button>
-              ))}
+          <section className='triage-snapshot-col'>
+            <div className='triage-col-header'>
+              <Info size={16} strokeWidth={2.2} />
+              <h3>Patient Snapshot</h3>
             </div>
+            <div className='triage-snapshot-scroll'>
+              {!selectedPatient ? (
+                <div className='triage-empty-note'>Select a patient from queue.</div>
+              ) : (
+                <>
+                  <article className='triage-profile-card'>
+                    <div className='triage-profile-top'>
+                      <div className='triage-avatar'>
+                        {(selectedPatient.fullName || '?')
+                          .split(' ')
+                          .slice(0, 2)
+                          .map((part) => part.charAt(0).toUpperCase())
+                          .join('')
+                          .slice(0, 2)}
+                      </div>
+                      <div>
+                        <h4>{selectedPatient.fullName}</h4>
+                        <p>
+                          {selectedPatient.age} years {'\u2022'} {selectedPatient.gender}
+                        </p>
+                      </div>
+                    </div>
 
-            <div
-              className='modal-body'
-              style={{
-                padding: 24,
-                maxHeight: 400,
-                overflowY: 'auto',
-                background: '#e8f4fc',
-              }}
-            >
-              {ticketDetailTab === 'triage' && (
-                <div
-                  style={{
-                    background: '#fff',
-                    padding: 20,
-                    borderRadius: 8,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                  }}
-                >
-                  <h3 style={{ marginBottom: 16, color: '#0b5388' }}>
-                    Triage & specialist assignment
-                  </h3>
+                    <div className='triage-profile-grid'>
+                      <div>
+                        <label>Phone</label>
+                        <p className='triage-value-line'>
+                          <Phone size={13} strokeWidth={2.2} />
+                          <span>{selectedPatient.phone}</span>
+                        </p>
+                      </div>
+                      <div>
+                        <label>Blood Type</label>
+                        <p className='triage-value-line triage-blood'>
+                          <Droplet size={13} strokeWidth={2.2} />
+                          <span>{selectedPatient.bloodType}</span>
+                        </p>
+                      </div>
+                      <div className='full'>
+                        <label>Email</label>
+                        <p className='triage-value-line'>
+                          <Mail size={13} strokeWidth={2.2} />
+                          <span>{selectedPatient.email}</span>
+                        </p>
+                      </div>
+                    </div>
 
-                  <div style={{ marginBottom: 12 }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: 4,
-                        fontWeight: 600,
-                      }}
+                    {selectedPatient.allergies.length > 0 && (
+                      <>
+                        <div className='triage-divider' />
+
+                        <div className='triage-allergy-block'>
+                          <h5>
+                            <AlertCircle size={14} strokeWidth={2.2} />
+                            <span>Allergies</span>
+                          </h5>
+                          <div className='triage-tag-list'>
+                            {selectedPatient.allergies.map((allergy) => (
+                              <span key={allergy}>{allergy}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <div className='triage-divider' />
+
+                    <div className='triage-history-block'>
+                      <h5 className='triage-history-title'>Medical History</h5>
+                      {selectedPatient.medicalHistory.length > 0 ? (
+                        <ul>
+                          {selectedPatient.medicalHistory.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>{DEFAULT_TEXT}</p>
+                      )}
+                    </div>
+
+                    <div className='triage-divider' />
+
+                    <div className='triage-last-visit'>
+                      <Clock3 size={14} strokeWidth={2.2} />
+                      <span>Last visit:</span>
+                      <strong>{selectedPatient.lastVisit}</strong>
+                    </div>
+                  </article>
+
+                  <article className='triage-details-panel'>
+                    <button
+                      type='button'
+                      className='triage-details-toggle'
+                      onClick={() => setIsAdditionalDetailsOpen((prev) => !prev)}
                     >
-                      Target Specialty:
-                    </label>
+                      <span className='triage-details-title'>
+                        <MapPin size={14} strokeWidth={2.2} />
+                        <span>Additional Details</span>
+                      </span>
+                      <ChevronDown
+                        size={16}
+                        strokeWidth={2.3}
+                        className={isAdditionalDetailsOpen ? 'open' : ''}
+                      />
+                    </button>
+
+                    {isAdditionalDetailsOpen && (
+                      <div className='triage-details-content'>
+                        <div className='triage-detail-row'>
+                          <label>Address</label>
+                          <p>{selectedPatient.address}</p>
+                        </div>
+                      </div>
+                    )}
+                  </article>
+
+                  <article className='triage-chat-panel'>
+                    <header>
+                      <h4>Chat Consultation</h4>
+                      <p>Context for triage assessment</p>
+                    </header>
+
+                    <div className='triage-chat-list'>
+                      {chatEntries.length > 0 ? (
+                        chatEntries.map((message) =>
+                          message.isSystem ? (
+                            <div key={message.id} className='triage-chat-system-row'>
+                              <span className='triage-chat-system-avatar'>
+                                <UserRound size={14} strokeWidth={2.2} />
+                              </span>
+                              <div className='triage-chat-bubble system'>
+                                <p>{message.text}</p>
+                                <span>{message.timestamp}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              key={message.id}
+                              className={`triage-chat-bubble ${message.isSent ? 'sent' : 'received'}`}
+                            >
+                              <p>{message.text}</p>
+                              <span>{message.timestamp}</span>
+                            </div>
+                          ),
+                        )
+                      ) : (
+                        <div className='triage-empty-note'>No messages yet for this patient.</div>
+                      )}
+                    </div>
+
+                    <form className='triage-chat-input-row' onSubmit={handleQuickSendMessage}>
+                      <input
+                        type='text'
+                        placeholder='Type a message...'
+                        value={quickMessage}
+                        onChange={(event) => setQuickMessage(event.target.value)}
+                        disabled={!activeConversation?.id || isSendingQuickMessage}
+                      />
+                      <button
+                        className='triage-chat-send-btn'
+                        type='submit'
+                        disabled={!quickMessage.trim() || isSendingQuickMessage}
+                      >
+                        <SendHorizontal size={14} strokeWidth={2.3} />
+                      </button>
+                    </form>
+
+                    {quickMessageError && <p className='nurse-quick-error'>{quickMessageError}</p>}
+                  </article>
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className='triage-workspace-col'>
+            <div className='triage-col-header'>
+              <ClipboardList size={16} strokeWidth={2.2} />
+              <h3>Triage Workspace</h3>
+            </div>
+
+            {selectedPatient && (
+              <div className='triage-workspace-head'>
+                <div className='triage-workspace-head-main'>
+                  <div className='triage-name-badge-row'>
+                    <h2>{selectedPatient.fullName}</h2>
+                    <span className='triage-chat-badge'>Chat</span>
+                  </div>
+
+                  <div className='triage-status-select-wrap'>
+                    <button
+                      type='button'
+                      className={`triage-status-select ${triageStatus
+                        .toLowerCase()
+                        .replace(/\s+/g, '-')}`}
+                      onClick={() => setShowStatusMenu((prev) => !prev)}
+                      disabled={isUpdatingStatus}
+                    >
+                      <span className='triage-status-current'>
+                        {renderTriageStatusIcon(triageStatus)}
+                        <span>{triageStatus}</span>
+                      </span>
+                      <ChevronDown size={16} strokeWidth={2.2} />
+                    </button>
+
+                    {showStatusMenu && (
+                      <div className='triage-status-menu'>
+                        {TRIAGE_STATUS_OPTIONS.map((option) => (
+                          <button
+                            key={option}
+                            type='button'
+                            className='triage-status-option'
+                            onClick={() => handleStatusChange(option)}
+                          >
+                            <span className='triage-status-option-main'>
+                              <span className={`dot ${option.toLowerCase().replace(/\s+/g, '-')}`} />
+                              {renderTriageStatusIcon(option)}
+                              <span>{option}</span>
+                            </span>
+                            {triageStatus === option ? (
+                              <Check size={16} strokeWidth={2.4} className='triage-status-selected-check' />
+                            ) : (
+                              <span />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className='triage-mark-actions'>
+                  <label>
                     <input
-                      type='text'
-                      placeholder='e.g. Pediatrics, Cardiology'
-                      value={targetSpecialty}
-                      onChange={(e) => setTargetSpecialty(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        borderRadius: 4,
-                        border: '1px solid #ccc',
-                      }}
+                      type='checkbox'
+                      checked={markInquiry}
+                      onChange={(event) =>
+                        handleCloseReasonToggle('inquiry', event.target.checked)
+                      }
                     />
-                  </div>
+                    <span>Mark as Inquiry</span>
+                  </label>
+                  <label>
+                    <input
+                      type='checkbox'
+                      checked={markIncomplete}
+                      onChange={(event) =>
+                        handleCloseReasonToggle('incomplete', event.target.checked)
+                      }
+                    />
+                    <span>Mark as Incomplete</span>
+                  </label>
+                </div>
+              </div>
+            )}
 
-                  <div style={{ marginBottom: 12 }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: 4,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Urgency:
-                    </label>
-                    <select
-                      value={urgency}
-                      onChange={(e) => setUrgency(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        borderRadius: 4,
-                        border: '1px solid #ccc',
-                      }}
-                    >
-                      <option value='low'>Low</option>
-                      <option value='medium'>Medium</option>
-                      <option value='high'>High</option>
-                    </select>
-                  </div>
+            <div className='triage-workspace-scroll'>
+              {selectedPatient ? (
+                <>
+                  <article className='triage-vitals-card'>
+                    <h4>
+                      <Activity size={16} strokeWidth={2.2} />
+                      <span>Vital Signs</span>
+                    </h4>
+                    <div className='triage-vitals-grid'>
+                      <div>
+                        <label>Blood Pressure</label>
+                        <input
+                          type='text'
+                          className='triage-vital-input'
+                          placeholder='120/80'
+                          maxLength={7}
+                          value={vitalsDraft.bloodPressure}
+                          onChange={(event) =>
+                            handleVitalChange(
+                              'bloodPressure',
+                              sanitizeBloodPressureVital(event.target.value),
+                            )
+                          }
+                          onBlur={() => handleVitalBlur('bloodPressure')}
+                        />
+                      </div>
+                      <div>
+                        <label>Heart Rate</label>
+                        <div className='triage-vital-input-wrap'>
+                          <input
+                            type='text'
+                            className='triage-vital-input with-unit'
+                            placeholder='72'
+                            inputMode='numeric'
+                            maxLength={3}
+                            value={vitalsDraft.heartRate}
+                            onChange={(event) =>
+                              handleVitalChange(
+                                'heartRate',
+                                sanitizeNumericVital(event.target.value),
+                              )
+                            }
+                            onBlur={() => handleVitalBlur('heartRate')}
+                          />
+                          <span className='triage-vital-unit'>bpm</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label>Temperature</label>
+                        <div className='triage-vital-input-wrap'>
+                          <input
+                            type='text'
+                            className='triage-vital-input with-unit'
+                            placeholder='36.8'
+                            inputMode='decimal'
+                            maxLength={5}
+                            value={vitalsDraft.temperature}
+                            onChange={(event) =>
+                              handleVitalChange(
+                                'temperature',
+                                sanitizeTemperatureVital(event.target.value),
+                              )
+                            }
+                            onBlur={() => handleVitalBlur('temperature')}
+                          />
+                          <span className='triage-vital-unit'>°C</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label>Oxygen Saturation</label>
+                        <div className='triage-vital-input-wrap'>
+                          <input
+                            type='text'
+                            className='triage-vital-input with-unit'
+                            placeholder='98'
+                            inputMode='numeric'
+                            maxLength={3}
+                            value={vitalsDraft.oxygenSaturation}
+                            onChange={(event) =>
+                              handleVitalChange(
+                                'oxygenSaturation',
+                                sanitizeNumericVital(event.target.value),
+                              )
+                            }
+                            onBlur={() => handleVitalBlur('oxygenSaturation')}
+                          />
+                          <span className='triage-vital-unit'>%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
 
-                  <div style={{ marginBottom: 20 }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: 4,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Assign specialist (Optional):
-                    </label>
-                    <select
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        borderRadius: 4,
-                        border: '1px solid #ccc',
-                      }}
-                      value={assignedSpecialist}
-                      onChange={(e) => setAssignedSpecialist(e.target.value)}
-                    >
-                      <option value=''>Select specialist</option>
-                      {doctors.map((doctor) => (
-                        <option key={doctor.id} value={doctor.id}>
-                          {doctor.name} - {doctor.specialization}
-                        </option>
+                  <article className='triage-complaint-card'>
+                    <h4>Chief Complaint & Symptoms</h4>
+                    <textarea
+                      value={chiefComplaintDraft}
+                      onChange={(event) => handleChiefComplaintChange(event.target.value)}
+                      placeholder="Describe the patient's main complaint..."
+                    />
+                    <div className='triage-symptom-pills'>
+                      {SYMPTOM_PILL_OPTIONS.map((pill) => {
+                        const isSelected = selectedSymptomPills.includes(pill);
+                        return (
+                          <button
+                            key={pill}
+                            type='button'
+                            className={`triage-symptom-pill ${isSelected ? 'selected' : ''}`}
+                            onClick={() => handleSymptomPillToggle(pill)}
+                          >
+                            {pill}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </article>
+
+                  <article className='triage-pain-map-card'>
+                    <h4>Pain Map</h4>
+                  </article>
+
+                  <article className='triage-ros-card'>
+                    <h4>Review of Systems (ROS)</h4>
+                    <div className='triage-ros-grid'>
+                      {ROS_GROUPS.map((group) => (
+                        <section key={group.title} className='triage-ros-group'>
+                          <div className='triage-ros-group-title'>{group.title}</div>
+                          <div className='triage-ros-items'>
+                            {group.items.map((item) => {
+                              const isChecked = selectedRosItems.includes(item);
+                              return (
+                                <label key={item} className='triage-ros-item'>
+                                  <input
+                                    type='checkbox'
+                                    checked={isChecked}
+                                    onChange={() => handleRosItemToggle(item)}
+                                  />
+                                  <span>{item}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </section>
                       ))}
-                    </select>
-                  </div>
+                    </div>
+                  </article>
 
+                  <article className='triage-note-card'>
+                    <h4>
+                      <ClipboardList size={16} strokeWidth={2.2} />
+                      <span>Medical History</span>
+                    </h4>
+                    <textarea
+                      className='triage-note-textarea'
+                      value={medicalHistoryDraft}
+                      onChange={(event) => handleMedicalHistoryChange(event.target.value)}
+                      onBlur={handleMedicalHistoryBlur}
+                      placeholder='Relevant medical history, medications, allergies...'
+                    />
+                  </article>
+
+                  <article className='triage-note-card'>
+                    <h4>
+                      <FileText size={16} strokeWidth={2.2} />
+                      <span>Additional Remarks</span>
+                    </h4>
+                    <textarea
+                      className='triage-note-textarea'
+                      value={additionalRemarksDraft}
+                      onChange={(event) => handleAdditionalRemarksChange(event.target.value)}
+                      onBlur={handleAdditionalRemarksBlur}
+                      placeholder='Add remarks or important notes...'
+                    />
+                  </article>
+
+                  <article className='triage-urgency-card'>
+                    <h4>
+                      <AlertCircle size={16} strokeWidth={2.2} />
+                      <span>Urgency Level</span>
+                    </h4>
+                    <div className='triage-urgency-grid'>
+                      {URGENCY_LEVEL_OPTIONS.map((level) => {
+                        const isSelected = selectedUrgencyLevel === level;
+                        return (
+                          <button
+                            key={level}
+                            type='button'
+                            className={`triage-urgency-option level-${level.toLowerCase()} ${isSelected ? 'selected' : ''}`}
+                            onClick={() => handleUrgencyLevelSelect(level)}
+                          >
+                            {level}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </article>
+                </>
+              ) : (
+                <div className='triage-empty-note'>Select a patient from queue.</div>
+              )}
+            </div>
+
+            {selectedPatient && (
+              <div className={`triage-workspace-footer ${shouldEnableCloseTicket ? 'active' : 'inactive'}`}>
+                <div className='triage-bottom-actions'>
                   <button
-                    className='action-btn'
-                    style={{
-                      width: '100%',
-                      background: '#28a745',
-                      color: '#fff',
-                      padding: '12px',
-                      fontSize: '16px',
-                      fontWeight: '700',
-                      borderRadius: 6,
-                      border: 'none',
-                      cursor: 'pointer',
-                    }}
-                    disabled={isTriaging}
-                    onClick={() => handleCompleteTriage(selectedTicket.id)}
+                    type='button'
+                    className='triage-transfer-btn'
+                    onClick={() => navigate('/nurse-manage-appointments')}
                   >
-                    {isTriaging ? 'Completing Triage...' : 'Complete Triage'}
+                    <UserRound size={16} strokeWidth={2.2} />
+                    Transfer Patient
+                  </button>
+                  <button
+                    type='button'
+                    className={`triage-close-btn ${shouldEnableCloseTicket ? 'active' : 'inactive'}`}
+                    disabled={!shouldEnableCloseTicket}
+                    onClick={handleCloseTicket}
+                  >
+                    <span className='triage-close-x'>&times;</span>
+                    <span>Close Ticket</span>
+                    {closeReasonLabel && <span className='triage-close-tag'>{closeReasonLabel}</span>}
                   </button>
                 </div>
-              )}
 
-              {ticketDetailTab === 'assessment' && (
-                <div>
-                  {selectedTicket?.assessment ? (
-                    <p
-                      style={{
-                        lineHeight: 1.8,
-                        color: '#333',
-                        whiteSpace: 'pre-wrap',
-                      }}
-                    >
-                      {selectedTicket.assessment}
-                    </p>
-                  ) : (
-                    <p
-                      style={{
-                        lineHeight: 1.8,
-                        color: '#999',
-                        fontStyle: 'italic',
-                      }}
-                    >
-                      No assessment has been added yet. The specialist will add
-                      an assessment during the consultation.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {ticketDetailTab === 'medicalHistory' && (
-                <div>
-                  {selectedTicket?.medicalHistory ? (
-                    <p
-                      style={{
-                        lineHeight: 1.8,
-                        color: '#333',
-                        whiteSpace: 'pre-wrap',
-                      }}
-                    >
-                      {selectedTicket.medicalHistory}
-                    </p>
-                  ) : (
-                    <p
-                      style={{
-                        lineHeight: 1.8,
-                        color: '#999',
-                        fontStyle: 'italic',
-                      }}
-                    >
-                      No medical history has been recorded for this patient.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {ticketDetailTab === 'laboratoryRequest' && (
-                <div>
-                  {selectedTicket?.laboratoryRequest ? (
-                    (() => {
-                      try {
-                        const labRequests = JSON.parse(
-                          selectedTicket.laboratoryRequest,
-                        );
-                        if (
-                          Array.isArray(labRequests) &&
-                          labRequests.length > 0
-                        ) {
-                          return (
-                            <ol style={{ paddingLeft: 20 }}>
-                              {labRequests.map((lab, idx) => (
-                                <li
-                                  key={idx}
-                                  style={{ marginBottom: 12, lineHeight: 1.6 }}
-                                >
-                                  <strong>
-                                    {lab.testName || lab.test || lab.name}
-                                  </strong>
-                                  {lab.notes && <span> - {lab.notes}</span>}
-                                  {lab.remarks && <span> - {lab.remarks}</span>}
-                                </li>
-                              ))}
-                            </ol>
-                          );
-                        }
-                        return (
-                          <p
-                            style={{
-                              lineHeight: 1.8,
-                              color: '#333',
-                              whiteSpace: 'pre-wrap',
-                            }}
-                          >
-                            {selectedTicket.laboratoryRequest}
-                          </p>
-                        );
-                      } catch {
-                        return (
-                          <p
-                            style={{
-                              lineHeight: 1.8,
-                              color: '#333',
-                              whiteSpace: 'pre-wrap',
-                            }}
-                          >
-                            {selectedTicket.laboratoryRequest}
-                          </p>
-                        );
-                      }
-                    })()
-                  ) : (
-                    <p
-                      style={{
-                        lineHeight: 1.8,
-                        color: '#999',
-                        fontStyle: 'italic',
-                      }}
-                    >
-                      No laboratory requests have been added yet.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {ticketDetailTab === 'prescription' && (
-                <div>
-                  {selectedTicket?.prescription ? (
-                    (() => {
-                      try {
-                        const medicines = JSON.parse(
-                          selectedTicket.prescription,
-                        );
-                        if (Array.isArray(medicines) && medicines.length > 0) {
-                          return (
-                            <ol style={{ paddingLeft: 20 }}>
-                              {medicines.map((med, idx) => (
-                                <li
-                                  key={idx}
-                                  style={{ marginBottom: 12, lineHeight: 1.6 }}
-                                >
-                                  <strong>
-                                    {med.name ||
-                                      med.medicineName ||
-                                      med.generic ||
-                                      med.brand}
-                                  </strong>
-                                  {med.dosage && <span> - {med.dosage}</span>}
-                                  {med.form && <span> ({med.form})</span>}
-                                  {med.frequency && (
-                                    <span>, {med.frequency}</span>
-                                  )}
-                                  {med.duration && (
-                                    <span> for {med.duration}</span>
-                                  )}
-                                  {med.instructions && (
-                                    <div
-                                      style={{
-                                        fontSize: '0.9em',
-                                        color: '#666',
-                                      }}
-                                    >
-                                      Instructions: {med.instructions}
-                                    </div>
-                                  )}
-                                </li>
-                              ))}
-                            </ol>
-                          );
-                        }
-                        return (
-                          <p
-                            style={{
-                              lineHeight: 1.8,
-                              color: '#333',
-                              whiteSpace: 'pre-wrap',
-                            }}
-                          >
-                            {selectedTicket.prescription}
-                          </p>
-                        );
-                      } catch {
-                        return (
-                          <p
-                            style={{
-                              lineHeight: 1.8,
-                              color: '#333',
-                              whiteSpace: 'pre-wrap',
-                            }}
-                          >
-                            {selectedTicket.prescription}
-                          </p>
-                        );
-                      }
-                    })()
-                  ) : (
-                    <p
-                      style={{
-                        lineHeight: 1.8,
-                        color: '#999',
-                        fontStyle: 'italic',
-                      }}
-                    >
-                      No prescription has been added yet.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div
-              style={{
-                padding: '16px 24px',
-                borderTop: '1px solid #e0e0e0',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: 12,
-                background: '#fff',
-              }}
-            >
-              {(selectedTicket.status === 'Confirmed' ||
-                selectedTicket.status === 'Processing') && (
-                <button
-                  onClick={async () => {
-                    if (
-                      window.confirm(
-                        'Are you sure you want to mark this ticket as completed?',
-                      )
-                    ) {
-                      try {
-                        await updateTicket(selectedTicket.id, {
-                          status: 'Completed',
-                        });
-                        alert('Ticket marked as completed!');
-                        setShowTicketDetailModal(false);
-                        setSelectedTicket(null);
-                        const dashboardData = await fetchDashboardFromAPI();
-                        if (dashboardData.success) {
-                          setNurseName(
-                            dashboardData.data?.nurse?.firstName || nurseName,
-                          );
-                        }
-                        const ticketsData = await fetchTicketsFromAPI();
-                        if (ticketsData.success) {
-                          window.location.reload();
-                        }
-                      } catch (error) {
-                        console.error('Error completing ticket:', error);
-                        alert(
-                          error.message ||
-                            'Failed to complete ticket. Please try again.',
-                        );
-                      }
-                    }
-                  }}
-                  style={{
-                    background: '#4caf50',
-                    color: '#fff',
-                    padding: '10px 24px',
-                    borderRadius: 20,
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                  }}
-                >
-                  Mark as Completed
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setShowTicketDetailModal(false);
-                  setSelectedTicket(null);
-                }}
-                style={{
-                  background: '#e0e0e0',
-                  color: '#333',
-                  padding: '10px 24px',
-                  borderRadius: 20,
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
+                {!shouldEnableCloseTicket && (
+                  <p className='triage-close-help'>
+                    Mark ticket as "Inquiry" or "Incomplete" to enable closing
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -1622,6 +1622,1522 @@ body::-webkit-scrollbar {
 .processing-tickets {
   color: #000000;
 }
+
+.triage-shell {
+  border-top: 1px solid #d9dde4;
+  background: #f3f4f6;
+  height: calc(100vh - 146px);
+}
+
+.triage-dashboard {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.triage-dashboard .dashboard-header {
+  padding-top: 18px;
+  padding-bottom: 4px;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+.triage-dashboard .dashboard-nav {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.triage-dashboard .triage-shell {
+  margin-top: -6px;
+  border-top: 1px solid #d6dbe3;
+  height: calc(100vh - 152px);
+}
+
+.triage-grid {
+  display: grid;
+  grid-template-columns: 296px 344px minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.triage-queue-col,
+.triage-snapshot-col,
+.triage-workspace-col {
+  min-width: 0;
+  border-right: 1px solid #d9dde4;
+  background: #f4f5f7;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.triage-workspace-col {
+  border-right: none;
+}
+
+.triage-col-header {
+  height: 54px;
+  border-bottom: 1px solid #d9dde4;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f4f5f7;
+  flex-shrink: 0;
+}
+
+.triage-col-header svg {
+  color: #667081;
+  flex-shrink: 0;
+}
+
+.triage-col-header h3 {
+  margin: 0;
+  color: #141820;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.triage-queue-list {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #c4c9d2 transparent;
+}
+
+.triage-snapshot-scroll,
+.triage-workspace-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #c4c9d2 transparent;
+}
+
+.triage-workspace-scroll {
+  border-top: 1px solid #d9dde4;
+  padding-top: 8px;
+}
+
+.triage-queue-card {
+  border: 1px solid #d6dbe3;
+  border-radius: 15px;
+  background: #ffffff;
+  text-align: left;
+  padding: 12px;
+  cursor: pointer;
+  min-height: 138px;
+  display: flex;
+  flex-direction: column;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.triage-queue-card:focus,
+.triage-queue-card:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.triage-queue-main {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.triage-queue-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #deebff;
+  color: #3a7be3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.triage-queue-card.selected {
+  background: #eaf1fb;
+  border-color: #6fa2ea;
+}
+
+.triage-queue-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.triage-ticket-code {
+  color: #0f141b;
+  font-size: 15px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.triage-ticket-name {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #3c495d;
+  line-height: 1.15;
+}
+
+.triage-status-badge {
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 5px 10px;
+  text-transform: lowercase;
+}
+
+.triage-status-badge.pending {
+  background: #f0b300;
+  color: #ffffff;
+}
+
+.triage-status-badge.active {
+  background: #01c15a;
+  color: #ffffff;
+}
+
+.triage-status-badge.urgent {
+  background: #d91e4d;
+  color: #ffffff;
+  text-transform: none;
+}
+
+.triage-channel-chip {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  margin-top: 16px;
+  border: 1px solid #ccd2dd;
+  background: #f7f8fb;
+  color: #121722;
+  border-radius: 9px;
+  padding: 5px 10px;
+  width: fit-content;
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.triage-queue-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+}
+
+.triage-ticket-time {
+  color: #687385;
+  font-size: 12px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.triage-urgency-badge {
+  border-radius: 999px;
+  background: #d5e8dc;
+  color: #0e7a2f;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 6px 10px;
+  text-align: center;
+}
+
+.triage-urgency-badge-placeholder {
+  visibility: hidden;
+}
+
+.triage-urgency-badge.low {
+  background: #d5e8dc;
+  color: #0e7a2f;
+}
+
+.triage-urgency-badge.normal {
+  background: #d6e4f6;
+  color: #1d4fd6;
+}
+
+.triage-urgency-badge.urgent {
+  background: #ead9bd;
+  color: #d9480f;
+}
+
+.triage-urgency-badge.critical {
+  background: #ebd1d4;
+  color: #d51f28;
+}
+
+.triage-snapshot-col {
+  padding-bottom: 16px;
+}
+
+.triage-queue-list::-webkit-scrollbar,
+.triage-snapshot-scroll::-webkit-scrollbar,
+.triage-workspace-scroll::-webkit-scrollbar {
+  width: 7px;
+}
+
+.triage-queue-list::-webkit-scrollbar-track,
+.triage-snapshot-scroll::-webkit-scrollbar-track,
+.triage-workspace-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.triage-queue-list::-webkit-scrollbar-thumb,
+.triage-snapshot-scroll::-webkit-scrollbar-thumb,
+.triage-workspace-scroll::-webkit-scrollbar-thumb {
+  background: #c4c9d2;
+  border-radius: 999px;
+}
+
+.triage-queue-list::-webkit-scrollbar-thumb:hover,
+.triage-snapshot-scroll::-webkit-scrollbar-thumb:hover,
+.triage-workspace-scroll::-webkit-scrollbar-thumb:hover {
+  background: #b5bcc8;
+}
+
+.triage-profile-card,
+.triage-details-panel,
+.triage-chat-panel,
+.triage-vitals-card,
+.triage-complaint-card {
+  margin: 10px;
+  background: #ffffff;
+  border: 1px solid #d8dde5;
+  height: 360px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+}
+
+.triage-profile-card {
+  padding: 14px 14px 12px;
+  height: auto;
+  min-height: 0;
+  display: block;
+}
+
+.triage-profile-top {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.triage-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #286ded;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.triage-profile-top h4 {
+  margin: 0;
+  font-size: 12px;
+  color: #131923;
+  font-weight: 700;
+}
+
+.triage-profile-top p {
+  margin: 5px 0 0;
+  color: #4f5b6f;
+  font-size: 12px;
+}
+
+.triage-profile-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 18px;
+}
+
+.triage-profile-grid .full {
+  grid-column: 1 / -1;
+}
+
+.triage-profile-grid label {
+  color: #59657a;
+  font-size: 12px;
+  display: block;
+}
+
+.triage-profile-grid p {
+  margin: 2px 0 0;
+  color: #101723;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.triage-value-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.triage-value-line svg {
+  color: #7b8798;
+  flex-shrink: 0;
+}
+
+.triage-profile-grid .triage-blood {
+  color: #e11d48;
+}
+
+.triage-profile-grid .triage-blood svg {
+  color: #e11d48;
+}
+
+.triage-divider {
+  border-top: 1px solid #e4e8ef;
+  margin: 12px 0;
+}
+
+.triage-allergy-block h5,
+.triage-history-block h5 {
+  margin: 0;
+  color: #d2253a;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.triage-history-block h5 {
+  color: #111827;
+}
+
+.triage-history-block .triage-history-title {
+  color: #111827 !important;
+}
+
+.triage-allergy-block h5 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.triage-allergy-block p,
+.triage-history-block p {
+  margin: 8px 0 0;
+  color: #424e63;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.triage-tag-list {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.triage-tag-list span {
+  border-radius: 8px;
+  border: 1px solid #f4b7bf;
+  background: #ffecef;
+  color: #d2253a;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.triage-history-block ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.triage-history-block li {
+  margin-bottom: 4px;
+  color: #4f5a6c;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.triage-last-visit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6a7586;
+  font-size: 12px;
+}
+
+.triage-last-visit strong {
+  color: #374153;
+}
+
+.triage-details-panel {
+  padding: 0;
+  height: auto;
+  min-height: 0;
+  display: block;
+  overflow: hidden;
+}
+
+.triage-details-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  color: #1f2a3a;
+}
+
+.triage-details-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.triage-details-title svg {
+  color: #5c677a;
+}
+
+.triage-details-toggle .open {
+  transform: rotate(180deg);
+}
+
+.triage-details-toggle svg {
+  transition: transform 0.2s ease;
+  color: #5c677a;
+}
+
+.triage-details-content {
+  border-top: 1px solid #e4e8ef;
+  padding: 12px 16px 14px;
+}
+
+.triage-detail-row label {
+  display: block;
+  font-size: 12px;
+  color: #5e6a7e;
+  margin-bottom: 4px;
+}
+
+.triage-detail-row p {
+  margin: 0;
+  font-size: 13px;
+  color: #1f2a3a;
+}
+
+.triage-chat-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 260px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.triage-chat-panel header {
+  background: #eaf1fb;
+  border-bottom: 1px solid #d5deec;
+  padding: 12px 14px;
+}
+
+.triage-chat-panel h4 {
+  margin: 0;
+  color: #1a2433;
+  font-size: 14px;
+}
+
+.triage-chat-panel header p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #60708a;
+}
+
+.triage-chat-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.triage-chat-system-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.triage-chat-system-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #dbe9ff;
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+}
+
+.triage-chat-bubble {
+  display: flex;
+  flex-direction: column;
+  width: fit-content;
+  min-width: 0;
+  max-width: 60%;
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.triage-chat-bubble.sent {
+  align-self: flex-end;
+  align-items: flex-end;
+  background: #2163eb;
+  color: #ffffff;
+}
+
+.triage-chat-bubble.received {
+  align-self: flex-start;
+  align-items: flex-start;
+  background: #f1f4f9;
+  color: #222b38;
+}
+
+.triage-chat-bubble.system {
+  align-self: flex-start;
+  align-items: flex-start;
+  background: #eef1f6;
+  color: #1f2937;
+}
+
+.triage-chat-bubble p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.triage-chat-bubble span {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.triage-chat-bubble.sent span {
+  align-self: flex-end;
+}
+
+.triage-chat-bubble.received span {
+  align-self: flex-start;
+}
+
+.triage-chat-input-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  border-top: 1px solid #e4e8ef;
+  padding: 12px;
+  align-items: center;
+}
+
+.triage-chat-input-row input {
+  width: 100%;
+  border: 1px solid #d4dae5;
+  border-radius: 12px;
+  padding: 10px 14px;
+  height: 42px;
+  box-sizing: border-box;
+  background: #ffffff;
+  color: #1f2a3a;
+  outline: none;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.triage-chat-input-row input::placeholder {
+  color: #8a94a8;
+}
+
+.triage-chat-input-row input:focus,
+.triage-chat-input-row input:focus-visible {
+  outline: none;
+  border-color: #9fb0ce;
+  box-shadow: none;
+}
+
+.triage-chat-input-row input:disabled {
+  background: #ffffff;
+  color: #8a94a8;
+  -webkit-text-fill-color: #8a94a8;
+  opacity: 1;
+}
+
+.triage-chat-send-btn {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+  line-height: 1;
+}
+
+.triage-chat-send-btn:hover:not(:disabled) {
+  background: #111827;
+}
+
+.triage-chat-send-btn:disabled {
+  background: #9ca3af;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.triage-workspace-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.triage-workspace-head {
+  margin: 10px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.triage-workspace-head-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.triage-name-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.triage-name-badge-row h2 {
+  margin: 0;
+  color: #0f141d;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.triage-chat-badge {
+  border: 1px solid #d3d9e3;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1b2433;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 10px;
+  font-weight: 600;
+}
+
+.triage-status-select-wrap {
+  position: relative;
+  margin-top: 12px;
+}
+
+.triage-status-select {
+  min-width: 280px;
+  border-radius: 10px;
+  border: 1.5px solid #e5be45;
+  background: #f4ecbf;
+  color: #b27700;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  outline: none;
+  box-shadow: none;
+}
+
+.triage-status-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.triage-status-select svg {
+  color: currentColor;
+}
+
+.triage-status-select.waiting {
+  border-color: #e5be45;
+  background: #f4ecbf;
+  color: #b27700;
+}
+
+.triage-status-select.in-triage {
+  border-color: #8bb7f8;
+  background: #ebf3ff;
+  color: #2f6fcb;
+}
+
+.triage-status-select.ready-for-doctor {
+  border-color: #8bd8a7;
+  background: #ecf9f1;
+  color: #1f9e52;
+}
+
+.triage-status-select.urgent {
+  border-color: #f0a8b3;
+  background: #fff0f3;
+  color: #d13a4f;
+}
+
+.triage-status-select.completed {
+  border-color: #c5ccd8;
+  background: #f2f4f8;
+  color: #5b6578;
+}
+
+.triage-status-select:focus,
+.triage-status-select:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.triage-status-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  width: 280px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #d8dde5;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.14);
+  z-index: 20;
+  padding: 8px;
+}
+
+.triage-status-option {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 8px 10px;
+  color: #131925;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.triage-status-option-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.triage-status-icon {
+  color: #667085;
+}
+
+.triage-status-icon-x {
+  width: 15px;
+  height: 15px;
+  border: 2px solid #667085;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.triage-status-selected-check {
+  color: #16a34a;
+}
+
+.triage-status-option:hover {
+  background: #f4f7fb;
+}
+
+.triage-status-option .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #9ca3af;
+}
+
+.triage-status-option .dot.waiting {
+  background: #e5ab00;
+}
+
+.triage-status-option .dot.in-triage {
+  background: #3b82f6;
+}
+
+.triage-status-option .dot.ready-for-doctor {
+  background: #22c55e;
+}
+
+.triage-status-option .dot.urgent {
+  background: #ef4444;
+}
+
+.triage-status-option .dot.completed {
+  background: #6b7280;
+}
+
+.triage-mark-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 0 0 190px;
+  min-width: 190px;
+  padding-top: 4px;
+  padding-left: 16px;
+  border-left: 1px solid #e2e6ee;
+}
+
+.triage-mark-actions label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #0f141d;
+  font-weight: 600;
+}
+
+.triage-mark-actions input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid #cfd5df;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #f2f4f7;
+  cursor: pointer;
+  margin: 0;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.triage-mark-actions input[type='checkbox']:checked {
+  background: #0b1020;
+  border-color: #0b1020;
+}
+
+.triage-mark-actions input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.triage-vitals-card {
+  padding: 12px;
+  height: auto;
+  min-height: 0;
+  display: block;
+}
+
+.triage-note-card {
+  margin: 10px;
+  background: #ffffff;
+  border: 1px solid #d8dde5;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.triage-note-card h4 {
+  margin: 0;
+  color: #0f141d;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.triage-note-textarea {
+  margin-top: 18px;
+  width: 100%;
+  min-height: 100px;
+  border-radius: 12px;
+  border: 1px solid #e3e7ee;
+  background: #eff1f5;
+  font-size: 12px;
+  color: #111827;
+  resize: vertical;
+  padding: 14px 16px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.triage-note-textarea:focus,
+.triage-note-textarea:focus-visible {
+  border-color: #9db1d6;
+  background: #f3f6fb;
+  outline: none;
+}
+
+.triage-urgency-card {
+  margin: 10px;
+  background: #ffffff;
+  border: 1px solid #d8dde5;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.triage-urgency-card h4 {
+  margin: 0;
+  color: #0f141d;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.triage-urgency-grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.triage-urgency-option {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid #d8dde5;
+  background: #f8f9fb;
+  color: #0f141d;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.triage-urgency-option.selected {
+  border-width: 2px;
+}
+
+.triage-urgency-option.selected.level-low {
+  border-color: #b6c2ba;
+  background: #b8ddc9;
+  color: #007a35;
+}
+
+.triage-urgency-option.selected.level-normal {
+  border-color: #b4bcc8;
+  background: #c2d1e7;
+  color: #1748d4;
+}
+
+.triage-urgency-option.selected.level-urgent {
+  border-color: #b8bfca;
+  background: #e8d7bb;
+  color: #e14900;
+}
+
+.triage-urgency-option.selected.level-critical {
+  border-color: #b8bfca;
+  background: #e7cdcf;
+  color: #d91515;
+}
+
+.triage-vitals-card h4,
+.triage-complaint-card h4 {
+  margin: 0;
+  color: #0f141d;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.triage-vitals-card h4 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.triage-vitals-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+
+.triage-vitals-grid label {
+  display: block;
+  color: #374558;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.triage-vitals-grid div > div {
+  border-radius: 12px;
+  border: 1px solid #d4dbe6;
+  background: #e7ecf2;
+  min-height: 38px;
+  color: #748195;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+}
+
+.triage-vital-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #d4dbe6;
+  background: #e7ecf2;
+  min-height: 38px;
+  color: #111827;
+  font-size: 12px;
+  padding: 0 14px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.triage-vital-input-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  border-radius: 12px;
+  border: 1px solid #d4dbe6;
+  background: #e7ecf2;
+  min-height: 38px;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+.triage-vital-input.with-unit {
+  flex: 0 0 4ch;
+  width: 4ch;
+  min-width: 4ch;
+  max-width: 4ch;
+  border: none;
+  background: transparent;
+  min-height: 0;
+  padding: 0;
+  text-align: left;
+  color: #111827;
+}
+
+.triage-vital-unit {
+  position: static;
+  margin-left: -2px;
+  color: #263247;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.triage-vital-input-wrap:focus-within {
+  border-color: #9db1d6;
+  background: #f3f6fb;
+  box-shadow: 0 0 0 2px rgba(157, 177, 214, 0.28);
+}
+
+.triage-vital-input.with-unit:focus,
+.triage-vital-input.with-unit:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: transparent;
+  background: transparent;
+}
+
+.triage-vital-input:focus,
+.triage-vital-input:focus-visible {
+  border-color: #9db1d6;
+  background: #f3f6fb;
+}
+
+.triage-complaint-card {
+  padding: 12px;
+  margin-top: 10px;
+  height: auto;
+  min-height: 0;
+  display: block;
+}
+
+.triage-complaint-card textarea {
+  margin-top: 12px;
+  width: 100%;
+  min-height: 104px;
+  border-radius: 12px;
+  border: 1px solid #e3e7ee;
+  background: #eff1f5;
+  font-size: 12px;
+  color: #111827;
+  resize: vertical;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.triage-complaint-card textarea:focus,
+.triage-complaint-card textarea:focus-visible {
+  border-color: #9db1d6;
+  background: #f3f6fb;
+  outline: none;
+}
+
+.triage-symptom-pills {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.triage-symptom-pill {
+  border: 1px solid #c9cfda;
+  border-radius: 12px;
+  background: #f4f6fa;
+  color: #0f141d;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.triage-symptom-pill.selected {
+  background: #020617;
+  border-color: #020617;
+  color: #ffffff;
+}
+
+.triage-pain-map-card {
+  margin: 10px;
+  margin-top: 10px;
+  background: #ffffff;
+  border: 1px solid #d8dde5;
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.triage-pain-map-card h4 {
+  margin: 0;
+  color: #0f141d;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.triage-ros-card {
+  margin: 10px;
+  margin-top: 10px;
+  background: #ffffff;
+  border: 1px solid #d8dde5;
+  border-radius: 16px;
+  padding: 14px 14px 12px;
+}
+
+.triage-ros-card h4 {
+  margin: 0;
+  color: #0f141d;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.triage-ros-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+}
+
+.triage-ros-group-title {
+  border-radius: 8px;
+  background: #f2f4f8;
+  color: #25334a;
+  font-size: 12px;
+  line-height: 1;
+  padding: 8px 10px;
+  font-weight: 600;
+}
+
+.triage-ros-items {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.triage-ros-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #1e2f4a;
+  font-size: 12px;
+  line-height: 1.1;
+  font-weight: 600;
+}
+
+.triage-ros-item input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid #cfd5df;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #f2f4f7;
+  cursor: pointer;
+  margin: 0;
+  position: relative;
+}
+
+.triage-ros-item input[type='checkbox']:checked {
+  background: #0b1020;
+  border-color: #0b1020;
+}
+
+.triage-ros-item input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 4px;
+  height: 9px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.triage-bottom-actions {
+  margin: 0 10px;
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.triage-workspace-footer {
+  flex-shrink: 0;
+  background: #f4f5f7;
+  border-top: 1px solid #e0e5ee;
+  padding-top: 8px;
+  padding-bottom: 2px;
+  margin-bottom: 2px;
+}
+
+.triage-workspace-footer.active {
+  margin-bottom: 8px;
+}
+
+.triage-transfer-btn,
+.triage-close-btn {
+  border: none;
+  border-radius: 12px;
+  min-height: 42px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.triage-transfer-btn {
+  background: #2460ea;
+}
+
+.triage-close-btn {
+  background: #b8bdc7;
+}
+
+.triage-close-btn.inactive {
+  background: #b8bdc7;
+}
+
+.triage-close-btn.active {
+  background: #ea4a53;
+  color: #ffffff;
+}
+
+.triage-close-btn:disabled {
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
+.triage-close-tag {
+  margin-left: 8px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #3a4a66;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.triage-close-x {
+  font-size: 17px;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.triage-close-help {
+  text-align: center;
+  margin: 8px 10px 12px;
+  color: #677385;
+  font-size: 12px;
+}
+
+.triage-empty-note {
+  border: 1px dashed #cad2de;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #6c788a;
+  padding: 14px;
+  margin: 14px;
+}
+
+@media (max-width: 1400px) {
+  .triage-grid {
+    grid-template-columns: 268px 304px minmax(0, 1fr);
+  }
+
+  .triage-col-header h3 {
+    font-size: 16px;
+  }
+
+  .triage-title-wrap h2 {
+    font-size: 24px;
+  }
+
+  .triage-title-wrap p,
+  .triage-ticket-code,
+  .triage-ticket-name,
+  .triage-channel-chip,
+  .triage-ticket-time,
+  .triage-status-badge,
+  .triage-name-badge-row h2,
+  .triage-chat-badge,
+  .triage-status-select,
+  .triage-vitals-card h4,
+  .triage-complaint-card h4,
+  .triage-vitals-grid label,
+  .triage-vitals-grid div > div,
+  .triage-complaint-card textarea {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 980px) {
+  .triage-dashboard {
+    height: auto;
+    overflow: visible;
+  }
+
+  .triage-shell {
+    height: auto;
+  }
+
+  .triage-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+
+  .triage-queue-col,
+  .triage-snapshot-col,
+  .triage-workspace-col {
+    border-right: none;
+    border-bottom: 1px solid #d9dde4;
+  }
+
+  .triage-workspace-head {
+    flex-direction: column;
+  }
+
+  .triage-workspace-head-main {
+    width: 100%;
+  }
+
+  .triage-mark-actions {
+    flex: 0 0 auto;
+    min-width: 0;
+    width: 100%;
+    padding-left: 0;
+    border-left: none;
+  }
+
+  .triage-status-menu,
+  .triage-status-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .triage-vitals-grid,
+  .triage-bottom-actions {
+    grid-template-columns: 1fr;
+  }
+}
 .tickets-list h2,
 .processing-tickets h2 {
   color: #0b5388;

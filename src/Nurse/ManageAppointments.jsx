@@ -34,6 +34,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useAuth } from '../contexts/AuthContext';
 
 const USE_API = true;
+const TRIAGE_DRAFTS_STORAGE_KEY = 'nurse.triageDraftsByTicket';
 
 export default function ManageAppointment() {
   const [showConsultationHistory, setShowConsultationHistory] = useState(false);
@@ -71,6 +72,16 @@ export default function ManageAppointment() {
         ); */
 
         setTickets((prevTickets) => {
+          let triageDraftsByTicketId = {};
+          try {
+            const rawDrafts = localStorage.getItem(TRIAGE_DRAFTS_STORAGE_KEY);
+            const parsedDrafts = rawDrafts ? JSON.parse(rawDrafts) : {};
+            triageDraftsByTicketId =
+              parsedDrafts && typeof parsedDrafts === 'object' ? parsedDrafts : {};
+          } catch {
+            triageDraftsByTicketId = {};
+          }
+
           const apiTickets = data || [];
           const apiTicketIds = new Set(apiTickets.map((t) => t.id));
 
@@ -80,9 +91,12 @@ export default function ManageAppointment() {
 
           const mergedApiTickets = apiTickets.map((apiTicket) => {
             const localTicket = prevTickets.find((t) => t.id === apiTicket.id);
+            const localDraft = triageDraftsByTicketId[Number(apiTicket.id)] || {};
+            const draftStatus = localDraft.status || localDraft.triageStatus || null;
 
             return {
               ...apiTicket,
+              status: draftStatus || apiTicket.status || localTicket?.status,
               claimedBy: apiTicket.claimedBy || localTicket?.claimedBy || null,
             };
           });

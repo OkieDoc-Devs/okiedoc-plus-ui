@@ -2,11 +2,13 @@ import '../App.css';
 import './NurseStyles.css';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import Avatar from '../components/Avatar';
 import {
   getNurseFirstName,
   getNurseProfileImage,
 } from './services/storageService.js';
 import { useNotification } from '../contexts/NotificationContext';
+import NotificationBell from '../components/Notifications/NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Notifications() {
@@ -35,26 +37,33 @@ export default function Notifications() {
       <div className='dashboard-header'>
         <img src='/okie-doc-logo.png' alt='Okie-Doc+' className='logo-image' />
         <h2 className='dashboard-title'>Notifications</h2>
-        <div className='user-account'>
-          <img
-            src={getNurseProfileImage()}
-            alt='Account'
-            className='account-icon'
-          />
-          <span className='account-name'>{getNurseFirstName()}</span>
-          <div className='account-dropdown'>
-            <button
-              className='dropdown-item'
-              onClick={() => navigate('/nurse-myaccount')}
-            >
-              My Account
-            </button>
-            <button
-              className='dropdown-item logout-item'
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
+        <div className='nurse-header-actions'>
+          <NotificationBell />
+          <div className='user-account'>
+            <Avatar
+              profileImageUrl={getNurseProfileImage() !== '/account.svg' ? getNurseProfileImage() : null}
+              firstName={getNurseFirstName()}
+              lastName={localStorage.getItem('nurse.lastName') || ''}
+              userType='nurse'
+              size={40}
+              alt='Account'
+              className='account-icon'
+            />
+            <span className='account-name'>{getNurseFirstName()}</span>
+            <div className='account-dropdown'>
+              <button
+                className='dropdown-item'
+                onClick={() => navigate('/nurse-myaccount')}
+              >
+                My Account
+              </button>
+              <button
+                className='dropdown-item logout-item'
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
 
@@ -76,9 +85,6 @@ export default function Notifications() {
             onClick={() => navigate('/nurse-messages')}
           >
             Messages
-          </button>
-          <button className='nav-tab active'>
-            Notifications ({unreadCount})
           </button>
         </div>
         <div className='notification-summary'>

@@ -170,6 +170,12 @@ const SpecialistDashboard = () => {
     patient: null,
   });
 
+  const [callState, setCallState] = useState({
+    isOpen: false,
+    callType: 'audio',
+    patient: null,
+  });
+
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [selectedPatientDetailed, setSelectedPatientDetailed] = useState(null);
   const [encounter, setEncounter] = useState(createDefaultEncounter());
@@ -2872,6 +2878,7 @@ const SpecialistDashboard = () => {
             </button>
           </div>
         </div>
+        <div className='dashboard-nav'>
         <div className='dashboard-nav'>
           <button
             className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}

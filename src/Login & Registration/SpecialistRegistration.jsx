@@ -871,6 +871,8 @@ export default function SpecialistRegistration() {
               </a>
             </p>
           </form>
+            </>
+          )}
         </div>
       </div>
     </>

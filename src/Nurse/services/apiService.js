@@ -207,6 +207,29 @@ export async function fetchDoctorsFromAPI() {
 }
 
 /**
+ * Fetch nurse users from API
+ * @returns {Promise<Array>} Array of nurse users
+ * @throws {Error} If API request fails
+ */
+export async function fetchNursesFromAPI() {
+  try {
+    const data = await apiRequest('/api/v1/chat/users');
+    const users = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.users)
+        ? data.users
+        : Array.isArray(data?.data)
+          ? data.data
+          : [];
+
+    return users.filter((user) => String(user?.role || '').toLowerCase() === 'nurse');
+  } catch (error) {
+    console.error('Error fetching nurses from API:', error);
+    throw error;
+  }
+}
+
+/**
  * Create a new ticket via API
  * @param {Object} ticketData - Ticket data to create
  * @returns {Promise<Object>} Created ticket data

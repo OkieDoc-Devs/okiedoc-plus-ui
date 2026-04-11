@@ -3,8 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Stethoscope } from 'lucide-react';
 import './RegistrationOptions.css';
 
-const RegistrationHeader = ({ backLabel = 'Back to Home', backPath = '/' }) => {
+const RegistrationHeader = ({ backLabel = 'Back to Home', backPath = '/', onBackClick }) => {
   const navigate = useNavigate();
+
+  const handleBack = () => {
+    if (onBackClick) {
+      onBackClick();
+      return;
+    }
+    navigate(backPath);
+  };
 
   return (
     <header className="options-header">
@@ -14,7 +22,7 @@ const RegistrationHeader = ({ backLabel = 'Back to Home', backPath = '/' }) => {
         </div>
         <span className="header-brand-text">OkieDoc+</span>
       </div>
-      <button className="back-to-home" onClick={() => navigate(backPath)}>
+      <button className="back-to-home" onClick={handleBack}>
         <ArrowLeft size={16} />
         {backLabel}
       </button>

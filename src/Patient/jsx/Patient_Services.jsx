@@ -14,6 +14,10 @@ import "../css/Patient_Services.css";
 export default function Patient_Services({ setActive }) {
   const handleDIY = (item) => alert(`DIY: ${item}`);
 
+  const handleConsultationSelect = (type) => {
+    window.location.hash = `#/IntakeForm/${encodeURIComponent(type)}`;
+  };
+
   // Generates a random simulated database ID (e.g., BOK-49281)
   const generateSimulatedId = () =>
     `BOK-${Math.floor(10000 + Math.random() * 90000)}`;
@@ -134,7 +138,7 @@ export default function Patient_Services({ setActive }) {
             <p className="svc-price-desc">One-time payment</p>
             <button
               className="svc-btn bg-cyan text-white"
-              onClick={() => handleDIY("Chat")}
+              onClick={() => handleConsultationSelect("Chat Consultation")}
             >
               Select Service <IconArrowRight size={16} />
             </button>
@@ -162,7 +166,7 @@ export default function Patient_Services({ setActive }) {
             <p className="svc-price-desc">One-time payment</p>
             <button
               className="svc-btn bg-teal text-white"
-              onClick={() => handleDIY("Voice")}
+              onClick={() => handleConsultationSelect("Voice Consultation")}
             >
               Select Service <IconArrowRight size={16} />
             </button>
@@ -190,7 +194,7 @@ export default function Patient_Services({ setActive }) {
             <p className="svc-price-desc">One-time payment</p>
             <button
               className="svc-btn bg-cyan text-white"
-              onClick={() => handleDIY("Video")}
+              onClick={() => handleConsultationSelect("Video Consultation")}
             >
               Select Service <IconArrowRight size={16} />
             </button>

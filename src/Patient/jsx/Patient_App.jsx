@@ -14,6 +14,7 @@ import "../css/Patient_App.css";
 import Dashboard_Patient from "./Patient_Dashboard";
 import Services_Patient from "./Patient_Services";
 import Appointments_Patient from "./Patient_Appointments";
+import ConsultationIntakeForm from "./ConsultationIntakeForm";
 // import { MedicalRecords } from "./MedicalRecords";
 // import { Profile } from "./Profile";
 // import { BookSpecialist } from "./sub-page/BookSpecialist";
@@ -57,10 +58,13 @@ function Patient_App() {
   // Example: "#/BookSpecialist/BOK-1234" becomes -> mainRoute: "BookSpecialist", idParam: "BOK-1234"
   const pathParts = currentHash.replace("#/", "").split("/");
   const mainRoute = pathParts[0] || "Dashboard";
+  const typeParam = pathParts[1];
 
   // For the active highlight in the sidebar (we don't want "Services" highlighted if booking is open)
   const isBookingOpen =
-    mainRoute === "BookSpecialist" || mainRoute === "BookPhysical";
+    mainRoute === "BookSpecialist" ||
+    mainRoute === "BookPhysical" ||
+    mainRoute === "IntakeForm";
   const sidebarActiveTab = isBookingOpen ? null : mainRoute;
 
   const handleNotificationClick = () =>
@@ -136,11 +140,18 @@ function Patient_App() {
             {mainRoute === "Services" && (
               <Services_Patient setActive={navigate} />
             )}
+            {mainRoute === "IntakeForm" && (
+              <ConsultationIntakeForm
+                setActive={navigate}
+                type={decodeURIComponent(typeParam || "Consultation")}
+              />
+            )}
 
             {/* Custom 404 / Work In Progress State */}
             {mainRoute !== "Dashboard" &&
               mainRoute !== "Services" &&
-              mainRoute !== "Appointments" && (
+              mainRoute !== "Appointments" &&
+              mainRoute !== "IntakeForm" && (
                 <div className="not-found-container">
                   {ActiveIcon && (
                     <ActiveIcon size={64} className="not-found-icon" />

@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaUpload, FaTimes } from 'react-icons/fa';
-import './SpecialistDashboard.css';
-import authService from './authService';
-import * as specialistApi from './services/apiService';
-import { API_BASE_URL } from '../api/apiClient';
-import SpecialistCall from './SpecialistCall';
-import Messages from './Messages';
-import ImageCropperModal from '../components/ImageCropperModal';
-import ICDCodeSelector from './components/ICDCodeSelector';
-import Avatar from '../components/Avatar';
-import { usePSGC } from '../hooks/usePSGC';
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { FaUpload, FaTimes } from "react-icons/fa";
+import "./SpecialistDashboard.css";
+import authService from "./authService";
+import * as specialistApi from "./services/apiService";
+import { API_BASE_URL } from "../api/apiClient";
+import SpecialistCall from "./SpecialistCall";
+import Messages from "./Messages";
+import ImageCropperModal from "../components/ImageCropperModal";
+import ICDCodeSelector from "./components/ICDCodeSelector";
+import Avatar from "../components/Avatar";
+import { usePSGC } from "../hooks/usePSGC";
 import {
   formatDateLabel,
   getDaysInMonth,
@@ -77,7 +77,7 @@ import {
   validateAccountDetails,
   validateScheduleData,
   validateMedicalHistoryRequest,
-} from './utils';
+} from "./utils";
 
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
@@ -90,28 +90,28 @@ const SpecialistDashboard = () => {
     fetchCities,
     fetchBarangays,
   } = usePSGC();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [currentUser, setCurrentUser] = useState(null);
-  const [userInitials, setUserInitials] = useState('DR');
+  const [userInitials, setUserInitials] = useState("DR");
 
   const [profileData, setProfileData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '+63 ',
-    prcNumber: '',
-    specialization: '',
-    subSpecialization: '',
-    bio: 'Board-certified specialist with years of experience.',
-    prcImage: '',
-    profileImage: '',
-    addressLine1: '',
-    addressLine2: '',
-    region: '',
-    province: '',
-    city: '',
-    barangay: '',
-    zipCode: '',
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "+63 ",
+    prcNumber: "",
+    specialization: "",
+    subSpecialization: "",
+    bio: "Board-certified specialist with years of experience.",
+    prcImage: "",
+    profileImage: "",
+    addressLine1: "",
+    addressLine2: "",
+    region: "",
+    province: "",
+    city: "",
+    barangay: "",
+    zipCode: "",
   });
 
   const [services, setServices] = useState({
@@ -122,11 +122,11 @@ const SpecialistDashboard = () => {
   });
 
   const [accountDetails, setAccountDetails] = useState({
-    accountType: 'bank',
-    accountName: 'John Doe',
-    accountNumber: 'XXXX-XXXX-XXXX-1234',
-    gcashNumber: '+63 ',
-    gcashQr: '',
+    accountType: "bank",
+    accountName: "John Doe",
+    accountNumber: "XXXX-XXXX-XXXX-1234",
+    gcashNumber: "+63 ",
+    gcashQr: "",
   });
 
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -135,28 +135,28 @@ const SpecialistDashboard = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleData, setScheduleData] = useState({
-    time: '',
-    duration: '30',
-    notes: '',
+    time: "",
+    duration: "30",
+    notes: "",
   });
 
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
-  const [ticketFilter, setTicketFilter] = useState('All');
+  const [ticketFilter, setTicketFilter] = useState("All");
 
-  const [quickMessage, setQuickMessage] = useState('');
+  const [quickMessage, setQuickMessage] = useState("");
   const [quickMessages, setQuickMessages] = useState([]);
 
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
-  const [editingService, setEditingService] = useState({ name: '', fee: 0 });
+  const [editingService, setEditingService] = useState({ name: "", fee: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceForm, setInvoiceForm] = useState({
-    consultationType: 'initial',
+    consultationType: "initial",
     includesCertificate: false,
     isDiscounted: false,
   });
@@ -166,13 +166,7 @@ const SpecialistDashboard = () => {
 
   const [callState, setCallState] = useState({
     isOpen: false,
-    callType: 'audio',
-    patient: null,
-  });
-
-  const [callState, setCallState] = useState({
-    isOpen: false,
-    callType: 'audio',
+    callType: "audio",
     patient: null,
   });
 
@@ -186,7 +180,7 @@ const SpecialistDashboard = () => {
 
   const [mhRequests, setMhRequests] = useState([]);
 
-  const [centerTab, setCenterTab] = useState('medicine');
+  const [centerTab, setCenterTab] = useState("medicine");
 
   const [dashboardStats, setDashboardStats] = useState({
     totalPatients: 0,
@@ -196,15 +190,15 @@ const SpecialistDashboard = () => {
   });
 
   const loadTicketsData = useCallback(async () => {
-    console.log('[SpecialistDashboard] Loading tickets from API...');
+    console.log("[SpecialistDashboard] Loading tickets from API...");
     try {
       const [activeResponse, availableResponse] = await Promise.all([
         specialistApi.fetchMyActiveTickets().catch((e) => {
-          console.error('Error fetching active tickets:', e);
+          console.error("Error fetching active tickets:", e);
           return { success: false, activeTickets: [] };
         }),
         specialistApi.fetchAvailableTickets().catch((e) => {
-          console.error('Error fetching available tickets:', e);
+          console.error("Error fetching available tickets:", e);
           return { success: false, data: [] };
         }),
       ]);
@@ -212,11 +206,11 @@ const SpecialistDashboard = () => {
       let allMappedTickets = [];
 
       const formatPatientName = (p) => {
-        if (!p) return 'Unknown';
-        const fName = p.firstName || '';
-        const lName = p.lastName || '';
-        if (!fName && !lName) return p.patientName || 'Unknown';
-        const lastInitial = lName ? ` ${lName.charAt(0)}.` : '';
+        if (!p) return "Unknown";
+        const fName = p.firstName || "";
+        const lName = p.lastName || "";
+        if (!fName && !lName) return p.patientName || "Unknown";
+        const lastInitial = lName ? ` ${lName.charAt(0)}.` : "";
         return `${fName}${lastInitial}`;
       };
 
@@ -227,9 +221,9 @@ const SpecialistDashboard = () => {
         const mappedActive = activeResponse.activeTickets.map((t) => ({
           id: t.id,
           patient: formatPatientName(t.rawTicket?.patient || t),
-          patientFullName: t.patientName || 'Unknown',
-          service: t.chiefComplaint || 'Consultation',
-          symptoms: t.symptoms || '',
+          patientFullName: t.patientName || "Unknown",
+          service: t.chiefComplaint || "Consultation",
+          symptoms: t.symptoms || "",
           preferredDate: t.preferredDate,
           preferredTime: t.preferredTime,
           consultationChannel: t.consultationChannel,
@@ -238,24 +232,24 @@ const SpecialistDashboard = () => {
             t.preferredDate && t.preferredTime
               ? `${new Date(t.preferredDate).toLocaleDateString()} ${t.preferredTime}`
               : t.createdAt
-                ? new Date(t.createdAt).toLocaleString('en-US', {
-                    month: 'numeric',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
+                ? new Date(t.createdAt).toLocaleString("en-US", {
+                    month: "numeric",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
                     hour12: true,
                   })
-                : 'TBD',
+                : "TBD",
           status:
-            t.status === 'confirmed'
-              ? 'Awaiting'
-              : t.status === 'active'
-                ? 'In Consultation'
-                : t.status === 'completed'
-                  ? 'Completed'
-                  : t.status === 'processing'
-                    ? 'Triage Complete'
+            t.status === "confirmed"
+              ? "Awaiting"
+              : t.status === "active"
+                ? "In Consultation"
+                : t.status === "completed"
+                  ? "Completed"
+                  : t.status === "processing"
+                    ? "Triage Complete"
                     : t.status,
           rawTicket: t.rawTicket || t,
         }));
@@ -270,10 +264,10 @@ const SpecialistDashboard = () => {
           id: t.id,
           patient: formatPatientName(t.patient),
           patientFullName: t.patient
-            ? `${t.patient.firstName || ''} ${t.patient.lastName || ''}`.trim()
-            : 'Unknown',
-          service: t.chiefComplaint || 'Consultation',
-          symptoms: t.symptoms || '',
+            ? `${t.patient.firstName || ""} ${t.patient.lastName || ""}`.trim()
+            : "Unknown",
+          service: t.chiefComplaint || "Consultation",
+          symptoms: t.symptoms || "",
           preferredDate: t.preferredDate,
           preferredTime: t.preferredTime,
           consultationChannel: t.consultationChannel,
@@ -282,16 +276,16 @@ const SpecialistDashboard = () => {
             t.preferredDate && t.preferredTime
               ? `${new Date(t.preferredDate).toLocaleDateString()} ${t.preferredTime}`
               : t.createdAt
-                ? new Date(t.createdAt).toLocaleString('en-US', {
-                    month: 'numeric',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
+                ? new Date(t.createdAt).toLocaleString("en-US", {
+                    month: "numeric",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
                     hour12: true,
                   })
-                : 'TBD',
-          status: 'Available',
+                : "TBD",
+          status: "Available",
           rawTicket: t,
         }));
         allMappedTickets = [...allMappedTickets, ...mappedAvailable];
@@ -308,16 +302,16 @@ const SpecialistDashboard = () => {
         return;
       } else {
         console.warn(
-          '[SpecialistDashboard] API response missing activeTickets array:',
+          "[SpecialistDashboard] API response missing activeTickets array:",
           activeResponse,
         );
       }
     } catch (error) {
       console.error(
-        '[SpecialistDashboard] Failed to fetch tickets from API:',
+        "[SpecialistDashboard] Failed to fetch tickets from API:",
         error,
       );
-      setApiError('Could not connect to server. Using offline data.');
+      setApiError("Could not connect to server. Using offline data.");
     }
 
     const savedTickets = loadTickets();
@@ -332,25 +326,25 @@ const SpecialistDashboard = () => {
 
       const defaultTickets = [
         {
-          id: 'TKT-001',
-          patient: 'John Doe',
-          service: 'Consultation',
-          when: formatDateLabel(plusDays(0), '10:30 AM'),
-          status: 'Confirmed',
+          id: "TKT-001",
+          patient: "John Doe",
+          service: "Consultation",
+          when: formatDateLabel(plusDays(0), "10:30 AM"),
+          status: "Confirmed",
         },
         {
-          id: 'TKT-002',
-          patient: 'Jane Smith',
-          service: 'Medical Certificate',
-          when: formatDateLabel(plusDays(1), '2:15 PM'),
-          status: 'Pending',
+          id: "TKT-002",
+          patient: "Jane Smith",
+          service: "Medical Certificate",
+          when: formatDateLabel(plusDays(1), "2:15 PM"),
+          status: "Pending",
         },
         {
-          id: 'TKT-003',
-          patient: 'Robert Johnson',
-          service: 'Medical Clearance',
-          when: formatDateLabel(plusDays(2), '9:00 AM'),
-          status: 'Confirmed',
+          id: "TKT-003",
+          patient: "Robert Johnson",
+          service: "Medical Clearance",
+          when: formatDateLabel(plusDays(2), "9:00 AM"),
+          status: "Confirmed",
         },
       ];
 
@@ -364,7 +358,9 @@ const SpecialistDashboard = () => {
   // Expose refresh function to chat messages
   useEffect(() => {
     window.refreshSpecialistDashboard = () => {
-      console.log("[SpecialistDashboard] Refreshing data from window callback...");
+      console.log(
+        "[SpecialistDashboard] Refreshing data from window callback...",
+      );
       loadTicketsData();
     };
     return () => {
@@ -375,7 +371,7 @@ const SpecialistDashboard = () => {
   const loadDashboardData = useCallback(async () => {
     try {
       const response = await specialistApi.fetchDashboard();
-      console.log('[SpecialistDashboard] Dashboard response:', response);
+      console.log("[SpecialistDashboard] Dashboard response:", response);
       if (response.success) {
         setDashboardStats((prev) => response.stats || prev);
         if (response.specialist) {
@@ -420,7 +416,7 @@ const SpecialistDashboard = () => {
       try {
         const profileResponse = await specialistApi.fetchProfile();
         console.log(
-          '[SpecialistDashboard] Profile fetch success:',
+          "[SpecialistDashboard] Profile fetch success:",
           profileResponse,
         );
 
@@ -460,28 +456,28 @@ const SpecialistDashboard = () => {
           setServices(fees);
         }
       } catch (profileError) {
-        console.warn('Failed to fetch profile from API:', profileError);
+        console.warn("Failed to fetch profile from API:", profileError);
       }
     } catch (error) {
-      console.warn('Failed to fetch dashboard from API:', error);
+      console.warn("Failed to fetch dashboard from API:", error);
     }
   }, []);
 
   useEffect(() => {
-    document.body.classList.add('specialist-dashboard-body');
+    document.body.classList.add("specialist-dashboard-body");
 
     const currentUser = authService.getCurrentUser();
 
-    if (!currentUser || currentUser.userType !== 'specialist') {
-      navigate('/specialist-login');
+    if (!currentUser || currentUser.userType !== "specialist") {
+      navigate("/specialist-login");
       return;
     }
 
-    if (currentUser.user.applicationStatus === 'pending') {
-      navigate('/specialist-pending');
+    if (currentUser.user.applicationStatus === "pending") {
+      navigate("/specialist-pending");
       return;
-    } else if (currentUser.user.applicationStatus === 'denied') {
-      navigate('/specialist-denied');
+    } else if (currentUser.user.applicationStatus === "denied") {
+      navigate("/specialist-denied");
       return;
     }
 
@@ -497,24 +493,24 @@ const SpecialistDashboard = () => {
     const profile = loadProfileData(currentUser.user.email);
     setProfileData((prev) => ({
       ...prev,
-      firstName: currentUser.user.firstName || currentUser.user.fName || '',
-      lastName: currentUser.user.lastName || currentUser.user.lName || '',
+      firstName: currentUser.user.firstName || currentUser.user.fName || "",
+      lastName: currentUser.user.lastName || currentUser.user.lName || "",
       email: currentUser.user.email,
-      phone: profile.phone || currentUser.user.phone || '+63 ',
-      prcNumber: profile.prcNumber || currentUser.user.licenseNumber || '',
+      phone: profile.phone || currentUser.user.phone || "+63 ",
+      prcNumber: profile.prcNumber || currentUser.user.licenseNumber || "",
       specialization:
-        profile.specialization || currentUser.user.specialty || '',
-      subSpecialization: profile.subSpecialization || '',
-      bio: profile.bio || '',
-      prcImage: profile.prcImage || '',
-      profileImage: profile.profileImage || '',
-      addressLine1: profile.addressLine1 || '',
-      addressLine2: profile.addressLine2 || '',
-      barangay: profile.barangay || '',
-      city: profile.city || '',
-      province: profile.province || '',
-      region: profile.region || '',
-      zipCode: profile.zipCode || '',
+        profile.specialization || currentUser.user.specialty || "",
+      subSpecialization: profile.subSpecialization || "",
+      bio: profile.bio || "",
+      prcImage: profile.prcImage || "",
+      profileImage: profile.profileImage || "",
+      addressLine1: profile.addressLine1 || "",
+      addressLine2: profile.addressLine2 || "",
+      barangay: profile.barangay || "",
+      city: profile.city || "",
+      province: profile.province || "",
+      region: profile.region || "",
+      zipCode: profile.zipCode || "",
     }));
 
     const savedAccount = loadAccountData(currentUser.user.email);
@@ -527,13 +523,15 @@ const SpecialistDashboard = () => {
     loadDashboardData();
 
     return () => {
-      document.body.classList.remove('specialist-dashboard-body');
+      document.body.classList.remove("specialist-dashboard-body");
     };
   }, [navigate, loadTicketsData, loadDashboardData]);
 
   useEffect(() => {
     if (tickets.length > 0) {
-      const hasSelectedTicket = selectedTicketId && tickets.some((t) => String(t.id) === String(selectedTicketId));
+      const hasSelectedTicket =
+        selectedTicketId &&
+        tickets.some((t) => String(t.id) === String(selectedTicketId));
       if (!hasSelectedTicket) {
         setSelectedTicketId(tickets[0].id);
       }
@@ -541,9 +539,9 @@ const SpecialistDashboard = () => {
   }, [tickets, selectedTicketId]);
 
   useEffect(() => {
-    if (activeTab === 'dashboard') {
+    if (activeTab === "dashboard") {
       console.log(
-        '[SpecialistDashboard] Dashboard tab active, reloading tickets...',
+        "[SpecialistDashboard] Dashboard tab active, reloading tickets...",
       );
       loadTicketsData();
     }
@@ -566,19 +564,24 @@ const SpecialistDashboard = () => {
           .getPatientProfile(currentTicket.rawTicket.patient.id)
           .then((profile) => {
             console.log(
-              '[SpecialistDashboard] Fetched detailed patient profile:',
+              "[SpecialistDashboard] Fetched detailed patient profile:",
               profile,
             );
             setSelectedPatientDetailed(profile);
             // Check if profile actually contains clinical data
-            const hasClinicalData = profile.activeDiseases || profile.medicalHistory || profile.allergies;
+            const hasClinicalData =
+              profile.activeDiseases ||
+              profile.medicalHistory ||
+              profile.allergies;
             if (!hasClinicalData) {
-              console.log('[SpecialistDashboard] Profile received but no clinical data (likely not shared yet)');
+              console.log(
+                "[SpecialistDashboard] Profile received but no clinical data (likely not shared yet)",
+              );
             }
           })
           .catch((err) => {
             console.warn(
-              '[SpecialistDashboard] No access to detailed patient profile yet:',
+              "[SpecialistDashboard] No access to detailed patient profile yet:",
               err,
             );
             setSelectedPatientDetailed(null);
@@ -593,33 +596,35 @@ const SpecialistDashboard = () => {
     if (!selectedTicketId) return;
     try {
       // Check if we already have the profile in memory or need to fetch it
-      const currentTicket = tickets.find(t => t.id === selectedTicketId);
-      
+      const currentTicket = tickets.find((t) => t.id === selectedTicketId);
+
       // Send the request directly via API
       await specialistApi.requestMedicalHistory(selectedTicketId);
-      
-      alert(`Medical history request sent to ${currentTicket?.patientName || 'patient'}'s chat.`);
+
+      alert(
+        `Medical history request sent to ${currentTicket?.patientName || "patient"}'s chat.`,
+      );
     } catch (error) {
-      console.error('Error requesting medical history:', error);
-      alert(error.message || 'Failed to request medical history');
+      console.error("Error requesting medical history:", error);
+      alert(error.message || "Failed to request medical history");
     }
   };
 
   const handleNavigation = (target, title) => {
     setActiveTab(target);
-    if (target === 'dashboard') {
+    if (target === "dashboard") {
       loadTicketsData();
     }
   };
 
   const handleLogout = async () => {
-    if (window.confirm('Are you sure you want to logout?')) {
+    if (window.confirm("Are you sure you want to logout?")) {
       try {
         await authService.logout();
-        navigate('/');
+        navigate("/");
       } catch (error) {
-        console.error('Logout error:', error);
-        window.location.href = '/';
+        console.error("Logout error:", error);
+        window.location.href = "/";
       }
     }
   };
@@ -627,7 +632,7 @@ const SpecialistDashboard = () => {
   const handleCloseCall = () => {
     setCallState({
       isOpen: false,
-      callType: 'audio',
+      callType: "audio",
       patient: null,
     });
   };
@@ -637,20 +642,20 @@ const SpecialistDashboard = () => {
   };
 
   const saveProfile = async () => {
-    console.log('saveProfile triggered. Email check:');
+    console.log("saveProfile triggered. Email check:");
     const email = profileData.email;
-    console.log('Current Email:', email);
+    console.log("Current Email:", email);
     if (!email) {
-      console.warn('saveProfile aborted: No email found in profileData!');
-      setApiError('Session missing. Please refresh the page.');
+      console.warn("saveProfile aborted: No email found in profileData!");
+      setApiError("Session missing. Please refresh the page.");
       return;
     }
 
-    console.log('Running validations on:', profileData);
+    console.log("Running validations on:", profileData);
     const validation = validateSpecialistProfile(profileData);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
-      console.warn('Validation failed:', firstError);
+      console.warn("Validation failed:", firstError);
       setApiError(firstError);
       return;
     }
@@ -675,7 +680,7 @@ const SpecialistDashboard = () => {
       authService.updateCurrentUser(updatedProfile);
       setApiError(null);
 
-      const user = JSON.parse(localStorage.getItem(email) || '{}');
+      const user = JSON.parse(localStorage.getItem(email) || "{}");
       user.fName = profileData.firstName || user.fName;
       user.lName = profileData.lastName || user.lName;
       localStorage.setItem(email, JSON.stringify(user));
@@ -704,9 +709,9 @@ const SpecialistDashboard = () => {
 
       setShowSuccessModal(true);
     } catch (error) {
-      console.warn('Failed to save profile to API:', error);
+      console.warn("Failed to save profile to API:", error);
       setApiError(
-        error.message || 'Could not save to server. Please try again.',
+        error.message || "Could not save to server. Please try again.",
       );
     }
   };
@@ -719,7 +724,7 @@ const SpecialistDashboard = () => {
   const updateServiceFee = async () => {
     const rawFee = parseFloat(editingService.fee);
     if (isNaN(rawFee) || rawFee < 0) {
-      alert('Please enter a valid positive number for the fee.');
+      alert("Please enter a valid positive number for the fee.");
       return;
     }
 
@@ -736,8 +741,8 @@ const SpecialistDashboard = () => {
 
       setShowSuccessModal(true);
     } catch (error) {
-      console.warn('Failed to update service fee via API:', error);
-      alert(error.message || 'Failed to save fees. Please try again.');
+      console.warn("Failed to update service fee via API:", error);
+      alert(error.message || "Failed to save fees. Please try again.");
     }
   };
 
@@ -752,12 +757,12 @@ const SpecialistDashboard = () => {
     try {
       await specialistApi.updatePaymentAccount(accountDetails);
     } catch (error) {
-      console.warn('Failed to update payment account via API:', error);
+      console.warn("Failed to update payment account via API:", error);
     }
 
     const email = getCurrentUserEmail();
     saveAccountData(email, accountDetails);
-    alert('Account details saved.');
+    alert("Account details saved.");
   };
 
   const viewTicket = async (ticketId) => {
@@ -767,14 +772,14 @@ const SpecialistDashboard = () => {
         const mapped = {
           id: ticket.id,
           patient: ticket.patient
-            ? `${ticket.patient.firstName || ''} ${ticket.patient.lastName ? ticket.patient.lastName.charAt(0) + '.' : ''}`
-            : 'Unknown',
+            ? `${ticket.patient.firstName || ""} ${ticket.patient.lastName ? ticket.patient.lastName.charAt(0) + "." : ""}`
+            : "Unknown",
           patientFullName: ticket.patient
-            ? `${ticket.patient.firstName || ''} ${ticket.patient.lastName || ''}`.trim()
-            : 'Unknown',
-          service: ticket.chiefComplaint || 'Consultation',
+            ? `${ticket.patient.firstName || ""} ${ticket.patient.lastName || ""}`.trim()
+            : "Unknown",
+          service: ticket.chiefComplaint || "Consultation",
           chiefComplaint: ticket.chiefComplaint,
-          symptoms: ticket.symptoms || '',
+          symptoms: ticket.symptoms || "",
           preferredDate: ticket.preferredDate,
           preferredTime: ticket.preferredTime,
           consultationChannel: ticket.consultationChannel,
@@ -783,24 +788,24 @@ const SpecialistDashboard = () => {
             ticket.preferredDate && ticket.preferredTime
               ? `${new Date(ticket.preferredDate).toLocaleDateString()} ${ticket.preferredTime}`
               : ticket.createdAt
-                ? new Date(ticket.createdAt).toLocaleString('en-US', {
-                    month: 'numeric',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
+                ? new Date(ticket.createdAt).toLocaleString("en-US", {
+                    month: "numeric",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
                     hour12: true,
                   })
-                : 'TBD',
+                : "TBD",
           status:
-            ticket.status === 'confirmed'
-              ? 'Awaiting'
-              : ticket.status === 'active'
-                ? 'In Progress'
-                : ticket.status === 'completed'
-                  ? 'Completed'
-                  : ticket.status === 'processing'
-                    ? 'Triage Complete'
+            ticket.status === "confirmed"
+              ? "Awaiting"
+              : ticket.status === "active"
+                ? "In Progress"
+                : ticket.status === "completed"
+                  ? "Completed"
+                  : ticket.status === "processing"
+                    ? "Triage Complete"
                     : ticket.status,
           rawTicket: ticket,
         };
@@ -809,7 +814,7 @@ const SpecialistDashboard = () => {
         return;
       }
     } catch (error) {
-      console.warn('Failed to fetch ticket from API:', error);
+      console.warn("Failed to fetch ticket from API:", error);
     }
 
     const ticket = tickets.find((t) => t.id === ticketId);
@@ -828,7 +833,7 @@ const SpecialistDashboard = () => {
       });
       await loadTicketsData();
     } catch (error) {
-      console.warn('Failed to update ticket via API:', error);
+      console.warn("Failed to update ticket via API:", error);
     }
   };
 
@@ -837,11 +842,11 @@ const SpecialistDashboard = () => {
     try {
       setIsLoading(true);
       await specialistApi.startConsultation(selectedTicketId);
-      alert('Consultation started!');
+      alert("Consultation started!");
       await loadTicketsData();
     } catch (error) {
-      console.error('Failed to start consultation:', error);
-      alert(error.message || 'Failed to start consultation.');
+      console.error("Failed to start consultation:", error);
+      alert(error.message || "Failed to start consultation.");
     } finally {
       setIsLoading(false);
     }
@@ -859,13 +864,13 @@ const SpecialistDashboard = () => {
         plan: encounter.plan,
         icd10Code: encounter.icd10,
       });
-      alert('Consultation completed!');
+      alert("Consultation completed!");
       setSelectedTicketId(null);
       await loadTicketsData();
       await loadDashboardData();
     } catch (error) {
-      console.error('Failed to complete consultation:', error);
-      alert(error.message || 'Failed to complete consultation.');
+      console.error("Failed to complete consultation:", error);
+      alert(error.message || "Failed to complete consultation.");
     } finally {
       setIsLoading(false);
     }
@@ -880,14 +885,14 @@ const SpecialistDashboard = () => {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       text: trimmedMessage,
       timestamp: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
+        hour: "2-digit",
+        minute: "2-digit",
       }),
-      sender: 'you',
+      sender: "you",
     };
 
     setQuickMessages((prev) => [...prev, newMessage]);
-    setQuickMessage('');
+    setQuickMessage("");
 
     // TODO: wire up real message sending API call when available
     // await specialistApi.sendMessageToPatient(selectedTicketId, trimmedMessage);
@@ -898,15 +903,15 @@ const SpecialistDashboard = () => {
     setSelectedImageSrc(null);
     try {
       const formData = new FormData();
-      formData.append('photo', croppedFile);
+      formData.append("photo", croppedFile);
       const response = await specialistApi.uploadProfilePicture(formData);
 
       const newUrl = `${response.profileUrl}?t=${new Date().getTime()}`;
-      handleProfileChange('profileUrl', newUrl);
+      handleProfileChange("profileUrl", newUrl);
       setCurrentUser((prev) => ({ ...prev, profileUrl: newUrl }));
-      alert('Profile picture uploaded successfully!');
+      alert("Profile picture uploaded successfully!");
     } catch (error) {
-      alert(error.message || 'Failed to upload profile picture.');
+      alert(error.message || "Failed to upload profile picture.");
     }
   };
 
@@ -916,7 +921,7 @@ const SpecialistDashboard = () => {
   };
 
   React.useEffect(() => {
-    if (activeTab === 'profile' && profileData.region && regions.length > 0) {
+    if (activeTab === "profile" && profileData.region && regions.length > 0) {
       const region = regions.find((r) => r.name === profileData.region);
       if (region) fetchProvinces(region.code);
     }
@@ -924,7 +929,7 @@ const SpecialistDashboard = () => {
 
   React.useEffect(() => {
     if (
-      activeTab === 'profile' &&
+      activeTab === "profile" &&
       profileData.province &&
       provinces.length > 0
     ) {
@@ -934,7 +939,7 @@ const SpecialistDashboard = () => {
   }, [activeTab, profileData.province, provinces, fetchCities]);
 
   React.useEffect(() => {
-    if (activeTab === 'profile' && profileData.city && cities.length > 0) {
+    if (activeTab === "profile" && profileData.city && cities.length > 0) {
       const city = cities.find((c) => c.name === profileData.city);
       if (city) fetchBarangays(city.code);
     }
@@ -949,14 +954,14 @@ const SpecialistDashboard = () => {
       try {
         await specialistApi.updateEMR({
           ticketId: selectedTicketId,
-          subjective: next.subjective || '',
-          objective: next.objective || '',
-          assessment: next.assessment || '',
-          plan: next.plan || '',
-          icd10Code: next.icd10 || '',
+          subjective: next.subjective || "",
+          objective: next.objective || "",
+          assessment: next.assessment || "",
+          plan: next.plan || "",
+          icd10Code: next.icd10 || "",
         });
 
-        const assessment = next.assessment || '';
+        const assessment = next.assessment || "";
         const prescription = JSON.stringify(next.medicines || []);
         const laboratoryRequest = JSON.stringify(next.labRequests || []);
 
@@ -966,7 +971,7 @@ const SpecialistDashboard = () => {
           laboratoryRequest,
         });
       } catch (error) {
-        console.warn('Failed to save consultation data to API:', error);
+        console.warn("Failed to save consultation data to API:", error);
       }
     }
   };
@@ -981,14 +986,14 @@ const SpecialistDashboard = () => {
         includesCertificate: invoiceForm.includesCertificate,
         isDiscounted: invoiceForm.isDiscounted,
       });
-      alert('Invoice generated and ticket moved to For Payment!');
+      alert("Invoice generated and ticket moved to For Payment!");
       setShowInvoiceModal(false);
       setShowTicketModal(false);
       await loadTicketsData();
       await loadDashboardData();
     } catch (error) {
-      console.error('Failed to generate invoice:', error);
-      alert(error.message || 'Failed to generate invoice.');
+      console.error("Failed to generate invoice:", error);
+      alert(error.message || "Failed to generate invoice.");
     } finally {
       setIsLoading(false);
     }
@@ -1030,15 +1035,15 @@ const SpecialistDashboard = () => {
 
   const requestPatientRecords = () => {
     if (!selectedTicketId) {
-      alert('Please select a patient ticket first.');
+      alert("Please select a patient ticket first.");
       return;
     }
 
     try {
       const item = createMedicalHistoryRequest({
-        reason: 'Medical records requested by specialist',
-        from: '',
-        to: '',
+        reason: "Medical records requested by specialist",
+        from: "",
+        to: "",
         consent: true,
       });
       const list = mhRequests.concat([item]);
@@ -1055,7 +1060,7 @@ const SpecialistDashboard = () => {
 
   const addSchedule = async () => {
     if (!selectedDate) {
-      alert('Please select a date.');
+      alert("Please select a date.");
       return;
     }
 
@@ -1071,7 +1076,7 @@ const SpecialistDashboard = () => {
     const newSchedule = {
       time: scheduleData.time,
       duration: parseInt(scheduleData.duration),
-      notes: scheduleData.notes || 'Available for consultation',
+      notes: scheduleData.notes || "Available for consultation",
       id: Date.now(),
     };
 
@@ -1080,11 +1085,11 @@ const SpecialistDashboard = () => {
         date: dateKey,
         time: scheduleData.time,
         duration: parseInt(scheduleData.duration),
-        notes: scheduleData.notes || 'Available for consultation',
+        notes: scheduleData.notes || "Available for consultation",
         isAvailable: true,
       });
     } catch (error) {
-      console.warn('Failed to save schedule via API:', error);
+      console.warn("Failed to save schedule via API:", error);
     }
 
     const updatedSchedules = {
@@ -1097,14 +1102,14 @@ const SpecialistDashboard = () => {
 
     setShowScheduleModal(false);
     setSelectedDate(null);
-    setScheduleData({ time: '', duration: '30', notes: '' });
+    setScheduleData({ time: "", duration: "30", notes: "" });
   };
 
   const deleteSchedule = async (dateKey, scheduleId) => {
     try {
       await specialistApi.deleteSchedule(scheduleId);
     } catch (error) {
-      console.warn('Failed to delete schedule via API:', error);
+      console.warn("Failed to delete schedule via API:", error);
     }
 
     const email = getCurrentUserEmail();
@@ -1128,7 +1133,7 @@ const SpecialistDashboard = () => {
     const today = new Date();
 
     for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className='calendar-day empty'></div>);
+      days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -1136,7 +1141,7 @@ const SpecialistDashboard = () => {
       const hasSchedule = schedules[dateKey] && schedules[dateKey].length > 0;
 
       const dayTickets = tickets.filter((ticket) => {
-        if (ticket.status !== 'Confirmed') return false;
+        if (ticket.status !== "Confirmed") return false;
 
         const parsedDate = parseTicketDate(ticket.when);
         if (!parsedDate) return false;
@@ -1158,17 +1163,17 @@ const SpecialistDashboard = () => {
         <div
           key={day}
           className={`calendar-day ${
-            hasSchedule || hasTickets ? 'has-schedule' : ''
-          } ${isTodayDate ? 'today' : ''} ${isPast ? 'past' : ''} ${
-            hasTickets ? 'has-tickets' : ''
+            hasSchedule || hasTickets ? "has-schedule" : ""
+          } ${isTodayDate ? "today" : ""} ${isPast ? "past" : ""} ${
+            hasTickets ? "has-tickets" : ""
           }`}
           onClick={() => !isPast && setSelectedDate(day)}
         >
-          <span className='day-number'>{day}</span>
+          <span className="day-number">{day}</span>
           {totalItems > 0 && (
-            <div className='schedule-indicator'>{totalItems}</div>
+            <div className="schedule-indicator">{totalItems}</div>
           )}
-          {hasTickets && <div className='ticket-indicator'>T</div>}
+          {hasTickets && <div className="ticket-indicator">T</div>}
         </div>,
       );
     }
@@ -1177,13 +1182,13 @@ const SpecialistDashboard = () => {
   };
 
   const renderSchedules = () => (
-    <div className='dashboard-content schedule-page'>
-      <div className='schedule-container'>
-        <div className='schedule-layout'>
-          <div className='calendar-main'>
-            <div className='calendar-header'>
+    <div className="dashboard-content schedule-page">
+      <div className="schedule-container">
+        <div className="schedule-layout">
+          <div className="calendar-main">
+            <div className="calendar-header">
               <button
-                className='calendar-nav'
+                className="calendar-nav"
                 onClick={() => {
                   if (currentMonth === 0) {
                     setCurrentMonth(11);
@@ -1199,7 +1204,7 @@ const SpecialistDashboard = () => {
                 {getMonthName(currentMonth)} {currentYear}
               </h2>
               <button
-                className='calendar-nav'
+                className="calendar-nav"
                 onClick={() => {
                   if (currentMonth === 11) {
                     setCurrentMonth(0);
@@ -1213,38 +1218,38 @@ const SpecialistDashboard = () => {
               </button>
             </div>
 
-            <div className='calendar-container'>
-              <div className='calendar'>
-                <div className='calendar-weekdays'>
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(
+            <div className="calendar-container">
+              <div className="calendar">
+                <div className="calendar-weekdays">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
                     (day) => (
-                      <div key={day} className='weekday'>
+                      <div key={day} className="weekday">
                         {day}
                       </div>
                     ),
                   )}
                 </div>
-                <div className='calendar-days'>{renderCalendar()}</div>
+                <div className="calendar-days">{renderCalendar()}</div>
               </div>
             </div>
           </div>
 
           {selectedDate && (
-            <div className='selected-date-panel'>
+            <div className="selected-date-panel">
               <h3>
                 {getMonthName(currentMonth)} {selectedDate}, {currentYear}
               </h3>
               <button
-                className='btn-primary'
+                className="btn-primary"
                 onClick={() => setShowScheduleModal(true)}
               >
                 Add Schedule
               </button>
 
-              <div className='day-schedules'>
+              <div className="day-schedules">
                 {(() => {
                   const dayTickets = tickets.filter((ticket) => {
-                    if (ticket.status !== 'Confirmed') return false;
+                    if (ticket.status !== "Confirmed") return false;
 
                     const parsedDate = parseTicketDate(ticket.when);
                     if (!parsedDate) return false;
@@ -1260,21 +1265,21 @@ const SpecialistDashboard = () => {
                     const timeMatch = ticket.when.match(
                       /(\d{1,2}:\d{2}\s*[AP]M)/i,
                     );
-                    const ticketTime = timeMatch ? timeMatch[1] : 'Time TBD';
+                    const ticketTime = timeMatch ? timeMatch[1] : "Time TBD";
 
                     return (
                       <div
                         key={`ticket-${ticket.id}`}
-                        className='schedule-item ticket-item'
+                        className="schedule-item ticket-item"
                       >
-                        <div className='schedule-time'>{ticketTime}</div>
-                        <div className='schedule-duration'>Consultation</div>
-                        <div className='schedule-notes'>
+                        <div className="schedule-time">{ticketTime}</div>
+                        <div className="schedule-duration">Consultation</div>
+                        <div className="schedule-notes">
                           <strong>Patient:</strong> {ticket.patient}
                           <br />
                           <strong>Service:</strong> {ticket.service}
                         </div>
-                        <div className='ticket-badge'>Ticket</div>
+                        <div className="ticket-badge">Ticket</div>
                       </div>
                     );
                   });
@@ -1283,14 +1288,14 @@ const SpecialistDashboard = () => {
                 {schedules[
                   formatDateKey(currentYear, currentMonth, selectedDate)
                 ]?.map((schedule) => (
-                  <div key={schedule.id} className='schedule-item'>
-                    <div className='schedule-time'>{schedule.time}</div>
-                    <div className='schedule-duration'>
+                  <div key={schedule.id} className="schedule-item">
+                    <div className="schedule-time">{schedule.time}</div>
+                    <div className="schedule-duration">
                       {schedule.duration} mins
                     </div>
-                    <div className='schedule-notes'>{schedule.notes}</div>
+                    <div className="schedule-notes">{schedule.notes}</div>
                     <button
-                      className='delete-btn'
+                      className="delete-btn"
                       onClick={() =>
                         deleteSchedule(
                           formatDateKey(
@@ -1311,7 +1316,7 @@ const SpecialistDashboard = () => {
                   formatDateKey(currentYear, currentMonth, selectedDate)
                 ]?.length &&
                   !tickets.some((ticket) => {
-                    if (ticket.status !== 'Confirmed') return false;
+                    if (ticket.status !== "Confirmed") return false;
                     const parsedDate = parseTicketDate(ticket.when);
                     if (!parsedDate) return false;
                     return (
@@ -1331,14 +1336,14 @@ const SpecialistDashboard = () => {
   const renderTickets = () => {
     if (filteredTickets.length === 0) {
       return (
-        <div style={{ padding: '1rem', color: '#7A7A7A' }}>
+        <div style={{ padding: "1rem", color: "#7A7A7A" }}>
           No tickets found.
         </div>
       );
     }
 
     return filteredTickets.map((ticket) => (
-      <div key={ticket.id} className='ticket-row'>
+      <div key={ticket.id} className="ticket-row">
         <div>{ticket.patient}</div>
         <div>{ticket.service}</div>
         <div>{ticket.when}</div>
@@ -1350,7 +1355,7 @@ const SpecialistDashboard = () => {
           </span>
         </div>
         <div>
-          <button className='action-btn' onClick={() => viewTicket(ticket.id)}>
+          <button className="action-btn" onClick={() => viewTicket(ticket.id)}>
             View
           </button>
         </div>
@@ -1362,13 +1367,13 @@ const SpecialistDashboard = () => {
     const selectedTicket = tickets.find((x) => x.id === selectedTicketId);
 
     const formatBirthday = (dateStr) => {
-      if (!dateStr) return 'Not provided';
+      if (!dateStr) return "Not provided";
       try {
         const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
+        return date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
         });
       } catch {
         return dateStr;
@@ -1376,46 +1381,47 @@ const SpecialistDashboard = () => {
     };
 
     const getAgeText = (t) => {
-      if (!t) return 'Not provided';
+      if (!t) return "Not provided";
       if (t.age) return `${t.age} years old`;
       const bday = t.patientBirthdate || t.birthday;
       if (bday) {
         const birth = new Date(bday);
         const diff = Date.now() - birth.getTime();
         const age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
-        return isNaN(age) ? 'Not provided' : `${age} years old`;
+        return isNaN(age) ? "Not provided" : `${age} years old`;
       }
-      return 'Not provided';
+      return "Not provided";
     };
 
-    const basePatientInfo = tickets.find((x) => x.id === selectedTicketId) || tickets[0] || null;
+    const basePatientInfo =
+      tickets.find((x) => x.id === selectedTicketId) || tickets[0] || null;
     const selectedPatient = selectedPatientDetailed || basePatientInfo;
 
-    const patientStatus = basePatientInfo?.status || 'Unknown';
+    const patientStatus = basePatientInfo?.status || "Unknown";
 
     return (
-      <div className='dashboard-content dashboard-1to1'>
-        <div className='assigned-patients-panel'>
-          <div className='panel-header'>
+      <div className="dashboard-content dashboard-1to1">
+        <div className="assigned-patients-panel">
+          <div className="panel-header">
             <h3>Assigned Patients</h3>
           </div>
 
-          <div className='status-filter-container'>
+          <div className="status-filter-container">
             <select
-              value={ticketFilter === 'All' ? 'All Tickets' : ticketFilter}
+              value={ticketFilter === "All" ? "All Tickets" : ticketFilter}
               onChange={(e) =>
                 setTicketFilter(
-                  e.target.value === 'All Tickets' ? 'All' : e.target.value,
+                  e.target.value === "All Tickets" ? "All" : e.target.value,
                 )
               }
-              className='input-sm status-filter-dropdown'
+              className="input-sm status-filter-dropdown"
             >
               {[
-                'All Tickets',
-                'Available',
-                'Awaiting',
-                'In Consultation',
-                'Completed',
+                "All Tickets",
+                "Available",
+                "Awaiting",
+                "In Consultation",
+                "Completed",
               ].map((label) => (
                 <option key={label} value={label}>
                   {label}
@@ -1424,109 +1430,140 @@ const SpecialistDashboard = () => {
             </select>
           </div>
 
-          <div className='patient-list'>
+          <div className="patient-list">
             {filteredTickets.length === 0 ? (
-              <div className='no-patient-text'>No patients assigned.</div>
+              <div className="no-patient-text">No patients assigned.</div>
             ) : (
               filteredTickets.map((t) => (
                 <div
                   key={t.id}
-                  className={`patient-card ${selectedTicketId === t.id ? 'active' : ''}`}
+                  className={`patient-card ${selectedTicketId === t.id ? "active" : ""}`}
                   onClick={() => setSelectedTicketId(t.id)}
                 >
-                  <div className='patient-card-header'>
-                    <div className='patient-card-title'>
-                      {t.patient || 'Unknown'}
+                  <div className="patient-card-header">
+                    <div className="patient-card-title">
+                      {t.patient || "Unknown"}
                     </div>
-                    <span className={`status-badge ${getStatusBadgeClass(t.status)}`}>
+                    <span
+                      className={`status-badge ${getStatusBadgeClass(t.status)}`}
+                    >
                       {t.status}
                     </span>
                   </div>
-                  <div className='patient-card-subtitle'>
-                    {t.id} • {t.service || 'Consultation'}
+                  <div className="patient-card-subtitle">
+                    {t.id} • {t.service || "Consultation"}
                   </div>
-                  <div className='patient-card-meta'>{t.when}</div>
+                  <div className="patient-card-meta">{t.when}</div>
                 </div>
               ))
             )}
           </div>
         </div>
 
-        <div className='patient-details-panel'>
-          <div className='patient-details-header'>
+        <div className="patient-details-panel">
+          <div className="patient-details-header">
             <div>
-              <h2>{selectedPatient?.patientFullName || selectedPatient?.patient || (selectedPatient?.firstName ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : 'No patient selected')}</h2>
-              <p className='patient-specialization'>
-                {basePatientInfo?.service || 'General Consultation'}
+              <h2>
+                {selectedPatient?.patientFullName ||
+                  selectedPatient?.patient ||
+                  (selectedPatient?.firstName
+                    ? `${selectedPatient.firstName} ${selectedPatient.lastName}`
+                    : "No patient selected")}
+              </h2>
+              <p className="patient-specialization">
+                {basePatientInfo?.service || "General Consultation"}
               </p>
             </div>
             <button
-              className='btn-primary complete-consultation'
+              className="btn-primary complete-consultation"
               onClick={handleCompleteConsultation}
-              disabled={!selectedPatient || patientStatus === 'Completed'}
+              disabled={!selectedPatient || patientStatus === "Completed"}
             >
-              {patientStatus === 'Completed' ? 'Completed' : 'Complete Consultation'}
+              {patientStatus === "Completed"
+                ? "Completed"
+                : "Complete Consultation"}
             </button>
           </div>
 
-          <div className='patient-info-card'>
-            <div className='section-title-small'>Patient Information</div>
-            <div className='patient-info-grid'>
-              <div className='info-item'>
-                <span className='info-label'>Age</span>
-                <span className='info-value'>
-                  {selectedPatient ? getAgeText(selectedPatient) : 'Unknown'}
+          <div className="patient-info-card">
+            <div className="section-title-small">Patient Information</div>
+            <div className="patient-info-grid">
+              <div className="info-item">
+                <span className="info-label">Age</span>
+                <span className="info-value">
+                  {selectedPatient ? getAgeText(selectedPatient) : "Unknown"}
                 </span>
               </div>
-              <div className='info-item'>
-                <span className='info-label'>Gender</span>
-                <span className='info-value'>
-                  {selectedPatient?.gender || 'Not provided'}
+              <div className="info-item">
+                <span className="info-label">Gender</span>
+                <span className="info-value">
+                  {selectedPatient?.gender || "Not provided"}
                 </span>
               </div>
-              <div className='info-item'>
-                <span className='info-label'>Blood Type</span>
-                <span className='info-value'>
-                  {selectedPatient?.bloodType || 'Not provided'}
+              <div className="info-item">
+                <span className="info-label">Blood Type</span>
+                <span className="info-value">
+                  {selectedPatient?.bloodType || "Not provided"}
                 </span>
               </div>
-              <div className='info-item'>
-                <span className='info-label'>Contact</span>
-                <span className='info-value'>
-                  {selectedPatient?.mobile || selectedPatient?.phone || selectedPatient?.contact || 'Not provided'}
+              <div className="info-item">
+                <span className="info-label">Contact</span>
+                <span className="info-value">
+                  {selectedPatient?.mobile ||
+                    selectedPatient?.phone ||
+                    selectedPatient?.contact ||
+                    "Not provided"}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className='info-card'>
-            <div className='info-card-title'>Medical History</div>
-            <div className='info-card-body'>
+          <div className="info-card">
+            <div className="info-card-title">Medical History</div>
+            <div className="info-card-body">
               {(() => {
                 // If the specialist HAS NOT received detailed patient data (meaning they haven't requested/allowed),
                 // we only show the Triage info or placeholder.
                 // We use selectedPatientDetailed as the source of truth for "Shared Access"
                 // IMPORTANT: If history hasn't been shared, we MUST return a placeholder.
                 const allergiesSource = selectedPatientDetailed?.allergies;
-                const activeDiseaseSource = selectedPatientDetailed?.activeDiseases;
-                const pastDiseasesSource = selectedPatientDetailed?.pastDiseases;
+                const activeDiseaseSource =
+                  selectedPatientDetailed?.activeDiseases;
+                const pastDiseasesSource =
+                  selectedPatientDetailed?.pastDiseases;
                 const medicationsSource = selectedPatientDetailed?.medications;
                 const surgeriesSource = selectedPatientDetailed?.surgeries;
-                const familyHistorySource = selectedPatientDetailed?.familyHistory;
-                const socialHistorySource = selectedPatientDetailed?.socialHistory;
+                const familyHistorySource =
+                  selectedPatientDetailed?.familyHistory;
+                const socialHistorySource =
+                  selectedPatientDetailed?.socialHistory;
 
-                // Checking for presence of data because getPatientProfile now filters clinical files 
+                // Checking for presence of data because getPatientProfile now filters clinical files
                 // if history has NOT been shared.
-                const isAuthorized = allergiesSource || activeDiseaseSource || pastDiseasesSource || medicationsSource || surgeriesSource || familyHistorySource || socialHistorySource;
+                const isAuthorized =
+                  allergiesSource ||
+                  activeDiseaseSource ||
+                  pastDiseasesSource ||
+                  medicationsSource ||
+                  surgeriesSource ||
+                  familyHistorySource ||
+                  socialHistorySource;
 
                 if (!selectedPatientDetailed || !isAuthorized) {
-                  return <span className='info-placeholder'>Request medical history to view detailed conditions and history.</span>;
+                  return (
+                    <span className="info-placeholder">
+                      Request medical history to view detailed conditions and
+                      history.
+                    </span>
+                  );
                 }
 
                 const parseData = (source) => {
                   if (!source) return [];
                   try {
-                    return typeof source === 'string' ? JSON.parse(source) : source;
+                    return typeof source === "string"
+                      ? JSON.parse(source)
+                      : source;
                   } catch (e) {
                     return [];
                   }
@@ -1539,123 +1576,269 @@ const SpecialistDashboard = () => {
                 const surgeries = parseData(surgeriesSource);
                 const familyHistory = parseData(familyHistorySource);
                 const socialHistory = parseData(socialHistorySource);
-                
+
                 return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "20px",
+                    }}
+                  >
                     {/* Allergies Sub-section */}
                     <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Allergies</h4>
+                      <h4
+                        style={{
+                          margin: "0 0 10px",
+                          fontSize: "0.95rem",
+                          color: "#0b5388",
+                        }}
+                      >
+                        Allergies
+                      </h4>
                       {Array.isArray(allergies) && allergies.length > 0 ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: "8px",
+                          }}
+                        >
                           {allergies.map((a, idx) => (
-                            <span key={idx} className='pill'>
-                              {typeof a === 'object' ? a.name || a.allergy : a}
+                            <span key={idx} className="pill">
+                              {typeof a === "object" ? a.name || a.allergy : a}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className='info-placeholder'>No known allergies recorded.</span>
+                        <span className="info-placeholder">
+                          No known allergies recorded.
+                        </span>
                       )}
                     </div>
 
                     {/* Active Diseases Sub-section */}
                     <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Active Diseases / Conditions</h4>
-                      {Array.isArray(activeDiseases) && activeDiseases.length > 0 ? (
-                         <ul className='history-list'>
+                      <h4
+                        style={{
+                          margin: "0 0 10px",
+                          fontSize: "0.95rem",
+                          color: "#0b5388",
+                        }}
+                      >
+                        Active Diseases / Conditions
+                      </h4>
+                      {Array.isArray(activeDiseases) &&
+                      activeDiseases.length > 0 ? (
+                        <ul className="history-list">
                           {activeDiseases.map((item, idx) => (
                             <li key={idx}>
-                              <strong>{item.name || item.condition}</strong> {item.date && <span>({item.date})</span>}
-                              {item.description && <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#666' }}>{item.description}</p>}
-                              {item.severity && <span className='pill' style={{ background: '#f8d7da', color: '#721c24', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', marginLeft: '8px' }}>{item.severity}</span>}
+                              <strong>{item.name || item.condition}</strong>{" "}
+                              {item.date && <span>({item.date})</span>}
+                              {item.description && (
+                                <p
+                                  style={{
+                                    margin: "4px 0 0",
+                                    fontSize: "0.9rem",
+                                    color: "#666",
+                                  }}
+                                >
+                                  {item.description}
+                                </p>
+                              )}
+                              {item.severity && (
+                                <span
+                                  className="pill"
+                                  style={{
+                                    background: "#f8d7da",
+                                    color: "#721c24",
+                                    padding: "2px 8px",
+                                    borderRadius: "4px",
+                                    fontSize: "0.75rem",
+                                    marginLeft: "8px",
+                                  }}
+                                >
+                                  {item.severity}
+                                </span>
+                              )}
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <span className='info-placeholder'>No active diseases recorded.</span>
+                        <span className="info-placeholder">
+                          No active diseases recorded.
+                        </span>
                       )}
                     </div>
 
                     {/* Medications Sub-section */}
                     <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Current Medications</h4>
+                      <h4
+                        style={{
+                          margin: "0 0 10px",
+                          fontSize: "0.95rem",
+                          color: "#0b5388",
+                        }}
+                      >
+                        Current Medications
+                      </h4>
                       {Array.isArray(medications) && medications.length > 0 ? (
-                        <ul className='history-list'>
+                        <ul className="history-list">
                           {medications.map((item, idx) => (
                             <li key={idx}>
-                              <strong>{item.name}</strong> {item.dosage && <span> - {item.dosage}</span>}
-                              {item.frequency && <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>Frequency: {item.frequency}</p>}
+                              <strong>{item.name}</strong>{" "}
+                              {item.dosage && <span> - {item.dosage}</span>}
+                              {item.frequency && (
+                                <p
+                                  style={{
+                                    margin: "4px 0 0",
+                                    fontSize: "0.85rem",
+                                  }}
+                                >
+                                  Frequency: {item.frequency}
+                                </p>
+                              )}
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <span className='info-placeholder'>No current medications recorded.</span>
+                        <span className="info-placeholder">
+                          No current medications recorded.
+                        </span>
                       )}
                     </div>
 
                     {/* Past Diseases Sub-section */}
                     <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Past Diseases</h4>
-                      {Array.isArray(pastDiseases) && pastDiseases.length > 0 ? (
-                        <ul className='history-list'>
+                      <h4
+                        style={{
+                          margin: "0 0 10px",
+                          fontSize: "0.95rem",
+                          color: "#0b5388",
+                        }}
+                      >
+                        Past Diseases
+                      </h4>
+                      {Array.isArray(pastDiseases) &&
+                      pastDiseases.length > 0 ? (
+                        <ul className="history-list">
                           {pastDiseases.map((item, idx) => (
                             <li key={idx}>
-                              <strong>{item.name}</strong> {item.date && <span>({item.date})</span>}
-                              {item.status && <span className='pill' style={{ marginLeft: '8px', fontSize: '0.7rem' }}>{item.status}</span>}
+                              <strong>{item.name}</strong>{" "}
+                              {item.date && <span>({item.date})</span>}
+                              {item.status && (
+                                <span
+                                  className="pill"
+                                  style={{
+                                    marginLeft: "8px",
+                                    fontSize: "0.7rem",
+                                  }}
+                                >
+                                  {item.status}
+                                </span>
+                              )}
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <span className='info-placeholder'>No past diseases recorded.</span>
+                        <span className="info-placeholder">
+                          No past diseases recorded.
+                        </span>
                       )}
                     </div>
 
                     {/* Surgeries Sub-section */}
                     <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Surgeries</h4>
+                      <h4
+                        style={{
+                          margin: "0 0 10px",
+                          fontSize: "0.95rem",
+                          color: "#0b5388",
+                        }}
+                      >
+                        Surgeries
+                      </h4>
                       {Array.isArray(surgeries) && surgeries.length > 0 ? (
-                        <ul className='history-list'>
+                        <ul className="history-list">
                           {surgeries.map((item, idx) => (
                             <li key={idx}>
-                              <strong>{item.name}</strong> {item.date && <span>({item.date})</span>}
-                              {item.hospital && <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>{item.hospital}</p>}
+                              <strong>{item.name}</strong>{" "}
+                              {item.date && <span>({item.date})</span>}
+                              {item.hospital && (
+                                <p
+                                  style={{
+                                    margin: "4px 0 0",
+                                    fontSize: "0.85rem",
+                                  }}
+                                >
+                                  {item.hospital}
+                                </p>
+                              )}
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <span className='info-placeholder'>No surgeries recorded.</span>
+                        <span className="info-placeholder">
+                          No surgeries recorded.
+                        </span>
                       )}
                     </div>
 
                     {/* Family History Sub-section */}
                     <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Family History</h4>
-                      {Array.isArray(familyHistory) && familyHistory.length > 0 ? (
-                        <ul className='history-list'>
+                      <h4
+                        style={{
+                          margin: "0 0 10px",
+                          fontSize: "0.95rem",
+                          color: "#0b5388",
+                        }}
+                      >
+                        Family History
+                      </h4>
+                      {Array.isArray(familyHistory) &&
+                      familyHistory.length > 0 ? (
+                        <ul className="history-list">
                           {familyHistory.map((item, idx) => (
                             <li key={idx}>
-                              <strong>{item.name}</strong> {item.relationship && <span>({item.relationship})</span>}
+                              <strong>{item.name}</strong>{" "}
+                              {item.relationship && (
+                                <span>({item.relationship})</span>
+                              )}
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <span className='info-placeholder'>No family history recorded.</span>
+                        <span className="info-placeholder">
+                          No family history recorded.
+                        </span>
                       )}
                     </div>
 
                     {/* Social History Sub-section */}
                     <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Social History</h4>
-                      {Array.isArray(socialHistory) && socialHistory.length > 0 ? (
-                        <ul className='history-list'>
+                      <h4
+                        style={{
+                          margin: "0 0 10px",
+                          fontSize: "0.95rem",
+                          color: "#0b5388",
+                        }}
+                      >
+                        Social History
+                      </h4>
+                      {Array.isArray(socialHistory) &&
+                      socialHistory.length > 0 ? (
+                        <ul className="history-list">
                           {socialHistory.map((item, idx) => (
                             <li key={idx}>
-                              <strong>{item.name}</strong> {item.details && <span>: {item.details}</span>}
+                              <strong>{item.name}</strong>{" "}
+                              {item.details && <span>: {item.details}</span>}
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <span className='info-placeholder'>No social history recorded.</span>
+                        <span className="info-placeholder">
+                          No social history recorded.
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1664,33 +1847,47 @@ const SpecialistDashboard = () => {
             </div>
           </div>
 
-          <div className='info-card'>
-            <div className='info-card-title'>Triage Notes (From Nurse)</div>
-            <div className='info-card-body'>
-              {selectedPatient?.triageNotes || 'Vital signs not yet provided.'}
+          <div className="info-card">
+            <div className="info-card-title">Triage Notes (From Nurse)</div>
+            <div className="info-card-body">
+              {selectedPatient?.triageNotes || "Vital signs not yet provided."}
             </div>
           </div>
 
-          <div className='info-card'>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div className="info-card">
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "12px",
+              }}
+            >
               <div>
-                <div className='info-card-title' style={{ marginBottom: '2px' }}>Prescription</div>
-                <p style={{ color: '#66788d', fontSize: '0.87rem', margin: 0 }}>Add medications for the patient</p>
+                <div
+                  className="info-card-title"
+                  style={{ marginBottom: "2px" }}
+                >
+                  Prescription
+                </div>
+                <p style={{ color: "#66788d", fontSize: "0.87rem", margin: 0 }}>
+                  Add medications for the patient
+                </p>
               </div>
               <button
                 onClick={() => setMedForm(createDefaultMedicineForm())}
                 style={{
-                  background: '#0d6efd',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '8px 16px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
+                  background: "#0d6efd",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  padding: "8px 16px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontSize: "0.9rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
                 }}
               >
                 + Add Medication
@@ -1698,73 +1895,182 @@ const SpecialistDashboard = () => {
             </div>
 
             {encounter?.medicines && encounter.medicines.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                }}
+              >
                 {encounter.medicines.map((med, idx) => (
-                  <div key={idx} style={{
-                    border: '1px solid #e2eaf6',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    backgroundColor: '#fbfdff',
-                    position: 'relative',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                      <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
+                  <div
+                    key={idx}
+                    style={{
+                      border: "1px solid #e2eaf6",
+                      borderRadius: "8px",
+                      padding: "12px",
+                      backgroundColor: "#fbfdff",
+                      position: "relative",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "start",
+                        marginBottom: "12px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: "#0b5388",
+                          fontWeight: "600",
+                          fontSize: "0.95rem",
+                        }}
+                      >
                         Medication #{idx + 1}
                       </div>
                       <button
                         onClick={() => removeMedicine(idx)}
                         style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#d32f2f',
-                          cursor: 'pointer',
-                          fontSize: '1.2rem',
-                          padding: '0',
+                          background: "none",
+                          border: "none",
+                          color: "#d32f2f",
+                          cursor: "pointer",
+                          fontSize: "1.2rem",
+                          padding: "0",
                         }}
                       >
                         🗑️
                       </button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "12px",
+                        marginBottom: "12px",
+                      }}
+                    >
                       <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                        <label
+                          style={{
+                            display: "block",
+                            fontWeight: "600",
+                            fontSize: "0.85rem",
+                            marginBottom: "4px",
+                            color: "#111827",
+                          }}
+                        >
                           Medication Name
                         </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.name || 'N/A'}
+                        <div
+                          style={{
+                            backgroundColor: "#f3f4f6",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "0.9rem",
+                            color: "#666",
+                          }}
+                        >
+                          {med.name || "N/A"}
                         </div>
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                        <label
+                          style={{
+                            display: "block",
+                            fontWeight: "600",
+                            fontSize: "0.85rem",
+                            marginBottom: "4px",
+                            color: "#111827",
+                          }}
+                        >
                           Dosage
                         </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.dosage || 'N/A'}
+                        <div
+                          style={{
+                            backgroundColor: "#f3f4f6",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "0.9rem",
+                            color: "#666",
+                          }}
+                        >
+                          {med.dosage || "N/A"}
                         </div>
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                        <label
+                          style={{
+                            display: "block",
+                            fontWeight: "600",
+                            fontSize: "0.85rem",
+                            marginBottom: "4px",
+                            color: "#111827",
+                          }}
+                        >
                           Frequency
                         </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.frequency || 'N/A'}
+                        <div
+                          style={{
+                            backgroundColor: "#f3f4f6",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "0.9rem",
+                            color: "#666",
+                          }}
+                        >
+                          {med.frequency || "N/A"}
                         </div>
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                        <label
+                          style={{
+                            display: "block",
+                            fontWeight: "600",
+                            fontSize: "0.85rem",
+                            marginBottom: "4px",
+                            color: "#111827",
+                          }}
+                        >
                           Duration
                         </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.duration || 'N/A'}
+                        <div
+                          style={{
+                            backgroundColor: "#f3f4f6",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "0.9rem",
+                            color: "#666",
+                          }}
+                        >
+                          {med.duration || "N/A"}
                         </div>
                       </div>
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                      <label
+                        style={{
+                          display: "block",
+                          fontWeight: "600",
+                          fontSize: "0.85rem",
+                          marginBottom: "4px",
+                          color: "#111827",
+                        }}
+                      >
                         Special Instructions
                       </label>
-                      <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                        {med.specialInstructions || 'N/A'}
+                      <div
+                        style={{
+                          backgroundColor: "#f3f4f6",
+                          padding: "8px 10px",
+                          borderRadius: "6px",
+                          fontSize: "0.9rem",
+                          color: "#666",
+                        }}
+                      >
+                        {med.specialInstructions || "N/A"}
                       </div>
                     </div>
                   </div>
@@ -1772,171 +2078,265 @@ const SpecialistDashboard = () => {
               </div>
             ) : null}
 
-            {!medForm && (!encounter?.medicines || encounter.medicines.length === 0) && (
-              <div style={{
-                textAlign: 'center',
-                padding: '24px 12px',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb',
-              }}>
-                <p style={{ color: '#d17171', margin: '0 0 6px 0', fontSize: '0.95rem' }}>
-                  No medications prescribed yet
-                </p>
-                <p style={{ color: '#9ca3af', margin: 0, fontSize: '0.85rem' }}>
-                  Click "Add Medication" to start
-                </p>
-              </div>
-            )}
+            {!medForm &&
+              (!encounter?.medicines || encounter.medicines.length === 0) && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "24px 12px",
+                    backgroundColor: "#f9fafb",
+                    borderRadius: "8px",
+                    border: "1px solid #e5e7eb",
+                  }}
+                >
+                  <p
+                    style={{
+                      color: "#d17171",
+                      margin: "0 0 6px 0",
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    No medications prescribed yet
+                  </p>
+                  <p
+                    style={{ color: "#9ca3af", margin: 0, fontSize: "0.85rem" }}
+                  >
+                    Click "Add Medication" to start
+                  </p>
+                </div>
+              )}
 
             {medForm && (
-              <div style={{
-                border: '1px solid #e2eaf6',
-                borderRadius: '8px',
-                padding: '12px',
-                backgroundColor: '#fbfdff',
-                marginTop: '12px',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                  <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
+              <div
+                style={{
+                  border: "1px solid #e2eaf6",
+                  borderRadius: "8px",
+                  padding: "12px",
+                  backgroundColor: "#fbfdff",
+                  marginTop: "12px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "start",
+                    marginBottom: "12px",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#0b5388",
+                      fontWeight: "600",
+                      fontSize: "0.95rem",
+                    }}
+                  >
                     Medication #{(encounter?.medicines?.length || 0) + 1}
                   </div>
                   <button
                     onClick={() => setMedForm(null)}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#d32f2f',
-                      cursor: 'pointer',
-                      fontSize: '1.2rem',
-                      padding: '0',
+                      background: "none",
+                      border: "none",
+                      color: "#d32f2f",
+                      cursor: "pointer",
+                      fontSize: "1.2rem",
+                      padding: "0",
                     }}
                   >
                     🗑️
                   </button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "12px",
+                    marginBottom: "12px",
+                  }}
+                >
                   <div>
-                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontWeight: "600",
+                        fontSize: "0.85rem",
+                        marginBottom: "4px",
+                        color: "#111827",
+                      }}
+                    >
                       Medication Name
                     </label>
                     <input
-                      type='text'
-                      value={medForm.name || ''}
-                      onChange={(e) => setMedForm({ ...medForm, name: e.target.value })}
-                      placeholder='e.g., Amoxicillin'
+                      type="text"
+                      value={medForm.name || ""}
+                      onChange={(e) =>
+                        setMedForm({ ...medForm, name: e.target.value })
+                      }
+                      placeholder="e.g., Amoxicillin"
                       style={{
-                        width: '100%',
-                        padding: '8px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #c7d9ee',
-                        backgroundColor: '#fff',
-                        fontSize: '0.9rem',
-                        boxSizing: 'border-box',
+                        width: "100%",
+                        padding: "8px 10px",
+                        borderRadius: "6px",
+                        border: "1px solid #c7d9ee",
+                        backgroundColor: "#fff",
+                        fontSize: "0.9rem",
+                        boxSizing: "border-box",
                       }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontWeight: "600",
+                        fontSize: "0.85rem",
+                        marginBottom: "4px",
+                        color: "#111827",
+                      }}
+                    >
                       Dosage
                     </label>
                     <input
-                      type='text'
-                      value={medForm.dosage || ''}
-                      onChange={(e) => setMedForm({ ...medForm, dosage: e.target.value })}
-                      placeholder='e.g., 500mg'
+                      type="text"
+                      value={medForm.dosage || ""}
+                      onChange={(e) =>
+                        setMedForm({ ...medForm, dosage: e.target.value })
+                      }
+                      placeholder="e.g., 500mg"
                       style={{
-                        width: '100%',
-                        padding: '8px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #c7d9ee',
-                        backgroundColor: '#fff',
-                        fontSize: '0.9rem',
-                        boxSizing: 'border-box',
+                        width: "100%",
+                        padding: "8px 10px",
+                        borderRadius: "6px",
+                        border: "1px solid #c7d9ee",
+                        backgroundColor: "#fff",
+                        fontSize: "0.9rem",
+                        boxSizing: "border-box",
                       }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontWeight: "600",
+                        fontSize: "0.85rem",
+                        marginBottom: "4px",
+                        color: "#111827",
+                      }}
+                    >
                       Frequency
                     </label>
                     <select
-                      value={medForm.frequency || ''}
-                      onChange={(e) => setMedForm({ ...medForm, frequency: e.target.value })}
+                      value={medForm.frequency || ""}
+                      onChange={(e) =>
+                        setMedForm({ ...medForm, frequency: e.target.value })
+                      }
                       style={{
-                        width: '100%',
-                        padding: '8px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #c7d9ee',
-                        backgroundColor: '#fff',
-                        fontSize: '0.9rem',
-                        boxSizing: 'border-box',
+                        width: "100%",
+                        padding: "8px 10px",
+                        borderRadius: "6px",
+                        border: "1px solid #c7d9ee",
+                        backgroundColor: "#fff",
+                        fontSize: "0.9rem",
+                        boxSizing: "border-box",
                       }}
                     >
-                      <option value=''>Select frequency</option>
-                      <option value='Once daily'>Once daily</option>
-                      <option value='Twice daily'>Twice daily</option>
-                      <option value='Three times daily'>Three times daily</option>
-                      <option value='Four times daily'>Four times daily</option>
-                      <option value='Every 4 hours'>Every 4 hours</option>
-                      <option value='Every 6 hours'>Every 6 hours</option>
-                      <option value='Every 8 hours'>Every 8 hours</option>
-                      <option value='Every 12 hours'>Every 12 hours</option>
+                      <option value="">Select frequency</option>
+                      <option value="Once daily">Once daily</option>
+                      <option value="Twice daily">Twice daily</option>
+                      <option value="Three times daily">
+                        Three times daily
+                      </option>
+                      <option value="Four times daily">Four times daily</option>
+                      <option value="Every 4 hours">Every 4 hours</option>
+                      <option value="Every 6 hours">Every 6 hours</option>
+                      <option value="Every 8 hours">Every 8 hours</option>
+                      <option value="Every 12 hours">Every 12 hours</option>
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontWeight: "600",
+                        fontSize: "0.85rem",
+                        marginBottom: "4px",
+                        color: "#111827",
+                      }}
+                    >
                       Duration
                     </label>
                     <input
-                      type='text'
-                      value={medForm.duration || ''}
-                      onChange={(e) => setMedForm({ ...medForm, duration: e.target.value })}
-                      placeholder='e.g., 7 days'
+                      type="text"
+                      value={medForm.duration || ""}
+                      onChange={(e) =>
+                        setMedForm({ ...medForm, duration: e.target.value })
+                      }
+                      placeholder="e.g., 7 days"
                       style={{
-                        width: '100%',
-                        padding: '8px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #c7d9ee',
-                        backgroundColor: '#fff',
-                        fontSize: '0.9rem',
-                        boxSizing: 'border-box',
+                        width: "100%",
+                        padding: "8px 10px",
+                        borderRadius: "6px",
+                        border: "1px solid #c7d9ee",
+                        backgroundColor: "#fff",
+                        fontSize: "0.9rem",
+                        boxSizing: "border-box",
                       }}
                     />
                   </div>
                 </div>
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                <div style={{ marginBottom: "12px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontWeight: "600",
+                      fontSize: "0.85rem",
+                      marginBottom: "4px",
+                      color: "#111827",
+                    }}
+                  >
                     Special Instructions
                   </label>
                   <input
-                    type='text'
-                    value={medForm.specialInstructions || ''}
-                    onChange={(e) => setMedForm({ ...medForm, specialInstructions: e.target.value })}
-                    placeholder='e.g., Take with food'
+                    type="text"
+                    value={medForm.specialInstructions || ""}
+                    onChange={(e) =>
+                      setMedForm({
+                        ...medForm,
+                        specialInstructions: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., Take with food"
                     style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: '6px',
-                      border: '1px solid #c7d9ee',
-                      backgroundColor: '#fff',
-                      fontSize: '0.9rem',
-                      boxSizing: 'border-box',
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: "6px",
+                      border: "1px solid #c7d9ee",
+                      backgroundColor: "#fff",
+                      fontSize: "0.9rem",
+                      boxSizing: "border-box",
                     }}
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    justifyContent: "flex-end",
+                  }}
+                >
                   <button
                     onClick={() => setMedForm(null)}
                     style={{
-                      background: '#f3f4f6',
-                      color: '#374151',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      padding: '8px 16px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem',
+                      background: "#f3f4f6",
+                      color: "#374151",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      padding: "8px 16px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      fontSize: "0.9rem",
                     }}
                   >
                     Cancel
@@ -1944,14 +2344,14 @@ const SpecialistDashboard = () => {
                   <button
                     onClick={addMedicine}
                     style={{
-                      background: '#0d6efd',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '8px 16px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem',
+                      background: "#0d6efd",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      padding: "8px 16px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      fontSize: "0.9rem",
                     }}
                   >
                     Add Medication
@@ -1961,26 +2361,40 @@ const SpecialistDashboard = () => {
             )}
           </div>
 
-          <div className='info-card'>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div className="info-card">
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "16px",
+              }}
+            >
               <div>
-                <div className='info-card-title' style={{ marginBottom: '2px' }}>Laboratory Requests</div>
-                <p style={{ color: '#66788d', fontSize: '0.87rem', margin: 0 }}>Select tests to be performed</p>
+                <div
+                  className="info-card-title"
+                  style={{ marginBottom: "2px" }}
+                >
+                  Laboratory Requests
+                </div>
+                <p style={{ color: "#66788d", fontSize: "0.87rem", margin: 0 }}>
+                  Select tests to be performed
+                </p>
               </div>
               <button
                 onClick={() => setLabForm(createDefaultLabForm())}
                 style={{
-                  background: '#0d6efd',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '8px 16px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
+                  background: "#0d6efd",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  padding: "8px 16px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontSize: "0.9rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
                 }}
               >
                 + Add Test
@@ -1988,53 +2402,124 @@ const SpecialistDashboard = () => {
             </div>
 
             {encounter?.labRequests && encounter.labRequests.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                }}
+              >
                 {encounter.labRequests.map((lab, idx) => (
-                  <div key={idx} style={{
-                    border: '1px solid #e2eaf6',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    backgroundColor: '#fbfdff',
-                    position: 'relative',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                      <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
+                  <div
+                    key={idx}
+                    style={{
+                      border: "1px solid #e2eaf6",
+                      borderRadius: "8px",
+                      padding: "12px",
+                      backgroundColor: "#fbfdff",
+                      position: "relative",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "start",
+                        marginBottom: "12px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: "#0b5388",
+                          fontWeight: "600",
+                          fontSize: "0.95rem",
+                        }}
+                      >
                         Test #{idx + 1}
                       </div>
                       <button
                         onClick={() => removeLab(idx)}
                         style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#d32f2f',
-                          cursor: 'pointer',
-                          fontSize: '1.2rem',
-                          padding: '0',
+                          background: "none",
+                          border: "none",
+                          color: "#d32f2f",
+                          cursor: "pointer",
+                          fontSize: "1.2rem",
+                          padding: "0",
                         }}
                       >
                         🗑️
                       </button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "12px",
+                      }}
+                    >
                       <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                        <label
+                          style={{
+                            display: "block",
+                            fontWeight: "600",
+                            fontSize: "0.85rem",
+                            marginBottom: "4px",
+                            color: "#111827",
+                          }}
+                        >
                           Test Name
                         </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {(lab.test === 'Custom Test' && (lab.customTestName || '').trim()) ? (lab.customTestName || '').trim() : (lab.test || 'N/A')}
+                        <div
+                          style={{
+                            backgroundColor: "#f3f4f6",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "0.9rem",
+                            color: "#666",
+                          }}
+                        >
+                          {lab.test === "Custom Test" &&
+                          (lab.customTestName || "").trim()
+                            ? (lab.customTestName || "").trim()
+                            : lab.test || "N/A"}
                         </div>
-                        {lab.test === 'Custom Test' && !(lab.customTestName || '').trim() && (
-                          <div style={{ marginTop: '6px', color: '#111827', fontWeight: '600', fontSize: '0.9rem' }}>
-                            Enter custom test name
-                          </div>
-                        )}
+                        {lab.test === "Custom Test" &&
+                          !(lab.customTestName || "").trim() && (
+                            <div
+                              style={{
+                                marginTop: "6px",
+                                color: "#111827",
+                                fontWeight: "600",
+                                fontSize: "0.9rem",
+                              }}
+                            >
+                              Enter custom test name
+                            </div>
+                          )}
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                        <label
+                          style={{
+                            display: "block",
+                            fontWeight: "600",
+                            fontSize: "0.85rem",
+                            marginBottom: "4px",
+                            color: "#111827",
+                          }}
+                        >
                           Remarks
                         </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {lab.remarks || 'N/A'}
+                        <div
+                          style={{
+                            backgroundColor: "#f3f4f6",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "0.9rem",
+                            color: "#666",
+                          }}
+                        >
+                          {lab.remarks || "N/A"}
                         </div>
                       </div>
                     </div>
@@ -2043,151 +2528,230 @@ const SpecialistDashboard = () => {
               </div>
             ) : null}
 
-            {!labForm && (!encounter?.labRequests || encounter.labRequests.length === 0) && (
-              <div style={{
-                textAlign: 'center',
-                padding: '24px 12px',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb',
-              }}>
-                <p style={{ color: '#d17171', margin: '0 0 6px 0', fontSize: '0.95rem' }}>
-                  No laboratory tests requested yet
-                </p>
-                <p style={{ color: '#9ca3af', margin: 0, fontSize: '0.85rem' }}>
-                  Click "Add Test" to start
-                </p>
-              </div>
-            )}
+            {!labForm &&
+              (!encounter?.labRequests ||
+                encounter.labRequests.length === 0) && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "24px 12px",
+                    backgroundColor: "#f9fafb",
+                    borderRadius: "8px",
+                    border: "1px solid #e5e7eb",
+                  }}
+                >
+                  <p
+                    style={{
+                      color: "#d17171",
+                      margin: "0 0 6px 0",
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    No laboratory tests requested yet
+                  </p>
+                  <p
+                    style={{ color: "#9ca3af", margin: 0, fontSize: "0.85rem" }}
+                  >
+                    Click "Add Test" to start
+                  </p>
+                </div>
+              )}
 
             {labForm && (
-              <div style={{
-                border: '1px solid #e2eaf6',
-                borderRadius: '8px',
-                padding: '12px',
-                backgroundColor: '#fbfdff',
-                marginTop: '12px',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                  <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
+              <div
+                style={{
+                  border: "1px solid #e2eaf6",
+                  borderRadius: "8px",
+                  padding: "12px",
+                  backgroundColor: "#fbfdff",
+                  marginTop: "12px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "start",
+                    marginBottom: "12px",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#0b5388",
+                      fontWeight: "600",
+                      fontSize: "0.95rem",
+                    }}
+                  >
                     Test #{(encounter?.labRequests?.length || 0) + 1}
                   </div>
                   <button
                     onClick={() => setLabForm(null)}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#d32f2f',
-                      cursor: 'pointer',
-                      fontSize: '1.2rem',
-                      padding: '0',
+                      background: "none",
+                      border: "none",
+                      color: "#d32f2f",
+                      cursor: "pointer",
+                      fontSize: "1.2rem",
+                      padding: "0",
                     }}
                   >
                     🗑️
                   </button>
                 </div>
-                
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+
+                <div style={{ marginBottom: "12px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontWeight: "600",
+                      fontSize: "0.85rem",
+                      marginBottom: "4px",
+                      color: "#111827",
+                    }}
+                  >
                     Common Laboratory Tests
                   </label>
                   <select
-                    value={labForm.test || ''}
+                    value={labForm.test || ""}
                     onChange={(e) =>
                       setLabForm((prev) => ({
                         ...prev,
                         test: e.target.value,
-                        customTestName: e.target.value === 'Custom Test' ? prev.customTestName : '',
+                        customTestName:
+                          e.target.value === "Custom Test"
+                            ? prev.customTestName
+                            : "",
                       }))
                     }
                     style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: '6px',
-                      border: '1px solid #c7d9ee',
-                      backgroundColor: '#fff',
-                      fontSize: '0.9rem',
-                      boxSizing: 'border-box',
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: "6px",
+                      border: "1px solid #c7d9ee",
+                      backgroundColor: "#fff",
+                      fontSize: "0.9rem",
+                      boxSizing: "border-box",
                     }}
                   >
-                    <option value=''>Select a test</option>
-                    <option value='Complete Blood Count (CBC)'>Complete Blood Count (CBC)</option>
-                    <option value='Lipid Profile'>Lipid Profile</option>
-                    <option value='HbA1c'>HbA1c</option>
-                    <option value='Kidney Function Test (KFT)'>Kidney Function Test (KFT)</option>
-                    <option value='Chest X-Ray'>Chest X-Ray</option>
-                    <option value='Ultrasound'>Ultrasound</option>
-                    <option value='Hepatitis B Surface Antigen'>Hepatitis B Surface Antigen</option>
-                    <option value='Pregnancy Test'>Pregnancy Test</option>
-                    <option value='Urinalysis'>Urinalysis</option>
-                    <option value='Blood Glucose (FBS)'>Blood Glucose (FBS)</option>
-                    <option value='Liver Function Test (LFT)'>Liver Function Test (LFT)</option>
-                    <option value='Thyroid Function Test'>Thyroid Function Test</option>
-                    <option value='ECG (Electrocardiogram)'>ECG (Electrocardiogram)</option>
-                    <option value='COVID-19 RT-PCR'>COVID-19 RT-PCR</option>
-                    <option value='Stool Examination'>Stool Examination</option>
-                    <option value='Custom Test'>Custom Test</option>
+                    <option value="">Select a test</option>
+                    <option value="Complete Blood Count (CBC)">
+                      Complete Blood Count (CBC)
+                    </option>
+                    <option value="Lipid Profile">Lipid Profile</option>
+                    <option value="HbA1c">HbA1c</option>
+                    <option value="Kidney Function Test (KFT)">
+                      Kidney Function Test (KFT)
+                    </option>
+                    <option value="Chest X-Ray">Chest X-Ray</option>
+                    <option value="Ultrasound">Ultrasound</option>
+                    <option value="Hepatitis B Surface Antigen">
+                      Hepatitis B Surface Antigen
+                    </option>
+                    <option value="Pregnancy Test">Pregnancy Test</option>
+                    <option value="Urinalysis">Urinalysis</option>
+                    <option value="Blood Glucose (FBS)">
+                      Blood Glucose (FBS)
+                    </option>
+                    <option value="Liver Function Test (LFT)">
+                      Liver Function Test (LFT)
+                    </option>
+                    <option value="Thyroid Function Test">
+                      Thyroid Function Test
+                    </option>
+                    <option value="ECG (Electrocardiogram)">
+                      ECG (Electrocardiogram)
+                    </option>
+                    <option value="COVID-19 RT-PCR">COVID-19 RT-PCR</option>
+                    <option value="Stool Examination">Stool Examination</option>
+                    <option value="Custom Test">Custom Test</option>
                   </select>
                 </div>
 
-                {labForm.test === 'Custom Test' && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                {labForm.test === "Custom Test" && (
+                  <div style={{ marginBottom: "12px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontWeight: "600",
+                        fontSize: "0.85rem",
+                        marginBottom: "4px",
+                        color: "#111827",
+                      }}
+                    >
                       Add Custom Test
                     </label>
                     <input
-                      type='text'
-                      value={labForm.customTestName || ''}
+                      type="text"
+                      value={labForm.customTestName || ""}
                       onChange={(e) =>
-                        setLabForm((prev) => ({ ...prev, customTestName: e.target.value }))
+                        setLabForm((prev) => ({
+                          ...prev,
+                          customTestName: e.target.value,
+                        }))
                       }
-                      placeholder='Enter custom test name'
+                      placeholder="Enter custom test name"
                       style={{
-                        width: '100%',
-                        padding: '8px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #c7d9ee',
-                        backgroundColor: '#fff',
-                        fontSize: '0.9rem',
-                        boxSizing: 'border-box',
+                        width: "100%",
+                        padding: "8px 10px",
+                        borderRadius: "6px",
+                        border: "1px solid #c7d9ee",
+                        backgroundColor: "#fff",
+                        fontSize: "0.9rem",
+                        boxSizing: "border-box",
                       }}
                     />
                   </div>
                 )}
 
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
+                <div style={{ marginBottom: "12px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontWeight: "600",
+                      fontSize: "0.85rem",
+                      marginBottom: "4px",
+                      color: "#111827",
+                    }}
+                  >
                     Remarks
                   </label>
                   <input
-                    type='text'
-                    value={labForm.remarks || ''}
-                    onChange={(e) => setLabForm({ ...labForm, remarks: e.target.value })}
-                    placeholder='e.g., Fasting required'
+                    type="text"
+                    value={labForm.remarks || ""}
+                    onChange={(e) =>
+                      setLabForm({ ...labForm, remarks: e.target.value })
+                    }
+                    placeholder="e.g., Fasting required"
                     style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: '6px',
-                      border: '1px solid #c7d9ee',
-                      backgroundColor: '#fff',
-                      fontSize: '0.9rem',
-                      boxSizing: 'border-box',
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: "6px",
+                      border: "1px solid #c7d9ee",
+                      backgroundColor: "#fff",
+                      fontSize: "0.9rem",
+                      boxSizing: "border-box",
                     }}
                   />
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    justifyContent: "flex-end",
+                  }}
+                >
                   <button
                     onClick={() => setLabForm(null)}
                     style={{
-                      background: '#f3f4f6',
-                      color: '#374151',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      padding: '8px 16px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem',
+                      background: "#f3f4f6",
+                      color: "#374151",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      padding: "8px 16px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      fontSize: "0.9rem",
                     }}
                   >
                     Cancel
@@ -2195,14 +2759,14 @@ const SpecialistDashboard = () => {
                   <button
                     onClick={addLab}
                     style={{
-                      background: '#0d6efd',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '8px 16px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem',
+                      background: "#0d6efd",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      padding: "8px 16px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      fontSize: "0.9rem",
                     }}
                   >
                     Add Test
@@ -2212,122 +2776,141 @@ const SpecialistDashboard = () => {
             )}
           </div>
 
-          <div className='info-card quick-message-card'>
-            <div className='info-card-title'>Quick Message</div>
-            <div className='quick-message-list'>
+          <div className="info-card quick-message-card">
+            <div className="info-card-title">Quick Message</div>
+            <div className="quick-message-list">
               {quickMessages.length === 0 ? (
-                <div className='no-quick-message'>
+                <div className="no-quick-message">
                   Type a message below to send a quick note to the patient.
                 </div>
               ) : (
                 quickMessages.map((msg) => (
-                  <div key={msg.id} className='quick-message-item'>
-                    <span className='quick-message-text'>{msg.text}</span>
-                    <span className='quick-message-time'>{msg.timestamp}</span>
+                  <div key={msg.id} className="quick-message-item">
+                    <span className="quick-message-text">{msg.text}</span>
+                    <span className="quick-message-time">{msg.timestamp}</span>
                   </div>
                 ))
               )}
             </div>
-            <form className='quick-message-form' onSubmit={handleQuickSend}>
+            <form className="quick-message-form" onSubmit={handleQuickSend}>
               <input
-                type='text'
+                type="text"
                 value={quickMessage}
                 onChange={(e) => setQuickMessage(e.target.value)}
-                placeholder='Type a message...'
-                className='message-input'
+                placeholder="Type a message..."
+                className="message-input"
               />
-              <button type='submit' className='send-btn'>
+              <button type="submit" className="send-btn">
                 Send
               </button>
             </form>
           </div>
         </div>
 
-        <div className='soap-panel'>
-          <div className='soap-header'>
+        <div className="soap-panel">
+          <div className="soap-header">
             <h3>SOAP Notes</h3>
             <p>Document your clinical findings and treatment plan</p>
           </div>
-          <div className='soap-card soap-card--subjective'>
-            <div className='soap-card-title'>S - Subjective</div>
+          <div className="soap-card soap-card--subjective">
+            <div className="soap-card-title">S - Subjective</div>
             <textarea
               value={encounter.subjective}
               onChange={(e) => saveEncounter({ subjective: e.target.value })}
-              placeholder='Patient reports experiencing...'
+              placeholder="Patient reports experiencing..."
             />
           </div>
-          <div className='soap-card soap-card--objective'>
-            <div className='soap-card-title'>O - Objective</div>
+          <div className="soap-card soap-card--objective">
+            <div className="soap-card-title">O - Objective</div>
             <textarea
               value={encounter.objective}
               onChange={(e) => saveEncounter({ objective: e.target.value })}
-              placeholder='Physical examination reveals...'
+              placeholder="Physical examination reveals..."
             />
           </div>
-          <div className='soap-card soap-card--assessment'>
-            <div className='soap-card-title'>A - Assessment</div>
+          <div className="soap-card soap-card--assessment">
+            <div className="soap-card-title">A - Assessment</div>
             <textarea
               value={encounter.assessment}
               onChange={(e) => saveEncounter({ assessment: e.target.value })}
-              placeholder='Diagnosis: ...'
+              placeholder="Diagnosis: ..."
             />
-            <div className='icd-selector-section'>
+            <div className="icd-selector-section">
               <ICDCodeSelector
                 value={encounter.icd10}
                 onChange={(newCode) => saveEncounter({ icd10: newCode })}
               />
             </div>
           </div>
-          <div className='soap-card soap-card--plan'>
-            <div className='soap-card-title'>P - Plan</div>
+          <div className="soap-card soap-card--plan">
+            <div className="soap-card-title">P - Plan</div>
             <textarea
               value={encounter.plan}
               onChange={(e) => saveEncounter({ plan: e.target.value })}
-              placeholder='Treatment plan includes...'
+              placeholder="Treatment plan includes..."
             />
           </div>
-          <div className='soap-card medical-records-access-card'>
-            <div className='medical-records-header'>
+          <div className="soap-card medical-records-access-card">
+            <div className="medical-records-header">
               <div>
-                <div className='soap-card-title'>Medical Records Access</div>
-                <p className='medical-records-description'>Patient record permissions and shared details.</p>
+                <div className="soap-card-title">Medical Records Access</div>
+                <p className="medical-records-description">
+                  Patient record permissions and shared details.
+                </p>
               </div>
               {mhRequests.length > 0 && (
-                <span className='status-pill status-pill--shared'>Shared</span>
+                <span className="status-pill status-pill--shared">Shared</span>
               )}
             </div>
             {mhRequests.length === 0 ? (
-              <div className='medical-records-empty'>
-                <div className='medical-records-icon'>🔒</div>
-                <div className='medical-records-empty-text'>
+              <div className="medical-records-empty">
+                <div className="medical-records-icon">🔒</div>
+                <div className="medical-records-empty-text">
                   No medical records shared yet
                 </div>
-                <button 
-                  className='request-record-btn' 
+                <button
+                  className="request-record-btn"
                   onClick={requestPatientRecords}
-                  disabled={profileData.specialization === 'General Practitioner'}
-                  title={profileData.specialization === 'General Practitioner' ? 'General practitioners cannot request medical history' : ''}
+                  disabled={
+                    profileData.specialization === "General Practitioner"
+                  }
+                  title={
+                    profileData.specialization === "General Practitioner"
+                      ? "General practitioners cannot request medical history"
+                      : ""
+                  }
                 >
                   Request Record from Patient
                 </button>
-                {profileData.specialization === 'General Practitioner' && (
-                  <p style={{ color: '#66788d', fontSize: '0.87rem', margin: '8px 0 0 0', textAlign: 'center' }}>
+                {profileData.specialization === "General Practitioner" && (
+                  <p
+                    style={{
+                      color: "#66788d",
+                      fontSize: "0.87rem",
+                      margin: "8px 0 0 0",
+                      textAlign: "center",
+                    }}
+                  >
                     General practitioners cannot request patient medical history
                   </p>
                 )}
               </div>
             ) : (
-              <div className='medical-records-list'>
+              <div className="medical-records-list">
                 {[
-                  { label: 'Previous Consultations', icon: '📄' },
-                  { label: 'Prescriptions', icon: '💊' },
-                  { label: 'Lab Results', icon: '🧪' },
-                  { label: 'Treatment Plans', icon: '🩺' },
+                  { label: "Previous Consultations", icon: "📄" },
+                  { label: "Prescriptions", icon: "💊" },
+                  { label: "Lab Results", icon: "🧪" },
+                  { label: "Treatment Plans", icon: "🩺" },
                 ].map((item) => (
-                  <div key={item.label} className='medical-records-item'>
-                    <span className='medical-records-item-icon'>{item.icon}</span>
-                    <span className='medical-records-item-label'>{item.label}</span>
-                    <span className='medical-records-item-arrow'>▸</span>
+                  <div key={item.label} className="medical-records-item">
+                    <span className="medical-records-item-icon">
+                      {item.icon}
+                    </span>
+                    <span className="medical-records-item-label">
+                      {item.label}
+                    </span>
+                    <span className="medical-records-item-arrow">▸</span>
                   </div>
                 ))}
               </div>
@@ -2339,27 +2922,27 @@ const SpecialistDashboard = () => {
   };
 
   const renderProfile = () => (
-    <div className='dashboard-content'>
-      <div className='profile-section'>
-        <h2 className='section-title'>Personal Information</h2>
-        <div className='profile-image-upload'>
+    <div className="dashboard-content">
+      <div className="profile-section">
+        <h2 className="section-title">Personal Information</h2>
+        <div className="profile-image-upload">
           <Avatar
             profileImageUrl={profileData.profileUrl}
             firstName={profileData.firstName}
             lastName={profileData.lastName}
-            userType='specialist'
+            userType="specialist"
             size={80}
-            alt='Profile'
-            className='profile-img'
+            alt="Profile"
+            className="profile-img"
           />
           <div>
-            <label htmlFor='profile-photo-upload' className='upload-btn'>
+            <label htmlFor="profile-photo-upload" className="upload-btn">
               <FaUpload /> Upload Photo
             </label>
             <input
-              id='profile-photo-upload'
-              type='file'
-              accept='image/png, image/jpeg'
+              id="profile-photo-upload"
+              type="file"
+              accept="image/png, image/jpeg"
               onChange={(e) => {
                 const file = e.target.files[0];
                 if (file) {
@@ -2372,87 +2955,87 @@ const SpecialistDashboard = () => {
                 }
                 e.target.value = null;
               }}
-              style={{ display: 'none' }}
+              style={{ display: "none" }}
             />
           </div>
         </div>
 
-        <div className='form-grid'>
-          <div className='input-group'>
+        <div className="form-grid">
+          <div className="input-group">
             <label>First Name</label>
             <input
-              type='text'
+              type="text"
               value={profileData.firstName}
-              onChange={(e) => handleProfileChange('firstName', e.target.value)}
+              onChange={(e) => handleProfileChange("firstName", e.target.value)}
             />
           </div>
-          <div className='input-group'>
+          <div className="input-group">
             <label>Last Name</label>
             <input
-              type='text'
+              type="text"
               value={profileData.lastName}
-              onChange={(e) => handleProfileChange('lastName', e.target.value)}
+              onChange={(e) => handleProfileChange("lastName", e.target.value)}
             />
           </div>
-          <div className='input-group'>
+          <div className="input-group">
             <label>Email</label>
-            <input type='email' value={profileData.email} readOnly />
+            <input type="email" value={profileData.email} readOnly />
           </div>
-          <div className='input-group'>
+          <div className="input-group">
             <label>Phone Number</label>
             <input
-              type='tel'
+              type="tel"
               value={profileData.phone}
-              onChange={(e) => handleProfileChange('phone', e.target.value)}
+              onChange={(e) => handleProfileChange("phone", e.target.value)}
             />
           </div>
-          <div className='input-group'>
+          <div className="input-group">
             <label>PRC License Number</label>
             <input
-              type='text'
+              type="text"
               value={profileData.prcNumber}
-              onChange={(e) => handleProfileChange('prcNumber', e.target.value)}
-              placeholder='e.g., 1234567'
+              onChange={(e) => handleProfileChange("prcNumber", e.target.value)}
+              placeholder="e.g., 1234567"
             />
           </div>
-          <div className='profile-image-upload'>
+          <div className="profile-image-upload">
             <img
-              src={profileData.prcImage || '/placeholder-document.png'}
-              alt='PRC License'
-              className='profile-img'
+              src={profileData.prcImage || "/placeholder-document.png"}
+              alt="PRC License"
+              className="profile-img"
             />
             <div>
-              <label htmlFor='prc-license-upload' className='upload-btn'>
+              <label htmlFor="prc-license-upload" className="upload-btn">
                 <FaUpload /> Upload PRC License Photo
               </label>
               <input
-                id='prc-license-upload'
-                type='file'
-                accept='image/*'
+                id="prc-license-upload"
+                type="file"
+                accept="image/*"
                 onChange={(e) => {
                   const file = e.target.files[0];
                   if (file) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
-                      handleProfileChange('prcImage', e.target.result);
+                      handleProfileChange("prcImage", e.target.result);
                     };
                     reader.readAsDataURL(file);
                   }
                 }}
-                style={{ display: 'none' }}
+                style={{ display: "none" }}
               />
             </div>
           </div>
-          <div className='input-group full-width'>
+          <div className="input-group full-width">
             <label>Specialization</label>
             <select
               value={profileData.specialization}
               onChange={(e) => {
-                handleProfileChange('specialization', e.target.value);
-                handleProfileChange('subSpecialization', '');
+                handleProfileChange("specialization", e.target.value);
+                handleProfileChange("subSpecialization", "");
               }}
             >
-              <option value=''>Select specialization</option>
+              <option value="">Select specialization</option>
               {Object.keys(SUB_SPECIALIZATIONS).map((spec) => (
                 <option key={spec} value={spec}>
                   {spec}
@@ -2460,15 +3043,15 @@ const SpecialistDashboard = () => {
               ))}
             </select>
           </div>
-          <div className='input-group full-width'>
+          <div className="input-group full-width">
             <label>Sub Specialization</label>
             <select
               value={profileData.subSpecialization}
               onChange={(e) =>
-                handleProfileChange('subSpecialization', e.target.value)
+                handleProfileChange("subSpecialization", e.target.value)
               }
             >
-              <option value=''>Select sub specialization</option>
+              <option value="">Select sub specialization</option>
               {getSubSpecializations(profileData.specialization).map(
                 (subSpec) => (
                   <option key={subSpec} value={subSpec}>
@@ -2478,7 +3061,7 @@ const SpecialistDashboard = () => {
               )}
             </select>
           </div>
-          <div className='input-group'>
+          <div className="input-group">
             <label>Region</label>
             <select
               value={profileData.region}
@@ -2486,17 +3069,17 @@ const SpecialistDashboard = () => {
                 const selectedRegion = regions.find(
                   (r) => r.name === e.target.value,
                 );
-                handleProfileChange('region', e.target.value);
+                handleProfileChange("region", e.target.value);
                 fetchProvinces(selectedRegion?.code);
                 setProfileData((prev) => ({
                   ...prev,
-                  province: '',
-                  city: '',
-                  barangay: '',
+                  province: "",
+                  city: "",
+                  barangay: "",
                 }));
               }}
             >
-              <option value=''>Select Region</option>
+              <option value="">Select Region</option>
               {regions.map((r) => (
                 <option key={r.code} value={r.name}>
                   {r.name}
@@ -2504,7 +3087,7 @@ const SpecialistDashboard = () => {
               ))}
             </select>
           </div>
-          <div className='input-group'>
+          <div className="input-group">
             <label>Province</label>
             <select
               value={profileData.province}
@@ -2512,13 +3095,13 @@ const SpecialistDashboard = () => {
                 const selectedProvince = provinces.find(
                   (p) => p.name === e.target.value,
                 );
-                handleProfileChange('province', e.target.value);
+                handleProfileChange("province", e.target.value);
                 fetchCities(selectedProvince?.code);
-                setProfileData((prev) => ({ ...prev, city: '', barangay: '' }));
+                setProfileData((prev) => ({ ...prev, city: "", barangay: "" }));
               }}
               disabled={!profileData.region}
             >
-              <option value=''>Select Province</option>
+              <option value="">Select Province</option>
               {provinces.map((p) => (
                 <option key={p.code} value={p.name}>
                   {p.name}
@@ -2526,7 +3109,7 @@ const SpecialistDashboard = () => {
               ))}
             </select>
           </div>
-          <div className='input-group'>
+          <div className="input-group">
             <label>City / Municipality</label>
             <select
               value={profileData.city}
@@ -2534,13 +3117,13 @@ const SpecialistDashboard = () => {
                 const selectedCity = cities.find(
                   (c) => c.name === e.target.value,
                 );
-                handleProfileChange('city', e.target.value);
+                handleProfileChange("city", e.target.value);
                 fetchBarangays(selectedCity?.code);
-                setProfileData((prev) => ({ ...prev, barangay: '' }));
+                setProfileData((prev) => ({ ...prev, barangay: "" }));
               }}
               disabled={!profileData.province}
             >
-              <option value=''>Select City / Municipality</option>
+              <option value="">Select City / Municipality</option>
               {cities.map((c) => (
                 <option key={c.code} value={c.name}>
                   {c.name}
@@ -2548,14 +3131,14 @@ const SpecialistDashboard = () => {
               ))}
             </select>
           </div>
-          <div className='input-group'>
+          <div className="input-group">
             <label>Barangay</label>
             <select
               value={profileData.barangay}
-              onChange={(e) => handleProfileChange('barangay', e.target.value)}
+              onChange={(e) => handleProfileChange("barangay", e.target.value)}
               disabled={!profileData.city}
             >
-              <option value=''>Select Barangay</option>
+              <option value="">Select Barangay</option>
               {barangays.map((b) => (
                 <option key={b.code} value={b.name}>
                   {b.name}
@@ -2563,52 +3146,52 @@ const SpecialistDashboard = () => {
               ))}
             </select>
           </div>
-          <div className='input-group'>
+          <div className="input-group">
             <label>Address Line 1</label>
             <input
-              type='text'
+              type="text"
               value={profileData.addressLine1}
               onChange={(e) =>
-                handleProfileChange('addressLine1', e.target.value)
+                handleProfileChange("addressLine1", e.target.value)
               }
             />
           </div>
-          <div className='input-group'>
+          <div className="input-group">
             <label>Address Line 2</label>
             <input
-              type='text'
+              type="text"
               value={profileData.addressLine2}
               onChange={(e) =>
-                handleProfileChange('addressLine2', e.target.value)
+                handleProfileChange("addressLine2", e.target.value)
               }
             />
           </div>
-          <div className='input-group'>
+          <div className="input-group">
             <label>Zip Code</label>
             <input
-              type='text'
+              type="text"
               value={profileData.zipCode}
-              onChange={(e) => handleProfileChange('zipCode', e.target.value)}
+              onChange={(e) => handleProfileChange("zipCode", e.target.value)}
             />
           </div>
-          <div className='input-group full-width'>
+          <div className="input-group full-width">
             <label>Bio</label>
             <textarea
-              rows='4'
+              rows="4"
               value={profileData.bio}
-              onChange={(e) => handleProfileChange('bio', e.target.value)}
+              onChange={(e) => handleProfileChange("bio", e.target.value)}
             />
           </div>
           {apiError && (
             <div
-              className='error-message'
-              style={{ color: 'red', marginBottom: '10px', width: '100%' }}
+              className="error-message"
+              style={{ color: "red", marginBottom: "10px", width: "100%" }}
             >
               {apiError}
             </div>
           )}
-          <div className='full-width'>
-            <button type='button' className='btn-primary' onClick={saveProfile}>
+          <div className="full-width">
+            <button type="button" className="btn-primary" onClick={saveProfile}>
               Save Changes
             </button>
           </div>
@@ -2618,25 +3201,25 @@ const SpecialistDashboard = () => {
   );
 
   const renderServices = () => (
-    <div className='dashboard-content'>
-      <div className='services-container'>
-        <h2 className='section-title'>Professional Fees</h2>
+    <div className="dashboard-content">
+      <div className="services-container">
+        <h2 className="section-title">Professional Fees</h2>
         <div>
           {Object.entries({
-            feeInitialWithoutCert: 'Initial Consultation (No Med Cert)',
-            feeInitialWithCert: 'Initial Consultation (With Med Cert)',
-            feeFollowUpWithoutCert: 'Follow-up Consultation (No Med Cert)',
-            feeFollowUpWithCert: 'Follow-up Consultation (With Med Cert)',
+            feeInitialWithoutCert: "Initial Consultation (No Med Cert)",
+            feeInitialWithCert: "Initial Consultation (With Med Cert)",
+            feeFollowUpWithoutCert: "Follow-up Consultation (No Med Cert)",
+            feeFollowUpWithCert: "Follow-up Consultation (With Med Cert)",
           }).map(([key, label]) => (
-            <div key={key} className='service-item'>
-              <div className='service-info'>
-                <div className='service-name'>{label}</div>
-                <div className='service-fee'>
+            <div key={key} className="service-item">
+              <div className="service-info">
+                <div className="service-name">{label}</div>
+                <div className="service-fee">
                   ₱{Number(services[key] || 0).toFixed(2)}
                 </div>
               </div>
               <button
-                className='edit-btn'
+                className="edit-btn"
                 onClick={() => openEditServiceModal(key, services[key] || 0)}
               >
                 Edit
@@ -2646,10 +3229,10 @@ const SpecialistDashboard = () => {
         </div>
       </div>
 
-      <div className='services-container' style={{ marginTop: '2rem' }}>
-        <h2 className='section-title'>Disbursement Account</h2>
-        <div className='form-grid'>
-          <div className='input-group'>
+      <div className="services-container" style={{ marginTop: "2rem" }}>
+        <h2 className="section-title">Disbursement Account</h2>
+        <div className="form-grid">
+          <div className="input-group">
             <label>Account Type</label>
             <select
               value={accountDetails.accountType}
@@ -2660,16 +3243,16 @@ const SpecialistDashboard = () => {
                 }))
               }
             >
-              <option value='bank'>Bank Account</option>
-              <option value='gcash'>GCash</option>
+              <option value="bank">Bank Account</option>
+              <option value="gcash">GCash</option>
             </select>
           </div>
-          {accountDetails.accountType === 'bank' ? (
+          {accountDetails.accountType === "bank" ? (
             <>
-              <div className='input-group'>
+              <div className="input-group">
                 <label>Account Name</label>
                 <input
-                  type='text'
+                  type="text"
                   value={accountDetails.accountName}
                   onChange={(e) =>
                     setAccountDetails((prev) => ({
@@ -2679,10 +3262,10 @@ const SpecialistDashboard = () => {
                   }
                 />
               </div>
-              <div className='input-group'>
+              <div className="input-group">
                 <label>Account Number</label>
                 <input
-                  type='text'
+                  type="text"
                   value={accountDetails.accountNumber}
                   onChange={(e) =>
                     setAccountDetails((prev) => ({
@@ -2695,10 +3278,10 @@ const SpecialistDashboard = () => {
             </>
           ) : (
             <>
-              <div className='input-group'>
+              <div className="input-group">
                 <label>Phone Number</label>
                 <input
-                  type='tel'
+                  type="tel"
                   value={accountDetails.gcashNumber}
                   onChange={(e) =>
                     setAccountDetails((prev) => ({
@@ -2708,20 +3291,20 @@ const SpecialistDashboard = () => {
                   }
                 />
               </div>
-              <div className='profile-image-upload'>
+              <div className="profile-image-upload">
                 <img
-                  src={accountDetails.gcashQr || '/placeholder-qr.png'}
-                  alt='GCash QR'
-                  className='profile-img'
+                  src={accountDetails.gcashQr || "/placeholder-qr.png"}
+                  alt="GCash QR"
+                  className="profile-img"
                 />
                 <div>
-                  <label htmlFor='gcash-qr-upload' className='upload-btn'>
+                  <label htmlFor="gcash-qr-upload" className="upload-btn">
                     <FaUpload /> Upload GCash QR
                   </label>
                   <input
-                    id='gcash-qr-upload'
-                    type='file'
-                    accept='image/*'
+                    id="gcash-qr-upload"
+                    type="file"
+                    accept="image/*"
                     onChange={(e) => {
                       const file = e.target.files[0];
                       if (file) {
@@ -2735,15 +3318,15 @@ const SpecialistDashboard = () => {
                         reader.readAsDataURL(file);
                       }
                     }}
-                    style={{ display: 'none' }}
+                    style={{ display: "none" }}
                   />
                 </div>
               </div>
             </>
           )}
         </div>
-        <div style={{ marginTop: '1rem' }}>
-          <button className='btn-primary' onClick={saveAccountDetails}>
+        <div style={{ marginTop: "1rem" }}>
+          <button className="btn-primary" onClick={saveAccountDetails}>
             Save Account Details
           </button>
         </div>
@@ -2752,10 +3335,10 @@ const SpecialistDashboard = () => {
   );
 
   const renderTransactions = () => (
-    <div className='dashboard-content'>
-      <div className='services-container'>
-        <h2 className='section-title'>Payments to be Disbursed</h2>
-        <table className='transactions-table'>
+    <div className="dashboard-content">
+      <div className="services-container">
+        <h2 className="section-title">Payments to be Disbursed</h2>
+        <table className="transactions-table">
           <thead>
             <tr>
               <th>Ticket #</th>
@@ -2772,7 +3355,7 @@ const SpecialistDashboard = () => {
               <td>Consultation</td>
               <td>₱100.00</td>
               <td>
-                <span className='status-badge status-pending'>Pending</span>
+                <span className="status-badge status-pending">Pending</span>
               </td>
             </tr>
             <tr>
@@ -2781,7 +3364,7 @@ const SpecialistDashboard = () => {
               <td>Medical Clearance</td>
               <td>₱75.00</td>
               <td>
-                <span className='status-badge status-confirmed'>
+                <span className="status-badge status-confirmed">
                   Processing
                 </span>
               </td>
@@ -2790,9 +3373,9 @@ const SpecialistDashboard = () => {
         </table>
       </div>
 
-      <div className='services-container' style={{ marginTop: '2rem' }}>
-        <h2 className='section-title'>HMO Transactions</h2>
-        <table className='transactions-table'>
+      <div className="services-container" style={{ marginTop: "2rem" }}>
+        <h2 className="section-title">HMO Transactions</h2>
+        <table className="transactions-table">
           <thead>
             <tr>
               <th>Ticket #</th>
@@ -2809,7 +3392,7 @@ const SpecialistDashboard = () => {
               <td>Medical Certificate</td>
               <td>Maxicare</td>
               <td>
-                <span className='status-badge status-pending'>
+                <span className="status-badge status-pending">
                   Verification
                 </span>
               </td>
@@ -2824,13 +3407,13 @@ const SpecialistDashboard = () => {
     return (
       <div
         style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          backgroundColor: '#f0f8ff',
-          fontSize: '18px',
-          color: '#333',
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          backgroundColor: "#f0f8ff",
+          fontSize: "18px",
+          color: "#333",
         }}
       >
         Loading specialist dashboard...
@@ -2839,202 +3422,201 @@ const SpecialistDashboard = () => {
   }
 
   return (
-    <div className='specialist-dashboard'>
-      <div className='dashboard-header'>
-        <div className='header-center'>
+    <div className="specialist-dashboard">
+      <div className="dashboard-header">
+        <div className="header-center">
           <img
-            src='/okie-doc-logo.png'
-            alt='Okie-Doc+'
-            className='logo-image'
+            src="/okie-doc-logo.png"
+            alt="Okie-Doc+"
+            className="logo-image"
           />
         </div>
-        <h3 className='dashboard-title'>Specialist Dashboard</h3>
-        <div className='user-account'>
+        <h3 className="dashboard-title">Specialist Dashboard</h3>
+        <div className="user-account">
           <Avatar
             profileImageUrl={profileData.profileUrl}
             firstName={profileData.firstName}
             lastName={profileData.lastName}
-            userType='specialist'
+            userType="specialist"
             size={40}
-            alt='Account'
-            className='account-icon'
+            alt="Account"
+            className="account-icon"
           />
-          <span className='account-name'>
-            {currentUser?.firstName || currentUser?.fName || 'Specialist'}{' '}
-            {currentUser?.lastName || currentUser?.lName || ''}
+          <span className="account-name">
+            {currentUser?.firstName || currentUser?.fName || "Specialist"}{" "}
+            {currentUser?.lastName || currentUser?.lName || ""}
           </span>
-          <div className='account-dropdown'>
+          <div className="account-dropdown">
             <button
-              className='dropdown-item'
-              onClick={() => handleNavigation('profile', 'Personal Data')}
+              className="dropdown-item"
+              onClick={() => handleNavigation("profile", "Personal Data")}
             >
               My Account
             </button>
             <button
-              className='dropdown-item logout-item'
+              className="dropdown-item logout-item"
               onClick={handleLogout}
             >
               Logout
             </button>
           </div>
         </div>
-        <div className='dashboard-nav'>
-        <div className='dashboard-nav'>
+        <div className="dashboard-nav">
           <button
-            className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => handleNavigation('dashboard', 'Dashboard')}
+            className={`nav-tab ${activeTab === "dashboard" ? "active" : ""}`}
+            onClick={() => handleNavigation("dashboard", "Dashboard")}
           >
             Dashboard
           </button>
           <button
-            className={`nav-tab ${activeTab === 'messages' ? 'active' : ''}`}
-            onClick={() => handleNavigation('messages', 'Messages')}
+            className={`nav-tab ${activeTab === "messages" ? "active" : ""}`}
+            onClick={() => handleNavigation("messages", "Messages")}
           >
             Messages
           </button>
           <button
-            className={`nav-tab ${activeTab === 'schedule' ? 'active' : ''}`}
-            onClick={() => handleNavigation('schedule', 'Schedules')}
+            className={`nav-tab ${activeTab === "schedule" ? "active" : ""}`}
+            onClick={() => handleNavigation("schedule", "Schedules")}
           >
             Schedules
           </button>
           <button
-            className={`nav-tab ${activeTab === 'services' ? 'active' : ''}`}
-            onClick={() => handleNavigation('services', 'Services & Fees')}
+            className={`nav-tab ${activeTab === "services" ? "active" : ""}`}
+            onClick={() => handleNavigation("services", "Services & Fees")}
           >
             Services & Fees
           </button>
           <button
-            className={`nav-tab ${activeTab === 'transactions' ? 'active' : ''}`}
-            onClick={() => handleNavigation('transactions', 'Transactions')}
+            className={`nav-tab ${activeTab === "transactions" ? "active" : ""}`}
+            onClick={() => handleNavigation("transactions", "Transactions")}
           >
             Transactions
           </button>
         </div>
       </div>
 
-      <div className='main-content'>
-        {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'messages' && (
-          <Messages 
-            currentUser={currentUser} 
-            onNavigateToDashboard={() => setActiveTab('dashboard')} 
+      <div className="main-content">
+        {activeTab === "dashboard" && renderDashboard()}
+        {activeTab === "messages" && (
+          <Messages
+            currentUser={currentUser}
+            onNavigateToDashboard={() => setActiveTab("dashboard")}
           />
         )}
-        {activeTab === 'profile' && renderProfile()}
-        {activeTab === 'schedule' && renderSchedules()}
-        {activeTab === 'services' && renderServices()}
-        {activeTab === 'transactions' && renderTransactions()}
+        {activeTab === "profile" && renderProfile()}
+        {activeTab === "schedule" && renderSchedules()}
+        {activeTab === "services" && renderServices()}
+        {activeTab === "transactions" && renderTransactions()}
       </div>
 
       {showEditServiceModal && (
         <div
           onClick={() => setShowEditServiceModal(false)}
           style={{
-            position: 'fixed',
+            position: "fixed",
             top: 0,
             left: 0,
-            width: '100vw',
-            height: '100vh',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             zIndex: 9999,
           }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '12px',
-              width: '90%',
-              maxWidth: '450px',
-              boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              width: "90%",
+              maxWidth: "450px",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
             <div
               style={{
-                backgroundColor: '#0ea5e9',
-                color: 'white',
-                padding: '20px 24px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                backgroundColor: "#0ea5e9",
+                color: "white",
+                padding: "20px 24px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
             >
               <h2
                 style={{
                   margin: 0,
-                  fontSize: '1.25rem',
-                  fontWeight: '600',
-                  color: 'white',
+                  fontSize: "1.25rem",
+                  fontWeight: "600",
+                  color: "white",
                 }}
               >
                 Edit Service Fee
               </h2>
               <span
                 onClick={() => setShowEditServiceModal(false)}
-                style={{ cursor: 'pointer', fontSize: '1.25rem', opacity: 0.8 }}
+                style={{ cursor: "pointer", fontSize: "1.25rem", opacity: 0.8 }}
               >
                 <FaTimes />
               </span>
             </div>
 
-            <div style={{ padding: '24px' }}>
-              <div className='input-group' style={{ marginBottom: '20px' }}>
+            <div style={{ padding: "24px" }}>
+              <div className="input-group" style={{ marginBottom: "20px" }}>
                 <label
                   style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    color: '#4b5563',
-                    fontWeight: '500',
+                    display: "block",
+                    marginBottom: "8px",
+                    color: "#4b5563",
+                    fontWeight: "500",
                   }}
                 >
                   Service Type
                 </label>
                 <input
-                  type='text'
+                  type="text"
                   value={
                     {
                       feeInitialWithoutCert:
-                        'Initial Consultation (No Med Cert)',
+                        "Initial Consultation (No Med Cert)",
                       feeInitialWithCert:
-                        'Initial Consultation (With Med Cert)',
+                        "Initial Consultation (With Med Cert)",
                       feeFollowUpWithoutCert:
-                        'Follow-up Consultation (No Med Cert)',
+                        "Follow-up Consultation (No Med Cert)",
                       feeFollowUpWithCert:
-                        'Follow-up Consultation (With Med Cert)',
+                        "Follow-up Consultation (With Med Cert)",
                     }[editingService.name] || editingService.name
                   }
                   readOnly
                   style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    backgroundColor: '#f3f4f6',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    color: '#6b7280',
+                    width: "100%",
+                    padding: "10px 12px",
+                    backgroundColor: "#f3f4f6",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    color: "#6b7280",
                   }}
                 />
               </div>
 
-              <div className='input-group' style={{ marginBottom: '24px' }}>
+              <div className="input-group" style={{ marginBottom: "24px" }}>
                 <label
                   style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    color: '#4b5563',
-                    fontWeight: '500',
+                    display: "block",
+                    marginBottom: "8px",
+                    color: "#4b5563",
+                    fontWeight: "500",
                   }}
                 >
                   Professional Fee (₱)
                 </label>
                 <input
-                  type='number'
+                  type="number"
                   value={editingService.fee}
                   onChange={(e) =>
                     setEditingService((prev) => ({
@@ -3042,30 +3624,30 @@ const SpecialistDashboard = () => {
                       fee: e.target.value,
                     }))
                   }
-                  min='0'
-                  step='0.01'
+                  min="0"
+                  step="0.01"
                   style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "1rem",
                   }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button
-                  className='btn-primary'
+                  className="btn-primary"
                   onClick={updateServiceFee}
                   style={{
-                    padding: '10px 24px',
-                    backgroundColor: '#0ea5e9',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
+                    padding: "10px 24px",
+                    backgroundColor: "#0ea5e9",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontWeight: "500",
+                    cursor: "pointer",
                   }}
                 >
                   Update Fee
@@ -3078,105 +3660,105 @@ const SpecialistDashboard = () => {
 
       {showTicketModal && selectedTicket && (
         <div
-          className='modal'
+          className="modal"
           onClick={(e) =>
-            e.target.className === 'modal' && setShowTicketModal(false)
+            e.target.className === "modal" && setShowTicketModal(false)
           }
         >
-          <div className='modal-content'>
-            <div className='modal-header'>
+          <div className="modal-content">
+            <div className="modal-header">
               <h2>Ticket Details</h2>
               <span
-                className='close-modal'
+                className="close-modal"
                 onClick={() => setShowTicketModal(false)}
               >
                 <FaTimes />
               </span>
             </div>
-            <div className='input-group'>
+            <div className="input-group">
               <label>Ticket #</label>
               <input value={selectedTicket.id} readOnly />
             </div>
-            <div className='input-group'>
+            <div className="input-group">
               <label>Patient</label>
               <input value={selectedTicket.patientFullName} readOnly />
             </div>
-            <div className='input-group'>
+            <div className="input-group">
               <label>Barangay</label>
               <input
                 value={
                   selectedTicket.barangay ||
                   selectedTicket.rawTicket?.barangay ||
-                  'Not provided'
+                  "Not provided"
                 }
                 readOnly
               />
             </div>
-            <div className='input-group'>
+            <div className="input-group">
               <label>Chief Complaint</label>
               <input
                 value={selectedTicket.service || selectedTicket.chiefComplaint}
                 readOnly
               />
             </div>
-            <div className='input-group'>
+            <div className="input-group">
               <label>Symptoms</label>
               <textarea
-                value={selectedTicket.symptoms || 'None specified'}
+                value={selectedTicket.symptoms || "None specified"}
                 readOnly
                 style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--light-gray)',
-                  minHeight: '80px',
-                  background: '#f9fafb',
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--light-gray)",
+                  minHeight: "80px",
+                  background: "#f9fafb",
                 }}
               />
             </div>
-            <div className='input-group'>
+            <div className="input-group">
               <label>Consultation Channel</label>
               <input
-                value={selectedTicket.consultationChannel || 'Not specified'}
+                value={selectedTicket.consultationChannel || "Not specified"}
                 readOnly
               />
             </div>
-            <div className='input-group'>
+            <div className="input-group">
               <label>Date & Time</label>
               <input value={selectedTicket.when} readOnly />
             </div>
-            <div className='input-group'>
+            <div className="input-group">
               <label>Status</label>
               <input value={selectedTicket.status} readOnly />
             </div>
-            <div className='modal-actions'>
+            <div className="modal-actions">
               {(() => {
-                const s = (selectedTicket.status || '').toLowerCase();
-                const isTriage = s === 'processing' || s === 'triage complete';
-                const isCompleted = s === 'completed';
+                const s = (selectedTicket.status || "").toLowerCase();
+                const isTriage = s === "processing" || s === "triage complete";
+                const isCompleted = s === "completed";
 
                 return (
                   <>
                     {!isCompleted && !isTriage && (
                       <button
-                        className='btn-primary'
-                        onClick={() => updateTicketStatus('Confirmed')}
+                        className="btn-primary"
+                        onClick={() => updateTicketStatus("Confirmed")}
                       >
                         Mark Confirmed
                       </button>
                     )}
                     {!isTriage && !isCompleted && (
                       <button
-                        className='edit-btn'
-                        onClick={() => updateTicketStatus('Completed')}
+                        className="edit-btn"
+                        onClick={() => updateTicketStatus("Completed")}
                       >
                         Mark Completed
                       </button>
                     )}
                     {isTriage && (
                       <button
-                        className='btn-primary'
-                        style={{ backgroundColor: '#10b981' }}
+                        className="btn-primary"
+                        style={{ backgroundColor: "#10b981" }}
                         onClick={() => {
                           setSelectedTicketId(selectedTicket.id);
                           setShowInvoiceModal(true);
@@ -3195,22 +3777,22 @@ const SpecialistDashboard = () => {
 
       {showScheduleModal && (
         <div
-          className='modal'
+          className="modal"
           onClick={(e) =>
-            e.target.className === 'modal' && setShowScheduleModal(false)
+            e.target.className === "modal" && setShowScheduleModal(false)
           }
         >
-          <div className='modal-content'>
-            <div className='modal-header'>
+          <div className="modal-content">
+            <div className="modal-header">
               <h2>Add Schedule</h2>
               <span
-                className='close-modal'
+                className="close-modal"
                 onClick={() => setShowScheduleModal(false)}
               >
                 <FaTimes />
               </span>
             </div>
-            <div className='input-group'>
+            <div className="input-group">
               <label>Date</label>
               <input
                 value={
@@ -3218,22 +3800,22 @@ const SpecialistDashboard = () => {
                     ? `${getMonthName(
                         currentMonth,
                       )} ${selectedDate}, ${currentYear}`
-                    : ''
+                    : ""
                 }
                 readOnly
               />
             </div>
-            <div className='input-group'>
+            <div className="input-group">
               <label>Time</label>
               <input
-                type='time'
+                type="time"
                 value={scheduleData.time}
                 onChange={(e) =>
                   setScheduleData((prev) => ({ ...prev, time: e.target.value }))
                 }
               />
             </div>
-            <div className='input-group'>
+            <div className="input-group">
               <label>Duration (minutes)</label>
               <select
                 value={scheduleData.duration}
@@ -3244,18 +3826,18 @@ const SpecialistDashboard = () => {
                   }))
                 }
               >
-                <option value='15'>15 minutes</option>
-                <option value='30'>30 minutes</option>
-                <option value='45'>45 minutes</option>
-                <option value='60'>1 hour</option>
-                <option value='90'>1.5 hours</option>
-                <option value='120'>2 hours</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="90">1.5 hours</option>
+                <option value="120">2 hours</option>
               </select>
             </div>
-            <div className='input-group'>
+            <div className="input-group">
               <label>Notes</label>
               <textarea
-                rows='3'
+                rows="3"
                 value={scheduleData.notes}
                 onChange={(e) =>
                   setScheduleData((prev) => ({
@@ -3263,11 +3845,11 @@ const SpecialistDashboard = () => {
                     notes: e.target.value,
                   }))
                 }
-                placeholder='Available for consultation, Follow-up appointment, etc.'
+                placeholder="Available for consultation, Follow-up appointment, etc."
               />
             </div>
-            <div style={{ marginTop: '1.5rem' }}>
-              <button className='btn-primary' onClick={addSchedule}>
+            <div style={{ marginTop: "1.5rem" }}>
+              <button className="btn-primary" onClick={addSchedule}>
                 Add Schedule
               </button>
             </div>
@@ -3277,19 +3859,19 @@ const SpecialistDashboard = () => {
 
       {/* Generate Invoice Modal */}
       {showInvoiceModal && (
-        <div className='modal' onClick={() => setShowInvoiceModal(false)}>
-          <div className='modal-content' onClick={(e) => e.stopPropagation()}>
-            <div className='modal-header'>
+        <div className="modal" onClick={() => setShowInvoiceModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
               <h3>Generate Invoice</h3>
               <button
-                className='close-modal'
+                className="close-modal"
                 onClick={() => setShowInvoiceModal(false)}
               >
                 &times;
               </button>
             </div>
-            <div style={{ padding: '1.5rem' }}>
-              <div className='input-group full-width'>
+            <div style={{ padding: "1.5rem" }}>
+              <div className="input-group full-width">
                 <label>Consultation Type</label>
                 <select
                   value={invoiceForm.consultationType}
@@ -3300,22 +3882,22 @@ const SpecialistDashboard = () => {
                     }))
                   }
                 >
-                  <option value='initial'>Initial</option>
-                  <option value='follow-up'>Follow-up</option>
+                  <option value="initial">Initial</option>
+                  <option value="follow-up">Follow-up</option>
                 </select>
               </div>
               <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  marginTop: '1.5rem',
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  marginTop: "1.5rem",
                 }}
               >
                 <input
-                  type='checkbox'
-                  id='invoiceCert'
-                  style={{ width: '18px', height: '18px', margin: 0 }}
+                  type="checkbox"
+                  id="invoiceCert"
+                  style={{ width: "18px", height: "18px", margin: 0 }}
                   checked={invoiceForm.includesCertificate}
                   onChange={(e) =>
                     setInvoiceForm((f) => ({
@@ -3325,24 +3907,24 @@ const SpecialistDashboard = () => {
                   }
                 />
                 <label
-                  htmlFor='invoiceCert'
-                  style={{ margin: 0, cursor: 'pointer', fontWeight: 500 }}
+                  htmlFor="invoiceCert"
+                  style={{ margin: 0, cursor: "pointer", fontWeight: 500 }}
                 >
                   Includes Medical Certificate
                 </label>
               </div>
               <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  marginTop: '1rem',
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  marginTop: "1rem",
                 }}
               >
                 <input
-                  type='checkbox'
-                  id='invoiceDiscount'
-                  style={{ width: '18px', height: '18px', margin: 0 }}
+                  type="checkbox"
+                  id="invoiceDiscount"
+                  style={{ width: "18px", height: "18px", margin: 0 }}
                   checked={invoiceForm.isDiscounted}
                   onChange={(e) =>
                     setInvoiceForm((f) => ({
@@ -3352,8 +3934,8 @@ const SpecialistDashboard = () => {
                   }
                 />
                 <label
-                  htmlFor='invoiceDiscount'
-                  style={{ margin: 0, cursor: 'pointer', fontWeight: 500 }}
+                  htmlFor="invoiceDiscount"
+                  style={{ margin: 0, cursor: "pointer", fontWeight: 500 }}
                 >
                   Apply Discount (Senior/PWD)
                 </label>
@@ -3361,26 +3943,26 @@ const SpecialistDashboard = () => {
             </div>
             <div
               style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '10px',
-                padding: '0 1.5rem 1.5rem',
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "10px",
+                padding: "0 1.5rem 1.5rem",
               }}
             >
               <button
-                className='edit-btn'
+                className="edit-btn"
                 onClick={() => setShowInvoiceModal(false)}
                 disabled={isLoading}
               >
                 Cancel
               </button>
               <button
-                className='btn-primary'
+                className="btn-primary"
                 style={{ marginTop: 0 }}
                 onClick={handleGenerateInvoice}
                 disabled={isLoading}
               >
-                {isLoading ? 'Generating...' : 'Generate Invoice'}
+                {isLoading ? "Generating..." : "Generate Invoice"}
               </button>
             </div>
           </div>
@@ -3398,62 +3980,62 @@ const SpecialistDashboard = () => {
 
       {/* Success Modal */}
       {showSuccessModal && (
-        <div className='modal' onClick={() => setShowSuccessModal(false)}>
+        <div className="modal" onClick={() => setShowSuccessModal(false)}>
           <div
-            className='modal-content'
+            className="modal-content"
             onClick={(e) => e.stopPropagation()}
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center',
-              padding: '40px 30px',
-              maxWidth: '450px',
-              width: '90%',
-              backgroundColor: '#ffffff',
-              borderRadius: '12px',
-              boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              padding: "40px 30px",
+              maxWidth: "450px",
+              width: "90%",
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
             }}
           >
             <div
               style={{
-                color: '#16a34a',
-                fontSize: '4rem',
-                lineHeight: '1',
-                marginBottom: '20px',
+                color: "#16a34a",
+                fontSize: "4rem",
+                lineHeight: "1",
+                marginBottom: "20px",
               }}
             >
               ✓
             </div>
             <h3
               style={{
-                fontSize: '1.5rem',
-                marginBottom: '15px',
-                color: '#1f2937',
+                fontSize: "1.5rem",
+                marginBottom: "15px",
+                color: "#1f2937",
               }}
             >
               Profile Saved Successfully
             </h3>
             <p
               style={{
-                color: '#4b5563',
-                marginBottom: '25px',
-                fontSize: '1.1rem',
-                lineHeight: '1.5',
+                color: "#4b5563",
+                marginBottom: "25px",
+                fontSize: "1.1rem",
+                lineHeight: "1.5",
               }}
             >
               Your specialist profile information has been securely updated in
               the database.
             </p>
             <button
-              className='btn-primary'
+              className="btn-primary"
               onClick={() => setShowSuccessModal(false)}
               style={{
-                width: '100%',
-                padding: '12px',
-                fontSize: '1.1rem',
-                marginTop: '0',
+                width: "100%",
+                padding: "12px",
+                fontSize: "1.1rem",
+                marginTop: "0",
               }}
             >
               Okay

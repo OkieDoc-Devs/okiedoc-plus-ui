@@ -87,6 +87,29 @@ const ROS_GROUPS = [
   },
 ];
 const URGENCY_LEVEL_OPTIONS = ['Low', 'Normal', 'Urgent', 'Critical'];
+const PAIN_MAP_VIEWS = ['front', 'back'];
+const PAIN_MAP_AREAS = {
+  front: [
+    { key: 'head', label: 'Head', className: 'part-head' },
+    { key: 'neck', label: 'Neck', className: 'part-neck' },
+    { key: 'chest', label: 'Chest', className: 'part-chest' },
+    { key: 'abdomen', label: 'Abdomen', className: 'part-abdomen' },
+    { key: 'left-arm', label: 'Left Arm', className: 'part-left-arm' },
+    { key: 'right-arm', label: 'Right Arm', className: 'part-right-arm' },
+    { key: 'left-leg', label: 'Left Leg', className: 'part-left-leg' },
+    { key: 'right-leg', label: 'Right Leg', className: 'part-right-leg' },
+  ],
+  back: [
+    { key: 'head', label: 'Head', className: 'part-head' },
+    { key: 'neck', label: 'Neck', className: 'part-neck' },
+    { key: 'upper-back', label: 'Upper Back', className: 'part-chest' },
+    { key: 'lower-back', label: 'Lower Back', className: 'part-abdomen' },
+    { key: 'left-arm', label: 'Left Arm', className: 'part-left-arm' },
+    { key: 'right-arm', label: 'Right Arm', className: 'part-right-arm' },
+    { key: 'left-leg', label: 'Left Leg', className: 'part-left-leg' },
+    { key: 'right-leg', label: 'Right Leg', className: 'part-right-leg' },
+  ],
+};
 const TRIAGE_DRAFTS_STORAGE_KEY = 'nurse.triageDraftsByTicket';
 const FALLBACK_DEPARTMENTS = [
   'General Medicine',
@@ -347,6 +370,8 @@ export default function Dashboard() {
   const [urgencyOverridesByTicketId, setUrgencyOverridesByTicketId] = useState({});
   const [selectedSymptomPills, setSelectedSymptomPills] = useState([]);
   const [selectedRosItems, setSelectedRosItems] = useState([]);
+  const [painMapView, setPainMapView] = useState('front');
+  const [selectedPainAreas, setSelectedPainAreas] = useState([]);
   const [isAdditionalDetailsOpen, setIsAdditionalDetailsOpen] = useState(false);
   const [triageDraftsByTicketId, setTriageDraftsByTicketId] = useState(() => {
     try {
@@ -639,6 +664,8 @@ export default function Dashboard() {
       setSelectedUrgencyLevel('');
       setSelectedSymptomPills([]);
       setSelectedRosItems([]);
+      setPainMapView('front');
+      setSelectedPainAreas([]);
       setIsAdditionalDetailsOpen(false);
       setVitalsDraft({
         bloodPressure: '',
@@ -740,6 +767,14 @@ export default function Dashboard() {
               return null;
             })
             .filter(Boolean),
+    );
+    setPainMapView(
+      PAIN_MAP_VIEWS.includes(localDraft.painMapView) ? localDraft.painMapView : 'front',
+    );
+    setSelectedPainAreas(
+      Array.isArray(localDraft.selectedPainAreas)
+        ? localDraft.selectedPainAreas
+        : [],
     );
 
     const toEditableValue = (value) =>
@@ -1177,6 +1212,50 @@ export default function Dashboard() {
 
       if (selectedTicket?.id) {
         persistTriageDraft(selectedTicket.id, { selectedRosItems: next });
+      }
+
+      return next;
+    });
+  };
+
+  const handlePainMapViewChange = (view) => {
+    if (!PAIN_MAP_VIEWS.includes(view)) {
+      return;
+    }
+
+    setPainMapView(view);
+    if (selectedTicket?.id) {
+      persistTriageDraft(selectedTicket.id, { painMapView: view });
+    }
+  };
+
+  const handlePainAreaToggle = (area) => {
+    if (!area?.key || !area?.label || !PAIN_MAP_VIEWS.includes(painMapView)) {
+      return;
+    }
+
+    const areaId = `${painMapView}:${area.key}`;
+
+    setSelectedPainAreas((previous) => {
+      const exists = previous.some((entry) => entry.id === areaId);
+      const next = exists
+        ? previous.filter((entry) => entry.id !== areaId)
+        : [...previous, { id: areaId, view: painMapView, key: area.key, label: area.label }];
+
+      if (selectedTicket?.id) {
+        persistTriageDraft(selectedTicket.id, { selectedPainAreas: next });
+      }
+
+      return next;
+    });
+  };
+
+  const handlePainAreaRemove = (areaId) => {
+    setSelectedPainAreas((previous) => {
+      const next = previous.filter((entry) => entry.id !== areaId);
+
+      if (selectedTicket?.id) {
+        persistTriageDraft(selectedTicket.id, { selectedPainAreas: next });
       }
 
       return next;
@@ -1719,6 +1798,76 @@ export default function Dashboard() {
 
                   <article className='triage-pain-map-card'>
                     <h4>Pain Map</h4>
+                    <div className='triage-pain-map-view-toggle' role='tablist' aria-label='Pain map view'>
+                      <button
+                        type='button'
+                        role='tab'
+                        aria-selected={painMapView === 'front'}
+                        className={`triage-pain-map-view-btn ${painMapView === 'front' ? 'active' : ''}`}
+                        onClick={() => handlePainMapViewChange('front')}
+                      >
+                        Front
+                      </button>
+                      <button
+                        type='button'
+                        role='tab'
+                        aria-selected={painMapView === 'back'}
+                        className={`triage-pain-map-view-btn ${painMapView === 'back' ? 'active' : ''}`}
+                        onClick={() => handlePainMapViewChange('back')}
+                      >
+                        Back
+                      </button>
+                    </div>
+
+                    <div className='triage-pain-map-content'>
+                      <div className={`triage-pain-map-figure ${painMapView === 'back' ? 'back' : 'front'}`}>
+                        {PAIN_MAP_AREAS[painMapView].map((area) => {
+                          const areaId = `${painMapView}:${area.key}`;
+                          const isSelected = selectedPainAreas.some((entry) => entry.id === areaId);
+
+                          return (
+                            <button
+                              key={areaId}
+                              type='button'
+                              className={`triage-body-part ${area.className} ${isSelected ? 'selected' : ''}`}
+                              onClick={() => handlePainAreaToggle(area)}
+                              aria-pressed={isSelected}
+                              aria-label={`${area.label} (${painMapView})`}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      <div className='triage-pain-map-selection'>
+                        <div className='triage-pain-map-selection-title'>Selected pain areas:</div>
+                        {selectedPainAreas.length === 0 ? (
+                          <div className='triage-pain-map-empty'>No areas selected</div>
+                        ) : (
+                          <div className='triage-pain-map-chips'>
+                            {selectedPainAreas.map((area) => (
+                              <div key={area.id} className='triage-pain-map-chip'>
+                                <span>
+                                  {area.label}
+                                  {` (${area.view === 'back' ? 'Back' : 'Front'})`}
+                                </span>
+                                <button
+                                  type='button'
+                                  className='triage-pain-map-chip-remove'
+                                  onClick={() => handlePainAreaRemove(area.id)}
+                                  aria-label={`Remove ${area.label}`}
+                                >
+                                  x
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className='triage-pain-map-instruction'>
+                      Click on body parts to mark pain locations
+                    </div>
                   </article>
 
                   <article className='triage-ros-card'>

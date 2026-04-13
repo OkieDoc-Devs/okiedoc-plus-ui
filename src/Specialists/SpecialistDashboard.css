@@ -1560,9 +1560,11 @@ html:has(body.specialist-dashboard-body) {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+  background: var(--white);
   border-bottom: 1px solid #d8ecff;
-  padding-bottom: 12px;
-  margin-bottom: 12px;
+  border-radius: 12px 12px 0 0;
+  margin-bottom: 0;
+  padding: 0 0 12px;
 }
 
 .patient-details-header h2 {
@@ -3435,6 +3437,61 @@ html:has(body.specialist-dashboard-body) {
 .specialist-dashboard .close-modal:hover {
   background: rgba(255, 255, 255, 0.22);
   transform: rotate(90deg);
+}
+
+.specialist-dashboard .modal-content.specialist-entry-modal {
+  max-width: 1240px;
+}
+
+.specialist-dashboard .specialist-entry-modal__body {
+  padding: 0.75rem 0.75rem 1rem;
+  overflow-y: auto;
+}
+
+.specialist-dashboard .specialist-entry-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.specialist-dashboard .specialist-entry-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.specialist-dashboard .specialist-entry-modal__field--full {
+  grid-column: 1 / -1;
+}
+
+.specialist-dashboard .specialist-entry-modal__field span {
+  color: #111827;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.specialist-dashboard .specialist-entry-modal__field strong {
+  color: #374151;
+  font-size: 0.92rem;
+  line-height: 1.3;
+  font-weight: 500;
+  word-break: break-word;
+  display: block;
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-height: 32px;
+  align-self: stretch;
+}
+
+.specialist-dashboard .specialist-entry-modal__field--full {
+  grid-column: 1 / -1;
 }
 
 .specialist-dashboard .input-group {

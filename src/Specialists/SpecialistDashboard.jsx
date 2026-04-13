@@ -177,6 +177,7 @@ const SpecialistDashboard = () => {
   const [labForm, setLabForm] = useState(null);
 
   const [mhRequests, setMhRequests] = useState([]);
+  const [selectedMedicalEntry, setSelectedMedicalEntry] = useState(null);
 
   const [centerTab, setCenterTab] = useState('medicine');
 
@@ -1029,6 +1030,26 @@ const SpecialistDashboard = () => {
     saveEncounter({ labRequests: updatedEncounter.labRequests });
   };
 
+  const openMedicineDetails = (medicine, index) => {
+    setSelectedMedicalEntry({
+      type: 'medicine',
+      title: 'Prescription',
+      data: medicine,
+      summary: formatMedicineDisplay(medicine) || 'No summary available',
+    });
+  };
+
+  const openLabRequestDetails = (labRequest, index) => {
+    setSelectedMedicalEntry({
+      type: 'lab',
+      title: 'Laboratory Request',
+      data: labRequest,
+      summary: formatLabRequestDisplay(labRequest) || 'No summary available',
+    });
+  };
+
+  const closeMedicalEntryDetails = () => setSelectedMedicalEntry(null);
+
   const requestPatientRecords = () => {
     if (!selectedTicketId) {
       alert('Please select a patient ticket first.');
@@ -1458,13 +1479,10 @@ const SpecialistDashboard = () => {
         </div>
 
         <div className='patient-details-panel'>
-          <div className='patient-details-scroll'>
           <div className='patient-details-header'>
             <div>
-              <h2>{selectedPatient?.patientFullName || selectedPatient?.patient || 'No patient selected'}</h2>
-              <p className='patient-specialization'>
-                {selectedPatient?.service || 'General Consultation'}
-              </p>
+              <h2>Mark Joe Smith</h2>
+              <p className='patient-specialization'>Headache</p>
             </div>
             <button
               className='btn-primary complete-consultation'
@@ -1475,6 +1493,7 @@ const SpecialistDashboard = () => {
             </button>
           </div>
 
+          <div className='patient-details-scroll'>
           <div className='patient-info-card'>
             <div className='section-title-small'>Patient Information</div>
             <div className='patient-info-grid'>
@@ -1571,19 +1590,39 @@ const SpecialistDashboard = () => {
             {encounter?.medicines && encounter.medicines.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {encounter.medicines.map((med, idx) => (
-                  <div key={idx} style={{
-                    border: '1px solid #e2eaf6',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    backgroundColor: '#fbfdff',
-                    position: 'relative',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                      <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
-                        Medication #{idx + 1}
+                  <div
+                    key={idx}
+                    role='button'
+                    tabIndex={0}
+                    onClick={() => openMedicineDetails(med, idx)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openMedicineDetails(med, idx);
+                      }
+                    }}
+                    style={{
+                      border: '1px solid #e2eaf6',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      backgroundColor: '#fbfdff',
+                      position: 'relative',
+                      cursor: 'pointer',
+                    }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px', gap: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: '#111827', fontWeight: '500', fontSize: '0.92rem', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {med.name || 'N/A'}
+                        </div>
+                        <div style={{ color: '#6b7280', fontSize: '0.78rem', marginTop: '2px' }}>
+                          {med.dosage || 'N/A'}
+                        </div>
                       </div>
                       <button
-                        onClick={() => removeMedicine(idx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeMedicine(idx);
+                        }}
                         style={{
                           background: 'none',
                           border: 'none',
@@ -1595,48 +1634,6 @@ const SpecialistDashboard = () => {
                       >
                         🗑️
                       </button>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                          Medication Name
-                        </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.name || 'N/A'}
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                          Dosage
-                        </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.dosage || 'N/A'}
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                          Frequency
-                        </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.frequency || 'N/A'}
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                          Duration
-                        </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.duration || 'N/A'}
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                        Special Instructions
-                      </label>
-                      <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                        {med.specialInstructions || 'N/A'}
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -1861,32 +1858,53 @@ const SpecialistDashboard = () => {
             {encounter?.labRequests && encounter.labRequests.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {encounter.labRequests.map((lab, idx) => (
-                  <div key={idx} style={{
-                    border: '1px solid #e2eaf6',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    backgroundColor: '#fbfdff',
-                    position: 'relative',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                      <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
-                        Test #{idx + 1}
+                  <div
+                    key={idx}
+                    role='button'
+                    tabIndex={0}
+                    onClick={() => openLabRequestDetails(lab, idx)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openLabRequestDetails(lab, idx);
+                      }
+                    }}
+                    style={{
+                      border: '1px solid #e2eaf6',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      backgroundColor: '#fbfdff',
+                      position: 'relative',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ color: '#111827', fontWeight: '500', fontSize: '0.92rem', lineHeight: 1.25 }}>
+                          {lab.test === 'Custom Test'
+                            ? lab.customTestName || 'Custom Test'
+                            : lab.test || 'N/A'}
+                        </div>
                       </div>
                       <button
-                        onClick={() => removeLab(idx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeLab(idx);
+                        }}
                         style={{
                           background: 'none',
                           border: 'none',
                           color: '#d32f2f',
                           cursor: 'pointer',
-                          fontSize: '1.2rem',
+                          fontSize: '1rem',
                           padding: '0',
+                          lineHeight: 1,
                         }}
                       >
                         🗑️
                       </button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div style={{ display: 'none' }}>
                       <div>
                         <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
                           Test Name
@@ -3351,6 +3369,73 @@ const SpecialistDashboard = () => {
             >
               Okay
             </button>
+          </div>
+        </div>
+      )}
+
+      {selectedMedicalEntry && (
+        <div
+          className='modal'
+          onClick={(e) => e.target.className === 'modal' && closeMedicalEntryDetails()}
+        >
+          <div className='modal-content specialist-entry-modal' onClick={(e) => e.stopPropagation()}>
+            <div className='modal-header'>
+              <h3>{selectedMedicalEntry.title}</h3>
+              <button className='close-modal' onClick={closeMedicalEntryDetails}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className='specialist-entry-modal__body'>
+              {selectedMedicalEntry.type === 'medicine' ? (
+                <div className='specialist-entry-modal__grid'>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Medication Name</span>
+                    <strong>{selectedMedicalEntry.data?.name || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Dosage</span>
+                    <strong>{selectedMedicalEntry.data?.dosage || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Frequency</span>
+                    <strong>{selectedMedicalEntry.data?.frequency || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Duration</span>
+                    <strong>{selectedMedicalEntry.data?.duration || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field specialist-entry-modal__field--full'>
+                    <span>Special Instructions</span>
+                    <strong>{selectedMedicalEntry.data?.specialInstructions || 'N/A'}</strong>
+                  </div>
+                </div>
+              ) : (
+                <div className='specialist-entry-modal__grid'>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Test Name</span>
+                    <strong>
+                      {selectedMedicalEntry.data?.test === 'Custom Test'
+                        ? selectedMedicalEntry.data?.customTestName || 'N/A'
+                        : selectedMedicalEntry.data?.test || 'N/A'}
+                    </strong>
+                  </div>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Test Type</span>
+                    <strong>{selectedMedicalEntry.data?.test || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field specialist-entry-modal__field--full'>
+                    <span>Remarks</span>
+                    <strong>{selectedMedicalEntry.data?.remarks || 'N/A'}</strong>
+                  </div>
+                  {selectedMedicalEntry.data?.test === 'Custom Test' && (
+                    <div className='specialist-entry-modal__field specialist-entry-modal__field--full'>
+                      <span>Custom Test Name</span>
+                      <strong>{selectedMedicalEntry.data?.customTestName || 'N/A'}</strong>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

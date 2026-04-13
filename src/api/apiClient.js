@@ -54,7 +54,7 @@ function isLikelyCsrfFailure(responseData) {
     typeof responseData === 'string'
       ? responseData
       : responseData?.error || responseData?.message || '';
-  return /csrf|forgery token|forbidden/i.test(String(text));
+  return /csrf|forgery token/i.test(String(text));
 }
 
 /**
@@ -94,6 +94,7 @@ export async function apiRequest(endpoint, options = {}) {
 
   try {
     if (
+      import.meta.env.PROD &&
       MUTATING_METHODS.has(method) &&
       !mergedHeaders['x-csrf-token']
     ) {
@@ -121,15 +122,14 @@ export async function apiRequest(endpoint, options = {}) {
     if (
       !response.ok &&
       response.status === 403 &&
+      import.meta.env.PROD &&
       MUTATING_METHODS.has(method) &&
-      !options._hasRetriedCsrf &&
       isLikelyCsrfFailure(responseData)
     ) {
       mergedHeaders['x-csrf-token'] = await fetchCsrfToken(true);
       response = await fetch(url, {
         ...defaultOptions,
         ...fetchOptions,
-        _hasRetriedCsrf: true,
         headers: mergedHeaders,
       });
 

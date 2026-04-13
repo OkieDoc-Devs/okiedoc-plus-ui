@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUpload, FaTimes } from 'react-icons/fa';
+import { FaUpload, FaTimes, FaRegComment, FaPaperPlane } from 'react-icons/fa';
 import './SpecialistDashboard.css';
 import authService from './authService';
 import * as specialistApi from './services/apiService';
@@ -143,9 +143,8 @@ const SpecialistDashboard = () => {
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketFilter, setTicketFilter] = useState('All');
-
-  const [quickMessage, setQuickMessage] = useState('');
-  const [quickMessages, setQuickMessages] = useState([]);
+  const [patientChatDraft, setPatientChatDraft] = useState('');
+  const [patientChatThreads, setPatientChatThreads] = useState({});
 
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
@@ -170,14 +169,7 @@ const SpecialistDashboard = () => {
     patient: null,
   });
 
-  const [callState, setCallState] = useState({
-    isOpen: false,
-    callType: 'audio',
-    patient: null,
-  });
-
   const [selectedTicketId, setSelectedTicketId] = useState(null);
-  const [selectedPatientDetailed, setSelectedPatientDetailed] = useState(null);
   const [encounter, setEncounter] = useState(createDefaultEncounter());
 
   const [medForm, setMedForm] = useState(null);
@@ -185,6 +177,7 @@ const SpecialistDashboard = () => {
   const [labForm, setLabForm] = useState(null);
 
   const [mhRequests, setMhRequests] = useState([]);
+  const [selectedMedicalEntry, setSelectedMedicalEntry] = useState(null);
 
   const [centerTab, setCenterTab] = useState('medicine');
 
@@ -194,6 +187,32 @@ const SpecialistDashboard = () => {
     completedToday: 0,
     upcomingAppointments: 0,
   });
+  const patientChatMessagesRef = useRef(null);
+
+  const createPatientChatMessages = useCallback((ticket) => {
+    const patientName = ticket?.patientFullName || ticket?.patient || 'the patient';
+    const startedAt =
+      ticket?.consultationStartedAt ||
+      ticket?.startedAt ||
+      ticket?.createdAt ||
+      '';
+    const startedTime = startedAt
+      ? new Date(startedAt).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : '16:50';
+
+    return [
+      {
+        id: `${ticket?.id || 'ticket'}-system`,
+        sender: 'system',
+        text: `Started consultation with ${patientName}`,
+        subtext: startedTime,
+        timestamp: startedTime,
+      },
+    ];
+  }, []);
 
   const loadTicketsData = useCallback(async () => {
     console.log('[SpecialistDashboard] Loading tickets from API...');
@@ -360,17 +379,6 @@ const SpecialistDashboard = () => {
       setTickets(savedTickets);
     }
   }, []);
-
-  // Expose refresh function to chat messages
-  useEffect(() => {
-    window.refreshSpecialistDashboard = () => {
-      console.log("[SpecialistDashboard] Refreshing data from window callback...");
-      loadTicketsData();
-    };
-    return () => {
-      delete window.refreshSpecialistDashboard;
-    };
-  }, [loadTicketsData]);
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -557,53 +565,36 @@ const SpecialistDashboard = () => {
       } else {
         setEncounter(createDefaultEncounter());
       }
-      setMhRequests(loadMedicalHistoryData(selectedTicketId));
-
-      // Fetch full patient profile if possible
-      const currentTicket = tickets.find((t) => t.id === selectedTicketId);
-      if (currentTicket && currentTicket.rawTicket?.patient?.id) {
-        specialistApi
-          .getPatientProfile(currentTicket.rawTicket.patient.id)
-          .then((profile) => {
-            console.log(
-              '[SpecialistDashboard] Fetched detailed patient profile:',
-              profile,
-            );
-            setSelectedPatientDetailed(profile);
-            // Check if profile actually contains clinical data
-            const hasClinicalData = profile.activeDiseases || profile.medicalHistory || profile.allergies;
-            if (!hasClinicalData) {
-              console.log('[SpecialistDashboard] Profile received but no clinical data (likely not shared yet)');
-            }
-          })
-          .catch((err) => {
-            console.warn(
-              '[SpecialistDashboard] No access to detailed patient profile yet:',
-              err,
-            );
-            setSelectedPatientDetailed(null);
-          });
-      } else {
-        setSelectedPatientDetailed(null);
-      }
+      setMhRequests([]);
     }
-  }, [selectedTicketId, tickets]);
+  }, [selectedTicketId]);
 
-  const handleRequestMedicalHistory = async () => {
+  useEffect(() => {
     if (!selectedTicketId) return;
-    try {
-      // Check if we already have the profile in memory or need to fetch it
-      const currentTicket = tickets.find(t => t.id === selectedTicketId);
-      
-      // Send the request directly via API
-      await specialistApi.requestMedicalHistory(selectedTicketId);
-      
-      alert(`Medical history request sent to ${currentTicket?.patientName || 'patient'}'s chat.`);
-    } catch (error) {
-      console.error('Error requesting medical history:', error);
-      alert(error.message || 'Failed to request medical history');
-    }
-  };
+
+    const selectedTicketForChat = tickets.find(
+      (ticket) => String(ticket.id) === String(selectedTicketId),
+    );
+
+    setPatientChatThreads((prev) => {
+      if (prev[selectedTicketId]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [selectedTicketId]: createPatientChatMessages(selectedTicketForChat),
+      };
+    });
+
+    setPatientChatDraft('');
+  }, [selectedTicketId, tickets, createPatientChatMessages]);
+
+  useEffect(() => {
+    const messagePanel = patientChatMessagesRef.current;
+    if (!messagePanel) return;
+    messagePanel.scrollTop = messagePanel.scrollHeight;
+  }, [selectedTicketId, patientChatThreads]);
 
   const handleNavigation = (target, title) => {
     setActiveTab(target);
@@ -871,25 +862,36 @@ const SpecialistDashboard = () => {
     }
   };
 
-  const handleQuickSend = async (e) => {
+  const handlePatientChatSend = async (e) => {
     e.preventDefault();
-    const trimmedMessage = quickMessage.trim();
-    if (!trimmedMessage) return;
+
+    const trimmedMessage = patientChatDraft.trim();
+    if (!trimmedMessage || !selectedTicketId) return;
+    const activeTicket = tickets.find(
+      (ticket) => String(ticket.id) === String(selectedTicketId),
+    );
 
     const newMessage = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      text: trimmedMessage,
+      sender: 'specialist',
+      message: trimmedMessage,
       timestamp: new Date().toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
       }),
-      sender: 'you',
     };
 
-    setQuickMessages((prev) => [...prev, newMessage]);
-    setQuickMessage('');
+    setPatientChatThreads((prev) => ({
+      ...prev,
+      [selectedTicketId]: [
+        ...(prev[selectedTicketId] ||
+          createPatientChatMessages(activeTicket)),
+        newMessage,
+      ],
+    }));
+    setPatientChatDraft('');
 
-    // TODO: wire up real message sending API call when available
+    // TODO: wire up real message sending API call when available.
     // await specialistApi.sendMessageToPatient(selectedTicketId, trimmedMessage);
   };
 
@@ -1027,6 +1029,26 @@ const SpecialistDashboard = () => {
     setEncounter(updatedEncounter);
     saveEncounter({ labRequests: updatedEncounter.labRequests });
   };
+
+  const openMedicineDetails = (medicine, index) => {
+    setSelectedMedicalEntry({
+      type: 'medicine',
+      title: 'Prescription',
+      data: medicine,
+      summary: formatMedicineDisplay(medicine) || 'No summary available',
+    });
+  };
+
+  const openLabRequestDetails = (labRequest, index) => {
+    setSelectedMedicalEntry({
+      type: 'lab',
+      title: 'Laboratory Request',
+      data: labRequest,
+      summary: formatLabRequestDisplay(labRequest) || 'No summary available',
+    });
+  };
+
+  const closeMedicalEntryDetails = () => setSelectedMedicalEntry(null);
 
   const requestPatientRecords = () => {
     if (!selectedTicketId) {
@@ -1376,22 +1398,26 @@ const SpecialistDashboard = () => {
     };
 
     const getAgeText = (t) => {
-      if (!t) return 'Not provided';
+      if (!t) return '';
       if (t.age) return `${t.age} years old`;
-      const bday = t.patientBirthdate || t.birthday;
-      if (bday) {
-        const birth = new Date(bday);
+      if (t.patientBirthdate) {
+        const birth = new Date(t.patientBirthdate);
         const diff = Date.now() - birth.getTime();
         const age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
-        return isNaN(age) ? 'Not provided' : `${age} years old`;
+        return `${age} years old`;
       }
       return 'Not provided';
     };
 
-    const basePatientInfo = tickets.find((x) => x.id === selectedTicketId) || tickets[0] || null;
-    const selectedPatient = selectedPatientDetailed || basePatientInfo;
+    const selectedPatient = selectedTicket || tickets[0] || null;
 
-    const patientStatus = basePatientInfo?.status || 'Unknown';
+    const patientStatus = selectedPatient?.status || 'Unknown';
+    const patientChatMessages =
+      patientChatThreads[selectedTicketId] ||
+      createPatientChatMessages(selectedPatient);
+    const isStarterThread =
+      patientChatMessages.length === 1 &&
+      patientChatMessages[0]?.sender === 'system';
 
     return (
       <div className='dashboard-content dashboard-1to1'>
@@ -1455,10 +1481,8 @@ const SpecialistDashboard = () => {
         <div className='patient-details-panel'>
           <div className='patient-details-header'>
             <div>
-              <h2>{selectedPatient?.patientFullName || selectedPatient?.patient || (selectedPatient?.firstName ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : 'No patient selected')}</h2>
-              <p className='patient-specialization'>
-                {basePatientInfo?.service || 'General Consultation'}
-              </p>
+              <h2>Mark Joe Smith</h2>
+              <p className='patient-specialization'>Headache</p>
             </div>
             <button
               className='btn-primary complete-consultation'
@@ -1469,6 +1493,7 @@ const SpecialistDashboard = () => {
             </button>
           </div>
 
+          <div className='patient-details-scroll'>
           <div className='patient-info-card'>
             <div className='section-title-small'>Patient Information</div>
             <div className='patient-info-grid'>
@@ -1493,174 +1518,39 @@ const SpecialistDashboard = () => {
               <div className='info-item'>
                 <span className='info-label'>Contact</span>
                 <span className='info-value'>
-                  {selectedPatient?.mobile || selectedPatient?.phone || selectedPatient?.contact || 'Not provided'}
+                  {selectedPatient?.mobile || selectedPatient?.contact || 'Not provided'}
                 </span>
               </div>
             </div>
           </div>
 
           <div className='info-card'>
+            <div className='info-card-title'>Allergies</div>
+            <div className='info-card-body'>
+              {selectedPatient?.allergies?.length > 0 ? (
+                selectedPatient.allergies.map((a) => (
+                  <span key={a} className='pill'>
+                    {a}
+                  </span>
+                ))
+              ) : (
+                <span className='info-placeholder'>No known allergies</span>
+              )}
+            </div>
+          </div>
+
+          <div className='info-card'>
             <div className='info-card-title'>Medical History</div>
             <div className='info-card-body'>
-              {(() => {
-                // If the specialist HAS NOT received detailed patient data (meaning they haven't requested/allowed),
-                // we only show the Triage info or placeholder.
-                // We use selectedPatientDetailed as the source of truth for "Shared Access"
-                // IMPORTANT: If history hasn't been shared, we MUST return a placeholder.
-                const allergiesSource = selectedPatientDetailed?.allergies;
-                const activeDiseaseSource = selectedPatientDetailed?.activeDiseases;
-                const pastDiseasesSource = selectedPatientDetailed?.pastDiseases;
-                const medicationsSource = selectedPatientDetailed?.medications;
-                const surgeriesSource = selectedPatientDetailed?.surgeries;
-                const familyHistorySource = selectedPatientDetailed?.familyHistory;
-                const socialHistorySource = selectedPatientDetailed?.socialHistory;
-
-                // Checking for presence of data because getPatientProfile now filters clinical files 
-                // if history has NOT been shared.
-                const isAuthorized = allergiesSource || activeDiseaseSource || pastDiseasesSource || medicationsSource || surgeriesSource || familyHistorySource || socialHistorySource;
-
-                if (!selectedPatientDetailed || !isAuthorized) {
-                  return <span className='info-placeholder'>Request medical history to view detailed conditions and history.</span>;
-                }
-
-                const parseData = (source) => {
-                  if (!source) return [];
-                  try {
-                    return typeof source === 'string' ? JSON.parse(source) : source;
-                  } catch (e) {
-                    return [];
-                  }
-                };
-
-                const allergies = parseData(allergiesSource);
-                const activeDiseases = parseData(activeDiseaseSource);
-                const pastDiseases = parseData(pastDiseasesSource);
-                const medications = parseData(medicationsSource);
-                const surgeries = parseData(surgeriesSource);
-                const familyHistory = parseData(familyHistorySource);
-                const socialHistory = parseData(socialHistorySource);
-                
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {/* Allergies Sub-section */}
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Allergies</h4>
-                      {Array.isArray(allergies) && allergies.length > 0 ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                          {allergies.map((a, idx) => (
-                            <span key={idx} className='pill'>
-                              {typeof a === 'object' ? a.name || a.allergy : a}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className='info-placeholder'>No known allergies recorded.</span>
-                      )}
-                    </div>
-
-                    {/* Active Diseases Sub-section */}
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Active Diseases / Conditions</h4>
-                      {Array.isArray(activeDiseases) && activeDiseases.length > 0 ? (
-                         <ul className='history-list'>
-                          {activeDiseases.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.name || item.condition}</strong> {item.date && <span>({item.date})</span>}
-                              {item.description && <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#666' }}>{item.description}</p>}
-                              {item.severity && <span className='pill' style={{ background: '#f8d7da', color: '#721c24', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', marginLeft: '8px' }}>{item.severity}</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className='info-placeholder'>No active diseases recorded.</span>
-                      )}
-                    </div>
-
-                    {/* Medications Sub-section */}
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Current Medications</h4>
-                      {Array.isArray(medications) && medications.length > 0 ? (
-                        <ul className='history-list'>
-                          {medications.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.name}</strong> {item.dosage && <span> - {item.dosage}</span>}
-                              {item.frequency && <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>Frequency: {item.frequency}</p>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className='info-placeholder'>No current medications recorded.</span>
-                      )}
-                    </div>
-
-                    {/* Past Diseases Sub-section */}
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Past Diseases</h4>
-                      {Array.isArray(pastDiseases) && pastDiseases.length > 0 ? (
-                        <ul className='history-list'>
-                          {pastDiseases.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.name}</strong> {item.date && <span>({item.date})</span>}
-                              {item.status && <span className='pill' style={{ marginLeft: '8px', fontSize: '0.7rem' }}>{item.status}</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className='info-placeholder'>No past diseases recorded.</span>
-                      )}
-                    </div>
-
-                    {/* Surgeries Sub-section */}
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Surgeries</h4>
-                      {Array.isArray(surgeries) && surgeries.length > 0 ? (
-                        <ul className='history-list'>
-                          {surgeries.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.name}</strong> {item.date && <span>({item.date})</span>}
-                              {item.hospital && <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>{item.hospital}</p>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className='info-placeholder'>No surgeries recorded.</span>
-                      )}
-                    </div>
-
-                    {/* Family History Sub-section */}
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Family History</h4>
-                      {Array.isArray(familyHistory) && familyHistory.length > 0 ? (
-                        <ul className='history-list'>
-                          {familyHistory.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.name}</strong> {item.relationship && <span>({item.relationship})</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className='info-placeholder'>No family history recorded.</span>
-                      )}
-                    </div>
-
-                    {/* Social History Sub-section */}
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Social History</h4>
-                      {Array.isArray(socialHistory) && socialHistory.length > 0 ? (
-                        <ul className='history-list'>
-                          {socialHistory.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.name}</strong> {item.details && <span>: {item.details}</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className='info-placeholder'>No social history recorded.</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
+              {selectedPatient?.medicalHistory?.length > 0 ? (
+                <ul className='history-list'>
+                  {selectedPatient.medicalHistory.map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              ) : (
+                <span className='info-placeholder'>No history available</span>
+              )}
             </div>
           </div>
 
@@ -1700,19 +1590,39 @@ const SpecialistDashboard = () => {
             {encounter?.medicines && encounter.medicines.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {encounter.medicines.map((med, idx) => (
-                  <div key={idx} style={{
-                    border: '1px solid #e2eaf6',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    backgroundColor: '#fbfdff',
-                    position: 'relative',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                      <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
-                        Medication #{idx + 1}
+                  <div
+                    key={idx}
+                    role='button'
+                    tabIndex={0}
+                    onClick={() => openMedicineDetails(med, idx)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openMedicineDetails(med, idx);
+                      }
+                    }}
+                    style={{
+                      border: '1px solid #e2eaf6',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      backgroundColor: '#fbfdff',
+                      position: 'relative',
+                      cursor: 'pointer',
+                    }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px', gap: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: '#111827', fontWeight: '500', fontSize: '0.92rem', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {med.name || 'N/A'}
+                        </div>
+                        <div style={{ color: '#6b7280', fontSize: '0.78rem', marginTop: '2px' }}>
+                          {med.dosage || 'N/A'}
+                        </div>
                       </div>
                       <button
-                        onClick={() => removeMedicine(idx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeMedicine(idx);
+                        }}
                         style={{
                           background: 'none',
                           border: 'none',
@@ -1724,48 +1634,6 @@ const SpecialistDashboard = () => {
                       >
                         🗑️
                       </button>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                          Medication Name
-                        </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.name || 'N/A'}
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                          Dosage
-                        </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.dosage || 'N/A'}
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                          Frequency
-                        </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.frequency || 'N/A'}
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                          Duration
-                        </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.duration || 'N/A'}
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                        Special Instructions
-                      </label>
-                      <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                        {med.specialInstructions || 'N/A'}
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -1990,32 +1858,53 @@ const SpecialistDashboard = () => {
             {encounter?.labRequests && encounter.labRequests.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {encounter.labRequests.map((lab, idx) => (
-                  <div key={idx} style={{
-                    border: '1px solid #e2eaf6',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    backgroundColor: '#fbfdff',
-                    position: 'relative',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                      <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
-                        Test #{idx + 1}
+                  <div
+                    key={idx}
+                    role='button'
+                    tabIndex={0}
+                    onClick={() => openLabRequestDetails(lab, idx)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openLabRequestDetails(lab, idx);
+                      }
+                    }}
+                    style={{
+                      border: '1px solid #e2eaf6',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      backgroundColor: '#fbfdff',
+                      position: 'relative',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ color: '#111827', fontWeight: '500', fontSize: '0.92rem', lineHeight: 1.25 }}>
+                          {lab.test === 'Custom Test'
+                            ? lab.customTestName || 'Custom Test'
+                            : lab.test || 'N/A'}
+                        </div>
                       </div>
                       <button
-                        onClick={() => removeLab(idx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeLab(idx);
+                        }}
                         style={{
                           background: 'none',
                           border: 'none',
                           color: '#d32f2f',
                           cursor: 'pointer',
-                          fontSize: '1.2rem',
+                          fontSize: '1rem',
                           padding: '0',
+                          lineHeight: 1,
                         }}
                       >
                         🗑️
                       </button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div style={{ display: 'none' }}>
                       <div>
                         <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
                           Test Name
@@ -2212,32 +2101,60 @@ const SpecialistDashboard = () => {
             )}
           </div>
 
-          <div className='info-card quick-message-card'>
-            <div className='info-card-title'>Quick Message</div>
-            <div className='quick-message-list'>
-              {quickMessages.length === 0 ? (
-                <div className='no-quick-message'>
-                  Type a message below to send a quick note to the patient.
-                </div>
-              ) : (
-                quickMessages.map((msg) => (
-                  <div key={msg.id} className='quick-message-item'>
-                    <span className='quick-message-text'>{msg.text}</span>
-                    <span className='quick-message-time'>{msg.timestamp}</span>
-                  </div>
-                ))
-              )}
+          </div>
+
+          <div className='patient-chat-panel'>
+            <div className='patient-chat-header'>
+              <div className='patient-chat-title-row'>
+                <FaRegComment className='patient-chat-title-icon' />
+                <div className='patient-chat-title'>Patient Communication</div>
+              </div>
             </div>
-            <form className='quick-message-form' onSubmit={handleQuickSend}>
+
+            <div
+              className={`patient-chat-messages ${
+                isStarterThread ? 'patient-chat-messages--centered' : ''
+              }`}
+              ref={patientChatMessagesRef}
+            >
+              {patientChatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`patient-chat-message ${
+                    message.sender === 'system'
+                      ? 'patient-chat-message--system'
+                      : message.sender === 'specialist'
+                      ? 'patient-chat-message--own'
+                      : 'patient-chat-message--patient'
+                  }`}
+                >
+                  <div className='patient-chat-bubble'>
+                    {message.sender === 'system' ? (
+                      <>
+                        <p>{message.text}</p>
+                        <span>{message.subtext || message.timestamp}</span>
+                      </>
+                    ) : (
+                      <>
+                        <p>{message.message}</p>
+                        <span>{message.timestamp}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <form className='patient-chat-form' onSubmit={handlePatientChatSend}>
               <input
                 type='text'
-                value={quickMessage}
-                onChange={(e) => setQuickMessage(e.target.value)}
+                value={patientChatDraft}
+                onChange={(e) => setPatientChatDraft(e.target.value)}
                 placeholder='Type a message...'
-                className='message-input'
+                className='patient-chat-input'
               />
-              <button type='submit' className='send-btn'>
-                Send
+              <button type='submit' className='patient-chat-send-btn' aria-label='Send message'>
+                <FaPaperPlane />
               </button>
             </form>
           </div>
@@ -2879,7 +2796,6 @@ const SpecialistDashboard = () => {
           </div>
         </div>
         <div className='dashboard-nav'>
-        <div className='dashboard-nav'>
           <button
             className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => handleNavigation('dashboard', 'Dashboard')}
@@ -2915,12 +2831,7 @@ const SpecialistDashboard = () => {
 
       <div className='main-content'>
         {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'messages' && (
-          <Messages 
-            currentUser={currentUser} 
-            onNavigateToDashboard={() => setActiveTab('dashboard')} 
-          />
-        )}
+        {activeTab === 'messages' && <Messages currentUser={currentUser} />}
         {activeTab === 'profile' && renderProfile()}
         {activeTab === 'schedule' && renderSchedules()}
         {activeTab === 'services' && renderServices()}
@@ -3458,6 +3369,73 @@ const SpecialistDashboard = () => {
             >
               Okay
             </button>
+          </div>
+        </div>
+      )}
+
+      {selectedMedicalEntry && (
+        <div
+          className='modal'
+          onClick={(e) => e.target.className === 'modal' && closeMedicalEntryDetails()}
+        >
+          <div className='modal-content specialist-entry-modal' onClick={(e) => e.stopPropagation()}>
+            <div className='modal-header'>
+              <h3>{selectedMedicalEntry.title}</h3>
+              <button className='close-modal' onClick={closeMedicalEntryDetails}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className='specialist-entry-modal__body'>
+              {selectedMedicalEntry.type === 'medicine' ? (
+                <div className='specialist-entry-modal__grid'>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Medication Name</span>
+                    <strong>{selectedMedicalEntry.data?.name || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Dosage</span>
+                    <strong>{selectedMedicalEntry.data?.dosage || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Frequency</span>
+                    <strong>{selectedMedicalEntry.data?.frequency || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Duration</span>
+                    <strong>{selectedMedicalEntry.data?.duration || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field specialist-entry-modal__field--full'>
+                    <span>Special Instructions</span>
+                    <strong>{selectedMedicalEntry.data?.specialInstructions || 'N/A'}</strong>
+                  </div>
+                </div>
+              ) : (
+                <div className='specialist-entry-modal__grid'>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Test Name</span>
+                    <strong>
+                      {selectedMedicalEntry.data?.test === 'Custom Test'
+                        ? selectedMedicalEntry.data?.customTestName || 'N/A'
+                        : selectedMedicalEntry.data?.test || 'N/A'}
+                    </strong>
+                  </div>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Test Type</span>
+                    <strong>{selectedMedicalEntry.data?.test || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field specialist-entry-modal__field--full'>
+                    <span>Remarks</span>
+                    <strong>{selectedMedicalEntry.data?.remarks || 'N/A'}</strong>
+                  </div>
+                  {selectedMedicalEntry.data?.test === 'Custom Test' && (
+                    <div className='specialist-entry-modal__field specialist-entry-modal__field--full'>
+                      <span>Custom Test Name</span>
+                      <strong>{selectedMedicalEntry.data?.customTestName || 'N/A'}</strong>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

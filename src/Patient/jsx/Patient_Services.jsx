@@ -20,11 +20,11 @@ export default function Patient_Services({ setActive }) {
 
   // Updates the URL, which App.jsx will detect and switch pages
   const handleBookSpecialist = () => {
-    window.location.hash = `#/BookSpecialist/${generateSimulatedId()}`;
+    window.location.hash = `/BookSpecialist/${generateSimulatedId()}`;
   };
 
   const handleBookPhysical = () => {
-    window.location.hash = `#/BookPhysical/${generateSimulatedId()}`;
+    window.location.hash = `/BookPhysical/${generateSimulatedId()}`;
   };
 
   const goToAppointments = () => {

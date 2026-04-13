@@ -16,6 +16,7 @@ import {
   IconSearch,
   IconFilter,
   IconSortAscending,
+  IconArrowRight,
 } from "@tabler/icons-react";
 import "../css/BookSpecialist.css";
 
@@ -105,12 +106,19 @@ const symptomsList = [
 ];
 const timeSlots = [
   "09:00 AM",
+  "09:30 AM",
   "10:00 AM",
+  "10:30 AM",
   "11:00 AM",
+  "11:30 AM",
   "01:00 PM",
+  "01:30 PM",
   "02:00 PM",
+  "02:30 PM",
   "03:00 PM",
+  "03:30 PM",
   "04:00 PM",
+  "04:30 PM",
   "05:00 PM",
 ];
 const CURRENT_DATE = new Date("2026-04-08T00:00:00");
@@ -146,8 +154,9 @@ export function BookSpecialist({
   const [symptoms, setSymptoms] = useState([]);
   const [notes, setNotes] = useState("");
 
-  const selectedDateObj = date ? new Date(date + "T00:00:00") : null;
-  const isDateInvalid = selectedDateObj && selectedDateObj < CURRENT_DATE;
+  const isDateInvalid = date
+    ? new Date(date + "T00:00:00") < CURRENT_DATE
+    : false;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -251,7 +260,7 @@ export function BookSpecialist({
                 <React.Fragment key={step.label}>
                   <div className="bs-step-item">
                     <div
-                      className={`bs-step-circle ${isCompleted || isCurrent ? "bs-step-circle-active" : ""}`}
+                      className={`bs-step-circle ${isCompleted ? "bs-step-circle-completed" : isCurrent ? "bs-step-circle-active" : ""}`}
                     >
                       {isCompleted ? (
                         <IconCheck size={20} />
@@ -267,7 +276,7 @@ export function BookSpecialist({
                   </div>
                   {index < STEPS.length - 1 && (
                     <div
-                      className={`bs-step-line ${index < currentStep ? "bs-step-line-active" : ""}`}
+                      className={`bs-step-line ${isCompleted ? "bs-step-line-completed" : isCurrent ? "bs-step-line-active" : ""}`}
                     />
                   )}
                 </React.Fragment>
@@ -283,17 +292,17 @@ export function BookSpecialist({
           {/* STEP 1: SPECIALIST */}
           {currentStep === 0 && (
             <div className="bs-step-content">
-              <div className="bs-section-heading">
+              <div className="bs-section-heading text-violet">
                 <IconStethoscope size={20} /> <h3>Select Specialist</h3>
               </div>
 
-              <div className="bs-controls-bar">
+              <div className="bs-controls-bar mb-24">
                 <div className="bs-search-box">
                   <IconSearch size={16} className="bs-search-icon" />
                   <input
                     type="text"
                     placeholder="Search by name, specialty, or location..."
-                    className="bs-search-input"
+                    className="bs-form-input pl-36"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -418,8 +427,6 @@ export function BookSpecialist({
                         </div>
                       </div>
                     </div>
-
-                    {/* NEW: Re-added the top-right status badges! */}
                     <div className="bs-doc-status-wrapper">
                       {doc.available ? (
                         <span className="bs-status-pill bs-pill-available">
@@ -443,7 +450,7 @@ export function BookSpecialist({
           {/* STEP 2: PAYMENT */}
           {currentStep === 1 && (
             <div className="bs-step-content">
-              <div className="bs-section-heading">
+              <div className="bs-section-heading text-violet mb-24">
                 <IconShield size={20} /> <h3>Select Payment Method</h3>
               </div>
               <p className="bs-instruction-text">
@@ -542,14 +549,6 @@ export function BookSpecialist({
                       <option value="Medicard">Medicard</option>
                       <option value="Maxicare">Maxicare</option>
                       <option value="Intellicare">Intellicare</option>
-                      <option value="Cocolife">Cocolife</option>
-                      <option value="Avega">Avega</option>
-                      <option value="Pacific Cross">Pacific Cross</option>
-                      <option value="Asian Life">AsianLife</option>
-                      <option value="Insular Health Care">
-                        Insular Health Care
-                      </option>
-                      <option value="Others">Others</option>
                     </select>
                   </div>
 
@@ -692,42 +691,60 @@ export function BookSpecialist({
           {/* STEP 3: SCHEDULE */}
           {currentStep === 2 && (
             <div className="bs-step-content">
-              <div className="bs-section-heading">
-                <IconCalendarEvent size={20} /> <h3>Select Date</h3>
+              <div className="bs-inner-card mb-24">
+                <div className="bs-section-heading text-violet mb-16">
+                  <IconCalendarEvent size={20} /> <h3>Select Date</h3>
+                </div>
+                <input
+                  type="date"
+                  value={date}
+                  min={CURRENT_DATE.toISOString().split("T")[0]}
+                  max="2030-12-31"
+                  onChange={(e) => {
+                    setDate(e.target.value);
+                    setTime("");
+                  }}
+                  className="bs-form-input"
+                />
               </div>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => {
-                  setDate(e.target.value);
-                  setTime("");
-                }}
-                className="bs-form-input bs-date-input"
-              />
-              {isDateInvalid && (
-                <p className="bs-error-msg-large">
-                  Please select a valid future date.
-                </p>
-              )}
 
               {date && !isDateInvalid && (
-                <div className="bs-time-section">
-                  <div className="bs-section-heading-small">
+                <div className="bs-inner-card">
+                  <div className="bs-section-heading text-violet mb-8">
                     <IconClock size={20} /> <h3>Select Time Slot</h3>
                   </div>
                   <p className="bs-instruction-text-small">
                     Available slots for {date}
                   </p>
-                  <div className="bs-time-grid">
-                    {timeSlots.map((t) => (
-                      <button
-                        key={t}
-                        className={`bs-time-btn ${time === t ? "bs-time-btn-selected" : ""}`}
-                        onClick={() => setTime(t)}
-                      >
-                        <IconClock size={16} /> {t}
-                      </button>
-                    ))}
+
+                  <div className="bs-time-grid-extended">
+                    {timeSlots.map((t, i) => {
+                      const isUnavailable = i === 12 || i === 14;
+                      return (
+                        <button
+                          key={t}
+                          disabled={isUnavailable}
+                          className={`bs-time-btn-extended ${time === t ? "selected" : ""} ${isUnavailable ? "unavailable" : "available"}`}
+                          onClick={() => setTime(t)}
+                        >
+                          <IconClock size={18} className="mb-8" />
+                          {t}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="bs-time-legend">
+                    <span className="bs-legend-item">
+                      <div className="bs-legend-dot selected"></div> Selected
+                    </span>
+                    <span className="bs-legend-item">
+                      <div className="bs-legend-dot available"></div> Available
+                    </span>
+                    <span className="bs-legend-item">
+                      <div className="bs-legend-dot unavailable"></div>{" "}
+                      Unavailable
+                    </span>
                   </div>
                 </div>
               )}
@@ -737,54 +754,56 @@ export function BookSpecialist({
           {/* STEP 4: DETAILS */}
           {currentStep === 3 && (
             <div className="bs-step-content">
-              <div className="bs-section-heading">
-                <IconStethoscope size={20} /> <h3>Consultation Details</h3>
-              </div>
-
-              <div className="bs-form-group">
-                <label className="bs-form-label">Chief Complaint *</label>
-                <input
-                  type="text"
-                  placeholder="Briefly describe your main concern"
-                  maxLength={50}
-                  value={complaint}
-                  onChange={(e) => setComplaint(e.target.value)}
-                  className="bs-form-input"
-                />
-                <p className="bs-char-count">{complaint.length}/50</p>
-              </div>
-
-              <div className="bs-form-group">
-                <label className="bs-form-label">Related Symptoms</label>
-                <div className="bs-symptom-badges">
-                  {symptomsList.map((sym) => (
-                    <span
-                      key={sym}
-                      className={`bs-symptom-badge ${symptoms.includes(sym) ? "bs-symptom-active" : ""}`}
-                      onClick={() => toggleSymptom(sym)}
-                    >
-                      {symptoms.includes(sym) && (
-                        <IconCheck size={12} className="bs-symptom-check" />
-                      )}{" "}
-                      {sym}
-                    </span>
-                  ))}
+              <div className="bs-inner-card">
+                <div className="bs-section-heading text-violet mb-24">
+                  <IconStethoscope size={20} /> <h3>Consultation Details</h3>
                 </div>
-              </div>
 
-              <div className="bs-form-group bs-form-group-last">
-                <label className="bs-form-label">
-                  Additional Notes (Optional)
-                </label>
-                <textarea
-                  placeholder="Any additional information for the specialist..."
-                  maxLength={1000}
-                  rows={4}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="bs-form-textarea"
-                />
-                <p className="bs-char-count">{notes.length}/1000</p>
+                <div className="bs-form-group">
+                  <label className="bs-form-label">Chief Complaint *</label>
+                  <input
+                    type="text"
+                    placeholder="Briefly describe your main concern"
+                    maxLength={50}
+                    value={complaint}
+                    onChange={(e) => setComplaint(e.target.value)}
+                    className="bs-form-input"
+                  />
+                  <p className="bs-char-count">{complaint.length}/50</p>
+                </div>
+
+                <div className="bs-form-group">
+                  <label className="bs-form-label">Related Symptoms</label>
+                  <div className="bs-symptom-badges">
+                    {symptomsList.map((sym) => (
+                      <span
+                        key={sym}
+                        className={`bs-symptom-badge ${symptoms.includes(sym) ? "bs-symptom-active" : ""}`}
+                        onClick={() => toggleSymptom(sym)}
+                      >
+                        {symptoms.includes(sym) && (
+                          <IconCheck size={12} className="bs-symptom-check" />
+                        )}{" "}
+                        {sym}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bs-form-group bs-margin-0">
+                  <label className="bs-form-label">
+                    Additional Notes (Optional)
+                  </label>
+                  <textarea
+                    placeholder="Any additional information for the specialist..."
+                    maxLength={1000}
+                    rows={4}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="bs-form-textarea"
+                  />
+                  <p className="bs-char-count">{notes.length}/1000</p>
+                </div>
               </div>
             </div>
           )}
@@ -793,7 +812,7 @@ export function BookSpecialist({
           {currentStep === 4 && (
             <div className="bs-step-content">
               <div className="bs-review-header-wrapper">
-                <div className="bs-section-heading bs-margin-0">
+                <div className="bs-section-heading bs-margin-0 text-violet">
                   <IconCheck size={20} /> <h3>Review Your Booking</h3>
                 </div>
                 {paymentMethod === "philhealth" && (
@@ -810,10 +829,14 @@ export function BookSpecialist({
 
               <p className="bs-review-label">Specialist</p>
               <div className="bs-review-doctor-row">
-                <div className="bs-review-avatar">{specialist.initials}</div>
+                <div className="bs-review-avatar bg-violet">
+                  {specialist.initials}
+                </div>
                 <div className="bs-review-doctor-info">
                   <h4 className="bs-review-doctor-name">{specialist.name}</h4>
-                  <p className="bs-review-doctor-spec">{specialist.spec}</p>
+                  <p className="bs-review-doctor-spec text-violet">
+                    {specialist.spec}
+                  </p>
                 </div>
               </div>
               <hr className="bs-divider" />
@@ -822,14 +845,21 @@ export function BookSpecialist({
                 <div className="bs-review-grid-item">
                   <p className="bs-review-label">Date</p>
                   <p className="bs-review-value-icon">
-                    <IconCalendarEvent size={16} className="bs-review-icon" />{" "}
+                    <IconCalendarEvent
+                      size={16}
+                      className="bs-review-icon text-violet"
+                    />{" "}
                     {date}
                   </p>
                 </div>
                 <div className="bs-review-grid-item">
                   <p className="bs-review-label">Time</p>
                   <p className="bs-review-value-icon">
-                    <IconClock size={16} className="bs-review-icon" /> {time}
+                    <IconClock
+                      size={16}
+                      className="bs-review-icon text-violet"
+                    />{" "}
+                    {time}
                   </p>
                 </div>
               </div>
@@ -862,7 +892,10 @@ export function BookSpecialist({
                   <p className="bs-review-label">Symptoms</p>
                   <div className="bs-review-symptoms-list">
                     {symptoms.map((s) => (
-                      <span key={s} className="bs-review-symptom-tag">
+                      <span
+                        key={s}
+                        className="bs-review-symptom-tag bg-light-violet text-violet"
+                      >
                         {s}
                       </span>
                     ))}
@@ -928,13 +961,17 @@ export function BookSpecialist({
             onClick={handleNext}
             disabled={!canProceed()}
           >
-            {currentStep < 4
-              ? "Next"
-              : paymentMethod === "philhealth"
-                ? "Confirm (Covered)"
-                : paymentMethod === "hmo"
-                  ? "Submit for Approval"
-                  : "Confirm Booking"}
+            {currentStep < 4 ? (
+              <>
+                Next <IconArrowRight size={16} />
+              </>
+            ) : paymentMethod === "philhealth" ? (
+              "Confirm (Covered)"
+            ) : paymentMethod === "hmo" ? (
+              "Submit for Approval"
+            ) : (
+              "Confirm Booking"
+            )}
           </button>
         </div>
       </div>
@@ -943,7 +980,7 @@ export function BookSpecialist({
       {isModalOpen && (
         <div className="bs-modal-overlay">
           <div className="bs-modal-container">
-            <div className="bs-modal-icon-wrapper">
+            <div className="bs-modal-icon-wrapper bg-light-green text-green">
               <IconCheck size={40} />
             </div>
             <h3 className="bs-modal-title">Appointment Submitted</h3>
@@ -952,7 +989,7 @@ export function BookSpecialist({
             </p>
             <div className="bs-modal-actions">
               <button
-                className="bs-modal-btn bs-modal-btn-cyan"
+                className="bs-modal-btn bs-modal-btn-primary"
                 onClick={() => {
                   setIsModalOpen(false);
                   onGoToAppointments();

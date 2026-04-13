@@ -100,6 +100,7 @@ export async function createConversation(conversationData) {
     const data = await apiRequest("/api/v1/chat/conversations", {
       method: "POST",
       body: JSON.stringify(conversationData),
+      disableAuthRedirect: true,
     });
     return data.conversation || data;
   } catch (error) {
@@ -110,7 +111,9 @@ export async function createConversation(conversationData) {
 
 export async function getConversations() {
   try {
-    const data = await apiRequest("/api/v1/chat/conversations");
+    const data = await apiRequest("/api/v1/chat/conversations", {
+      disableAuthRedirect: true,
+    });
     return data.conversations || data || [];
   } catch (error) {
     console.error("Error fetching conversations:", error);
@@ -120,7 +123,9 @@ export async function getConversations() {
 
 export async function getConversationById(conversationId) {
   try {
-    const data = await apiRequest(`/api/v1/chat/conversations/${conversationId}`);
+    const data = await apiRequest(`/api/v1/chat/conversations/${conversationId}`, {
+      disableAuthRedirect: true,
+    });
     return data.conversation || data;
   } catch (error) {
     console.error("Error fetching conversation by ID:", error);
@@ -193,7 +198,9 @@ export async function getMessages(conversationId, options = {}) {
     const url = `/api/v1/chat/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ""
       }`;
 
-    const data = await apiRequest(url);
+    const data = await apiRequest(url, {
+      disableAuthRedirect: true,
+    });
     return data.messages || data || [];
   } catch (error) {
     console.error("Error fetching messages:", error);
@@ -210,6 +217,7 @@ export async function sendMessage(conversationId, content, replyToId = null) {
       {
         method: "POST",
         body: JSON.stringify(body),
+        disableAuthRedirect: true,
       }
     );
     return data.message || data;

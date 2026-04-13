@@ -89,7 +89,7 @@ export default function Patient_Services({ setActive }) {
             <span className="svc-floating-badge left bg-cyan text-white">
               <IconCheck size={12} /> Beginner Friendly
             </span>
-            <div className="svc-icon-circle bg-light-cyan text-cyan">
+            <div className="svc-icon-circle bg-light-cyan text-blue">
               <IconPhone size={30} />
             </div>
             <h4>Request Nurse Callback</h4>
@@ -105,7 +105,7 @@ export default function Patient_Services({ setActive }) {
             <span className="svc-badge bg-light-green text-green mb-8">
               Always Free
             </span>
-            <h2 className="text-cyan">Free</h2>
+            <h2 className="text-blue">Free</h2>
             <p className="svc-price-desc">Initial triage and assessment</p>
             <button
               className="svc-btn bg-cyan text-white"
@@ -117,7 +117,7 @@ export default function Patient_Services({ setActive }) {
 
           {/* Card 2: Chat */}
           <div className="svc-card">
-            <div className="svc-icon-circle bg-light-cyan text-cyan">
+            <div className="svc-icon-circle bg-light-cyan text-blue">
               <IconMessage size={30} />
             </div>
             <h4>Chat Consultation</h4>
@@ -173,7 +173,7 @@ export default function Patient_Services({ setActive }) {
             <span className="svc-floating-badge center bg-cyan text-white">
               Recommended
             </span>
-            <div className="svc-icon-circle bg-light-cyan text-cyan">
+            <div className="svc-icon-circle bg-light-cyan text-blue">
               <IconVideo size={30} />
             </div>
             <h4>Video Consultation</h4>
@@ -215,13 +215,13 @@ export default function Patient_Services({ setActive }) {
                 convenient locations across the metro
               </p>
               <div className="svc-tags">
-                <span className="svc-tag outline-cyan text-cyan">
+                <span className="svc-tag outline-cyan text-blue">
                   <IconMapPin size={12} /> Multiple Locations
                 </span>
-                <span className="svc-tag outline-cyan text-cyan">
+                <span className="svc-tag outline-cyan text-blue">
                   <IconRefresh size={12} /> Various Specialties
                 </span>
-                <span className="svc-tag outline-cyan text-cyan">
+                <span className="svc-tag outline-cyan text-blue">
                   <IconClock size={12} /> Flexible Scheduling
                 </span>
               </div>
@@ -292,7 +292,7 @@ export default function Patient_Services({ setActive }) {
       {/* --- HERO SUB-ACTION --- */}
       <div className="svc-footer-action">
         <p>Need help choosing? Our care coordinators are available 24/7</p>
-        <button className="svc-btn outline-cyan text-cyan svc-btn-large">
+        <button className="svc-btn outline-cyan text-blue svc-btn-large">
           <IconPhone size={18} /> Talk to Care Team
         </button>
       </div>

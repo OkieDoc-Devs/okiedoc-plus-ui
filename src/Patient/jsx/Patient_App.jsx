@@ -7,6 +7,7 @@ import {
   IconUser,
   IconBell,
   IconMenu2,
+  IconPill,
 } from "@tabler/icons-react";
 import "../css/Patient_App.css";
 
@@ -17,13 +18,14 @@ import Appointments_Patient from "./Patient_Appointments";
 // import { MedicalRecords } from "./MedicalRecords";
 // import { Prescriptions } from "./Prescriptions"
 // import { Profile } from "./Profile";
-// import { BookSpecialist } from "./sub-page/BookSpecialist";
-// import { BookPhysical } from "./sub-page/BookPhysical";
+import { BookSpecialist } from "../sub-pages/BookSpecialist";
+// import { BookPhysical } from "./sub-pages/BookPhysical";
 
 const navLinks = [
   { label: "Dashboard", route: "Dashboard", icon: IconLayoutDashboard },
   { label: "Services", route: "Services", icon: IconStethoscope },
   { label: "Appointments", route: "Appointments", icon: IconCalendarEvent },
+  { label: "Prescriptions", route: "Prescriptions", icon: IconPill },
   {
     label: "Medical Records",
     route: "MedicalRecords",
@@ -138,10 +140,20 @@ function Patient_App() {
               <Services_Patient setActive={navigate} />
             )}
 
+            {/* Your Sub-Pages */}
+            {mainRoute === "BookSpecialist" && (
+              <BookSpecialist
+                onGoBack={() => navigate("Services")}
+                onGoToAppointments={() => navigate("Appointments")}
+                onGoToDashboard={() => navigate("Dashboard")}
+              />
+            )}
+
             {/* Custom 404 / Work In Progress State */}
             {mainRoute !== "Dashboard" &&
               mainRoute !== "Services" &&
-              mainRoute !== "Appointments" && (
+              mainRoute !== "Appointments" &&
+              mainRoute !== "BookSpecialist" && (
                 <div className="not-found-container">
                   {ActiveIcon && (
                     <ActiveIcon size={64} className="not-found-icon" />

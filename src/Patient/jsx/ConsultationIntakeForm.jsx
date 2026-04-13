@@ -21,7 +21,6 @@ import "../css/ConsultationIntakeForm.css";
 export default function ConsultationIntakeForm({ setActive, type = "Video Consultation" }) {
   const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
-    ticketId: null, // To be fetched or passed
     mainConcern: "",
     symptoms: [],
     otherSymptoms: "",
@@ -35,31 +34,28 @@ export default function ConsultationIntakeForm({ setActive, type = "Video Consul
 
   const [painMapView, setPainMapView] = useState("front");
   const [uploadError, setUploadError] = useState("");
-  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
 
-  // Fetch the most recent pending ticket to associate this intake with
+  // Save later persistence logic
   useEffect(() => {
-    async function getLatestTicket() {
+    const saved = sessionStorage.getItem(`intake_draft_${type}`);
+    if (saved) {
       try {
-        const response = await fetchPatientActiveTickets();
-        // The API returns { success: true, activeTickets: [...] }
-        const tickets = response?.activeTickets || response?.tickets || response || [];
-        // Find the latest pending ticket
-        const latestPending = tickets
-          .filter(t => t.status === 'pending')
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-
-        if (latestPending) {
-          setFormData(prev => ({ ...prev, ticketId: latestPending.id }));
-        }
-      } catch (error) {
-        console.error("Error fetching latest ticket for intake:", error);
-      } finally {
-        setIsLoadingTickets(false);
+        const parsed = JSON.parse(saved);
+        setFormData(prev => ({
+          ...prev,
+          ...parsed,
+          attachments: [] // Files cannot be serialized to JSON easily, so we keep attachments fresh
+        }));
+      } catch (e) {
+        console.error("Failed to parse intake draft", e);
       }
     }
-    getLatestTicket();
-  }, []);
+  }, [type]);
+
+  useEffect(() => {
+    const { attachments, ...serializable } = formData;
+    sessionStorage.setItem(`intake_draft_${type}`, JSON.stringify(serializable));
+  }, [formData, type]);
 
   const PAIN_MAP_AREAS = {
     front: [
@@ -173,12 +169,6 @@ export default function ConsultationIntakeForm({ setActive, type = "Video Consul
   const handleProceed = async () => {
     if (!formData.mainConcern) return;
     
-    // Safety check if no ticket is available
-    if (!formData.ticketId) {
-      alert("No pending consultation request found. Please create a consultation first.");
-      return;
-    }
-
     try {
       // 1. Convert attachments to Base64 for BLOB storage
       const convertedAttachments = await Promise.all(
@@ -197,9 +187,15 @@ export default function ConsultationIntakeForm({ setActive, type = "Video Consul
         })
       );
 
+      const channelMap = {
+        "Chat Consultation": "chat",
+        "Voice Consultation": "mobile_call",
+        "Video Consultation": "platform_call"
+      };
+
       const payload = {
-        ticketId: formData.ticketId, 
         mainConcern: formData.mainConcern,
+        consultationChannel: channelMap[type] || "platform_call",
         symptoms: formData.symptoms,
         otherSymptoms: formData.otherSymptoms,
         durationValue: parseInt(formData.duration) || 0,
@@ -211,7 +207,8 @@ export default function ConsultationIntakeForm({ setActive, type = "Video Consul
       };
 
       await submitConsultationIntake(payload);
-      alert("Consultation Intake submitted successfully!");
+      sessionStorage.removeItem(`intake_draft_${type}`);
+      alert("Consultation request submitted successfully!");
       handleBack();
     } catch (error) {
       console.error("Failed to submit intake:", error);
@@ -221,12 +218,6 @@ export default function ConsultationIntakeForm({ setActive, type = "Video Consul
 
   return (
     <div className="intake-page-container">
-      {isLoadingTickets && (
-        <div className="intake-loading-overlay">
-          <div className="loading-spinner"></div>
-          <p>Verifying consultation details...</p>
-        </div>
-      )}
       <div className="intake-header-nav">
         <button className="intake-back-btn" onClick={handleBack}>
           <IconArrowLeft size={18} /> Back to Services

@@ -16,7 +16,7 @@ import Dashboard_Patient from "./Patient_Dashboard";
 import Services_Patient from "./Patient_Services";
 import Appointments_Patient from "./Patient_Appointments";
 // import { MedicalRecords } from "./MedicalRecords";
-// import { Prescriptions } from "./Prescriptions"
+import Prescriptions_Patient from "./Patient_Prescriptions";
 // import { Profile } from "./Profile";
 
 // Sub-Pages for Patient
@@ -27,12 +27,12 @@ const navLinks = [
   { label: "Dashboard", route: "Dashboard", icon: IconLayoutDashboard },
   { label: "Services", route: "Services", icon: IconStethoscope },
   { label: "Appointments", route: "Appointments", icon: IconCalendarEvent },
-  { label: "Prescriptions", route: "Prescriptions", icon: IconPill },
   {
     label: "Medical Records",
     route: "MedicalRecords",
     icon: IconFileDescription,
   },
+  { label: "Prescriptions", route: "Prescriptions", icon: IconPill },
   { label: "Profile", route: "Profile", icon: IconUser },
 ];
 
@@ -141,6 +141,9 @@ function Patient_App() {
             {mainRoute === "Services" && (
               <Services_Patient setActive={navigate} />
             )}
+            {mainRoute === "Prescriptions" && (
+              <Prescriptions_Patient setActive={navigate} />
+            )}
 
             {/* Your Sub-Pages */}
             {mainRoute === "BookSpecialist" && (
@@ -164,7 +167,8 @@ function Patient_App() {
               mainRoute !== "Services" &&
               mainRoute !== "Appointments" &&
               mainRoute !== "BookPhysical" &&
-              mainRoute !== "BookSpecialist" && (
+              mainRoute !== "BookSpecialist" &&
+              mainRoute !== "Prescriptions" && (
                 <div className="not-found-container">
                   {ActiveIcon && (
                     <ActiveIcon size={64} className="not-found-icon" />

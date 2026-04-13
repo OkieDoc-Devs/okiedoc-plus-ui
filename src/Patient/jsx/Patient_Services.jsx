@@ -10,9 +10,10 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import "../css/Patient_Services.css";
+import { useModal } from "../contexts/Modals";
 
 export default function Patient_Services({ setActive }) {
-  const handleDIY = (item) => alert(`DIY: ${item}`);
+  const { openDiyModal } = useModal();
 
   // Generates a random simulated database ID (e.g., BOK-49281)
   const generateSimulatedId = () =>
@@ -134,7 +135,7 @@ export default function Patient_Services({ setActive }) {
             <p className="svc-price-desc">One-time payment</p>
             <button
               className="svc-btn bg-cyan text-white"
-              onClick={() => handleDIY("Chat")}
+              onClick={() => openDiyModal("Chat")}
             >
               Select Service <IconArrowRight size={16} />
             </button>
@@ -162,7 +163,7 @@ export default function Patient_Services({ setActive }) {
             <p className="svc-price-desc">One-time payment</p>
             <button
               className="svc-btn bg-teal text-white"
-              onClick={() => handleDIY("Voice")}
+              onClick={() => openDiyModal("Voice")}
             >
               Select Service <IconArrowRight size={16} />
             </button>
@@ -190,7 +191,7 @@ export default function Patient_Services({ setActive }) {
             <p className="svc-price-desc">One-time payment</p>
             <button
               className="svc-btn bg-cyan text-white"
-              onClick={() => handleDIY("Video")}
+              onClick={() => openDiyModal("Video")}
             >
               Select Service <IconArrowRight size={16} />
             </button>
@@ -292,7 +293,10 @@ export default function Patient_Services({ setActive }) {
       {/* --- HERO SUB-ACTION --- */}
       <div className="svc-footer-action">
         <p>Need help choosing? Our care coordinators are available 24/7</p>
-        <button className="svc-btn outline-cyan text-blue svc-btn-large">
+        <button
+          className="svc-btn outline-cyan text-blue svc-btn-large"
+          onClick={() => openDiyModal("Talk")}
+        >
           <IconPhone size={18} /> Talk to Care Team
         </button>
       </div>

@@ -19,7 +19,7 @@ const registerPatient = async (formData) => {
       middleName: formData.middleName || '',
       email: formData.email,
       password: formData.password,
-      birthday: `${formData.bYear}-${formData.bMonth}-${formData.bDay}`,
+      birthday: formData.birthday,
       gender: formData.gender || undefined,
       mobileNumber: formData.mobileNumber,
       barangay: formData.barangay,
@@ -51,9 +51,7 @@ export default function Registration() {
     email: '',
     password: '',
     confirmPassword: '',
-    bMonth: '',
-    bDay: '',
-    bYear: '',
+    birthday: '',
     gender: '',
     mobileNumber: '',
     barangay: '',
@@ -256,12 +254,10 @@ export default function Registration() {
       newErrors.email = 'Please enter a valid email address';
     }
 
-    if (!formData.bMonth || !formData.bDay || !formData.bYear) {
-      newErrors.birthday = 'Complete birthday is required';
+    if (!formData.birthday) {
+      newErrors.birthday = 'Birthday is required';
     } else {
-      const birthDate = new Date(
-        `${formData.bYear}-${formData.bMonth}-${formData.bDay}`,
-      );
+      const birthDate = new Date(formData.birthday);
       if (birthDate > new Date())
         newErrors.birthday = 'Birthday cannot be in the future';
     }
@@ -327,7 +323,21 @@ export default function Registration() {
       }
     } catch (error) {
       console.error('Registration failed:', error);
-      setErrors({ email: error.message || 'Registration failed.' });
+      
+      let errorMessage = 'Registration failed.';
+      
+      // Handle the deep error structure from Sails/apiClient
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      } else if (error.emailAlreadyInUse) {
+        errorMessage = error.emailAlreadyInUse.message;
+      } else if (error.mobileNumberInUse) {
+        errorMessage = error.mobileNumberInUse.message;
+      }
+      
+      setErrors({ email: errorMessage });
       window.scrollTo(0, 0);
     }
   };
@@ -494,14 +504,16 @@ export default function Registration() {
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input
-                    type="text"
-                    placeholder="dd/mm/yyyy"
-                    className='registration-input'
-                    readOnly
-                    onFocus={(e) => (e.target.type = "date")}
-                    onBlur={(e) => (e.target.type = "text")}
+                    id='birthday'
+                    type="date"
+                    className={`registration-input ${errors.birthday ? 'error' : ''}`}
+                    value={formData.birthday || ''}
+                    onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
                     style={{ color: '#64748b', cursor: 'pointer' }}
                   />
+                  {errors.birthday && (
+                    <span className='registration-error-text'>{errors.birthday}</span>
+                  )}
                 </div>
               </div>
 
@@ -524,7 +536,7 @@ export default function Registration() {
               </div>
 
               <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
-                <div style={{ backgroundColor: '#eff6ff', padding: '1.25rem 1.5rem', borderRadius: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                <div style={{ backgroundColor: '#f8fafc', padding: '1.25rem 1.5rem', borderRadius: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
                 <input type='checkbox' className='registration-checkbox' style={{ accentColor: '#2563eb' }} />
                 <div>
                   <div style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '1.1rem' }}>I am a PhilHealth Member</div>
@@ -702,6 +714,30 @@ export default function Registration() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                <div style={{ backgroundColor: '#eff6ff', padding: '1.25rem 1.5rem', borderRadius: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                <input 
+                  type='checkbox' 
+                  className={`registration-checkbox ${errors.terms || errors.privacy ? 'error' : ''}`} 
+                  style={{ accentColor: '#2563eb' }} 
+                  checked={termsAccepted && privacyAccepted}
+                  onChange={(e) => {
+                    setTermsAccepted(e.target.checked);
+                    setPrivacyAccepted(e.target.checked);
+                  }}
+                />
+                <div>
+                  <div style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '1.1rem' }}>
+                    I agree to the <span style={{ color: '#2563eb', cursor: 'pointer', textDecoration: 'underline' }}>Terms of Service</span> and <span style={{ color: '#2563eb', cursor: 'pointer', textDecoration: 'underline' }}>Privacy Policy</span> <span className='required'>*</span>
+                  </div>
+                  { (errors.terms || errors.privacy) && (
+                    <div className='registration-error-text' style={{ marginTop: '0.25rem' }}>{errors.terms || errors.privacy}</div>
+                  )}
+                  <div style={{ color: '#3b82f6', fontSize: '0.95rem', marginTop: '0.25rem' }}>Your data is protected and used only for healthcare services</div>
+                </div>
+                </div>
               </div>
 
               <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', marginTop: '0.5rem', paddingTop: '1.5rem' }}>

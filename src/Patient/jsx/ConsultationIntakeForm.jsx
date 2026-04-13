@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { submitConsultationIntake, fetchPatientActiveTickets } from "../services/apiService";
 import {
   IconArrowLeft,
   IconFileText,
@@ -20,6 +21,7 @@ import "../css/ConsultationIntakeForm.css";
 export default function ConsultationIntakeForm({ setActive, type = "Video Consultation" }) {
   const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
+    ticketId: null, // To be fetched or passed
     mainConcern: "",
     symptoms: [],
     otherSymptoms: "",
@@ -33,6 +35,31 @@ export default function ConsultationIntakeForm({ setActive, type = "Video Consul
 
   const [painMapView, setPainMapView] = useState("front");
   const [uploadError, setUploadError] = useState("");
+  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
+
+  // Fetch the most recent pending ticket to associate this intake with
+  useEffect(() => {
+    async function getLatestTicket() {
+      try {
+        const response = await fetchPatientActiveTickets();
+        // The API returns { success: true, activeTickets: [...] }
+        const tickets = response?.activeTickets || response?.tickets || response || [];
+        // Find the latest pending ticket
+        const latestPending = tickets
+          .filter(t => t.status === 'pending')
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+
+        if (latestPending) {
+          setFormData(prev => ({ ...prev, ticketId: latestPending.id }));
+        }
+      } catch (error) {
+        console.error("Error fetching latest ticket for intake:", error);
+      } finally {
+        setIsLoadingTickets(false);
+      }
+    }
+    getLatestTicket();
+  }, []);
 
   const PAIN_MAP_AREAS = {
     front: [
@@ -143,8 +170,63 @@ export default function ConsultationIntakeForm({ setActive, type = "Video Consul
     }));
   };
 
+  const handleProceed = async () => {
+    if (!formData.mainConcern) return;
+    
+    // Safety check if no ticket is available
+    if (!formData.ticketId) {
+      alert("No pending consultation request found. Please create a consultation first.");
+      return;
+    }
+
+    try {
+      // 1. Convert attachments to Base64 for BLOB storage
+      const convertedAttachments = await Promise.all(
+        formData.attachments.map(async (file) => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve({
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              data: reader.result // Base64 including data prefix
+            });
+            reader.onerror = (error) => reject(error);
+          });
+        })
+      );
+
+      const payload = {
+        ticketId: formData.ticketId, 
+        mainConcern: formData.mainConcern,
+        symptoms: formData.symptoms,
+        otherSymptoms: formData.otherSymptoms,
+        durationValue: parseInt(formData.duration) || 0,
+        durationUnit: formData.durationUnit,
+        severity: formData.severity,
+        additionalDetails: formData.additionalDetails,
+        painAreas: formData.painAreas, // Array of {id, label, view, key, ...}
+        attachments: convertedAttachments
+      };
+
+      await submitConsultationIntake(payload);
+      alert("Consultation Intake submitted successfully!");
+      handleBack();
+    } catch (error) {
+      console.error("Failed to submit intake:", error);
+      alert("Error: " + (error.message || "Failed to submit consultation request."));
+    }
+  };
+
   return (
     <div className="intake-page-container">
+      {isLoadingTickets && (
+        <div className="intake-loading-overlay">
+          <div className="loading-spinner"></div>
+          <p>Verifying consultation details...</p>
+        </div>
+      )}
       <div className="intake-header-nav">
         <button className="intake-back-btn" onClick={handleBack}>
           <IconArrowLeft size={18} /> Back to Services
@@ -283,10 +365,24 @@ export default function ConsultationIntakeForm({ setActive, type = "Video Consul
         {/* Additional Details */}
         <div className="intake-card">
           <div className="intake-card-title">
-            <IconClock size={20} className="text-cyan" />
+            <IconFileText size={20} className="text-cyan" />
             <h3>Additional Details (Optional)</h3>
           </div>
-          
+          <p className="intake-card-subtitle">Anything else the doctor should know?</p>
+          <textarea
+            placeholder="List medications you are currently taking, allergies, or other relevant health information..."
+            value={formData.additionalDetails}
+            onChange={(e) => setFormData({ ...formData, additionalDetails: e.target.value })}
+            className="intake-textarea"
+          />
+        </div>
+
+        <div className="intake-card">
+          <div className="intake-card-title">
+            <IconClock size={20} className="text-cyan" />
+            <h3>Symptom Timeline & Severity</h3>
+          </div>
+
           <div className="intake-field-group">
             <label>How long have you had these symptoms?</label>
             <div className="duration-input-row">
@@ -339,14 +435,15 @@ export default function ConsultationIntakeForm({ setActive, type = "Video Consul
               <span>Severe</span>
             </div>
           </div>
-        </div>
 
-        {/* Attachments */}
-        <div className="intake-card">
-          <div className="intake-card-title">
-            <IconUpload size={20} className="text-cyan" />
-            <h3>Attachments (Optional)</h3>
           </div>
+
+          {/* Attachments */}
+          <div className="intake-card">
+            <div className="intake-card-title">
+              <IconUpload size={20} className="text-cyan" />
+              <h3>Attachments (Optional)</h3>
+            </div>
           <p className="intake-card-subtitle">Upload images of rashes, prescriptions, lab results, etc.</p>
           
           <input 
@@ -406,7 +503,10 @@ export default function ConsultationIntakeForm({ setActive, type = "Video Consul
               <IconDeviceFloppy size={18} /> Save for Later
             </button>
             <div className="footer-right">
-              <button className={`footer-proceed-btn ${!formData.mainConcern ? 'disabled' : ''}`}>
+              <button 
+                className={`footer-proceed-btn ${!formData.mainConcern ? 'disabled' : ''}`}
+                onClick={handleProceed}
+              >
                 Proceed to Consultation <IconArrowRight size={18} />
               </button>
               {!formData.mainConcern && <p className="footer-validation-msg">Please describe your main concern to continue</p>}

@@ -712,7 +712,7 @@ export default function Dashboard() {
       localDraft.chiefComplaintDraft ??
         readValue(
           selectedTicket,
-          ['chiefComplaint', 'consultationType', 'symptoms'],
+          ['chiefComplaint', 'consultationType', 'intakeDetails', '0', 'mainConcern', 'symptoms'],
           '',
         ),
     );
@@ -746,7 +746,7 @@ export default function Dashboard() {
     setSelectedSymptomPills(
       Array.isArray(localDraft.selectedSymptomPills)
         ? localDraft.selectedSymptomPills
-        : toList(readValue(selectedTicket, ['symptoms', 'symptomTags', 'symptomPills'], ''))
+        : toList(readValue(selectedTicket, ['symptoms', 'symptomTags', 'symptomPills', 'intakeDetails', '0', 'symptoms'], ''))
             .map((entry) =>
               SYMPTOM_PILL_OPTIONS.find(
                 (option) => option.toLowerCase() === String(entry || '').trim().toLowerCase(),
@@ -754,27 +754,10 @@ export default function Dashboard() {
             )
             .filter(Boolean),
     );
-    setSelectedRosItems(
-      Array.isArray(localDraft.selectedRosItems)
-        ? localDraft.selectedRosItems
-        : toList(readValue(selectedTicket, ['reviewOfSystems', 'ros', 'rosItems'], ''))
-            .map((entry) => {
-              const needle = String(entry || '').trim().toLowerCase();
-              for (const group of ROS_GROUPS) {
-                const matched = group.items.find((item) => item.toLowerCase() === needle);
-                if (matched) return matched;
-              }
-              return null;
-            })
-            .filter(Boolean),
-    );
-    setPainMapView(
-      PAIN_MAP_VIEWS.includes(localDraft.painMapView) ? localDraft.painMapView : 'front',
-    );
     setSelectedPainAreas(
       Array.isArray(localDraft.selectedPainAreas)
         ? localDraft.selectedPainAreas
-        : [],
+        : readValue(selectedTicket, ['intakeDetails', '0', 'painAreas'], []),
     );
 
     const toEditableValue = (value) =>
@@ -845,6 +828,7 @@ export default function Dashboard() {
       temperature: readValue(selectedTicket, ['temperature', 'temp', 'vitalTemperature']),
       bloodPressure: readValue(selectedTicket, ['bloodPressure', 'bp', 'vitalBloodPressure']),
       heartRate: readValue(selectedTicket, ['heartRate', 'bpm', 'vitalHeartRate']),
+      additionalDetails: readValue(selectedTicket, ['additionalDetails', 'intakeDetails', '0', 'additionalDetails'], ''),
     };
   }, [selectedTicket]);
 
@@ -1537,6 +1521,12 @@ export default function Dashboard() {
                           <label>Address</label>
                           <p>{selectedPatient.address}</p>
                         </div>
+                        {selectedPatient.additionalDetails && (
+                          <div className='triage-detail-row' style={{ marginTop: '10px' }}>
+                            <label>Additional Details</label>
+                            <p>{selectedPatient.additionalDetails}</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </article>

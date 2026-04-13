@@ -15,6 +15,7 @@ import Dashboard_Patient from "./Patient_Dashboard";
 import Services_Patient from "./Patient_Services";
 import Appointments_Patient from "./Patient_Appointments";
 // import { MedicalRecords } from "./MedicalRecords";
+// import { Prescriptions } from "./Prescriptions"
 // import { Profile } from "./Profile";
 // import { BookSpecialist } from "./sub-page/BookSpecialist";
 // import { BookPhysical } from "./sub-page/BookPhysical";

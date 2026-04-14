@@ -1653,7 +1653,14 @@ body::-webkit-scrollbar {
 }
 
 .nurse-messages-dashboard .dashboard-header {
+  padding-top: 18px;
+  padding-bottom: 4px;
   border-bottom: none;
+  margin-bottom: 0;
+}
+
+.nurse-messages-dashboard .dashboard-nav {
+  margin-top: 12px;
   margin-bottom: 0;
 }
 
@@ -1667,14 +1674,45 @@ body::-webkit-scrollbar {
   background: #f7f8fa;
 }
 
+.nurse-messages-dashboard .nurse-page-content {
+  padding: 30px 0 0;
+}
+
+.nurse-messages-dashboard .nurse-messenger-container {
+  margin-top: 0;
+  border-top: 1px solid #d6dbe3;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .nurse-manage-dashboard .dashboard-header {
+  padding-top: 18px;
+  padding-bottom: 4px;
   border-bottom: none;
   margin-bottom: 0;
 }
 
+.nurse-manage-dashboard .dashboard-nav {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
 .nurse-manage-dashboard .appointments-section {
-  margin-top: 8px;
+  margin-top: 30px;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 14px 20px 20px;
   border-top: 1px solid #d6dbe3;
+}
+
+.nurse-manage-dashboard .processing-tickets h2 {
+  margin-top: 0;
+}
+
+.nurse-manage-dashboard .processing-tickets {
+  margin-left: 8px;
+  margin-right: 8px;
 }
 
 .triage-grid {
@@ -3787,32 +3825,32 @@ body::-webkit-scrollbar {
 
 .ticket-card-new {
   background: #ffffff;
-  border: 1px solid #e4e6ea;
-  border-radius: 10px;
-  margin-bottom: 16px;
+  border: 1px solid #e7ebf0;
+  border-radius: 8px;
+  margin-bottom: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border-left: 4px solid #4aa7ed;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  border-left: 3px solid #4aa7ed;
 }
 
 .ticket-card-header {
   background: #f8f9fa;
-  padding: 12px 20px;
+  padding: 9px 14px;
   border-bottom: 1px solid #e4e6ea;
 }
 
 .ticket-number {
-  font-size: 0.95rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: #0b5388;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.35px;
 }
 
 .ticket-card-body {
   display: flex;
   justify-content: space-between;
-  padding: 20px;
-  gap: 20px;
+  padding: 14px;
+  gap: 14px;
 }
 
 .ticket-left-section {
@@ -3820,25 +3858,25 @@ body::-webkit-scrollbar {
 }
 
 .ticket-patient-details {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .ticket-section-title {
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   font-weight: 700;
   color: #0b5388;
-  margin: 0 0 10px 0;
+  margin: 0 0 7px 0;
   letter-spacing: 0.3px;
 }
 
 .ticket-details-grid {
   display: flex;
-  gap: 40px;
+  gap: 24px;
 }
 
 .ticket-details-col p {
-  margin: 4px 0;
-  font-size: 0.9rem;
+  margin: 2px 0;
+  font-size: 0.82rem;
   color: #333;
 }
 
@@ -3848,12 +3886,12 @@ body::-webkit-scrollbar {
 }
 
 .ticket-assignments {
-  padding-top: 8px;
+  padding-top: 6px;
 }
 
 .ticket-assignments p {
-  margin: 6px 0;
-  font-size: 0.9rem;
+  margin: 4px 0;
+  font-size: 0.82rem;
   color: #333;
 }
 
@@ -3867,7 +3905,7 @@ body::-webkit-scrollbar {
   flex-direction: column;
   align-items: flex-end;
   justify-content: space-between;
-  min-width: 200px;
+  min-width: 168px;
 }
 
 .ticket-meta {
@@ -3875,8 +3913,8 @@ body::-webkit-scrollbar {
 }
 
 .ticket-meta p {
-  margin: 4px 0;
-  font-size: 0.9rem;
+  margin: 3px 0;
+  font-size: 0.82rem;
   color: #333;
 }
 
@@ -3909,13 +3947,13 @@ body::-webkit-scrollbar {
   background: #0b5388;
   color: #ffffff;
   border: none;
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 0.9rem;
+  padding: 8px 14px;
+  border-radius: 16px;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .ticket-history-btn:hover {

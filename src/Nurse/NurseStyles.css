@@ -1749,6 +1749,11 @@ body::-webkit-scrollbar {
   scrollbar-color: #c4c9d2 transparent;
 }
 
+.triage-chat-list {
+  scrollbar-width: thin;
+  scrollbar-color: #c4c9d2 transparent;
+}
+
 .triage-workspace-scroll {
   border-top: 1px solid #d9dde4;
   padding-top: 8px;
@@ -1920,28 +1925,51 @@ body::-webkit-scrollbar {
   padding-bottom: 16px;
 }
 
+.triage-snapshot-col .triage-snapshot-scroll {
+  flex: 1 1 50%;
+}
+
+.triage-snapshot-chat-dock {
+  flex: 1 1 50%;
+  min-height: 0;
+  padding: 0 10px 10px;
+  border-top: 1px solid #d9dde4;
+  background: #f4f5f7;
+  display: flex;
+}
+
+.triage-snapshot-chat-dock .triage-chat-panel {
+  margin: 10px 0 0;
+  height: calc(100% - 10px);
+  min-height: 0;
+}
+
 .triage-queue-list::-webkit-scrollbar,
 .triage-snapshot-scroll::-webkit-scrollbar,
-.triage-workspace-scroll::-webkit-scrollbar {
+.triage-workspace-scroll::-webkit-scrollbar,
+.triage-chat-list::-webkit-scrollbar {
   width: 7px;
 }
 
 .triage-queue-list::-webkit-scrollbar-track,
 .triage-snapshot-scroll::-webkit-scrollbar-track,
-.triage-workspace-scroll::-webkit-scrollbar-track {
+.triage-workspace-scroll::-webkit-scrollbar-track,
+.triage-chat-list::-webkit-scrollbar-track {
   background: transparent;
 }
 
 .triage-queue-list::-webkit-scrollbar-thumb,
 .triage-snapshot-scroll::-webkit-scrollbar-thumb,
-.triage-workspace-scroll::-webkit-scrollbar-thumb {
+.triage-workspace-scroll::-webkit-scrollbar-thumb,
+.triage-chat-list::-webkit-scrollbar-thumb {
   background: #c4c9d2;
   border-radius: 999px;
 }
 
 .triage-queue-list::-webkit-scrollbar-thumb:hover,
 .triage-snapshot-scroll::-webkit-scrollbar-thumb:hover,
-.triage-workspace-scroll::-webkit-scrollbar-thumb:hover {
+.triage-workspace-scroll::-webkit-scrollbar-thumb:hover,
+.triage-chat-list::-webkit-scrollbar-thumb:hover {
   background: #b5bcc8;
 }
 

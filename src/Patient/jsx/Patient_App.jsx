@@ -15,9 +15,9 @@ import "../css/Patient_App.css";
 import Dashboard_Patient from "./Patient_Dashboard";
 import Services_Patient from "./Patient_Services";
 import Appointments_Patient from "./Patient_Appointments";
-// import { MedicalRecords } from "./MedicalRecords";
+import MedicalRecords_Patient from "./Patient_MedicalRecords";
 import Prescriptions_Patient from "./Patient_Prescriptions";
-// import { Profile } from "./Profile";
+import Profile_Patient from "./Patient_Profile";
 
 // Sub-Pages for Patient
 import { BookSpecialist } from "../sub-pages/BookSpecialist";
@@ -141,8 +141,14 @@ function Patient_App() {
             {mainRoute === "Services" && (
               <Services_Patient setActive={navigate} />
             )}
+            {mainRoute === "MedicalRecords" && (
+              <MedicalRecords_Patient setActive={navigate} />
+            )}
             {mainRoute === "Prescriptions" && (
               <Prescriptions_Patient setActive={navigate} />
+            )}
+            {mainRoute === "Profile" && (
+              <Profile_Patient setActive={navigate} />
             )}
 
             {/* Your Sub-Pages */}
@@ -168,7 +174,9 @@ function Patient_App() {
               mainRoute !== "Appointments" &&
               mainRoute !== "BookPhysical" &&
               mainRoute !== "BookSpecialist" &&
-              mainRoute !== "Prescriptions" && (
+              mainRoute !== "MedicalRecords" &&
+              mainRoute !== "Prescriptions" &&
+              mainRoute !== "Profile" && (
                 <div className="not-found-container">
                   {ActiveIcon && (
                     <ActiveIcon size={64} className="not-found-icon" />

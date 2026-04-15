@@ -197,21 +197,14 @@ export default function ConsultationIntakeForm({ setActive, type = "Video Consul
         mainConcern: formData.mainConcern,
         consultationChannel: channelMap[type] || "platform_call",
         symptoms: formData.symptoms,
+        otherSymptoms: formData.otherSymptoms,
         durationValue: parseInt(formData.duration) || 0,
+        durationUnit: formData.durationUnit,
         severity: formData.severity,
+        additionalDetails: formData.additionalDetails,
         painAreas: formData.painAreas, // Array of {id, label, view, key, ...}
         attachments: convertedAttachments
       };
-
-      if (formData.otherSymptoms?.trim()) {
-        payload.otherSymptoms = formData.otherSymptoms.trim();
-      }
-      if (formData.durationUnit) {
-        payload.durationUnit = formData.durationUnit;
-      }
-      if (formData.additionalDetails?.trim()) {
-        payload.additionalDetails = formData.additionalDetails.trim();
-      }
 
       await submitConsultationIntake(payload);
       sessionStorage.removeItem(`intake_draft_${type}`);

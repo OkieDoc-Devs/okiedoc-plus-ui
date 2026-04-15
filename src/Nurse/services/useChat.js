@@ -529,15 +529,12 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
   }, [activeConversation]);
 
   const handleSendMessage = useCallback(
-    async (content, replyToId = null, conversationIdOverride = null) => {
-      const targetConversationId =
-        conversationIdOverride || activeConversationRef.current?.id || activeConversation?.id;
-
-      if (!targetConversationId || !content.trim()) return null;
+    async (content, replyToId = null) => {
+      if (!activeConversation || !content.trim()) return null;
 
       try {
         const result = await sendMessage(
-          targetConversationId,
+          activeConversation.id,
           content,
           replyToId
         );
@@ -547,12 +544,10 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
           currentUserType
         );
 
-        if (Number(activeConversationRef.current?.id) === Number(targetConversationId)) {
-          setMessages((prev) => [...prev, transformedMsg]);
-        }
+        setMessages((prev) => [...prev, transformedMsg]);
 
         setConversations((prev) => {
-          const index = prev.findIndex((c) => Number(c.id) === Number(targetConversationId));
+          const index = prev.findIndex((c) => c.id === activeConversation.id);
           if (index === -1) return prev;
 
           const updated = {

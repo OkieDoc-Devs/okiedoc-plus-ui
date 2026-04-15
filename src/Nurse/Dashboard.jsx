@@ -54,17 +54,15 @@ const TRIAGE_STATUS_OPTIONS = [
 ];
 const SYMPTOM_PILL_OPTIONS = [
   'Fever',
-  'Headache',
   'Cough',
-  'Body pain',
-  'Dizziness',
-  'Chest pain',
+  'Headache',
   'Sore throat',
+  'Body pain',
   'Nausea',
+  'Dizziness',
   'Fatigue',
   'Shortness of breath',
-  'Stomach pain',
-  'Loss of appetite',
+  'Chest pain',
 ];
 const ROS_GROUPS = [
   {
@@ -244,18 +242,15 @@ const getStatusLabel = (status) => {
 const getPatientIdFromTicket = (ticket) => {
   const id = readValue(
     ticket,
-    ['patientId', 'Patient_ID', 'patientUserId', 'User_ID', 'userId', 'patient.id'],
+    ['patientId', 'Patient_ID', 'patientUserId', 'User_ID', 'userId'],
     null,
   );
 
-  const nestedId =
-    id === null || id === undefined || id === '' ? readValue(ticket?.patient || {}, ['id'], null) : id;
-
-  if (nestedId === null || nestedId === undefined || nestedId === '') {
+  if (id === null || id === undefined || id === '') {
     return null;
   }
 
-  const parsed = Number(nestedId);
+  const parsed = Number(id);
   return Number.isNaN(parsed) ? null : parsed;
 };
 
@@ -421,7 +416,6 @@ export default function Dashboard() {
     messages,
     openConversation,
     startConversation,
-    loadConversations,
     sendMessage: sendChatMessage,
   } = useChat({ currentUserId: user?.id || null, currentUserType: 'n' });
 
@@ -752,25 +746,12 @@ export default function Dashboard() {
     setSelectedSymptomPills(
       Array.isArray(localDraft.selectedSymptomPills)
         ? localDraft.selectedSymptomPills
-        : toList(
-            readValue(
-              selectedTicket,
-              ['symptoms', 'symptomTags', 'symptomPills', 'intakeDetails', '0', 'symptoms'],
-              '',
-            ),
-          )
-            .map((entry) => String(entry || '').trim().toLowerCase())
-            .map((normalizedEntry) => {
-              if (normalizedEntry === 'body pain') return 'Body pain';
-              if (normalizedEntry === 'chest pain') return 'Chest pain';
-              if (normalizedEntry === 'sore throat') return 'Sore throat';
-              if (normalizedEntry === 'shortness of breath') return 'Shortness of breath';
-              if (normalizedEntry === 'stomach pain') return 'Stomach pain';
-              if (normalizedEntry === 'loss of appetite') return 'Loss of appetite';
-              return SYMPTOM_PILL_OPTIONS.find(
-                (option) => option.toLowerCase() === normalizedEntry,
-              );
-            })
+        : toList(readValue(selectedTicket, ['symptoms', 'symptomTags', 'symptomPills', 'intakeDetails', '0', 'symptoms'], ''))
+            .map((entry) =>
+              SYMPTOM_PILL_OPTIONS.find(
+                (option) => option.toLowerCase() === String(entry || '').trim().toLowerCase(),
+              ),
+            )
             .filter(Boolean),
     );
     setSelectedPainAreas(
@@ -847,31 +828,7 @@ export default function Dashboard() {
       temperature: readValue(selectedTicket, ['temperature', 'temp', 'vitalTemperature']),
       bloodPressure: readValue(selectedTicket, ['bloodPressure', 'bp', 'vitalBloodPressure']),
       heartRate: readValue(selectedTicket, ['heartRate', 'bpm', 'vitalHeartRate']),
-    };
-  }, [selectedTicket]);
-
-  const painMapReadOnlyMeta = useMemo(() => {
-    if (!selectedTicket) {
-      return {
-        painScore: '',
-        durationValue: '',
-        durationUnit: '',
-      };
-    }
-
-    const normalizeDisplayValue = (value) =>
-      value === DEFAULT_TEXT || value === null || value === undefined ? '' : String(value);
-
-    return {
-      painScore: normalizeDisplayValue(
-        readValue(selectedTicket, ['severity', 'painScore', 'painSeverity'], ''),
-      ),
-      durationValue: normalizeDisplayValue(
-        readValue(selectedTicket, ['durationValue', 'painDurationValue'], ''),
-      ),
-      durationUnit: normalizeDisplayValue(
-        readValue(selectedTicket, ['durationUnit', 'painDurationUnit'], ''),
-      ),
+      additionalDetails: readValue(selectedTicket, ['additionalDetails', 'intakeDetails', '0', 'additionalDetails'], ''),
     };
   }, [selectedTicket]);
 
@@ -1296,100 +1253,16 @@ export default function Dashboard() {
       return;
     }
 
+    if (!activeConversation?.id) {
+      setQuickMessageError('No conversation is available for this patient yet.');
+      return;
+    }
+
     setIsSendingQuickMessage(true);
     setQuickMessageError('');
 
     try {
-      const patientId = selectedPatientId || getPatientIdFromTicket(selectedTicket);
-      const selectedTicketId = selectedTicket?.id ? Number(selectedTicket.id) : null;
-
-      const conversationHasPatient = (conversation, targetPatientId) =>
-        (conversation?.participants || []).some((participant) => {
-          const participantId =
-            participant?.id || participant?.userId || participant?.User_ID || participant?.patientId;
-          return Number(participantId) === Number(targetPatientId);
-        });
-
-      const conversationMatchesSelection = (conversation) => {
-        if (!conversation) return false;
-
-        const conversationId = Number(conversation.id);
-        const rawTicketId = Number(
-          conversation?.raw?.ticketId ||
-            conversation?.raw?.Ticket_ID ||
-            conversation?.raw?.ticket?.id ||
-            null,
-        );
-
-        if (selectedTicketId && (conversationId === selectedTicketId || rawTicketId === selectedTicketId)) {
-          return true;
-        }
-
-        if (patientId && conversationHasPatient(conversation, patientId)) {
-          return true;
-        }
-
-        return false;
-      };
-
-      const activeIsForSelected = conversationMatchesSelection(activeConversation);
-      let conversationId = selectedTicketId || (activeIsForSelected ? activeConversation?.id || null : null);
-
-      if (!conversationId) {
-        const existingConversation = conversations.find((conversation) =>
-          conversationMatchesSelection(conversation),
-        );
-
-        if (existingConversation) {
-          if (Number(activeConversation?.id) !== Number(existingConversation.id)) {
-            await openConversation(existingConversation);
-          }
-          conversationId = existingConversation.id;
-        } else {
-          const refreshedConversations = (await loadConversations()) || [];
-          const refreshedMatch = refreshedConversations.find((conversation) =>
-            conversationMatchesSelection(conversation),
-          );
-
-          if (refreshedMatch) {
-            if (Number(activeConversation?.id) !== Number(refreshedMatch.id)) {
-              await openConversation(refreshedMatch);
-            }
-            conversationId = refreshedMatch.id;
-          }
-        }
-      }
-
-      if (!conversationId && patientId) {
-        const createdConversation = await startConversation('direct', patientId);
-        conversationId = createdConversation?.id || null;
-
-        if (!conversationId) {
-          const refreshedConversations = (await loadConversations()) || [];
-          const refreshedMatch = refreshedConversations.find((conversation) =>
-            conversationMatchesSelection(conversation),
-          );
-
-          if (refreshedMatch) {
-            if (Number(activeConversation?.id) !== Number(refreshedMatch.id)) {
-              await openConversation(refreshedMatch);
-            }
-            conversationId = refreshedMatch.id;
-          }
-        }
-      }
-
-      if (!conversationId) {
-        setQuickMessageError('No conversation is available for this patient yet.');
-        return;
-      }
-
-      const sentMessage = await sendChatMessage(quickMessage.trim(), null, conversationId);
-      if (!sentMessage) {
-        setQuickMessageError('Unable to send your message right now.');
-        return;
-      }
-
+      await sendChatMessage(quickMessage.trim());
       setQuickMessage('');
     } catch (error) {
       console.error('Failed to send quick message:', error);
@@ -1648,6 +1521,12 @@ export default function Dashboard() {
                           <label>Address</label>
                           <p>{selectedPatient.address}</p>
                         </div>
+                        {selectedPatient.additionalDetails && (
+                          <div className='triage-detail-row' style={{ marginTop: '10px' }}>
+                            <label>Additional Details</label>
+                            <p>{selectedPatient.additionalDetails}</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </article>
@@ -1692,7 +1571,7 @@ export default function Dashboard() {
                         placeholder='Type a message...'
                         value={quickMessage}
                         onChange={(event) => setQuickMessage(event.target.value)}
-                        disabled={isSendingQuickMessage}
+                        disabled={!activeConversation?.id || isSendingQuickMessage}
                       />
                       <button
                         className='triage-chat-send-btn'
@@ -1909,51 +1788,25 @@ export default function Dashboard() {
 
                   <article className='triage-pain-map-card'>
                     <h4>Pain Map</h4>
-                    <div className='triage-pain-map-controls-row'>
-                      <div className='triage-pain-map-view-toggle' role='tablist' aria-label='Pain map view'>
-                        <button
-                          type='button'
-                          role='tab'
-                          aria-selected={painMapView === 'front'}
-                          className={`triage-pain-map-view-btn ${painMapView === 'front' ? 'active' : ''}`}
-                          onClick={() => handlePainMapViewChange('front')}
-                        >
-                          Front
-                        </button>
-                        <button
-                          type='button'
-                          role='tab'
-                          aria-selected={painMapView === 'back'}
-                          className={`triage-pain-map-view-btn ${painMapView === 'back' ? 'active' : ''}`}
-                          onClick={() => handlePainMapViewChange('back')}
-                        >
-                          Back
-                        </button>
-                      </div>
-
-                      <div className='triage-pain-readonly-meta inline'>
-                        <div className='triage-vitals-grid triage-vitals-grid-readonly inline'>
-                          <div className='triage-pain-meta-item'>
-                            <label>Pain Score</label>
-                            <div className='triage-vital-input-wrap triage-vital-input-wrap-readonly triage-vital-input-wrap-meta'>
-                              <span className='triage-pain-meta-value'>{painMapReadOnlyMeta.painScore || 'N/A'}</span>
-                              <span className='triage-vital-unit'>/10</span>
-                            </div>
-                          </div>
-
-                          <div className='triage-pain-meta-item triage-pain-meta-item-duration'>
-                            <label>Pain Duration</label>
-                            <div className='triage-vital-input-wrap triage-vital-input-wrap-readonly triage-vital-input-wrap-duration triage-vital-input-wrap-meta'>
-                              <span className='triage-pain-meta-value'>
-                                {painMapReadOnlyMeta.durationValue || 'N/A'}
-                              </span>
-                              <span className='triage-vital-unit'>
-                                {painMapReadOnlyMeta.durationUnit || '--'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                    <div className='triage-pain-map-view-toggle' role='tablist' aria-label='Pain map view'>
+                      <button
+                        type='button'
+                        role='tab'
+                        aria-selected={painMapView === 'front'}
+                        className={`triage-pain-map-view-btn ${painMapView === 'front' ? 'active' : ''}`}
+                        onClick={() => handlePainMapViewChange('front')}
+                      >
+                        Front
+                      </button>
+                      <button
+                        type='button'
+                        role='tab'
+                        aria-selected={painMapView === 'back'}
+                        className={`triage-pain-map-view-btn ${painMapView === 'back' ? 'active' : ''}`}
+                        onClick={() => handlePainMapViewChange('back')}
+                      >
+                        Back
+                      </button>
                     </div>
 
                     <div className='triage-pain-map-content'>
@@ -1975,32 +1828,30 @@ export default function Dashboard() {
                         })}
                       </div>
 
-                      <div className='triage-pain-map-sidebar'>
-                        <div className='triage-pain-map-selection'>
-                          <div className='triage-pain-map-selection-title'>Selected pain areas:</div>
-                          {selectedPainAreas.length === 0 ? (
-                            <div className='triage-pain-map-empty'>No areas selected</div>
-                          ) : (
-                            <div className='triage-pain-map-chips'>
-                              {selectedPainAreas.map((area) => (
-                                <div key={area.id} className='triage-pain-map-chip'>
-                                  <span>
-                                    {area.label}
-                                    {` (${area.view === 'back' ? 'Back' : 'Front'})`}
-                                  </span>
-                                  <button
-                                    type='button'
-                                    className='triage-pain-map-chip-remove'
-                                    onClick={() => handlePainAreaRemove(area.id)}
-                                    aria-label={`Remove ${area.label}`}
-                                  >
-                                    x
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                      <div className='triage-pain-map-selection'>
+                        <div className='triage-pain-map-selection-title'>Selected pain areas:</div>
+                        {selectedPainAreas.length === 0 ? (
+                          <div className='triage-pain-map-empty'>No areas selected</div>
+                        ) : (
+                          <div className='triage-pain-map-chips'>
+                            {selectedPainAreas.map((area) => (
+                              <div key={area.id} className='triage-pain-map-chip'>
+                                <span>
+                                  {area.label}
+                                  {` (${area.view === 'back' ? 'Back' : 'Front'})`}
+                                </span>
+                                <button
+                                  type='button'
+                                  className='triage-pain-map-chip-remove'
+                                  onClick={() => handlePainAreaRemove(area.id)}
+                                  aria-label={`Remove ${area.label}`}
+                                >
+                                  x
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 

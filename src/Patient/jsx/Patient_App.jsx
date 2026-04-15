@@ -188,7 +188,7 @@ function Patient_App() {
               mainRoute !== "BookSpecialist" &&
               mainRoute !== "MedicalRecords" &&
               mainRoute !== "Prescriptions" &&
-              mainRoute !== "Profile" && (
+              mainRoute !== "Profile" &&
               mainRoute !== "IntakeForm" && (
                 <div className="not-found-container">
                   {ActiveIcon && (

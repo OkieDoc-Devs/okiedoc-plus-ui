@@ -26,7 +26,7 @@ export function DiyModal({ isOpen, onClose, actionName }) {
           </div>
           <div>
             <h4 style={{ marginBottom: "8px", color: "#343a40" }}>
-              {actionName}
+              "{actionName}"
             </h4>
             <p className="text-muted text-sm">
               This feature is currently under construction. Please check back

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { FaUpload, FaTimes, FaRegComment, FaPaperPlane } from 'react-icons/fa';
 import './SpecialistDashboard.css';
 import authService from './authService';
@@ -8,6 +8,8 @@ import { API_BASE_URL } from '../api/apiClient';
 import SpecialistCall from './SpecialistCall';
 import Messages from './Messages';
 import ImageCropperModal from '../components/ImageCropperModal';
+import PainMapSection from '../components/PainMap/PainMap.jsx';
+import { PAIN_MAP_VIEWS } from '../components/PainMap/painMapConstants.js';
 import ICDCodeSelector from './components/ICDCodeSelector';
 import Avatar from '../components/Avatar';
 import { usePSGC } from '../hooks/usePSGC';
@@ -77,10 +79,89 @@ import {
   validateAccountDetails,
   validateScheduleData,
   validateMedicalHistoryRequest,
+  ICD11_CHAPTERS,
+  parseICDCode,
 } from './utils';
+
+const normalizePainMapAreas = (ticket) => {
+  const rawAreas = Array.isArray(ticket?.selectedPainAreas)
+    ? ticket.selectedPainAreas
+    : Array.isArray(ticket?.painMap)
+      ? ticket.painMap
+      : [];
+
+  return rawAreas
+    .map((area, index) => {
+      if (typeof area === 'string') {
+        const stringMatch = area.match(/^(front|back):(.+)$/i);
+        if (stringMatch) {
+          const view = stringMatch[1].toLowerCase();
+          const key = stringMatch[2];
+          return {
+            id: `${view}:${key}`,
+            view,
+            key,
+            label: key,
+          };
+        }
+
+        return {
+          id: `front:${area}:${index}`,
+          view: 'front',
+          key: area,
+          label: area,
+        };
+      }
+
+      const idMatch =
+        typeof area?.id === 'string' ? area.id.match(/^(front|back):(.+)$/i) : null;
+      const parsedView = idMatch ? idMatch[1].toLowerCase() : null;
+      const parsedKey = idMatch ? idMatch[2] : null;
+      const view = PAIN_MAP_VIEWS.includes(area?.view)
+        ? area.view
+        : PAIN_MAP_VIEWS.includes(parsedView)
+          ? parsedView
+          : 'front';
+      const key = area?.key || parsedKey || area?.id || `area-${index}`;
+      const label = area?.label || area?.name || area?.bodyPart || area?.value || 'Pain area';
+
+      return {
+        id: area?.id || `${view}:${key}`,
+        view,
+        key,
+        label,
+      };
+    })
+    .filter((area) => area.id && area.key && area.label);
+};
+
+const getPainMapView = (ticket, areas) => {
+  const savedView = ticket?.painMapView;
+  if (PAIN_MAP_VIEWS.includes(savedView)) {
+    return savedView;
+  }
+
+  if (!areas.length) {
+    return 'front';
+  }
+
+  const frontCount = areas.filter((area) => area.view === 'front').length;
+  const backCount = areas.filter((area) => area.view === 'back').length;
+
+  if (backCount > frontCount) {
+    return 'back';
+  }
+
+  if (frontCount > 0) {
+    return 'front';
+  }
+
+  return areas[0]?.view || 'front';
+};
 
 const SpecialistDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     regions,
     provinces,
@@ -178,6 +259,9 @@ const SpecialistDashboard = () => {
 
   const [mhRequests, setMhRequests] = useState([]);
   const [selectedMedicalEntry, setSelectedMedicalEntry] = useState(null);
+  const [soapModalType, setSoapModalType] = useState(null);
+  const [soapModalValue, setSoapModalValue] = useState('');
+  const [soapModalIcdCode, setSoapModalIcdCode] = useState('');
 
   const [centerTab, setCenterTab] = useState('medicine');
 
@@ -477,6 +561,8 @@ const SpecialistDashboard = () => {
 
   useEffect(() => {
     document.body.classList.add('specialist-dashboard-body');
+    const onboardingOverride =
+      new URLSearchParams(location.search).get('onboarding') === '1';
 
     const currentUser = authService.getCurrentUser();
 
@@ -485,7 +571,7 @@ const SpecialistDashboard = () => {
       return;
     }
 
-    if (currentUser.user.applicationStatus === 'pending') {
+    if (currentUser.user.applicationStatus === 'pending' && !onboardingOverride) {
       navigate('/specialist-pending');
       return;
     } else if (currentUser.user.applicationStatus === 'denied') {
@@ -495,6 +581,10 @@ const SpecialistDashboard = () => {
 
     setCurrentUser(currentUser.user);
     setIsLoading(false);
+
+    if (onboardingOverride) {
+      window.history.replaceState(null, '', '/specialist-dashboard');
+    }
 
     const initials = generateUserInitials(
       currentUser.user.firstName || currentUser.user.fName,
@@ -537,16 +627,7 @@ const SpecialistDashboard = () => {
     return () => {
       document.body.classList.remove('specialist-dashboard-body');
     };
-  }, [navigate, loadTicketsData, loadDashboardData]);
-
-  useEffect(() => {
-    if (tickets.length > 0) {
-      const hasSelectedTicket = selectedTicketId && tickets.some((t) => String(t.id) === String(selectedTicketId));
-      if (!hasSelectedTicket) {
-        setSelectedTicketId(tickets[0].id);
-      }
-    }
-  }, [tickets, selectedTicketId]);
+  }, [navigate, loadTicketsData, loadDashboardData, location.search]);
 
   useEffect(() => {
     if (activeTab === 'dashboard') {
@@ -973,6 +1054,30 @@ const SpecialistDashboard = () => {
     }
   };
 
+  const openSoapModal = (section) => {
+    setSoapModalType(section);
+    setSoapModalValue(encounter?.[section] || '');
+    setSoapModalIcdCode(encounter?.icd10 || '');
+  };
+
+  const closeSoapModal = () => {
+    setSoapModalType(null);
+    setSoapModalValue('');
+    setSoapModalIcdCode('');
+  };
+
+  const saveSoapModal = async () => {
+    if (!soapModalType) return;
+
+    const payload = { [soapModalType]: soapModalValue };
+    if (soapModalType === 'assessment') {
+      payload.icd10 = soapModalIcdCode;
+    }
+
+    await saveEncounter(payload);
+    closeSoapModal();
+  };
+
   const handleGenerateInvoice = async () => {
     if (!selectedTicketId) return;
     try {
@@ -1381,7 +1486,16 @@ const SpecialistDashboard = () => {
   };
 
   const renderDashboard = () => {
-    const selectedTicket = tickets.find((x) => x.id === selectedTicketId);
+    const selectedTicket = tickets.find((x) => String(x.id) === String(selectedTicketId));
+    const parsedIcd = parseICDCode(encounter.icd10);
+    const chapterData = parsedIcd.chapter ? ICD11_CHAPTERS[parsedIcd.chapter] : null;
+    const blockData = chapterData?.blocks?.[parsedIcd.block] || null;
+    const categoryData = blockData?.categories?.[parsedIcd.category] || null;
+    const selectedCodeValue =
+      parsedIcd.subcategory || parsedIcd.category || parsedIcd.block || parsedIcd.chapter || '';
+    const selectedCodeLabel = categoryData
+      ? `${categoryData.code} - ${categoryData.label}`
+      : 'Not selected';
 
     const formatBirthday = (dateStr) => {
       if (!dateStr) return 'Not provided';
@@ -1409,15 +1523,97 @@ const SpecialistDashboard = () => {
       return 'Not provided';
     };
 
-    const selectedPatient = selectedTicket || tickets[0] || null;
+    const selectedPatient = selectedTicket || null;
+    const painMapAreas = normalizePainMapAreas(selectedPatient);
+    const painMapView = getPainMapView(selectedPatient, painMapAreas);
 
     const patientStatus = selectedPatient?.status || 'Unknown';
-    const patientChatMessages =
-      patientChatThreads[selectedTicketId] ||
-      createPatientChatMessages(selectedPatient);
+    const patientChatMessages = selectedPatient
+      ? patientChatThreads[selectedTicketId] ||
+        createPatientChatMessages(selectedPatient)
+      : [];
     const isStarterThread =
       patientChatMessages.length === 1 &&
       patientChatMessages[0]?.sender === 'system';
+
+    if (!selectedPatient) {
+      return (
+        <div className='dashboard-content dashboard-1to1'>
+          <div className='assigned-patients-panel'>
+            <div className='panel-header'>
+              <h3>Assigned Patients</h3>
+            </div>
+
+            <div className='status-filter-container'>
+              <select
+                value={ticketFilter === 'All' ? 'All Tickets' : ticketFilter}
+                onChange={(e) =>
+                  setTicketFilter(
+                    e.target.value === 'All Tickets' ? 'All' : e.target.value,
+                  )
+                }
+                className='input-sm status-filter-dropdown'
+              >
+                {[
+                  'All Tickets',
+                  'Available',
+                  'Awaiting',
+                  'In Consultation',
+                  'Completed',
+                ].map((label) => (
+                  <option key={label} value={label}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className='patient-list'>
+              {filteredTickets.length === 0 ? (
+                <div className='no-patient-text'>No patients assigned.</div>
+              ) : (
+                filteredTickets.map((t) => (
+                  <div
+                    key={t.id}
+                    className='patient-card'
+                    onClick={() => setSelectedTicketId(t.id)}
+                  >
+                    <div className='patient-card-header'>
+                      <div className='patient-card-title'>
+                        {t.patient || 'Unknown'}
+                      </div>
+                      <span className={`status-badge ${getStatusBadgeClass(t.status)}`}>
+                        {t.status}
+                      </span>
+                    </div>
+                    <div className='patient-card-subtitle'>
+                      {t.id} â€¢ {t.service || 'Consultation'}
+                    </div>
+                    <div className='patient-card-meta'>{t.when}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className='patient-details-panel'>
+            <div className='patient-details-empty-state'>
+              <div className='patient-details-empty-state__card'>
+                <h2>No selected tickets</h2>
+                <p>Select a ticket from the left panel to view the patient details, chat, and SOAP notes.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className='soap-panel'>
+            <div className='soap-header'>
+              <h3>SOAP Notes</h3>
+              <p>Document your clinical findings and treatment plan</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className='dashboard-content dashboard-1to1'>
@@ -1457,7 +1653,7 @@ const SpecialistDashboard = () => {
               filteredTickets.map((t) => (
                 <div
                   key={t.id}
-                  className={`patient-card ${selectedTicketId === t.id ? 'active' : ''}`}
+                  className={`patient-card ${String(selectedTicketId) === String(t.id) ? 'active' : ''}`}
                   onClick={() => setSelectedTicketId(t.id)}
                 >
                   <div className='patient-card-header'>
@@ -1479,11 +1675,11 @@ const SpecialistDashboard = () => {
         </div>
 
         <div className='patient-details-panel'>
-          <div className='patient-details-header'>
-            <div>
-              <h2>Mark Joe Smith</h2>
-              <p className='patient-specialization'>Headache</p>
-            </div>
+              <div className='patient-details-header'>
+                <div>
+                  <h2>{selectedPatient.patientFullName || selectedPatient.patient || 'Patient'}</h2>
+                  <p className='patient-specialization'>{selectedPatient.service || 'Consultation'}</p>
+                </div>
             <button
               className='btn-primary complete-consultation'
               onClick={handleCompleteConsultation}
@@ -1560,6 +1756,12 @@ const SpecialistDashboard = () => {
               {selectedPatient?.triageNotes || 'Vital signs not yet provided.'}
             </div>
           </div>
+
+          <PainMapSection
+            view={painMapView}
+            selectedAreas={painMapAreas}
+            readOnly
+          />
 
           <div className='info-card'>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -2168,39 +2370,83 @@ const SpecialistDashboard = () => {
           <div className='soap-card soap-card--subjective'>
             <div className='soap-card-title'>S - Subjective</div>
             <textarea
-              value={encounter.subjective}
-              onChange={(e) => saveEncounter({ subjective: e.target.value })}
+              value={encounter.subjective || ''}
+              readOnly
+              onClick={() => openSoapModal('subjective')}
               placeholder='Patient reports experiencing...'
+              className='soap-card-textarea soap-card-textarea--display'
+              aria-label='Open subjective SOAP editor'
             />
           </div>
           <div className='soap-card soap-card--objective'>
             <div className='soap-card-title'>O - Objective</div>
             <textarea
-              value={encounter.objective}
-              onChange={(e) => saveEncounter({ objective: e.target.value })}
+              value={encounter.objective || ''}
+              readOnly
+              onClick={() => openSoapModal('objective')}
               placeholder='Physical examination reveals...'
+              className='soap-card-textarea soap-card-textarea--display'
+              aria-label='Open objective SOAP editor'
             />
           </div>
           <div className='soap-card soap-card--assessment'>
             <div className='soap-card-title'>A - Assessment</div>
             <textarea
-              value={encounter.assessment}
-              onChange={(e) => saveEncounter({ assessment: e.target.value })}
+              value={encounter.assessment || ''}
+              readOnly
+              onClick={() => openSoapModal('assessment')}
               placeholder='Diagnosis: ...'
+              className='soap-card-textarea soap-card-textarea--display'
+              aria-label='Open assessment SOAP editor'
             />
-            <div className='icd-selector-section'>
-              <ICDCodeSelector
-                value={encounter.icd10}
-                onChange={(newCode) => saveEncounter({ icd10: newCode })}
-              />
+            <div className='soap-card-icd-summary'>
+              {!chapterData ? (
+                <div className='soap-card-icd-summary__empty'>
+                  ICD Codes
+                </div>
+              ) : (
+                <>
+                  <div className='soap-card-icd-summary__field'>
+                    <span>CHAPTER</span>
+                    <div className='soap-card-icd-summary__value'>
+                      {chapterData ? `${chapterData.code} - ${chapterData.label}` : 'Not selected'}
+                    </div>
+                  </div>
+                  <div className='soap-card-icd-summary__field'>
+                    <span>BLOCK</span>
+                    <div className='soap-card-icd-summary__value'>
+                      {blockData ? `${blockData.code} - ${blockData.label}` : 'Not selected'}
+                    </div>
+                  </div>
+                  <div className='soap-card-icd-summary__field'>
+                    <span>CATEGORY</span>
+                    <div className='soap-card-icd-summary__value'>
+                      {categoryData ? `${categoryData.code} - ${categoryData.label}` : 'Not selected'}
+                    </div>
+                  </div>
+                  <div className='soap-card-icd-summary__details'>
+                    <div className='soap-card-icd-summary__details-label'>Selected Code:</div>
+                    <div className='soap-card-icd-summary__details-value'>
+                      {selectedCodeValue || 'Not selected'}
+                    </div>
+                    <div className='soap-card-icd-summary__details-desc'>
+                      <strong>Description:</strong>{' '}
+                      {categoryData?.description || 'Not selected'}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div className='soap-card soap-card--plan'>
             <div className='soap-card-title'>P - Plan</div>
             <textarea
-              value={encounter.plan}
-              onChange={(e) => saveEncounter({ plan: e.target.value })}
+              value={encounter.plan || ''}
+              readOnly
+              onClick={() => openSoapModal('plan')}
               placeholder='Treatment plan includes...'
+              className='soap-card-textarea soap-card-textarea--display'
+              aria-label='Open plan SOAP editor'
             />
           </div>
           <div className='soap-card medical-records-access-card'>
@@ -3435,6 +3681,80 @@ const SpecialistDashboard = () => {
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {soapModalType && (
+        <div className='modal' onClick={(e) => e.target.className === 'modal' && closeSoapModal()}>
+          <div
+            className='modal-content soap-editor-modal'
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className='modal-header'>
+              <h3>
+                {soapModalType === 'subjective'
+                  ? 'Edit Subjective'
+                  : soapModalType === 'objective'
+                  ? 'Edit Objective'
+                  : soapModalType === 'assessment'
+                  ? 'Edit Assessment'
+                  : 'Edit Plan'}
+              </h3>
+              <button className='close-modal' onClick={closeSoapModal} type='button'>
+                <FaTimes />
+              </button>
+            </div>
+            <div className='soap-editor-modal__body'>
+              <div className='soap-editor-modal__field'>
+                <label>
+                  {soapModalType === 'subjective'
+                    ? 'Subjective'
+                    : soapModalType === 'objective'
+                    ? 'Objective'
+                    : soapModalType === 'assessment'
+                    ? 'Assessment'
+                    : 'Plan'}
+                </label>
+                <textarea
+                  value={soapModalValue}
+                  onChange={(e) => setSoapModalValue(e.target.value)}
+                  placeholder={
+                    soapModalType === 'subjective'
+                      ? 'Patient reports experiencing...'
+                      : soapModalType === 'objective'
+                      ? 'Physical examination reveals...'
+                      : soapModalType === 'assessment'
+                      ? 'Diagnosis: ...'
+                      : 'Treatment plan includes...'
+                  }
+                />
+              </div>
+
+              {soapModalType === 'assessment' && (
+                <div className='icd-selector-section'>
+                  <ICDCodeSelector
+                    value={soapModalIcdCode}
+                    onChange={setSoapModalIcdCode}
+                  />
+                </div>
+              )}
+            </div>
+            <div className='soap-editor-modal__actions'>
+              <button
+                type='button'
+                className='btn-primary soap-editor-modal__save-btn'
+                onClick={saveSoapModal}
+              >
+                Save {soapModalType === 'subjective'
+                  ? 'Subjective'
+                  : soapModalType === 'objective'
+                  ? 'Objective'
+                  : soapModalType === 'assessment'
+                  ? 'Assessment'
+                  : 'Plan'}
+              </button>
             </div>
           </div>
         </div>

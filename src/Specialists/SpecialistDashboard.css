@@ -1460,6 +1460,38 @@ html:has(body.specialist-dashboard-body) {
   padding-right: 6px;
 }
 
+.patient-details-empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.patient-details-empty-state__card {
+  width: min(100%, 420px);
+  text-align: center;
+  border: 1px dashed #9cccf1;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4faff 100%);
+  box-shadow: inset 0 0 0 1px rgba(74, 167, 237, 0.04);
+  padding: 32px 28px;
+}
+
+.patient-details-empty-state__card h2 {
+  margin: 0 0 10px;
+  color: #0b5388;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.patient-details-empty-state__card p {
+  margin: 0;
+  color: #5c7289;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
 .chart-layout {
   display: grid;
   grid-template-columns: 260px 1fr 380px;
@@ -1840,6 +1872,103 @@ html:has(body.specialist-dashboard-body) {
   padding: 8px;
   font-size: 0.89rem;
   background-color: #ffffff;
+}
+
+.soap-card-textarea--display {
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.soap-card-textarea--display:hover {
+  border-color: #7db6ef;
+  box-shadow: 0 0 0 3px rgba(125, 182, 239, 0.12);
+}
+
+.soap-card-textarea--display:focus {
+  outline: none;
+}
+
+.soap-card-icd-summary {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fbff;
+  border: 1px solid #d7e4f4;
+}
+
+.soap-card-icd-summary__field {
+  margin-bottom: 10px;
+}
+
+.soap-card-icd-summary__empty {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #d7e4f4;
+  color: #0a4b7a;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.soap-card-icd-summary__field:last-of-type {
+  margin-bottom: 12px;
+}
+
+.soap-card-icd-summary__field span {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0a4b7a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.soap-card-icd-summary__value {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #d7e4f4;
+  color: #111827;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.soap-card-icd-summary__details {
+  padding: 12px;
+  border-radius: 10px;
+  background: #eef5fd;
+  border: 1px solid #d7e4f4;
+}
+
+.soap-card-icd-summary__details-label {
+  color: #0a4b7a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.soap-card-icd-summary__details-value {
+  color: #0f172a;
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.soap-card-icd-summary__details-desc {
+  color: #334155;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.soap-card-icd-summary__details-desc strong {
+  color: #0f172a;
 }
 
 .medical-records-access-card {
@@ -3441,6 +3570,75 @@ html:has(body.specialist-dashboard-body) {
 
 .specialist-dashboard .modal-content.specialist-entry-modal {
   max-width: 1240px;
+}
+
+.specialist-dashboard .modal-content.soap-editor-modal {
+  max-width: 1040px;
+}
+
+.specialist-dashboard .soap-editor-modal__body {
+  padding: 1.5rem 1.75rem 0.75rem;
+  overflow-y: auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.specialist-dashboard .soap-editor-modal__field {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.specialist-dashboard .soap-editor-modal__field label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.specialist-dashboard .soap-editor-modal__field textarea {
+  width: 100%;
+  border: 1.5px solid #d8e3f1;
+  border-radius: 14px;
+  background: #f8fbff;
+  color: #0f172a;
+  font: inherit;
+}
+
+.specialist-dashboard .soap-editor-modal__field textarea {
+  min-height: 110px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.specialist-dashboard .soap-editor-modal__field textarea:focus {
+  outline: none;
+  border-color: #0b5388;
+  box-shadow: 0 0 0 4px rgba(11, 83, 136, 0.12);
+  background: #ffffff;
+}
+
+.specialist-dashboard .soap-editor-modal__actions {
+  padding: 1rem 1.75rem 1.5rem;
+  background: #f8fafc;
+  border-top: 1px solid #e9eef5;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.specialist-dashboard .soap-editor-modal__save-btn {
+  flex: 0 0 auto;
+  min-width: 170px;
+  color: #ffffff;
+  background: #1fa8ea;
+  border: none;
+  box-shadow: 0 10px 22px rgba(31, 168, 234, 0.22);
+}
+
+.specialist-dashboard .soap-editor-modal__save-btn:hover {
+  background: #1595d0;
+  color: #ffffff;
 }
 
 .specialist-dashboard .specialist-entry-modal__body {

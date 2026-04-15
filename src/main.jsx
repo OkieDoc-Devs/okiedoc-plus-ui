@@ -67,7 +67,7 @@ createRoot(document.getElementById('root')).render(
             <Route
               path='/video-call'
               element={
-                <ProtectedRoute allowedRoles={['nurse', 'admin', 'nurse_admin', 'nurseadmin', 'na', 'patient', 'specialist']}>
+                <ProtectedRoute allowedRoles={['nurse', 'nurse_admin', 'admin', 'patient', 'specialist']}>
                   <VideoCallPage />
                 </ProtectedRoute>
               }
@@ -80,7 +80,7 @@ createRoot(document.getElementById('root')).render(
             <Route
               path='/nurse-dashboard'
               element={
-                <ProtectedRoute allowedRoles={['nurse']}>
+                <ProtectedRoute allowedRoles={['nurse', 'nurse_admin']}>
                   <Dashboard />
                 </ProtectedRoute>
               }
@@ -88,7 +88,7 @@ createRoot(document.getElementById('root')).render(
             <Route
               path='/nurse-notifications'
               element={
-                <ProtectedRoute allowedRoles={['nurse']}>
+                <ProtectedRoute allowedRoles={['nurse', 'nurse_admin']}>
                   <Notifications />
                 </ProtectedRoute>
               }
@@ -96,7 +96,7 @@ createRoot(document.getElementById('root')).render(
             <Route
               path='/nurse-myaccount'
               element={
-                <ProtectedRoute allowedRoles={['nurse']}>
+                <ProtectedRoute allowedRoles={['nurse', 'nurse_admin']}>
                   <MyAccount />
                 </ProtectedRoute>
               }
@@ -104,7 +104,7 @@ createRoot(document.getElementById('root')).render(
             <Route
               path='/nurse-manage-appointments'
               element={
-                <ProtectedRoute allowedRoles={['nurse']}>
+                <ProtectedRoute allowedRoles={['nurse', 'nurse_admin']}>
                   <ManageAppointments />
                 </ProtectedRoute>
               }
@@ -112,7 +112,7 @@ createRoot(document.getElementById('root')).render(
             <Route
               path='/nurse-messages'
               element={
-                <ProtectedRoute allowedRoles={['nurse']}>
+                <ProtectedRoute allowedRoles={['nurse', 'nurse_admin']}>
                   <Messages />
                 </ProtectedRoute>
               }

@@ -10,9 +10,10 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import "../css/Patient_Services.css";
+import { useModal } from "../contexts/Modals";
 
 export default function Patient_Services({ setActive }) {
-  const handleDIY = (item) => alert(`DIY: ${item}`);
+  const { openDiyModal } = useModal();
 
   const handleConsultationSelect = (type) => {
     window.location.hash = `#/IntakeForm/${encodeURIComponent(type)}`;
@@ -24,11 +25,11 @@ export default function Patient_Services({ setActive }) {
 
   // Updates the URL, which App.jsx will detect and switch pages
   const handleBookSpecialist = () => {
-    window.location.hash = `#/BookSpecialist/${generateSimulatedId()}`;
+    window.location.hash = `/BookSpecialist/${generateSimulatedId()}`;
   };
 
   const handleBookPhysical = () => {
-    window.location.hash = `#/BookPhysical/${generateSimulatedId()}`;
+    window.location.hash = `/BookPhysical/${generateSimulatedId()}`;
   };
 
   const goToAppointments = () => {
@@ -93,7 +94,7 @@ export default function Patient_Services({ setActive }) {
             <span className="svc-floating-badge left bg-cyan text-white">
               <IconCheck size={12} /> Beginner Friendly
             </span>
-            <div className="svc-icon-circle bg-light-cyan text-cyan">
+            <div className="svc-icon-circle bg-light-cyan text-blue">
               <IconPhone size={30} />
             </div>
             <h4>Request Nurse Callback</h4>
@@ -109,7 +110,7 @@ export default function Patient_Services({ setActive }) {
             <span className="svc-badge bg-light-green text-green mb-8">
               Always Free
             </span>
-            <h2 className="text-cyan">Free</h2>
+            <h2 className="text-blue">Free</h2>
             <p className="svc-price-desc">Initial triage and assessment</p>
             <button
               className="svc-btn bg-cyan text-white"
@@ -121,7 +122,7 @@ export default function Patient_Services({ setActive }) {
 
           {/* Card 2: Chat */}
           <div className="svc-card">
-            <div className="svc-icon-circle bg-light-cyan text-cyan">
+            <div className="svc-icon-circle bg-light-cyan text-blue">
               <IconMessage size={30} />
             </div>
             <h4>Chat Consultation</h4>
@@ -138,7 +139,7 @@ export default function Patient_Services({ setActive }) {
             <p className="svc-price-desc">One-time payment</p>
             <button
               className="svc-btn bg-cyan text-white"
-              onClick={() => handleConsultationSelect("Chat Consultation")}
+              onClick={() => openDiyModal("Chat")}
             >
               Select Service <IconArrowRight size={16} />
             </button>
@@ -166,7 +167,7 @@ export default function Patient_Services({ setActive }) {
             <p className="svc-price-desc">One-time payment</p>
             <button
               className="svc-btn bg-teal text-white"
-              onClick={() => handleConsultationSelect("Voice Consultation")}
+              onClick={() => openDiyModal("Voice")}
             >
               Select Service <IconArrowRight size={16} />
             </button>
@@ -177,7 +178,7 @@ export default function Patient_Services({ setActive }) {
             <span className="svc-floating-badge center bg-cyan text-white">
               Recommended
             </span>
-            <div className="svc-icon-circle bg-light-cyan text-cyan">
+            <div className="svc-icon-circle bg-light-cyan text-blue">
               <IconVideo size={30} />
             </div>
             <h4>Video Consultation</h4>
@@ -194,7 +195,7 @@ export default function Patient_Services({ setActive }) {
             <p className="svc-price-desc">One-time payment</p>
             <button
               className="svc-btn bg-cyan text-white"
-              onClick={() => handleConsultationSelect("Video Consultation")}
+              onClick={() => openDiyModal("Video")}
             >
               Select Service <IconArrowRight size={16} />
             </button>
@@ -219,13 +220,13 @@ export default function Patient_Services({ setActive }) {
                 convenient locations across the metro
               </p>
               <div className="svc-tags">
-                <span className="svc-tag outline-cyan text-cyan">
+                <span className="svc-tag outline-cyan text-blue">
                   <IconMapPin size={12} /> Multiple Locations
                 </span>
-                <span className="svc-tag outline-cyan text-cyan">
+                <span className="svc-tag outline-cyan text-blue">
                   <IconRefresh size={12} /> Various Specialties
                 </span>
-                <span className="svc-tag outline-cyan text-cyan">
+                <span className="svc-tag outline-cyan text-blue">
                   <IconClock size={12} /> Flexible Scheduling
                 </span>
               </div>
@@ -296,7 +297,10 @@ export default function Patient_Services({ setActive }) {
       {/* --- HERO SUB-ACTION --- */}
       <div className="svc-footer-action">
         <p>Need help choosing? Our care coordinators are available 24/7</p>
-        <button className="svc-btn outline-cyan text-cyan svc-btn-large">
+        <button
+          className="svc-btn outline-cyan text-blue svc-btn-large"
+          onClick={() => openDiyModal("Talk")}
+        >
           <IconPhone size={18} /> Talk to Care Team
         </button>
       </div>

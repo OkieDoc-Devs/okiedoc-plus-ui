@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import Modal from '../Components/Modal';
+import { FiEye, FiCheck, FiX } from 'react-icons/fi';
 
-const PendingTable = ({ applications, onApprove, onDeny, toolbar }) => {
+const PendingTable = ({ applications, onApprove, onDeny, searchBar }) => {
   const [selectedApp, setSelectedApp] = useState(null);
 
   return (
-    <div className="table-section">
-      <div className="table-header-row">
-        <h2>Registration Requests</h2>
+    <>
+      <div className="admin-toolbar">
+        {searchBar}
       </div>
-
-      {toolbar}
       
       <table className="admin-table">
         <thead>
@@ -31,15 +30,15 @@ const PendingTable = ({ applications, onApprove, onDeny, toolbar }) => {
                 <td>{app.licenseNumber || app.details?.prcId?.number || 'N/A'}</td>
                 <td>{app.email}</td>
                 <td>
-                  <button className="view-btn" onClick={() => setSelectedApp(app)}>View</button>
-                  <button className="approve-btn" onClick={() => onApprove(app.id)}>Approve</button>
-                  <button className="deny-btn" onClick={() => onDeny(app.id)}>Deny</button>
+                  <button className="view-btn" onClick={() => setSelectedApp(app)}><FiEye style={{marginBottom:'-2px'}}/> View</button>
+                  <button className="approve-btn" onClick={() => onApprove(app.id)}><FiCheck style={{marginBottom:'-2px'}}/> Approve</button>
+                  <button className="deny-btn" onClick={() => onDeny(app.id)}><FiX style={{marginBottom:'-2px'}}/> Deny</button>
                 </td>
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan="5" style={{textAlign: 'center', padding: '32px', color: '#64748b'}}>
+              <td colSpan="5" style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>
                 No pending applications at this time.
               </td>
             </tr>
@@ -48,31 +47,19 @@ const PendingTable = ({ applications, onApprove, onDeny, toolbar }) => {
       </table>
 
       {selectedApp && (
-        <Modal title="Applicant Details" onClose={() => setSelectedApp(null)}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
-            <div>
-              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Full Name</span>
-              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{selectedApp.name || `${selectedApp.firstName} ${selectedApp.lastName}`}</p>
+        <Modal title="Applicant Review" onClose={() => setSelectedApp(null)}>
+          <div className="ticket-modal-grid">
+            <div className="ticket-section">
+              <h3>Applicant Information</h3>
+              <div className="ticket-row"><span className="ticket-label">Full Name</span><span className="ticket-value">{selectedApp.name || `${selectedApp.firstName} ${selectedApp.lastName}`}</span></div>
+              <div className="ticket-row"><span className="ticket-label">Email</span><span className="ticket-value">{selectedApp.email}</span></div>
+              <div className="ticket-row"><span className="ticket-label">Phone</span><span className="ticket-value">{selectedApp.mobileNumber || 'N/A'}</span></div>
             </div>
-            <div>
-              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Email Address</span>
-              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{selectedApp.email}</p>
-            </div>
-            <div>
-              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Mobile Number</span>
-              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{selectedApp.mobileNumber || 'N/A'}</p>
-            </div>
-            <div>
-              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Primary Specialty</span>
-              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{selectedApp.primarySpecialty || selectedApp.details?.specializations?.[0] || 'N/A'}</p>
-            </div>
-            <div>
-              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Sub-Specialty</span>
-              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{selectedApp.subSpecialties || 'None'}</p>
-            </div>
-            <div>
-              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>PRC License Number</span>
-              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{selectedApp.licenseNumber || selectedApp.details?.prcId?.number || 'N/A'}</p>
+            <div className="ticket-section">
+              <h3>Credentials</h3>
+              <div className="ticket-row"><span className="ticket-label">Primary Specialty</span><span className="ticket-value">{selectedApp.primarySpecialty || 'N/A'}</span></div>
+              <div className="ticket-row"><span className="ticket-label">Sub-Specialty</span><span className="ticket-value">{selectedApp.subSpecialties || 'None'}</span></div>
+              <div className="ticket-row"><span className="ticket-label">PRC License</span><span className="ticket-value" style={{color: '#0ea5e9'}}>{selectedApp.licenseNumber || 'N/A'}</span></div>
             </div>
           </div>
           
@@ -81,18 +68,18 @@ const PendingTable = ({ applications, onApprove, onDeny, toolbar }) => {
               onClick={() => { onApprove(selectedApp.id); setSelectedApp(null); }} 
               style={{ flex: 1, padding: '12px', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s' }}
             >
-              Approve Application
+              Approve Applicant
             </button>
             <button 
               onClick={() => { onDeny(selectedApp.id); setSelectedApp(null); }} 
               style={{ flex: 1, padding: '12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s' }}
             >
-              Deny Application
+              Deny Applicant
             </button>
           </div>
         </Modal>
       )}
-    </div>
+    </>
   );
 };
 

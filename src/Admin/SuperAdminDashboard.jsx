@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FiPieChart, FiCreditCard, FiUserCheck, FiUsers, FiSettings, FiSearch, FiDownload } from 'react-icons/fi';
+import { 
+  FiGrid, FiUserCheck, FiUsers, FiCalendar, FiCreditCard, 
+  FiPieChart, FiFileText, FiSettings, FiSearch, FiDownload, FiEye 
+} from 'react-icons/fi';
 
 import AdminLayout from './Components/AdminLayout';
 import MetricCard from './Components/MetricCard';
@@ -9,23 +12,14 @@ import Modal from './Components/Modal';
 
 import PendingTable from './Specialistdashboard/PendingTable';
 import SpecialistTable from './Specialistdashboard/SpecialistTable';
-import ConsultationHistory from './ConsultationHistory/ConsultationHistory';
 import UserTable from './UserManagement/UserTable.jsx';
-import ChatOversight from './ChatOversight/ChatOversight.jsx';
 import { handleExport } from './utils/exportUtils';
 
 import {
   getSpecialists, getPendingApplications, getTransactions,
-  getConsultations, getPatientAndNurseUsers, getAdminProfile,
+  getPatientAndNurseUsers, getAdminProfile,
   updateSpecialistStatus, uploadAdminAvatar
 } from '../api/Admin/api.js';
-
-import FemaleAvatar from '../assets/Female_Avatar.png';
-import MaleAvatar from '../assets/Male_Avatar.png';
-import S2 from '../assets/S2.png';
-import PRC from '../assets/PRC_Sample.jpg';
-import PTR from '../assets/PTR.png';
-import esig from '../assets/esig.png';
 
 const SuperAdminDashboard = () => {
   const navigate = useNavigate();
@@ -34,19 +28,14 @@ const SuperAdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [adminAvatar, setAdminAvatar] = useState('/account.svg');
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterSpecialization, setFilterSpecialization] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [sortConfigTx, setSortConfigTx] = useState({ key: 'date', direction: 'desc' });
+  const [searchTerm, setSearchTerm] = useState(''); // This state is now shared globally!
+  const [viewingTicket, setViewingTicket] = useState(null);
 
   const [transactions, setTransactions] = useState([]);
   const [pendingApplications, setPendingApplications] = useState([]);
   const [specialists, setSpecialists] = useState([]);
-  const [consultations, setConsultations] = useState([]);
   const [users, setUsers] = useState([]);
-
   const [viewingUser, setViewingUser] = useState(null);
-  const [deletingUser, setDeletingUser] = useState(null);
 
   const [systemFees, setSystemFees] = useState({
     doctorsFee: { isActive: true, name: "Doctor's Fee" },
@@ -55,42 +44,31 @@ const SuperAdminDashboard = () => {
   });
 
   useEffect(() => {
-    setSearchTerm(''); setFilterSpecialization(''); setFilterStatus('');
+    setSearchTerm(''); 
   }, [activeTab]);
 
   useEffect(() => {
     const fetchAndProcessData = async () => {
       try {
         const [
-          specialistsData, pendingData, transactionsData, consultationsData, usersData, adminProfileData 
+          specialistsData, pendingData, transactionsData, usersData, adminProfileData 
         ] = await Promise.all([
           getSpecialists(), getPendingApplications(), getTransactions(),
-          getConsultations(), getPatientAndNurseUsers(), getAdminProfile().catch(() => null) 
+          getPatientAndNurseUsers(), getAdminProfile().catch(() => null) 
         ]);
 
         if (adminProfileData?.profileUrl && !adminProfileData.profileUrl.includes('admin_avatar.png')) {
           setAdminAvatar(adminProfileData.profileUrl);
         }
 
-        const processSpec = (arr) => (Array.isArray(arr) ? arr : arr?.data || []).map((spec, i) => ({
+        const processSpec = (arr) => (Array.isArray(arr) ? arr : arr?.data || []).map((spec) => ({
           ...spec,
           name: `${spec.firstName || ''} ${spec.lastName || ''}`.trim(),
-          details: {
-            s2: { number: spec.s2Number || 'S2-FETCHED', imageUrl: S2 },
-            ptr: { number: spec.ptrNumber || 'PTR-FETCHED', imageUrl: PTR },
-            prcId: { number: spec.prcLicenseNumber || 'PRC-FETCHED', imageUrl: PRC },
-            eSig: spec.eSignatureUrl || esig,
-            profilePicture: i % 2 === 0 ? MaleAvatar : FemaleAvatar,
-            specializations: spec.specialization ? [spec.specialization] : ['Unknown'],
-          },
         }));
 
         setSpecialists(processSpec(specialistsData));
-        setPendingApplications((Array.isArray(pendingData) ? pendingData : pendingData?.data || []).map((app, i) => ({
-          ...app, details: { ...(app.details || {}), eSig: app.details?.eSig || esig, profilePicture: app.details?.profilePicture || (i % 2 === 0 ? FemaleAvatar : MaleAvatar) }
-        })));
+        setPendingApplications((Array.isArray(pendingData) ? pendingData : pendingData?.data || []));
         setTransactions(Array.isArray(transactionsData) ? transactionsData : transactionsData?.data || []);
-        setConsultations(Array.isArray(consultationsData) ? consultationsData : consultationsData?.data || []);
         setUsers(Array.isArray(usersData) ? usersData : usersData?.data || []);
       } catch (error) { console.error('Failed to fetch data:', error); }
     };
@@ -102,34 +80,28 @@ const SuperAdminDashboard = () => {
   const filteredPending = pendingApplications.filter(app => (!searchTerm || safeString(app.name).includes(searchTerm.toLowerCase())));
   const filteredSpecialists = specialists.filter(spec => (!searchTerm || safeString(spec.name).includes(searchTerm.toLowerCase())));
   const filteredUsers = users.filter(user => (!searchTerm || safeString(user.firstName).includes(searchTerm.toLowerCase())));
-  const filteredConsultations = consultations.filter(c => (!searchTerm || safeString(c.ticket).includes(searchTerm.toLowerCase())));
 
-  const filteredTransactions = transactions.filter((t) => {
-    const matchesSearch = !searchTerm || safeString(t.ticketNumber).includes(searchTerm.toLowerCase()) || safeString(t.patientName).includes(searchTerm.toLowerCase());
-    const matchesSpecialty = !filterSpecialization || t.specialty === filterSpecialization;
-    const matchesStatus = !filterStatus || safeString(t.status) === filterStatus.toLowerCase();
-    return matchesSearch && matchesSpecialty && matchesStatus;
-  });
-
-  const sortedTransactions = useMemo(() => {
-    let sortable = [...filteredTransactions];
-    if (sortConfigTx.key !== null) {
-      sortable.sort((a, b) => {
-        let aVal = a[sortConfigTx.key] || ''; let bVal = b[sortConfigTx.key] || '';
-        if (sortConfigTx.key === 'date') { aVal = new Date(aVal).getTime() || 0; bVal = new Date(bVal).getTime() || 0; }
-        if (aVal < bVal) return sortConfigTx.direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sortConfigTx.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-    return sortable;
-  }, [filteredTransactions, sortConfigTx]);
-
-  const requestSortTx = (key) => setSortConfigTx({ key, direction: sortConfigTx.key === key && sortConfigTx.direction === 'asc' ? 'desc' : 'asc' });
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      const matchesSearch = !searchTerm || safeString(t.ticketNumber).includes(searchTerm.toLowerCase()) || safeString(t.patientName).includes(searchTerm.toLowerCase());
+      
+      let matchesTab = true;
+      if (activeTab === 'active_tickets') matchesTab = !safeString(t.status).includes('completed') && !safeString(t.status).includes('cancel');
+      if (activeTab === 'payments') matchesTab = true; 
+      if (activeTab === 'hmo') matchesTab = t.isUsingHmo === true;
+      
+      return matchesSearch && matchesTab;
+    });
+  }, [transactions, searchTerm, activeTab]);
 
   const handleLogout = async () => {
     try { await logout(); } catch (e) {}
     finally { sessionStorage.removeItem('isAdminLoggedIn'); localStorage.removeItem('admin_token'); navigate('/login'); }
+  };
+
+  const handleUpdateSpecialistStatus = async (id, status) => {
+    try { await updateSpecialistStatus({ specialistId: id, status }); setSpecialists(prev => prev.map(s => s.id === id ? { ...s, status } : s)); } 
+    catch (e) { alert('Update failed'); }
   };
 
   const handleAvatarChange = async (event) => {
@@ -141,75 +113,72 @@ const SuperAdminDashboard = () => {
     } catch (error) { alert('Failed to upload avatar: ' + error.message); }
   };
 
-  const handleUpdateSpecialistStatus = async (id, status) => {
-    try { await updateSpecialistStatus({ specialistId: id, status }); setSpecialists(prev => prev.map(s => s.id === id ? { ...s, status } : s)); } 
-    catch (e) { alert('Update failed'); }
-  };
-
   const navLinks = [
-    { id: 'dashboard', label: 'Dashboard', icon: <FiPieChart /> },
+    { id: 'dashboard', label: 'Dashboard Overview', icon: <FiGrid /> },
     { 
-      id: 'transactions-group', 
-      label: 'Transactions', 
-      icon: <FiCreditCard />,
+      id: 'specialists-group', label: 'Specialist management', icon: <FiUserCheck />,
       subLinks: [
-        { id: 'transactions', label: 'All Transactions' },
-        { id: 'consultations', label: 'Consultation History' }
+        { id: 'pending', label: 'Pending Applications' },
+        { id: 'specialists', label: 'Approved specialist' }
       ]
     },
     { 
-      id: 'specialists-group', 
-      label: 'Specialists', 
-      icon: <FiUserCheck />,
+      id: 'users-group', label: 'User Management', icon: <FiUsers />,
       subLinks: [
-        { id: 'pending', label: 'Registration Requests' },
-        { id: 'specialists', label: 'Approved Specialists' }
+        { id: 'patients', label: 'Patients' },
+        { id: 'nurses', label: 'Nurses' },
+        { id: 'physicians', label: 'General Physician' }
       ]
     },
     { 
-      id: 'users-group', 
-      label: 'User Management', 
-      icon: <FiUsers />,
+      id: 'consultation-group', label: 'Consultation Management', icon: <FiCalendar />,
       subLinks: [
-        { id: 'users', label: 'All Users' },
-        { id: 'chats', label: 'Chat Oversight' }
+        { id: 'active_tickets', label: 'Active tickets' },
+        { id: 'all_consultations', label: 'All Consultation' }
       ]
     },
     { 
-      id: 'settings-group', 
-      label: 'System Settings', 
-      icon: <FiSettings />,
+      id: 'billing-group', label: 'Billing & Transactions', icon: <FiCreditCard />,
       subLinks: [
-        { id: 'settings', label: 'Platform Fees' }
+        { id: 'payments', label: 'Payments' },
+        { id: 'hmo', label: 'HMO / Insurance' }
+      ]
+    },
+    { id: 'reports', label: 'Reports & Exports', icon: <FiPieChart /> },
+    { id: 'audit_logs', label: 'Audit Logs', icon: <FiFileText /> },
+    { 
+      id: 'settings-group', label: 'System Settings', icon: <FiSettings />,
+      subLinks: [
+        { id: 'fee_config', label: 'Fee configuration' },
+        { id: 'role_permissions', label: 'Role Permissions' }
       ]
     }
   ];
 
-  const renderToolbar = () => (
-    <div className="admin-toolbar">
-      <div className="admin-toolbar-left">
-        <div style={{ position: 'relative' }}>
-          <input 
-            type='text' 
-            placeholder="Search records..." 
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)} 
-            className="admin-search-input" 
-          />
-          <FiSearch style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '1.1rem' }} />
-        </div>
-      </div>
-      {activeTab === 'users' && (
-        <button onClick={() => handleExport(filteredUsers, 'users.csv')} className="admin-export-btn">
-          <FiDownload /> Export CSV
-        </button>
-      )}
+  const isSpecialistTab = activeTab === 'specialists' || activeTab === 'pending';
+  const isUserTab = activeTab === 'patients' || activeTab === 'physicians' || activeTab === 'nurses';
+  const isConsultationTab = activeTab === 'active_tickets' || activeTab === 'all_consultations';
+  const isBillingTab = activeTab === 'payments' || activeTab === 'hmo';
+  const isSettingsTab = activeTab === 'fee_config' || activeTab === 'role_permissions';
+
+  const displayedUsers = filteredUsers.filter(u => {
+    const role = (u.role || '').toLowerCase();
+    if (activeTab === 'patients') return role === 'patient';
+    if (activeTab === 'physicians') return role === 'physician' || role === 'general_physician' || role === 'specialist';
+    if (activeTab === 'nurses') return role === 'nurse';
+    return true;
+  });
+
+  const renderSearchBar = () => (
+    <div className="admin-search-wrapper">
+      <FiSearch className="admin-search-icon" />
+      <input type='text' placeholder="Search records..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="admin-search-input" />
     </div>
   );
 
   return (
     <AdminLayout
-      title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace('-', ' ')}
+      title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace('_', ' ')}
       subtitle="Overview of system activities and user management"
       navLinks={navLinks}
       activeTab={activeTab}
@@ -219,83 +188,184 @@ const SuperAdminDashboard = () => {
       adminAvatar={adminAvatar}
       onLogout={handleLogout}
       onAvatarUpload={handleAvatarChange}
+      headerSearch={searchTerm}
+      setHeaderSearch={setSearchTerm}
     >
       {activeTab === 'dashboard' && (
-        <>
-          <div className="metrics-grid">
-            <MetricCard title="Total Patients" value={users.filter(u=>u.role==='patient').length || "1,245"} trendText="↑ +12%" trendType="up" />
-            <MetricCard title="Active Specialists" value={specialists.length || "84"} trendText="↑ +5%" trendType="up" />
-            <MetricCard title="Pending Applications" value={pendingApplications.length} trendText="⚠ Review needed" trendType="warning" />
-            <MetricCard title="Today's Transactions" value={transactions.length || "156"} trendText="↑ +24%" trendType="up" />
-          </div>
-          <div className="admin-empty-state">
-            <h3>Reports & Statistics</h3>
-            <p>This module is temporarily empty per testing requirements.</p>
-          </div>
-        </>
+        <div className="metrics-grid">
+          <MetricCard title="Total Patients" value={users.filter(u=>u.role==='patient').length || "0"} trendText="Active" trendType="neutral" />
+          <MetricCard title="Active Specialists" value={specialists.length || "0"} trendText="Verified" trendType="up" />
+          <MetricCard title="Pending Applications" value={pendingApplications.length} trendText="Requires Review" trendType="warning" />
+          <MetricCard title="Total Transactions" value={transactions.length || "0"} trendText="Lifetime" trendType="neutral" />
+        </div>
       )}
 
       <div style={{ display: activeTab !== 'dashboard' ? 'block' : 'none' }}>
-        {activeTab === 'pending' && <PendingTable applications={filteredPending} onApprove={() => {}} onDeny={() => {}} toolbar={renderToolbar()} />}
-        {activeTab === 'specialists' && <SpecialistTable specialists={filteredSpecialists} onStatusChange={handleUpdateSpecialistStatus} toolbar={renderToolbar()} />}
-        {activeTab === 'users' && <UserTable users={filteredUsers} onView={setViewingUser} onUpdate={() => {}} onDelete={setDeletingUser} onCreateStaff={() => {}} toolbar={renderToolbar()} />}
-        {activeTab === 'chats' && <ChatOversight />}
-        {activeTab === 'consultations' && <ConsultationHistory consultations={filteredConsultations} toolbar={renderToolbar()} />}
         
-        {activeTab === 'transactions' && (
-          <div className="table-section">
-            <div className="table-header-row"><h2>Transaction History & Management</h2></div>
-            {renderToolbar()}
+        {isSpecialistTab && (
+          <div className="admin-page-card">
+            <div className="admin-card-header">
+              <h2 className="admin-card-title">Specialist Management</h2>
+              <div className="admin-tabs">
+                <button className={`admin-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}>Pending Applications</button>
+                <button className={`admin-tab ${activeTab === 'specialists' ? 'active' : ''}`} onClick={() => setActiveTab('specialists')}>Approved Specialist</button>
+              </div>
+            </div>
+            {activeTab === 'specialists' && <SpecialistTable specialists={filteredSpecialists} onStatusChange={handleUpdateSpecialistStatus} searchBar={renderSearchBar()} />}
+            {activeTab === 'pending' && <PendingTable applications={filteredPending} onApprove={() => {}} onDeny={() => {}} searchBar={renderSearchBar()} />}
+          </div>
+        )}
+
+        {isUserTab && (
+          <div className="admin-page-card">
+            <div className="admin-card-header">
+              <h2 className="admin-card-title">User Management</h2>
+              <div className="admin-tabs">
+                <button className={`admin-tab ${activeTab === 'patients' ? 'active' : ''}`} onClick={() => setActiveTab('patients')}>Patients</button>
+                <button className={`admin-tab ${activeTab === 'nurses' ? 'active' : ''}`} onClick={() => setActiveTab('nurses')}>Nurses</button>
+                <button className={`admin-tab ${activeTab === 'physicians' ? 'active' : ''}`} onClick={() => setActiveTab('physicians')}>General Physician</button>
+              </div>
+            </div>
+            <UserTable users={displayedUsers} onView={setViewingUser} searchBar={renderSearchBar()} />
+          </div>
+        )}
+
+        {(isConsultationTab || isBillingTab) && (
+          <div className="admin-page-card">
+            <div className="admin-card-header">
+              <h2 className="admin-card-title">{isConsultationTab ? 'Consultation Management' : 'Billing & Transactions'}</h2>
+              <div className="admin-tabs">
+                {isConsultationTab ? (
+                  <>
+                    <button className={`admin-tab ${activeTab === 'active_tickets' ? 'active' : ''}`} onClick={() => setActiveTab('active_tickets')}>Active Tickets</button>
+                    <button className={`admin-tab ${activeTab === 'all_consultations' ? 'active' : ''}`} onClick={() => setActiveTab('all_consultations')}>All Consultation</button>
+                  </>
+                ) : (
+                  <>
+                    <button className={`admin-tab ${activeTab === 'payments' ? 'active' : ''}`} onClick={() => setActiveTab('payments')}>Payments</button>
+                    <button className={`admin-tab ${activeTab === 'hmo' ? 'active' : ''}`} onClick={() => setActiveTab('hmo')}>HMO / Insurance</button>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            <div className="admin-toolbar">
+              {renderSearchBar()}
+              <button className="admin-export-btn" onClick={() => handleExport(filteredTransactions, 'records.csv')}><FiDownload /> Export Logs</button>
+            </div>
+
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th onClick={() => requestSortTx('ticketNumber')} style={{cursor:'pointer'}}>Ticket ID</th>
-                  <th onClick={() => requestSortTx('patientName')} style={{cursor:'pointer'}}>Patient Name</th>
-                  <th onClick={() => requestSortTx('specialistName')} style={{cursor:'pointer'}}>Specialist</th>
-                  <th onClick={() => requestSortTx('date')} style={{cursor:'pointer'}}>Date</th>
-                  <th onClick={() => requestSortTx('status')} style={{cursor:'pointer'}}>Status</th>
-                  <th onClick={() => requestSortTx('channel')} style={{cursor:'pointer'}}>Channel</th>
+                  <th>Ticket ID</th>
+                  <th>Patient Name</th>
+                  <th>Provider</th>
+                  <th>Service Type</th>
+                  <th>Date Created</th>
+                  <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {sortedTransactions.length > 0 ? sortedTransactions.map(t => (
-                  <tr key={t.id}>
-                    <td>{t.ticketNumber || t.id}</td><td>{t.patientName}</td><td>{t.specialistName}</td>
-                    <td>{t.date ? new Date(t.date).toLocaleDateString() : 'N/A'}</td>
-                    <td><span className={`status-pill ${t.status.toLowerCase().includes('completed') ? 'status-completed' : t.status.toLowerCase().includes('cancelled') ? 'status-cancelled' : 'status-pending'}`}>{t.status}</span></td>
-                    <td>{t.channel}</td>
-                  </tr>
-                )) : <tr><td colSpan="6" style={{textAlign: 'center', padding: '30px'}}>No transactions found.</td></tr>}
+                {filteredTransactions.length > 0 ? filteredTransactions.map(t => {
+                  const statusLabel = t.status.toLowerCase();
+                  let pillClass = 'status-pending';
+                  if (statusLabel.includes('completed')) pillClass = 'status-completed';
+                  if (statusLabel.includes('cancel')) pillClass = 'status-cancelled';
+                  if (statusLabel.includes('processing')) pillClass = 'status-processing';
+                  if (t.isUsingHmo) pillClass = 'status-hmo';
+
+                  return (
+                    <tr key={t.id}>
+                      <td style={{fontWeight: 500}}>{t.ticketNumber || t.id}</td>
+                      <td>{t.patientName || 'Unknown'}</td>
+                      <td>{t.specialistName || 'Unassigned'}</td>
+                      <td>{t.chiefComplaint || 'Consultation'}</td>
+                      <td>{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'N/A'}</td>
+                      <td><span className={`status-pill ${pillClass}`}>{t.isUsingHmo ? 'HMO Claim' : t.status}</span></td>
+                      <td>
+                        <button className="view-btn" onClick={() => setViewingTicket(t)}><FiEye style={{marginBottom: '-2px'}}/> View</button>
+                      </td>
+                    </tr>
+                  )
+                }) : <tr><td colSpan="7" style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>No records found in this category.</td></tr>}
               </tbody>
             </table>
           </div>
         )}
 
-        {activeTab === 'settings' && (
-          <div className="admin-settings-card">
-            <div className="table-header-row">
-              <h2>Platform Fees Configuration</h2>
+        {isSettingsTab && (
+          <div className="admin-page-card">
+            <div className="admin-card-header">
+              <h2 className="admin-card-title">System Settings</h2>
+              <div className="admin-tabs">
+                <button className={`admin-tab ${activeTab === 'fee_config' ? 'active' : ''}`} onClick={() => setActiveTab('fee_config')}>Fee Configuration</button>
+                <button className={`admin-tab ${activeTab === 'role_permissions' ? 'active' : ''}`} onClick={() => setActiveTab('role_permissions')}>Role Permissions</button>
+              </div>
             </div>
-            <div>
-              {Object.entries(systemFees).map(([key, fee]) => (
-                <div key={key} className="settings-row">
-                  <div className="settings-info">
-                    <span className="settings-name">{fee.name}</span>
-                    <span className="settings-desc">Toggle to enable or disable this fee platform-wide.</span>
+            
+            {activeTab === 'fee_config' ? (
+              <div>
+                {Object.entries(systemFees).map(([key, fee]) => (
+                  <div key={key} className="settings-row">
+                    <div className="settings-info">
+                      <span className="settings-name">{fee.name}</span>
+                      <span className="settings-desc">Toggle to enable or disable this fee platform-wide.</span>
+                    </div>
+                    <label className="toggle-switch">
+                      <input type="checkbox" checked={fee.isActive} onChange={() => setSystemFees(prev => ({...prev, [key]: {...prev[key], isActive: !prev[key].isActive}}))} />
+                      <span className="toggle-slider"></span>
+                    </label>
                   </div>
-                  <label className="toggle-switch">
-                    <input type="checkbox" checked={fee.isActive} onChange={() => setSystemFees(prev => ({...prev, [key]: {...prev[key], isActive: !prev[key].isActive}}))} />
-                    <span className="toggle-slider"></span>
-                  </label>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="admin-empty-state" style={{border: 'none', height: '300px'}}>
+                <FiUsers style={{fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px'}}/>
+                <h3 style={{margin: 0}}>Role Permissions</h3>
+                <p style={{marginTop: '8px'}}>This module is currently under development.</p>
+              </div>
+            )}
           </div>
+        )}
+
+        {(activeTab === 'reports' || activeTab === 'audit_logs') && (
+           <div className="admin-page-card" style={{minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+             <div className="admin-empty-state" style={{border: 'none'}}>
+               {activeTab === 'reports' ? <FiPieChart style={{fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px'}}/> : <FiFileText style={{fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px'}}/>}
+               <h3 style={{margin: 0}}>{activeTab === 'reports' ? 'Reports & Exports' : 'System Audit Logs'}</h3>
+               <p style={{marginTop: '8px'}}>This module is temporarily unavailable per system requirements.</p>
+             </div>
+           </div>
         )}
       </div>
 
+      {viewingTicket && (
+        <Modal title={`Ticket Details: ${viewingTicket.ticketNumber || viewingTicket.id}`} onClose={() => setViewingTicket(null)}>
+          <div className="ticket-modal-grid">
+            <div className="ticket-section">
+              <h3>Consultation Details</h3>
+              <div className="ticket-row"><span className="ticket-label">Patient Name</span><span className="ticket-value">{viewingTicket.patientName || 'Unknown'}</span></div>
+              <div className="ticket-row"><span className="ticket-label">Complaint</span><span className="ticket-value">{viewingTicket.chiefComplaint || 'General'}</span></div>
+              <div className="ticket-row"><span className="ticket-label">Symptoms</span><span className="ticket-value">{viewingTicket.symptoms || 'None'}</span></div>
+              <div className="ticket-row"><span className="ticket-label">Channel</span><span className="ticket-value" style={{textTransform:'capitalize'}}>{(viewingTicket.consultationChannel || 'standard').replace('_', ' ')}</span></div>
+              <div className="ticket-row"><span className="ticket-label">Date</span><span className="ticket-value">{viewingTicket.createdAt ? new Date(viewingTicket.createdAt).toLocaleString() : 'N/A'}</span></div>
+            </div>
+            <div className="ticket-section">
+              <h3>Billing & Provider</h3>
+              <div className="ticket-row"><span className="ticket-label">Provider</span><span className="ticket-value">{viewingTicket.specialistName || 'Awaiting Assignment'}</span></div>
+              <div className="ticket-row"><span className="ticket-label">Specialty</span><span className="ticket-value">{viewingTicket.targetSpecialty || 'General Practice'}</span></div>
+              <div className="ticket-row"><span className="ticket-label">Payment Method</span><span className="ticket-value">{viewingTicket.isUsingHmo ? 'HMO Coverage' : 'Direct Pay'}</span></div>
+              {viewingTicket.isUsingHmo && <div className="ticket-row"><span className="ticket-label">HMO Provider</span><span className="ticket-value" style={{color: '#0ea5e9'}}>{viewingTicket.hmoProvider}</span></div>}
+              <div className="ticket-row"><span className="ticket-label">Total Amount</span><span className="ticket-value">₱{Number(viewingTicket.totalAmount || 0).toFixed(2)}</span></div>
+            </div>
+          </div>
+          <button className="admin-modal-close-btn" onClick={() => setViewingTicket(null)}>Close Ticket</button>
+        </Modal>
+      )}
+
       {viewingUser && (
-        <Modal title="User Details" onClose={() => setViewingUser(null)}>
+        <Modal title="User Profile" onClose={() => setViewingUser(null)}>
           <div style={{ marginBottom: '16px' }}>
             <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Full Name</span>
             <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingUser.firstName} {viewingUser.lastName}</p>

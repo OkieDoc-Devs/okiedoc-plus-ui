@@ -1,6 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FiSearch, FiBell, FiLogOut, FiChevronDown, FiChevronRight, FiChevronsLeft, FiChevronsRight } from 'react-icons/fi';
+import { 
+  FiSearch, FiBell, FiLogOut, FiChevronDown, FiChevronRight, 
+  FiChevronsLeft, FiChevronsRight, FiMenu, FiX 
+} from 'react-icons/fi';
 import OkieDocLogo from '../../assets/okie-doc-logo.png';
 import '../AdminLayout.css';
 
@@ -15,10 +18,14 @@ const AdminLayout = ({
   adminName = 'Admin',
   adminRole = 'Administrator',
   onLogout,
-  onAvatarUpload 
+  onAvatarUpload,
+  headerSearch,
+  setHeaderSearch
 }) => {
   const fileInputRef = useRef(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false); // NEW: Mobile search state
   const [expandedMenus, setExpandedMenus] = useState({});
 
   useEffect(() => {
@@ -44,17 +51,23 @@ const AdminLayout = ({
     }
   };
 
+  const handleNavigation = (id) => {
+    setActiveTab(id);
+    if (window.innerWidth <= 768) setIsMobileSidebarOpen(false);
+  };
+
   const dashboardContent = (
     <div className="admin-layout-wrapper">
       
-      {/* COLLAPSIBLE SIDEBAR */}
-      <aside className={`admin-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+      {/* MOBILE OVERLAY */}
+      <div className={`sidebar-overlay ${isMobileSidebarOpen ? 'active' : ''}`} onClick={() => setIsMobileSidebarOpen(false)}></div>
+
+      {/* SIDEBAR */}
+      <aside className={`admin-sidebar ${isSidebarCollapsed ? 'collapsed' : ''} ${isMobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-logo-container">
-          {!isSidebarCollapsed ? (
-            <img src={OkieDocLogo} alt="Okie-Doc+" className="sidebar-logo" />
-          ) : (
-            <div className="sidebar-logo-collapsed" title="Okie-Doc+">OD+</div>
-          )}
+          <img src={OkieDocLogo} alt="Okie-Doc+" className="sidebar-logo" />
+          <div className="sidebar-logo-collapsed" title="Okie-Doc+">OD+</div>
+          <button className="mobile-close-btn" onClick={() => setIsMobileSidebarOpen(false)}><FiX /></button>
         </div>
         
         <nav className="sidebar-nav">
@@ -65,55 +78,34 @@ const AdminLayout = ({
               
               return (
                 <div key={link.id} className="sidebar-group">
-                  <div 
-                    className={`sidebar-item ${isExpanded ? 'expanded' : ''} ${isActiveParent ? 'active-parent' : ''}`}
-                    onClick={() => handleGroupClick(link)}
-                    title={isSidebarCollapsed ? link.label : ""}
-                  >
+                  <div className={`sidebar-item ${isExpanded ? 'expanded' : ''} ${isActiveParent ? 'active-parent' : ''}`} onClick={() => handleGroupClick(link)}>
                     <span className="sidebar-item-icon">{link.icon}</span> 
-                    {!isSidebarCollapsed && <span className="sidebar-item-label">{link.label}</span>}
-                    {!isSidebarCollapsed && <span className="sidebar-chevron">{isExpanded ? <FiChevronDown /> : <FiChevronRight />}</span>}
+                    <span className="sidebar-item-label">{link.label}</span>
+                    <span className="sidebar-chevron">{isExpanded ? <FiChevronDown /> : <FiChevronRight />}</span>
                   </div>
-                  
-                  {!isSidebarCollapsed && isExpanded && (
+                  {isExpanded && (
                     <div className="sidebar-sub-menu">
                       {link.subLinks.map(sub => (
-                        <div 
-                          key={sub.id} 
-                          className={`sidebar-sub-item ${activeTab === sub.id ? 'active' : ''}`}
-                          onClick={() => setActiveTab(sub.id)}
-                        >
-                          {sub.label}
-                        </div>
+                        <div key={sub.id} className={`sidebar-sub-item ${activeTab === sub.id ? 'active' : ''}`} onClick={() => handleNavigation(sub.id)}>{sub.label}</div>
                       ))}
                     </div>
                   )}
                 </div>
               );
             }
-
             return (
-              <div 
-                key={link.id}
-                className={`sidebar-item ${activeTab === link.id ? 'active' : ''}`} 
-                onClick={() => setActiveTab(link.id)}
-                title={isSidebarCollapsed ? link.label : ""}
-              >
+              <div key={link.id} className={`sidebar-item ${activeTab === link.id ? 'active' : ''}`} onClick={() => handleNavigation(link.id)}>
                 <span className="sidebar-item-icon">{link.icon}</span> 
-                {!isSidebarCollapsed && <span className="sidebar-item-label">{link.label}</span>}
+                <span className="sidebar-item-label">{link.label}</span>
               </div>
             );
           })}
         </nav>
 
         <div className="sidebar-footer">
-          <button 
-            className="sidebar-toggle-btn" 
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
+          <button className="sidebar-toggle-btn" onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}>
             <span className="toggle-arrow">{isSidebarCollapsed ? <FiChevronsRight /> : <FiChevronsLeft />}</span>
-            {!isSidebarCollapsed && <span className="toggle-text">Collapse View</span>}
+            <span className="toggle-text">Collapse View</span>
           </button>
         </div>
       </aside>
@@ -121,45 +113,63 @@ const AdminLayout = ({
       {/* MAIN CONTENT */}
       <main className="admin-main-content">
         <header className="admin-header">
+          
           <div className="header-title-group">
-            <h1>{title}</h1>
-            <p>{subtitle}</p>
+            <button className="mobile-menu-btn" onClick={() => setIsMobileSidebarOpen(true)}><FiMenu /></button>
+            <div>
+              <h1>{title}</h1>
+              <p className="hide-on-mobile">{subtitle}</p>
+            </div>
           </div>
           
           <div className="header-actions">
-            <div className="header-search-box">
+            
+            {/* FIXED EXPANDING SEARCH BOX */}
+            <div 
+              className={`header-search-box ${isMobileSearchExpanded ? 'mobile-expanded' : ''}`}
+              onClick={() => {
+                if (window.innerWidth <= 768 && !isMobileSearchExpanded) setIsMobileSearchExpanded(true);
+              }}
+            >
               <span className="search-icon"><FiSearch /></span>
-              <input type="text" placeholder="Search..." className="header-search" />
+              <input 
+                type="text" 
+                placeholder="Search records..." 
+                className="header-search" 
+                value={headerSearch || ''}
+                onChange={(e) => setHeaderSearch && setHeaderSearch(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+              />
+              {/* Close button only visible on mobile when expanded */}
+              {isMobileSearchExpanded && (
+                <button 
+                  className="mobile-search-close" 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    setIsMobileSearchExpanded(false); 
+                    if(setHeaderSearch) setHeaderSearch(''); 
+                  }}
+                >
+                  <FiX />
+                </button>
+              )}
             </div>
             
-            <button className="header-icon-btn" title="Notifications"><FiBell /></button>
-            <div className="header-divider"></div>
+            <button className="header-icon-btn hide-on-mobile" title="Notifications"><FiBell /></button>
+            <div className="header-divider hide-on-mobile"></div>
             
             <div className="header-user-profile">
               <div className="header-user-info">
                 <span className="header-user-name">{adminName}</span>
                 <span className="header-user-role">{adminRole}</span>
               </div>
-              
-              {onAvatarUpload && (
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={onAvatarUpload} 
-                  accept="image/png, image/jpeg" 
-                  style={{ display: 'none' }} 
-                />
-              )}
+              {onAvatarUpload && <input type="file" ref={fileInputRef} onChange={onAvatarUpload} accept="image/png, image/jpeg" style={{ display: 'none' }} />}
               <img 
-                src={adminAvatar} 
-                alt="Profile" 
-                className="header-avatar" 
+                src={adminAvatar} alt="Profile" className="header-avatar" 
                 style={{ cursor: onAvatarUpload ? 'pointer' : 'default' }}
                 onClick={() => onAvatarUpload && fileInputRef.current.click()}
                 onError={(e) => { e.target.onerror = null; e.target.src = '/account.svg'; }}
-                title={onAvatarUpload ? "Click to change avatar" : ""}
               />
-
               <button onClick={onLogout} className="header-logout-btn" title="Logout"><FiLogOut /></button>
             </div>
           </div>

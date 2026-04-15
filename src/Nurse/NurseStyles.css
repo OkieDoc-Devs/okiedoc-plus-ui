@@ -1652,6 +1652,11 @@ body::-webkit-scrollbar {
   height: calc(100vh - 160px);
 }
 
+.nurse-messages-dashboard {
+  height: 100vh;
+  overflow: hidden;
+}
+
 .nurse-messages-dashboard .dashboard-header {
   padding-top: 18px;
   padding-bottom: 4px;

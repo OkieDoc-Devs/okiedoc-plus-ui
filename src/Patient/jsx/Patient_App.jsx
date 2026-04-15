@@ -19,6 +19,13 @@ import ConsultationIntakeForm from "./ConsultationIntakeForm";
 // import { Profile } from "./Profile";
 // import { BookSpecialist } from "./sub-page/BookSpecialist";
 // import { BookPhysical } from "./sub-page/BookPhysical";
+import MedicalRecords_Patient from "./Patient_MedicalRecords";
+import Prescriptions_Patient from "./Patient_Prescriptions";
+import Profile_Patient from "./Patient_Profile";
+
+// Sub-Pages for Patient
+import { BookSpecialist } from "../sub-pages/BookSpecialist";
+import { BookPhysical } from "../sub-pages/BookPhysical";
 
 const navLinks = [
   { label: "Dashboard", route: "Dashboard", icon: IconLayoutDashboard },
@@ -140,6 +147,32 @@ function Patient_App() {
             {mainRoute === "Services" && (
               <Services_Patient setActive={navigate} />
             )}
+            {mainRoute === "MedicalRecords" && (
+              <MedicalRecords_Patient setActive={navigate} />
+            )}
+            {mainRoute === "Prescriptions" && (
+              <Prescriptions_Patient setActive={navigate} />
+            )}
+            {mainRoute === "Profile" && (
+              <Profile_Patient setActive={navigate} />
+            )}
+
+            {/* Your Sub-Pages */}
+            {mainRoute === "BookSpecialist" && (
+              <BookSpecialist
+                onGoBack={() => navigate("Services")}
+                onGoToAppointments={() => navigate("Appointments")}
+                onGoToDashboard={() => navigate("Dashboard")}
+              />
+            )}
+
+            {mainRoute === "BookPhysical" && (
+              <BookPhysical
+                onGoBack={() => navigate("Services")}
+                onGoToAppointments={() => navigate("Appointments")}
+                onGoToDashboard={() => navigate("Dashboard")}
+                  />
+            )}
             {mainRoute === "IntakeForm" && (
               <ConsultationIntakeForm
                 setActive={navigate}
@@ -151,6 +184,11 @@ function Patient_App() {
             {mainRoute !== "Dashboard" &&
               mainRoute !== "Services" &&
               mainRoute !== "Appointments" &&
+              mainRoute !== "BookPhysical" &&
+              mainRoute !== "BookSpecialist" &&
+              mainRoute !== "MedicalRecords" &&
+              mainRoute !== "Prescriptions" &&
+              mainRoute !== "Profile" && (
               mainRoute !== "IntakeForm" && (
                 <div className="not-found-container">
                   {ActiveIcon && (

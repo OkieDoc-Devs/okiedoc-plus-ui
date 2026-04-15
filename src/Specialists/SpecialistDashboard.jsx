@@ -83,6 +83,8 @@ import {
   parseICDCode,
 } from './utils';
 
+const TICKET_REFRESH_INTERVAL_MS = 15000;
+
 const normalizePainMapAreas = (ticket) => {
   const rawAreas = Array.isArray(ticket?.selectedPainAreas)
     ? ticket.selectedPainAreas
@@ -159,7 +161,34 @@ const getPainMapView = (ticket, areas) => {
   return areas[0]?.view || 'front';
 };
 
+const toStringList = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || '').trim()).filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    return trimmed
+      .split(/\n|,|;/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const buildTriageNotes = (ticket) => String(ticket?.additionalRemarks || '').trim();
+
 const SpecialistDashboard = () => {
+  const buildMedicalHistoryForSpecialist = (ticket) => {
+    const triageHistory = toStringList(ticket?.triageMedicalHistory);
+    if (triageHistory.length > 0) {
+      return triageHistory;
+    }
+    return toStringList(ticket?.medicalHistory);
+  };
+
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -328,11 +357,29 @@ const SpecialistDashboard = () => {
           `[SpecialistDashboard] Loaded ${activeResponse.activeTickets.length} active tickets from API`,
         );
         const mappedActive = activeResponse.activeTickets.map((t) => ({
+          ...t,
           id: t.id,
           patient: formatPatientName(t.rawTicket?.patient || t),
           patientFullName: t.patientName || 'Unknown',
           service: t.chiefComplaint || 'Consultation',
           symptoms: t.symptoms || '',
+          medicalHistory: buildMedicalHistoryForSpecialist(t.rawTicket || t),
+          triageMedicalHistory: t.triageMedicalHistory || t.rawTicket?.triageMedicalHistory || '',
+          additionalRemarks: t.additionalRemarks || t.rawTicket?.additionalRemarks || '',
+          triageNotes: buildTriageNotes(t.rawTicket || t),
+          bloodPressure: t.rawTicket?.bloodPressure || '',
+          heartRate: t.rawTicket?.heartRate || '',
+          temperature: t.rawTicket?.temperature || '',
+          oxygenSaturation: t.rawTicket?.oxygenSaturation || '',
+          selectedPainAreas: t.rawTicket?.selectedPainAreas || t.rawTicket?.painAreas || [],
+          painMapView: t.rawTicket?.painMapView || 'front',
+          selectedSymptomPills:
+            t.selectedSymptomPills || t.rawTicket?.selectedSymptomPills || [],
+          selectedRosItems: t.selectedRosItems || t.rawTicket?.selectedRosItems || [],
+          durationValue: t.durationValue || t.rawTicket?.durationValue || '',
+          durationUnit: t.durationUnit || t.rawTicket?.durationUnit || '',
+          severity: t.severity || t.rawTicket?.severity || '',
+          urgencyLevel: t.urgencyLevel || t.rawTicket?.urgencyLevel || t.urgency || '',
           preferredDate: t.preferredDate,
           preferredTime: t.preferredTime,
           consultationChannel: t.consultationChannel,
@@ -370,6 +417,7 @@ const SpecialistDashboard = () => {
           `[SpecialistDashboard] Loaded ${availableResponse.data.length} available tickets from API`,
         );
         const mappedAvailable = availableResponse.data.map((t) => ({
+          ...t,
           id: t.id,
           patient: formatPatientName(t.patient),
           patientFullName: t.patient
@@ -377,6 +425,22 @@ const SpecialistDashboard = () => {
             : 'Unknown',
           service: t.chiefComplaint || 'Consultation',
           symptoms: t.symptoms || '',
+          medicalHistory: buildMedicalHistoryForSpecialist(t),
+          triageMedicalHistory: t.triageMedicalHistory || '',
+          additionalRemarks: t.additionalRemarks || '',
+          triageNotes: buildTriageNotes(t),
+          bloodPressure: t.bloodPressure || '',
+          heartRate: t.heartRate || '',
+          temperature: t.temperature || '',
+          oxygenSaturation: t.oxygenSaturation || '',
+          selectedPainAreas: t.selectedPainAreas || t.painAreas || [],
+          painMapView: t.painMapView || 'front',
+          selectedSymptomPills: t.selectedSymptomPills || [],
+          selectedRosItems: t.selectedRosItems || [],
+          durationValue: t.durationValue || '',
+          durationUnit: t.durationUnit || '',
+          severity: t.severity || '',
+          urgencyLevel: t.urgencyLevel || t.urgency || '',
           preferredDate: t.preferredDate,
           preferredTime: t.preferredTime,
           consultationChannel: t.consultationChannel,
@@ -639,6 +703,20 @@ const SpecialistDashboard = () => {
   }, [activeTab, loadTicketsData]);
 
   useEffect(() => {
+    if (activeTab !== 'dashboard') {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      loadTicketsData();
+    }, TICKET_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [activeTab, loadTicketsData]);
+
+  useEffect(() => {
     if (selectedTicketId) {
       const data = loadEncounterData(selectedTicketId);
       if (data) {
@@ -847,6 +925,22 @@ const SpecialistDashboard = () => {
           service: ticket.chiefComplaint || 'Consultation',
           chiefComplaint: ticket.chiefComplaint,
           symptoms: ticket.symptoms || '',
+          medicalHistory: buildMedicalHistoryForSpecialist(ticket),
+          triageMedicalHistory: ticket.triageMedicalHistory || '',
+          additionalRemarks: ticket.additionalRemarks || '',
+          triageNotes: buildTriageNotes(ticket),
+          bloodPressure: ticket.bloodPressure || '',
+          heartRate: ticket.heartRate || '',
+          temperature: ticket.temperature || '',
+          oxygenSaturation: ticket.oxygenSaturation || '',
+          selectedPainAreas: ticket.selectedPainAreas || ticket.painAreas || [],
+          painMapView: ticket.painMapView || 'front',
+          selectedSymptomPills: ticket.selectedSymptomPills || [],
+          selectedRosItems: ticket.selectedRosItems || [],
+          durationValue: ticket.durationValue || '',
+          durationUnit: ticket.durationUnit || '',
+          severity: ticket.severity || '',
+          urgencyLevel: ticket.urgencyLevel || ticket.urgency || '',
           preferredDate: ticket.preferredDate,
           preferredTime: ticket.preferredTime,
           consultationChannel: ticket.consultationChannel,
@@ -1754,6 +1848,36 @@ const SpecialistDashboard = () => {
             <div className='info-card-title'>Triage Notes (From Nurse)</div>
             <div className='info-card-body'>
               {selectedPatient?.triageNotes || 'Vital signs not yet provided.'}
+            </div>
+          </div>
+
+          <div className='info-card'>
+            <div className='info-card-title'>Vital Signs (From Nurse)</div>
+            <div className='patient-info-grid'>
+              <div className='info-item'>
+                <span className='info-label'>Blood Pressure</span>
+                <span className='info-value'>{selectedPatient?.bloodPressure || 'N/A'}</span>
+              </div>
+              <div className='info-item'>
+                <span className='info-label'>Heart Rate</span>
+                <span className='info-value'>
+                  {selectedPatient?.heartRate ? `${selectedPatient.heartRate} bpm` : 'N/A'}
+                </span>
+              </div>
+              <div className='info-item'>
+                <span className='info-label'>Temperature</span>
+                <span className='info-value'>
+                  {selectedPatient?.temperature ? `${selectedPatient.temperature} C` : 'N/A'}
+                </span>
+              </div>
+              <div className='info-item'>
+                <span className='info-label'>Oxygen Saturation</span>
+                <span className='info-value'>
+                  {selectedPatient?.oxygenSaturation
+                    ? `${selectedPatient.oxygenSaturation}%`
+                    : 'N/A'}
+                </span>
+              </div>
             </div>
           </div>
 

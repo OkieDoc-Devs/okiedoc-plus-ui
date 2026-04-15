@@ -13,6 +13,7 @@ import {
   fetchNursesFromAPI,
   fetchNurseProfile,
   fetchTicketsFromAPI,
+  triageTicket,
   updateTicket,
 } from './services/apiService.js';
 import { useAuth } from '../contexts/AuthContext';
@@ -1078,14 +1079,21 @@ export default function Dashboard() {
     setIsTransferSubmitting(true);
 
     try {
+      const transferredTicketId = Number(selectedTicket.id);
+
       if (transferTarget === 'doctor') {
-        await applyTicketPatch(selectedTicket.id, {
-          specialist: Number(selectedDoctorId),
+        await triageTicket({
+          ticketId: Number(selectedTicket.id),
           targetSpecialty: selectedDepartment,
-          assignedSpecialist: selectedDoctor?.name || selectedDepartment,
-          transferReason: transferReason.trim() || null,
-          status: 'processing',
+          specialistId: Number(selectedDoctorId),
+          urgency: 'medium',
         });
+
+        if (transferReason.trim()) {
+          await applyTicketPatch(selectedTicket.id, {
+            transferReason: transferReason.trim(),
+          });
+        }
       } else {
         await applyTicketPatch(selectedTicket.id, {
           nurse: Number(selectedNurseId),
@@ -1094,6 +1102,14 @@ export default function Dashboard() {
           status: 'processing',
         });
       }
+
+      setTickets((previous) =>
+        previous.filter((ticket) => Number(ticket.id) !== transferredTicketId),
+      );
+      setSelectedTicket((previous) =>
+        Number(previous?.id) === transferredTicketId ? null : previous,
+      );
+      setHasManualDeselection(false);
 
       closeTransferModal();
     } finally {
@@ -1192,7 +1208,6 @@ export default function Dashboard() {
 
     await applyTicketPatch(selectedTicket.id, {
       triageMedicalHistory: value || null,
-      medicalHistory: value || null,
     });
   };
 
@@ -1283,6 +1298,9 @@ export default function Dashboard() {
     setPainMapView(view);
     if (selectedTicket?.id) {
       persistTriageDraft(selectedTicket.id, { painMapView: view });
+      applyTicketPatch(selectedTicket.id, {
+        painMapView: view,
+      });
     }
   };
 
@@ -1301,6 +1319,11 @@ export default function Dashboard() {
 
       if (selectedTicket?.id) {
         persistTriageDraft(selectedTicket.id, { selectedPainAreas: next });
+        applyTicketPatch(selectedTicket.id, {
+          selectedPainAreas: next,
+          painAreas: next,
+          painMapView,
+        });
       }
 
       return next;
@@ -1313,6 +1336,11 @@ export default function Dashboard() {
 
       if (selectedTicket?.id) {
         persistTriageDraft(selectedTicket.id, { selectedPainAreas: next });
+        applyTicketPatch(selectedTicket.id, {
+          selectedPainAreas: next,
+          painAreas: next,
+          painMapView,
+        });
       }
 
       return next;

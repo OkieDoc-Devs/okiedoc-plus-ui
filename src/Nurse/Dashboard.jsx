@@ -17,6 +17,7 @@ import {
 } from './services/apiService.js';
 import { useAuth } from '../contexts/AuthContext';
 import { transformProfileFromAPI } from './services/profileService.js';
+import { sendMessage as sendMessageToTicket } from './services/chatService.js';
 import NotificationBell from '../components/Notifications/NotificationBell';
 import Avatar from '../components/Avatar';
 import { disconnectSocket } from '../utils/socketClient';
@@ -242,11 +243,19 @@ const getStatusLabel = (status) => {
 };
 
 const getPatientIdFromTicket = (ticket) => {
-  const id = readValue(
-    ticket,
-    ['patientId', 'Patient_ID', 'patientUserId', 'User_ID', 'userId'],
-    null,
-  );
+  const nestedPatientId =
+    ticket?.patient?.id ??
+    ticket?.patient?.User_ID ??
+    ticket?.patient?.User_Id ??
+    ticket?.patient?.userId ??
+    null;
+  const id =
+    nestedPatientId ??
+    readValue(
+      ticket,
+      ['patientId', 'Patient_ID', 'patientUserId', 'User_ID', 'userId'],
+      null,
+    );
 
   if (id === null || id === undefined || id === '') {
     return null;
@@ -612,10 +621,13 @@ export default function Dashboard() {
       return;
     }
 
-    const existingConversation = conversations.find((conversation) =>
-      (conversation.participants || []).some(
-        (participant) => Number(participant.id) === Number(selectedPatientId),
-      ),
+    const selectedTicketId = Number(selectedTicket.id);
+    if (!Number.isFinite(selectedTicketId)) {
+      return;
+    }
+
+    const existingConversation = conversations.find(
+      (conversation) => Number(conversation.id) === selectedTicketId,
     );
 
     if (existingConversation) {
@@ -627,15 +639,36 @@ export default function Dashboard() {
       return;
     }
 
-    if (creatingConversationFor.current === selectedPatientId) {
+    if (creatingConversationFor.current === selectedTicketId) {
       return;
     }
 
-    creatingConversationFor.current = selectedPatientId;
+    creatingConversationFor.current = selectedTicketId;
 
-    startConversation('direct', selectedPatientId)
-      .catch((error) => {
-        console.error('Failed to create quick conversation:', error);
+    const fallbackConversation = {
+      id: selectedTicketId,
+      name: readValue(selectedTicket, ['patientName', 'fullName', 'name'], 'Patient'),
+      type: 'direct',
+      participants: [
+        {
+          id: selectedPatientId,
+          name: readValue(selectedTicket, ['patientName', 'fullName', 'name'], 'Patient'),
+          type: 'p',
+        },
+      ],
+      lastMessage: 'No messages yet',
+      unreadCount: 0,
+      otherUserType: 'p',
+    };
+
+    openConversation(fallbackConversation)
+      .catch(async (error) => {
+        console.error('Failed to open quick conversation by ticket id:', error);
+        try {
+          await startConversation('direct', selectedPatientId);
+        } catch (createError) {
+          console.error('Failed to create quick conversation:', createError);
+        }
       })
       .finally(() => {
         creatingConversationFor.current = null;
@@ -1289,12 +1322,8 @@ export default function Dashboard() {
   const handleQuickSendMessage = async (event) => {
     event.preventDefault();
 
-    if (!quickMessage.trim()) {
-      return;
-    }
-
-    if (!activeConversation?.id) {
-      setQuickMessageError('No conversation is available for this patient yet.');
+    const trimmedMessage = quickMessage.trim();
+    if (!trimmedMessage) {
       return;
     }
 
@@ -1302,7 +1331,29 @@ export default function Dashboard() {
     setQuickMessageError('');
 
     try {
-      await sendChatMessage(quickMessage.trim());
+      if (activeConversation?.id) {
+        await sendChatMessage(trimmedMessage);
+      } else if (selectedTicket?.id) {
+        await sendMessageToTicket(Number(selectedTicket.id), trimmedMessage);
+        await openConversation({
+          id: Number(selectedTicket.id),
+          name: readValue(selectedTicket, ['patientName', 'fullName', 'name'], 'Patient'),
+          type: 'direct',
+          participants: [
+            {
+              id: selectedPatientId,
+              name: readValue(selectedTicket, ['patientName', 'fullName', 'name'], 'Patient'),
+              type: 'p',
+            },
+          ],
+          lastMessage: trimmedMessage,
+          unreadCount: 0,
+          otherUserType: 'p',
+        });
+      } else {
+        setQuickMessageError('Select a patient ticket to send a message.');
+        return;
+      }
       setQuickMessage('');
     } catch (error) {
       console.error('Failed to send quick message:', error);

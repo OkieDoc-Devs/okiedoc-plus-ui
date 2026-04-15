@@ -1,0 +1,239 @@
+:root {
+  --primary: #4aa7ed;
+  --secondary: #bfe5f9;
+  --navy: #0b5388;
+  --accent: #0aadef;
+  --light-bg: #f7f8fa;
+  --dark: #222;
+  --white: #ffffff;
+  --gray: #7a7a7a;
+  --light-gray: #e5e5e5;
+  --danger: #f44336;
+}
+
+body.patient-dashboard-active,
+html:has(body.patient-dashboard-active) {
+  background: var(--light-bg) !important;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.patient-dashboard {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+  font-family: 'Inter', Arial, sans-serif;
+  background-color: var(--light-bg);
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.patient-dashboard * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', Arial, sans-serif;
+}
+
+.patient-main-content {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--light-bg);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.patient-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 12px 24px;
+  background-color: var(--light-bg);
+}
+
+.patient-header-left {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+}
+
+.patient-header-center {
+  justify-self: center;
+  display: flex;
+  align-items: center;
+}
+
+.patient-header-titles {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.patient-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-self: center;
+}
+
+.patient-header-logo {
+  height: 42px;
+  width: auto;
+}
+
+.patient-header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.patient-dashboard-title {
+  margin: 0;
+  color: var(--navy);
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.patient-welcome-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--gray);
+  margin: 0;
+}
+
+.patient-user-profile {
+  justify-self: end;
+  position: relative;
+}
+
+.patient-profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  transition: background-color 0.2s;
+}
+
+.patient-profile-trigger:hover {
+  background-color: #f0f7fa;
+}
+
+.patient-account-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  min-width: 140px;
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: all 0.2s ease;
+}
+
+.patient-user-profile:hover .patient-account-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.patient-dropdown-item {
+  display: block;
+  padding: 10px 16px;
+  color: #333;
+  text-decoration: none;
+  font-size: 0.9rem;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.patient-dropdown-item:hover {
+  background-color: #f0f7fa;
+  color: var(--navy);
+}
+
+.patient-logout-item {
+  border-top: 1px solid #eee;
+  color: #e74c3c;
+}
+
+.patient-logout-item:hover {
+  background-color: #fef2f2;
+  color: #e74c3c;
+}
+
+.patient-dashboard-nav {
+  width: 100%;
+  padding: 0 24px 16px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.patient-nav-tab {
+  padding: 10px 18px;
+  background-color: #f2f7fa;
+  border: none;
+  border-radius: 6px;
+  color: var(--navy);
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.patient-nav-tab:hover {
+  background-color: #e1f0fa;
+}
+
+.patient-nav-tab.active {
+  background-color: var(--navy);
+  color: #ffffff;
+}
+
+.patient-profile-avatar {
+  width: 44px;
+  height: 44px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--navy);
+  font-size: 20px;
+  border: 1px solid #e0e0e0;
+}
+
+.patient-profile-name {
+  font-size: 0.95rem;
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.patient-dashboard-content {
+  display: flex;
+  gap: 30px;
+  padding: 0 24px 32px 24px;
+  flex: 1;
+  overflow-y: auto;
+}

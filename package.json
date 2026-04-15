@@ -12,7 +12,6 @@
     "css:audit:patient:strict": "node scripts/audit-patient-css-usage.mjs --strict"
   },
   "dependencies": {
-    "@tabler/icons-react": "^3.41.1",
     "framer-motion": "^12.23.12",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.2",

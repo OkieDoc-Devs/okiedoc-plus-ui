@@ -126,21 +126,6 @@ export async function uploadLOA(ticketId, file) {
 }
 
 /**
- * Submit Consultation Intake Form
- */
-export async function submitConsultationIntake(intakeData) {
-  try {
-    return await apiRequest("/api/v1/consultations/intake", {
-      method: "POST",
-      body: JSON.stringify(intakeData),
-    });
-  } catch (error) {
-    console.error("Error submitting intake form:", error);
-    throw error;
-  }
-}
-
-/**
  * Cancel a pending ticket
  */
 export async function cancelTicket(ticketId) {

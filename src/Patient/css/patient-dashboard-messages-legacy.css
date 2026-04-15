@@ -1,0 +1,790 @@
+.patient-messages-container {
+  width: 100%;
+  height: calc(100vh - 140px);
+  background: #f7f8fa;
+  padding: 20px;
+}
+
+.patient-messages-container .messages-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  height: 100%;
+  max-height: calc(100vh - 180px);
+}
+
+.patient-messages-container .conversations-sidebar {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(11, 83, 136, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.patient-messages-container .conversations-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.patient-messages-container .conversations-header h3 {
+  margin: 0;
+  color: #0b5388;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.patient-messages-container .new-chat-btn {
+  background: #0aadef;
+  color: #000000;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.patient-messages-container .new-chat-btn:hover {
+  background: #4aa7ed;
+}
+
+.patient-messages-container .conversations-search-box {
+  padding: 12px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.patient-messages-container .conversations-search-box input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #bfe5f9;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  box-sizing: border-box;
+}
+
+.patient-messages-container .conversations-search-box input:focus {
+  outline: none;
+  border-color: #4aa7ed;
+  box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.18);
+}
+
+.patient-messages-container .conversations-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.patient-messages-container .no-conversations {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 20px;
+  color: #4b5563;
+  text-align: center;
+}
+
+.patient-messages-container .no-conversations-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(74, 167, 237, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0b5388;
+  font-size: 1.4rem;
+}
+
+.patient-messages-container .no-conversations h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #0b5388;
+}
+
+.patient-messages-container .no-conversations p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #6b7280;
+}
+
+.patient-messages-container .no-conversations-btn {
+  margin-top: 8px;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #0aadef;
+  color: #000000;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.patient-messages-container .no-conversations-btn:hover {
+  background: #4aa7ed;
+  transform: translateY(-1px);
+}
+
+.patient-messages-container .conversation-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s ease;
+}
+
+.patient-messages-container .conversation-item:hover {
+  background: #f7f8fa;
+}
+
+.patient-messages-container .conversation-item.active {
+  background: #e1f0fa;
+  border-left: 4px solid #4aa7ed;
+}
+
+.patient-messages-container .conversation-avatar {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0b5388;
+  flex-shrink: 0;
+}
+
+.patient-messages-container .conversation-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.patient-messages-container .online-indicator {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: #4caf50;
+  border: 2px solid white;
+  border-radius: 50%;
+}
+
+.patient-messages-container .conversation-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.patient-messages-container .conversation-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.patient-messages-container .conversation-name {
+  font-weight: 600;
+  color: #0b5388;
+  font-size: 0.95rem;
+}
+
+.patient-messages-container .conversation-time {
+  font-size: 0.75rem;
+  color: #7a7a7a;
+}
+
+.patient-messages-container .conversation-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.patient-messages-container .conversation-role {
+  font-size: 0.75rem;
+  color: #4aa7ed;
+  font-weight: 500;
+}
+
+.patient-messages-container .last-message {
+  font-size: 0.85rem;
+  color: #7a7a7a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.patient-messages-container .unread-badge {
+  background: #4aa7ed;
+  color: white;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.patient-messages-container .chat-area {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(11, 83, 136, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.patient-messages-container .chat-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.patient-messages-container .chat-user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.patient-messages-container .chat-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0b5388;
+}
+
+.patient-messages-container .chat-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.patient-messages-container .chat-user-info h4 {
+  margin: 0;
+  color: #0b5388;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.patient-messages-container .user-status {
+  font-size: 0.85rem;
+  color: #4caf50;
+}
+
+.patient-messages-container .chat-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.patient-messages-container .icon-btn {
+  background: #f7f8fa;
+  border: none;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #0b5388;
+  transition: all 0.2s ease;
+}
+
+.patient-messages-container .icon-btn:hover {
+  background: #e1f0fa;
+  color: #4aa7ed;
+}
+
+.patient-messages-container .chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.patient-messages-container .message {
+  display: flex;
+  max-width: 70%;
+}
+
+.patient-messages-container .own-message {
+  align-self: flex-end;
+}
+
+.patient-messages-container .other-message {
+  align-self: flex-start;
+}
+
+.patient-messages-container .message-content {
+  background: #f7f8fa;
+  padding: 12px 16px;
+  border-radius: 12px;
+  position: relative;
+}
+
+.patient-messages-container .own-message .message-content {
+  background: #4aa7ed;
+  color: white;
+}
+
+.patient-messages-container .message-content p {
+  margin: 0 0 4px 0;
+  word-wrap: break-word;
+}
+
+/* Medical History Request Card */
+.patient-messages-container .medical-history-request {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 8px 0;
+  border: 1px solid #e9ecef;
+  min-width: 250px;
+}
+
+.patient-messages-container .request-title {
+  font-weight: 600 !important;
+  color: #212529 !important;
+  margin-bottom: 12px !important;
+  font-size: 0.95rem !important;
+  line-height: 1.4 !important;
+}
+
+.patient-messages-container .request-buttons {
+  display: flex !important;
+  gap: 12px !important;
+}
+
+.patient-messages-container .btn-allow {
+  flex: 1 !important;
+  background-color: #4caf50 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 10px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+}
+
+.patient-messages-container .btn-allow:hover {
+  background-color: #43a047 !important;
+}
+
+.patient-messages-container .btn-deny {
+  flex: 1 !important;
+  background-color: #f44336 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 10px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+}
+
+.patient-messages-container .btn-deny:hover {
+  background-color: #d32f2f !important;
+}
+
+.patient-messages-container .request-denied-status {
+  color: #f44336 !important;
+  font-weight: 600 !important;
+  font-style: italic !important;
+  margin: 8px 0 !important;
+}
+
+.patient-messages-container .request-approved-status {
+  color: #4caf50 !important;
+  font-weight: 600 !important;
+  font-style: italic !important;
+  margin: 8px 0 !important;
+}
+
+.patient-messages-container .request-content-status {
+  color: #6c757d !important;
+  font-weight: 500 !important;
+  font-style: italic !important;
+  margin: 8px 0 !important;
+}
+
+.patient-messages-container .message-time {
+  font-size: 0.75rem;
+  color: #7a7a7a;
+  display: block;
+  margin-top: 4px;
+}
+
+.patient-messages-container .own-message .message-time {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.patient-messages-container .message-media-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.patient-messages-container .image-container {
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 260px;
+}
+
+.patient-messages-container .message-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.patient-messages-container .file-attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.patient-messages-container .file-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.patient-messages-container .file-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.patient-messages-container .file-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.patient-messages-container .file-size {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.patient-messages-container .chat-input-area {
+  padding: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.patient-messages-container .uploaded-files-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.patient-messages-container .uploaded-file-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f7f8fa;
+  border-radius: 20px;
+  font-size: 0.85rem;
+}
+
+.patient-messages-container .remove-file-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #f44336;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.patient-messages-container .input-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.patient-messages-container .message-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1.5px solid #bfe5f9;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #ffffff;
+  color: #222;
+}
+
+.patient-messages-container .message-input:focus {
+  outline: none;
+  border-color: #4aa7ed;
+  box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.18);
+  background: #ffffff;
+}
+
+.patient-messages-container .send-btn {
+  background: #0aadef;
+  color: #000000;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.patient-messages-container .send-btn:hover {
+  background: #4aa7ed;
+}
+
+.patient-messages-container .character-count {
+  text-align: right;
+  font-size: 0.75rem;
+  color: #7a7a7a;
+  margin-top: 4px;
+}
+
+.patient-messages-container .no-conversation-selected {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #7a7a7a;
+  gap: 16px;
+}
+
+.patient-messages-container .no-conversation-selected svg {
+  color: #e5e7eb;
+}
+
+@media (max-width: 1024px) {
+  .patient-messages-container .messages-layout {
+    grid-template-columns: 280px 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .patient-messages-container .messages-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-messages-container .conversations-sidebar {
+    display: none;
+  }
+
+  .patient-messages-container .message {
+    max-width: 85%;
+  }
+}
+
+.patient-messages-container .modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.patient-messages-container .modal-content {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 480px;
+  max-height: 80vh;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.patient-messages-container .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, #0b5388 0%, #1a73a7 100%);
+  color: white;
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.patient-messages-container .modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: white;
+}
+
+.patient-messages-container .close-modal {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 1.2rem;
+  padding: 0;
+}
+
+.patient-messages-container .close-modal:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: rotate(90deg);
+}
+
+.patient-messages-container .modal .search-box {
+  padding: 1.5rem;
+  border-bottom: none;
+  position: relative;
+  margin-bottom: 0;
+}
+
+.patient-messages-container .modal .search-box input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  background: #f9fafb;
+  box-sizing: border-box;
+}
+
+.patient-messages-container .modal .search-box input:focus {
+  outline: none;
+  border-color: #0b5388;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(11, 83, 136, 0.1);
+}
+
+.patient-messages-container .user-search-results {
+  flex: 1;
+  overflow-y: auto;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  min-height: 200px;
+  max-height: 400px;
+  margin: 0 1.5rem 1.5rem 1.5rem;
+}
+
+.patient-messages-container .user-result-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.patient-messages-container .user-result-item:last-child {
+  border-bottom: none;
+}
+
+.patient-messages-container .user-result-item:hover {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+}
+
+.patient-messages-container .user-result-item .user-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0b5388 0%, #1a73a7 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.patient-messages-container .user-result-item .user-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.patient-messages-container .user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.patient-messages-container .user-name {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.patient-messages-container .user-role {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.patient-messages-container .no-results,
+.patient-messages-container .loading-state,
+.patient-messages-container .error-state {
+  padding: 1.5rem;
+  text-align: center;
+  color: #7a7a7a;
+}
+
+@media (max-width: 900px) {
+  .patient-dashboard-nav {
+    padding: 0 16px 12px 16px;
+    gap: 10px;
+  }
+
+  .patient-nav-tab {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+}

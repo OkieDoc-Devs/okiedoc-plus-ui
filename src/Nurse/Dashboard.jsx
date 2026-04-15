@@ -60,9 +60,11 @@ const SYMPTOM_PILL_OPTIONS = [
   'Body pain',
   'Nausea',
   'Dizziness',
+  'Chest pain',
   'Fatigue',
   'Shortness of breath',
-  'Chest pain',
+  'Stomach pain',
+  'Loss of appetite',
 ];
 const ROS_GROUPS = [
   {
@@ -746,12 +748,25 @@ export default function Dashboard() {
     setSelectedSymptomPills(
       Array.isArray(localDraft.selectedSymptomPills)
         ? localDraft.selectedSymptomPills
-        : toList(readValue(selectedTicket, ['symptoms', 'symptomTags', 'symptomPills', 'intakeDetails', '0', 'symptoms'], ''))
-            .map((entry) =>
-              SYMPTOM_PILL_OPTIONS.find(
-                (option) => option.toLowerCase() === String(entry || '').trim().toLowerCase(),
-              ),
-            )
+        : toList(
+            readValue(
+              selectedTicket,
+              ['symptoms', 'symptomTags', 'symptomPills', 'intakeDetails', '0', 'symptoms'],
+              '',
+            ),
+          )
+            .map((entry) => String(entry || '').trim().toLowerCase())
+            .map((normalizedEntry) => {
+              if (normalizedEntry === 'body pain') return 'Body pain';
+              if (normalizedEntry === 'chest pain') return 'Chest pain';
+              if (normalizedEntry === 'sore throat') return 'Sore throat';
+              if (normalizedEntry === 'shortness of breath') return 'Shortness of breath';
+              if (normalizedEntry === 'stomach pain') return 'Stomach pain';
+              if (normalizedEntry === 'loss of appetite') return 'Loss of appetite';
+              return SYMPTOM_PILL_OPTIONS.find(
+                (option) => option.toLowerCase() === normalizedEntry,
+              );
+            })
             .filter(Boolean),
     );
     setSelectedPainAreas(
@@ -829,6 +844,31 @@ export default function Dashboard() {
       bloodPressure: readValue(selectedTicket, ['bloodPressure', 'bp', 'vitalBloodPressure']),
       heartRate: readValue(selectedTicket, ['heartRate', 'bpm', 'vitalHeartRate']),
       additionalDetails: readValue(selectedTicket, ['additionalDetails', 'intakeDetails', '0', 'additionalDetails'], ''),
+    };
+  }, [selectedTicket]);
+
+  const painMapReadOnlyMeta = useMemo(() => {
+    if (!selectedTicket) {
+      return {
+        painScore: '',
+        durationValue: '',
+        durationUnit: '',
+      };
+    }
+
+    const normalizeDisplayValue = (value) =>
+      value === DEFAULT_TEXT || value === null || value === undefined ? '' : String(value);
+
+    return {
+      painScore: normalizeDisplayValue(
+        readValue(selectedTicket, ['severity', 'painScore', 'painSeverity'], ''),
+      ),
+      durationValue: normalizeDisplayValue(
+        readValue(selectedTicket, ['durationValue', 'painDurationValue'], ''),
+      ),
+      durationUnit: normalizeDisplayValue(
+        readValue(selectedTicket, ['durationUnit', 'painDurationUnit'], ''),
+      ),
     };
   }, [selectedTicket]);
 
@@ -1521,12 +1561,6 @@ export default function Dashboard() {
                           <label>Address</label>
                           <p>{selectedPatient.address}</p>
                         </div>
-                        {selectedPatient.additionalDetails && (
-                          <div className='triage-detail-row' style={{ marginTop: '10px' }}>
-                            <label>Additional Details</label>
-                            <p>{selectedPatient.additionalDetails}</p>
-                          </div>
-                        )}
                       </div>
                     )}
                   </article>
@@ -1793,25 +1827,49 @@ export default function Dashboard() {
 
                   <article className='triage-pain-map-card'>
                     <h4>Pain Map</h4>
-                    <div className='triage-pain-map-view-toggle' role='tablist' aria-label='Pain map view'>
-                      <button
-                        type='button'
-                        role='tab'
-                        aria-selected={painMapView === 'front'}
-                        className={`triage-pain-map-view-btn ${painMapView === 'front' ? 'active' : ''}`}
-                        onClick={() => handlePainMapViewChange('front')}
-                      >
-                        Front
-                      </button>
-                      <button
-                        type='button'
-                        role='tab'
-                        aria-selected={painMapView === 'back'}
-                        className={`triage-pain-map-view-btn ${painMapView === 'back' ? 'active' : ''}`}
-                        onClick={() => handlePainMapViewChange('back')}
-                      >
-                        Back
-                      </button>
+                    <div className='triage-pain-map-controls-row'>
+                      <div className='triage-pain-map-view-toggle' role='tablist' aria-label='Pain map view'>
+                        <button
+                          type='button'
+                          role='tab'
+                          aria-selected={painMapView === 'front'}
+                          className={`triage-pain-map-view-btn ${painMapView === 'front' ? 'active' : ''}`}
+                          onClick={() => handlePainMapViewChange('front')}
+                        >
+                          Front
+                        </button>
+                        <button
+                          type='button'
+                          role='tab'
+                          aria-selected={painMapView === 'back'}
+                          className={`triage-pain-map-view-btn ${painMapView === 'back' ? 'active' : ''}`}
+                          onClick={() => handlePainMapViewChange('back')}
+                        >
+                          Back
+                        </button>
+                      </div>
+                      <div className='triage-pain-readonly-meta inline'>
+                        <div className='triage-vitals-grid triage-vitals-grid-readonly inline'>
+                          <div className='triage-pain-meta-item'>
+                            <label>Pain Score</label>
+                            <div className='triage-vital-input-wrap triage-vital-input-wrap-readonly triage-vital-input-wrap-meta'>
+                              <span className='triage-pain-meta-value'>{painMapReadOnlyMeta.painScore || 'N/A'}</span>
+                              <span className='triage-vital-unit'>/10</span>
+                            </div>
+                          </div>
+                          <div className='triage-pain-meta-item triage-pain-meta-item-duration'>
+                            <label>Pain Duration</label>
+                            <div className='triage-vital-input-wrap triage-vital-input-wrap-readonly triage-vital-input-wrap-duration triage-vital-input-wrap-meta'>
+                              <span className='triage-pain-meta-value'>
+                                {painMapReadOnlyMeta.durationValue || 'N/A'}
+                              </span>
+                              <span className='triage-vital-unit'>
+                                {painMapReadOnlyMeta.durationUnit || '--'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     <div className='triage-pain-map-content'>

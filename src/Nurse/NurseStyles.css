@@ -2950,8 +2950,8 @@ body::-webkit-scrollbar {
 
 .triage-symptom-pills {
   margin-top: 12px;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -2960,11 +2960,12 @@ body::-webkit-scrollbar {
   border-radius: 12px;
   background: #f4f6fa;
   color: #0f141d;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1;
-  padding: 7px 12px;
+  padding: 9px 12px;
   cursor: pointer;
+  width: 100%;
 }
 
 .triage-symptom-pill.selected {
@@ -3019,6 +3020,118 @@ body::-webkit-scrollbar {
 .triage-pain-map-view-btn:focus-visible {
   outline: 2px solid #2460ea;
   outline-offset: 1px;
+}
+
+.triage-pain-map-controls-row {
+  margin-top: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+.triage-pain-map-controls-row .triage-pain-map-view-toggle {
+  margin-top: 0;
+  flex: 0 0 auto;
+}
+
+.triage-pain-readonly-meta {
+  margin-top: 0;
+  border: 1px solid #d8dde5;
+  border-radius: 12px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.triage-pain-readonly-meta.inline {
+  padding: 2px;
+  margin-left: auto;
+  flex: 0 0 auto;
+  border: 1px solid #bcc7db;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.triage-vitals-grid.triage-vitals-grid-readonly {
+  margin-top: 0;
+}
+
+.triage-vitals-grid.triage-vitals-grid-readonly.inline {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.triage-vitals-grid.triage-vitals-grid-readonly.inline > div,
+.triage-pain-meta-item {
+  min-width: 0;
+}
+
+.triage-vitals-grid.triage-vitals-grid-readonly.inline label {
+  margin-bottom: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #3a465b;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.triage-vital-input-wrap.triage-vital-input-wrap-meta {
+  min-height: 27px;
+  padding: 0 7px;
+  gap: 5px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: #edf1f7;
+}
+
+.triage-pain-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 8px;
+}
+
+.triage-pain-meta-item.triage-pain-meta-item-duration {
+  padding-right: 4px;
+}
+
+.triage-pain-meta-value {
+  color: #3a465b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.triage-vital-input-wrap.triage-vital-input-wrap-readonly .triage-vital-unit {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.triage-vital-input-wrap.triage-vital-input-wrap-readonly {
+  background: #e7ecf2;
+}
+
+.triage-vital-input-wrap.triage-vital-input-wrap-readonly .triage-vital-input {
+  color: #3f4d63;
+  cursor: not-allowed;
+}
+
+.triage-vital-input-wrap.triage-vital-input-wrap-readonly .triage-vital-unit {
+  color: #3f4d63;
+}
+
+.triage-vital-input-wrap.triage-vital-input-wrap-readonly:focus-within {
+  border-color: #d4dbe6;
+  background: #e7ecf2;
+  box-shadow: none;
+}
+
+.triage-vital-input-wrap.triage-vital-input-wrap-duration {
+  min-width: 132px;
+  margin-left: 8px;
 }
 
 .triage-pain-map-content {

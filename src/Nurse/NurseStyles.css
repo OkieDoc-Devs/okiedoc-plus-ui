@@ -1659,6 +1659,11 @@ body::-webkit-scrollbar {
   margin-bottom: 0;
 }
 
+.nurse-messages-dashboard .dashboard-nav {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
 .nurse-messages-dashboard .nurse-messenger-container {
   margin-top: 8px;
   height: calc(100vh - 138px);
@@ -1703,11 +1708,13 @@ body::-webkit-scrollbar {
 
 .nurse-manage-dashboard .processing-tickets h2 {
   margin-top: 0;
+  margin-bottom: 16px;
 }
 
 .nurse-manage-dashboard .processing-tickets {
   margin-left: 8px;
   margin-right: 8px;
+  margin-bottom: 100px;
 }
 
 .triage-grid {

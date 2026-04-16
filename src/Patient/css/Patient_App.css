@@ -1,0 +1,236 @@
+/* Base Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+}
+
+body {
+  background-color: #f4f6f8; /* Light gray background */
+  color: #212529; /* Dark text */
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* --- HEADER --- */
+.app-header {
+  height: 70px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  z-index: 10;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #495057;
+}
+
+.logo {
+  width: auto;
+  height: 36px;
+  color: #4aa7ed;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.icon-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #868e96;
+  position: relative;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.icon-button:hover {
+  background-color: #f1f3f5;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background-color: #fa5252;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- LAYOUT BODY --- */
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* --- SIDEBAR --- */
+.app-sidebar {
+  width: 280px;
+  background-color: #ffffff;
+  border-right: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  transition: transform 0.3s ease;
+  z-index: 20;
+}
+
+.patientapp-nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-item:hover {
+  background-color: #f8f9fa;
+}
+
+.nav-item.active {
+  background-color: #e3f2fd;
+  color: #4aa7ed;
+}
+
+.nav-icon {
+  color: inherit;
+}
+
+.help-box {
+  background-color: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.help-box h4 {
+  margin-bottom: 4px;
+  color: #343a40;
+}
+
+.help-box p {
+  font-size: 12px;
+  color: #868e96;
+}
+
+/* --- MAIN CONTENT --- */
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 24px 24px 0px;
+}
+
+.main-content-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* --- 404 NOT FOUND --- */
+.not-found-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  text-align: center;
+}
+
+.not-found-icon {
+  color: #dee2e6;
+  margin-bottom: 16px;
+}
+
+.not-found-container h2 {
+  font-size: 32px;
+  color: #343a40;
+  margin-bottom: 8px;
+}
+
+.not-found-container p {
+  color: #868e96;
+  margin-bottom: 24px;
+}
+
+.back-home-btn {
+  background-color: #4aa7ed;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .dashboard-container .mobile-menu-btn {
+    display: block;
+  }
+  .app-sidebar {
+    position: fixed;
+    top: 70px;
+    left: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+  }
+  .app-sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar-overlay {
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 15;
+  }
+}

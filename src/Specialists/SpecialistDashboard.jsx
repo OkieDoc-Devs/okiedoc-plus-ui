@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaUpload, FaTimes } from 'react-icons/fa';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FaUpload, FaTimes, FaRegComment, FaPaperPlane } from 'react-icons/fa';
 import './SpecialistDashboard.css';
 import authService from './authService';
 import * as specialistApi from './services/apiService';
@@ -8,6 +8,8 @@ import { API_BASE_URL } from '../api/apiClient';
 import SpecialistCall from './SpecialistCall';
 import Messages from './Messages';
 import ImageCropperModal from '../components/ImageCropperModal';
+import PainMapSection from '../components/PainMap/PainMap.jsx';
+import { PAIN_MAP_VIEWS } from '../components/PainMap/painMapConstants.js';
 import ICDCodeSelector from './components/ICDCodeSelector';
 import Avatar from '../components/Avatar';
 import { usePSGC } from '../hooks/usePSGC';
@@ -77,10 +79,118 @@ import {
   validateAccountDetails,
   validateScheduleData,
   validateMedicalHistoryRequest,
+  ICD11_CHAPTERS,
+  parseICDCode,
 } from './utils';
 
+const TICKET_REFRESH_INTERVAL_MS = 15000;
+
+const normalizePainMapAreas = (ticket) => {
+  const rawAreas = Array.isArray(ticket?.selectedPainAreas)
+    ? ticket.selectedPainAreas
+    : Array.isArray(ticket?.painMap)
+      ? ticket.painMap
+      : [];
+
+  return rawAreas
+    .map((area, index) => {
+      if (typeof area === 'string') {
+        const stringMatch = area.match(/^(front|back):(.+)$/i);
+        if (stringMatch) {
+          const view = stringMatch[1].toLowerCase();
+          const key = stringMatch[2];
+          return {
+            id: `${view}:${key}`,
+            view,
+            key,
+            label: key,
+          };
+        }
+
+        return {
+          id: `front:${area}:${index}`,
+          view: 'front',
+          key: area,
+          label: area,
+        };
+      }
+
+      const idMatch =
+        typeof area?.id === 'string' ? area.id.match(/^(front|back):(.+)$/i) : null;
+      const parsedView = idMatch ? idMatch[1].toLowerCase() : null;
+      const parsedKey = idMatch ? idMatch[2] : null;
+      const view = PAIN_MAP_VIEWS.includes(area?.view)
+        ? area.view
+        : PAIN_MAP_VIEWS.includes(parsedView)
+          ? parsedView
+          : 'front';
+      const key = area?.key || parsedKey || area?.id || `area-${index}`;
+      const label = area?.label || area?.name || area?.bodyPart || area?.value || 'Pain area';
+
+      return {
+        id: area?.id || `${view}:${key}`,
+        view,
+        key,
+        label,
+      };
+    })
+    .filter((area) => area.id && area.key && area.label);
+};
+
+const getPainMapView = (ticket, areas) => {
+  const savedView = ticket?.painMapView;
+  if (PAIN_MAP_VIEWS.includes(savedView)) {
+    return savedView;
+  }
+
+  if (!areas.length) {
+    return 'front';
+  }
+
+  const frontCount = areas.filter((area) => area.view === 'front').length;
+  const backCount = areas.filter((area) => area.view === 'back').length;
+
+  if (backCount > frontCount) {
+    return 'back';
+  }
+
+  if (frontCount > 0) {
+    return 'front';
+  }
+
+  return areas[0]?.view || 'front';
+};
+
+const toStringList = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || '').trim()).filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    return trimmed
+      .split(/\n|,|;/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const buildTriageNotes = (ticket) => String(ticket?.additionalRemarks || '').trim();
+
 const SpecialistDashboard = () => {
+  const buildMedicalHistoryForSpecialist = (ticket) => {
+    const triageHistory = toStringList(ticket?.triageMedicalHistory);
+    if (triageHistory.length > 0) {
+      return triageHistory;
+    }
+    return toStringList(ticket?.medicalHistory);
+  };
+
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     regions,
     provinces,
@@ -143,9 +253,8 @@ const SpecialistDashboard = () => {
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketFilter, setTicketFilter] = useState('All');
-
-  const [quickMessage, setQuickMessage] = useState('');
-  const [quickMessages, setQuickMessages] = useState([]);
+  const [patientChatDraft, setPatientChatDraft] = useState('');
+  const [patientChatThreads, setPatientChatThreads] = useState({});
 
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
@@ -171,7 +280,6 @@ const SpecialistDashboard = () => {
   });
 
   const [selectedTicketId, setSelectedTicketId] = useState(null);
-  const [selectedPatientDetailed, setSelectedPatientDetailed] = useState(null);
   const [encounter, setEncounter] = useState(createDefaultEncounter());
 
   const [medForm, setMedForm] = useState(null);
@@ -179,6 +287,10 @@ const SpecialistDashboard = () => {
   const [labForm, setLabForm] = useState(null);
 
   const [mhRequests, setMhRequests] = useState([]);
+  const [selectedMedicalEntry, setSelectedMedicalEntry] = useState(null);
+  const [soapModalType, setSoapModalType] = useState(null);
+  const [soapModalValue, setSoapModalValue] = useState('');
+  const [soapModalIcdCode, setSoapModalIcdCode] = useState('');
 
   const [centerTab, setCenterTab] = useState('medicine');
 
@@ -188,6 +300,32 @@ const SpecialistDashboard = () => {
     completedToday: 0,
     upcomingAppointments: 0,
   });
+  const patientChatMessagesRef = useRef(null);
+
+  const createPatientChatMessages = useCallback((ticket) => {
+    const patientName = ticket?.patientFullName || ticket?.patient || 'the patient';
+    const startedAt =
+      ticket?.consultationStartedAt ||
+      ticket?.startedAt ||
+      ticket?.createdAt ||
+      '';
+    const startedTime = startedAt
+      ? new Date(startedAt).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : '16:50';
+
+    return [
+      {
+        id: `${ticket?.id || 'ticket'}-system`,
+        sender: 'system',
+        text: `Started consultation with ${patientName}`,
+        subtext: startedTime,
+        timestamp: startedTime,
+      },
+    ];
+  }, []);
 
   const loadTicketsData = useCallback(async () => {
     console.log('[SpecialistDashboard] Loading tickets from API...');
@@ -219,11 +357,29 @@ const SpecialistDashboard = () => {
           `[SpecialistDashboard] Loaded ${activeResponse.activeTickets.length} active tickets from API`,
         );
         const mappedActive = activeResponse.activeTickets.map((t) => ({
+          ...t,
           id: t.id,
           patient: formatPatientName(t.rawTicket?.patient || t),
           patientFullName: t.patientName || 'Unknown',
           service: t.chiefComplaint || 'Consultation',
           symptoms: t.symptoms || '',
+          medicalHistory: buildMedicalHistoryForSpecialist(t.rawTicket || t),
+          triageMedicalHistory: t.triageMedicalHistory || t.rawTicket?.triageMedicalHistory || '',
+          additionalRemarks: t.additionalRemarks || t.rawTicket?.additionalRemarks || '',
+          triageNotes: buildTriageNotes(t.rawTicket || t),
+          bloodPressure: t.rawTicket?.bloodPressure || '',
+          heartRate: t.rawTicket?.heartRate || '',
+          temperature: t.rawTicket?.temperature || '',
+          oxygenSaturation: t.rawTicket?.oxygenSaturation || '',
+          selectedPainAreas: t.rawTicket?.selectedPainAreas || t.rawTicket?.painAreas || [],
+          painMapView: t.rawTicket?.painMapView || 'front',
+          selectedSymptomPills:
+            t.selectedSymptomPills || t.rawTicket?.selectedSymptomPills || [],
+          selectedRosItems: t.selectedRosItems || t.rawTicket?.selectedRosItems || [],
+          durationValue: t.durationValue || t.rawTicket?.durationValue || '',
+          durationUnit: t.durationUnit || t.rawTicket?.durationUnit || '',
+          severity: t.severity || t.rawTicket?.severity || '',
+          urgencyLevel: t.urgencyLevel || t.rawTicket?.urgencyLevel || t.urgency || '',
           preferredDate: t.preferredDate,
           preferredTime: t.preferredTime,
           consultationChannel: t.consultationChannel,
@@ -261,6 +417,7 @@ const SpecialistDashboard = () => {
           `[SpecialistDashboard] Loaded ${availableResponse.data.length} available tickets from API`,
         );
         const mappedAvailable = availableResponse.data.map((t) => ({
+          ...t,
           id: t.id,
           patient: formatPatientName(t.patient),
           patientFullName: t.patient
@@ -268,6 +425,22 @@ const SpecialistDashboard = () => {
             : 'Unknown',
           service: t.chiefComplaint || 'Consultation',
           symptoms: t.symptoms || '',
+          medicalHistory: buildMedicalHistoryForSpecialist(t),
+          triageMedicalHistory: t.triageMedicalHistory || '',
+          additionalRemarks: t.additionalRemarks || '',
+          triageNotes: buildTriageNotes(t),
+          bloodPressure: t.bloodPressure || '',
+          heartRate: t.heartRate || '',
+          temperature: t.temperature || '',
+          oxygenSaturation: t.oxygenSaturation || '',
+          selectedPainAreas: t.selectedPainAreas || t.painAreas || [],
+          painMapView: t.painMapView || 'front',
+          selectedSymptomPills: t.selectedSymptomPills || [],
+          selectedRosItems: t.selectedRosItems || [],
+          durationValue: t.durationValue || '',
+          durationUnit: t.durationUnit || '',
+          severity: t.severity || '',
+          urgencyLevel: t.urgencyLevel || t.urgency || '',
           preferredDate: t.preferredDate,
           preferredTime: t.preferredTime,
           consultationChannel: t.consultationChannel,
@@ -354,16 +527,6 @@ const SpecialistDashboard = () => {
       setTickets(savedTickets);
     }
   }, []);
-
-  useEffect(() => {
-    window.refreshSpecialistDashboard = () => {
-      console.log("[SpecialistDashboard] Refreshing data from window callback...");
-      loadTicketsData();
-    };
-    return () => {
-      delete window.refreshSpecialistDashboard;
-    };
-  }, [loadTicketsData]);
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -462,6 +625,8 @@ const SpecialistDashboard = () => {
 
   useEffect(() => {
     document.body.classList.add('specialist-dashboard-body');
+    const onboardingOverride =
+      new URLSearchParams(location.search).get('onboarding') === '1';
 
     const currentUser = authService.getCurrentUser();
 
@@ -470,7 +635,7 @@ const SpecialistDashboard = () => {
       return;
     }
 
-    if (currentUser.user.applicationStatus === 'pending') {
+    if (currentUser.user.applicationStatus === 'pending' && !onboardingOverride) {
       navigate('/specialist-pending');
       return;
     } else if (currentUser.user.applicationStatus === 'denied') {
@@ -480,6 +645,10 @@ const SpecialistDashboard = () => {
 
     setCurrentUser(currentUser.user);
     setIsLoading(false);
+
+    if (onboardingOverride) {
+      window.history.replaceState(null, '', '/specialist-dashboard');
+    }
 
     const initials = generateUserInitials(
       currentUser.user.firstName || currentUser.user.fName,
@@ -522,16 +691,7 @@ const SpecialistDashboard = () => {
     return () => {
       document.body.classList.remove('specialist-dashboard-body');
     };
-  }, [navigate, loadTicketsData, loadDashboardData]);
-
-  useEffect(() => {
-    if (tickets.length > 0) {
-      const hasSelectedTicket = selectedTicketId && tickets.some((t) => String(t.id) === String(selectedTicketId));
-      if (!hasSelectedTicket) {
-        setSelectedTicketId(tickets[0].id);
-      }
-    }
-  }, [tickets, selectedTicketId]);
+  }, [navigate, loadTicketsData, loadDashboardData, location.search]);
 
   useEffect(() => {
     if (activeTab === 'dashboard') {
@@ -543,6 +703,20 @@ const SpecialistDashboard = () => {
   }, [activeTab, loadTicketsData]);
 
   useEffect(() => {
+    if (activeTab !== 'dashboard') {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      loadTicketsData();
+    }, TICKET_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [activeTab, loadTicketsData]);
+
+  useEffect(() => {
     if (selectedTicketId) {
       const data = loadEncounterData(selectedTicketId);
       if (data) {
@@ -550,47 +724,36 @@ const SpecialistDashboard = () => {
       } else {
         setEncounter(createDefaultEncounter());
       }
-      setMhRequests(loadMedicalHistoryData(selectedTicketId));
-
-      const currentTicket = tickets.find((t) => t.id === selectedTicketId);
-      if (currentTicket && currentTicket.rawTicket?.patient?.id) {
-        specialistApi
-          .getPatientProfile(currentTicket.rawTicket.patient.id)
-          .then((profile) => {
-            console.log(
-              '[SpecialistDashboard] Fetched detailed patient profile:',
-              profile,
-            );
-            setSelectedPatientDetailed(profile);
-            const hasClinicalData = profile.activeDiseases || profile.medicalHistory || profile.allergies;
-            if (!hasClinicalData) {
-              console.log('[SpecialistDashboard] Profile received but no clinical data (likely not shared yet)');
-            }
-          })
-          .catch((err) => {
-            console.warn(
-              '[SpecialistDashboard] No access to detailed patient profile yet:',
-              err,
-            );
-            setSelectedPatientDetailed(null);
-          });
-      } else {
-        setSelectedPatientDetailed(null);
-      }
+      setMhRequests([]);
     }
-  }, [selectedTicketId, tickets]);
+  }, [selectedTicketId]);
 
-  const handleRequestMedicalHistory = async () => {
+  useEffect(() => {
     if (!selectedTicketId) return;
-    try {
-      const currentTicket = tickets.find(t => t.id === selectedTicketId);
-      await specialistApi.requestMedicalHistory(selectedTicketId);
-      alert(`Medical history request sent to ${currentTicket?.patientName || 'patient'}'s chat.`);
-    } catch (error) {
-      console.error('Error requesting medical history:', error);
-      alert(error.message || 'Failed to request medical history');
-    }
-  };
+
+    const selectedTicketForChat = tickets.find(
+      (ticket) => String(ticket.id) === String(selectedTicketId),
+    );
+
+    setPatientChatThreads((prev) => {
+      if (prev[selectedTicketId]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [selectedTicketId]: createPatientChatMessages(selectedTicketForChat),
+      };
+    });
+
+    setPatientChatDraft('');
+  }, [selectedTicketId, tickets, createPatientChatMessages]);
+
+  useEffect(() => {
+    const messagePanel = patientChatMessagesRef.current;
+    if (!messagePanel) return;
+    messagePanel.scrollTop = messagePanel.scrollHeight;
+  }, [selectedTicketId, patientChatThreads]);
 
   const handleNavigation = (target, title) => {
     setActiveTab(target);
@@ -762,6 +925,22 @@ const SpecialistDashboard = () => {
           service: ticket.chiefComplaint || 'Consultation',
           chiefComplaint: ticket.chiefComplaint,
           symptoms: ticket.symptoms || '',
+          medicalHistory: buildMedicalHistoryForSpecialist(ticket),
+          triageMedicalHistory: ticket.triageMedicalHistory || '',
+          additionalRemarks: ticket.additionalRemarks || '',
+          triageNotes: buildTriageNotes(ticket),
+          bloodPressure: ticket.bloodPressure || '',
+          heartRate: ticket.heartRate || '',
+          temperature: ticket.temperature || '',
+          oxygenSaturation: ticket.oxygenSaturation || '',
+          selectedPainAreas: ticket.selectedPainAreas || ticket.painAreas || [],
+          painMapView: ticket.painMapView || 'front',
+          selectedSymptomPills: ticket.selectedSymptomPills || [],
+          selectedRosItems: ticket.selectedRosItems || [],
+          durationValue: ticket.durationValue || '',
+          durationUnit: ticket.durationUnit || '',
+          severity: ticket.severity || '',
+          urgencyLevel: ticket.urgencyLevel || ticket.urgency || '',
           preferredDate: ticket.preferredDate,
           preferredTime: ticket.preferredTime,
           consultationChannel: ticket.consultationChannel,
@@ -858,23 +1037,37 @@ const SpecialistDashboard = () => {
     }
   };
 
-  const handleQuickSend = async (e) => {
+  const handlePatientChatSend = async (e) => {
     e.preventDefault();
-    const trimmedMessage = quickMessage.trim();
-    if (!trimmedMessage) return;
+
+    const trimmedMessage = patientChatDraft.trim();
+    if (!trimmedMessage || !selectedTicketId) return;
+    const activeTicket = tickets.find(
+      (ticket) => String(ticket.id) === String(selectedTicketId),
+    );
 
     const newMessage = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      text: trimmedMessage,
+      sender: 'specialist',
+      message: trimmedMessage,
       timestamp: new Date().toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
       }),
-      sender: 'you',
     };
 
-    setQuickMessages((prev) => [...prev, newMessage]);
-    setQuickMessage('');
+    setPatientChatThreads((prev) => ({
+      ...prev,
+      [selectedTicketId]: [
+        ...(prev[selectedTicketId] ||
+          createPatientChatMessages(activeTicket)),
+        newMessage,
+      ],
+    }));
+    setPatientChatDraft('');
+
+    // TODO: wire up real message sending API call when available.
+    // await specialistApi.sendMessageToPatient(selectedTicketId, trimmedMessage);
   };
 
   const handleCropComplete = async (croppedFile) => {
@@ -955,6 +1148,30 @@ const SpecialistDashboard = () => {
     }
   };
 
+  const openSoapModal = (section) => {
+    setSoapModalType(section);
+    setSoapModalValue(encounter?.[section] || '');
+    setSoapModalIcdCode(encounter?.icd10 || '');
+  };
+
+  const closeSoapModal = () => {
+    setSoapModalType(null);
+    setSoapModalValue('');
+    setSoapModalIcdCode('');
+  };
+
+  const saveSoapModal = async () => {
+    if (!soapModalType) return;
+
+    const payload = { [soapModalType]: soapModalValue };
+    if (soapModalType === 'assessment') {
+      payload.icd10 = soapModalIcdCode;
+    }
+
+    await saveEncounter(payload);
+    closeSoapModal();
+  };
+
   const handleGenerateInvoice = async () => {
     if (!selectedTicketId) return;
     try {
@@ -1011,6 +1228,26 @@ const SpecialistDashboard = () => {
     setEncounter(updatedEncounter);
     saveEncounter({ labRequests: updatedEncounter.labRequests });
   };
+
+  const openMedicineDetails = (medicine, index) => {
+    setSelectedMedicalEntry({
+      type: 'medicine',
+      title: 'Prescription',
+      data: medicine,
+      summary: formatMedicineDisplay(medicine) || 'No summary available',
+    });
+  };
+
+  const openLabRequestDetails = (labRequest, index) => {
+    setSelectedMedicalEntry({
+      type: 'lab',
+      title: 'Laboratory Request',
+      data: labRequest,
+      summary: formatLabRequestDisplay(labRequest) || 'No summary available',
+    });
+  };
+
+  const closeMedicalEntryDetails = () => setSelectedMedicalEntry(null);
 
   const requestPatientRecords = () => {
     if (!selectedTicketId) {
@@ -1343,7 +1580,16 @@ const SpecialistDashboard = () => {
   };
 
   const renderDashboard = () => {
-    const selectedTicket = tickets.find((x) => x.id === selectedTicketId);
+    const selectedTicket = tickets.find((x) => String(x.id) === String(selectedTicketId));
+    const parsedIcd = parseICDCode(encounter.icd10);
+    const chapterData = parsedIcd.chapter ? ICD11_CHAPTERS[parsedIcd.chapter] : null;
+    const blockData = chapterData?.blocks?.[parsedIcd.block] || null;
+    const categoryData = blockData?.categories?.[parsedIcd.category] || null;
+    const selectedCodeValue =
+      parsedIcd.subcategory || parsedIcd.category || parsedIcd.block || parsedIcd.chapter || '';
+    const selectedCodeLabel = categoryData
+      ? `${categoryData.code} - ${categoryData.label}`
+      : 'Not selected';
 
     const formatBirthday = (dateStr) => {
       if (!dateStr) return 'Not provided';
@@ -1360,22 +1606,112 @@ const SpecialistDashboard = () => {
     };
 
     const getAgeText = (t) => {
-      if (!t) return 'Not provided';
+      if (!t) return '';
       if (t.age) return `${t.age} years old`;
-      const bday = t.patientBirthdate || t.birthday;
-      if (bday) {
-        const birth = new Date(bday);
+      if (t.patientBirthdate) {
+        const birth = new Date(t.patientBirthdate);
         const diff = Date.now() - birth.getTime();
         const age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
-        return isNaN(age) ? 'Not provided' : `${age} years old`;
+        return `${age} years old`;
       }
       return 'Not provided';
     };
 
-    const basePatientInfo = tickets.find((x) => x.id === selectedTicketId) || tickets[0] || null;
-    const selectedPatient = selectedPatientDetailed || basePatientInfo;
+    const selectedPatient = selectedTicket || null;
+    const selectedPatientAllergies = toStringList(selectedPatient?.allergies);
+    const selectedPatientMedicalHistory = toStringList(
+      selectedPatient?.medicalHistory,
+    );
+    const painMapAreas = normalizePainMapAreas(selectedPatient);
+    const painMapView = getPainMapView(selectedPatient, painMapAreas);
 
-    const patientStatus = basePatientInfo?.status || 'Unknown';
+    const patientStatus = selectedPatient?.status || 'Unknown';
+    const patientChatMessages = selectedPatient
+      ? patientChatThreads[selectedTicketId] ||
+        createPatientChatMessages(selectedPatient)
+      : [];
+    const isStarterThread =
+      patientChatMessages.length === 1 &&
+      patientChatMessages[0]?.sender === 'system';
+
+    if (!selectedPatient) {
+      return (
+        <div className='dashboard-content dashboard-1to1'>
+          <div className='assigned-patients-panel'>
+            <div className='panel-header'>
+              <h3>Assigned Patients</h3>
+            </div>
+
+            <div className='status-filter-container'>
+              <select
+                value={ticketFilter === 'All' ? 'All Tickets' : ticketFilter}
+                onChange={(e) =>
+                  setTicketFilter(
+                    e.target.value === 'All Tickets' ? 'All' : e.target.value,
+                  )
+                }
+                className='input-sm status-filter-dropdown'
+              >
+                {[
+                  'All Tickets',
+                  'Available',
+                  'Awaiting',
+                  'In Consultation',
+                  'Completed',
+                ].map((label) => (
+                  <option key={label} value={label}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className='patient-list'>
+              {filteredTickets.length === 0 ? (
+                <div className='no-patient-text'>No patients assigned.</div>
+              ) : (
+                filteredTickets.map((t) => (
+                  <div
+                    key={t.id}
+                    className='patient-card'
+                    onClick={() => setSelectedTicketId(t.id)}
+                  >
+                    <div className='patient-card-header'>
+                      <div className='patient-card-title'>
+                        {t.patient || 'Unknown'}
+                      </div>
+                      <span className={`status-badge ${getStatusBadgeClass(t.status)}`}>
+                        {t.status}
+                      </span>
+                    </div>
+                    <div className='patient-card-subtitle'>
+                      {t.id} â€¢ {t.service || 'Consultation'}
+                    </div>
+                    <div className='patient-card-meta'>{t.when}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className='patient-details-panel'>
+            <div className='patient-details-empty-state'>
+              <div className='patient-details-empty-state__card'>
+                <h2>No selected tickets</h2>
+                <p>Select a ticket from the left panel to view the patient details, chat, and SOAP notes.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className='soap-panel'>
+            <div className='soap-header'>
+              <h3>SOAP Notes</h3>
+              <p>Document your clinical findings and treatment plan</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className='dashboard-content dashboard-1to1'>
@@ -1415,7 +1751,7 @@ const SpecialistDashboard = () => {
               filteredTickets.map((t) => (
                 <div
                   key={t.id}
-                  className={`patient-card ${selectedTicketId === t.id ? 'active' : ''}`}
+                  className={`patient-card ${String(selectedTicketId) === String(t.id) ? 'active' : ''}`}
                   onClick={() => setSelectedTicketId(t.id)}
                 >
                   <div className='patient-card-header'>
@@ -1437,13 +1773,11 @@ const SpecialistDashboard = () => {
         </div>
 
         <div className='patient-details-panel'>
-          <div className='patient-details-header'>
-            <div>
-              <h2>{selectedPatient?.patientFullName || selectedPatient?.patient || (selectedPatient?.firstName ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : 'No patient selected')}</h2>
-              <p className='patient-specialization'>
-                {basePatientInfo?.service || 'General Consultation'}
-              </p>
-            </div>
+              <div className='patient-details-header'>
+                <div>
+                  <h2>{selectedPatient.patientFullName || selectedPatient.patient || 'Patient'}</h2>
+                  <p className='patient-specialization'>{selectedPatient.service || 'Consultation'}</p>
+                </div>
             <button
               className='btn-primary complete-consultation'
               onClick={handleCompleteConsultation}
@@ -1453,6 +1787,7 @@ const SpecialistDashboard = () => {
             </button>
           </div>
 
+          <div className='patient-details-scroll'>
           <div className='patient-info-card'>
             <div className='section-title-small'>Patient Information</div>
             <div className='patient-info-grid'>
@@ -1477,161 +1812,39 @@ const SpecialistDashboard = () => {
               <div className='info-item'>
                 <span className='info-label'>Contact</span>
                 <span className='info-value'>
-                  {selectedPatient?.mobile || selectedPatient?.phone || selectedPatient?.contact || 'Not provided'}
+                  {selectedPatient?.mobile || selectedPatient?.contact || 'Not provided'}
                 </span>
               </div>
             </div>
           </div>
 
           <div className='info-card'>
+            <div className='info-card-title'>Allergies</div>
+            <div className='info-card-body'>
+              {selectedPatientAllergies.length > 0 ? (
+                selectedPatientAllergies.map((a) => (
+                  <span key={a} className='pill'>
+                    {a}
+                  </span>
+                ))
+              ) : (
+                <span className='info-placeholder'>No known allergies</span>
+              )}
+            </div>
+          </div>
+
+          <div className='info-card'>
             <div className='info-card-title'>Medical History</div>
             <div className='info-card-body'>
-              {(() => {
-                const allergiesSource = selectedPatientDetailed?.allergies;
-                const activeDiseaseSource = selectedPatientDetailed?.activeDiseases;
-                const pastDiseasesSource = selectedPatientDetailed?.pastDiseases;
-                const medicationsSource = selectedPatientDetailed?.medications;
-                const surgeriesSource = selectedPatientDetailed?.surgeries;
-                const familyHistorySource = selectedPatientDetailed?.familyHistory;
-                const socialHistorySource = selectedPatientDetailed?.socialHistory;
-
-                const isAuthorized = allergiesSource || activeDiseaseSource || pastDiseasesSource || medicationsSource || surgeriesSource || familyHistorySource || socialHistorySource;
-
-                if (!selectedPatientDetailed || !isAuthorized) {
-                  return <span className='info-placeholder'>Request medical history to view detailed conditions and history.</span>;
-                }
-
-                const parseData = (source) => {
-                  if (!source) return [];
-                  try {
-                    return typeof source === 'string' ? JSON.parse(source) : source;
-                  } catch (e) {
-                    return [];
-                  }
-                };
-
-                const allergies = parseData(allergiesSource);
-                const activeDiseases = parseData(activeDiseaseSource);
-                const pastDiseases = parseData(pastDiseasesSource);
-                const medications = parseData(medicationsSource);
-                const surgeries = parseData(surgeriesSource);
-                const familyHistory = parseData(familyHistorySource);
-                const socialHistory = parseData(socialHistorySource);
-                
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Allergies</h4>
-                      {Array.isArray(allergies) && allergies.length > 0 ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                          {allergies.map((a, idx) => (
-                            <span key={idx} className='pill'>
-                              {typeof a === 'object' ? a.name || a.allergy : a}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className='info-placeholder'>No known allergies recorded.</span>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Active Diseases / Conditions</h4>
-                      {Array.isArray(activeDiseases) && activeDiseases.length > 0 ? (
-                         <ul className='history-list'>
-                          {activeDiseases.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.name || item.condition}</strong> {item.date && <span>({item.date})</span>}
-                              {item.description && <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#666' }}>{item.description}</p>}
-                              {item.severity && <span className='pill' style={{ background: '#f8d7da', color: '#721c24', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', marginLeft: '8px' }}>{item.severity}</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className='info-placeholder'>No active diseases recorded.</span>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Current Medications</h4>
-                      {Array.isArray(medications) && medications.length > 0 ? (
-                        <ul className='history-list'>
-                          {medications.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.name}</strong> {item.dosage && <span> - {item.dosage}</span>}
-                              {item.frequency && <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>Frequency: {item.frequency}</p>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className='info-placeholder'>No current medications recorded.</span>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Past Diseases</h4>
-                      {Array.isArray(pastDiseases) && pastDiseases.length > 0 ? (
-                        <ul className='history-list'>
-                          {pastDiseases.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.name}</strong> {item.date && <span>({item.date})</span>}
-                              {item.status && <span className='pill' style={{ marginLeft: '8px', fontSize: '0.7rem' }}>{item.status}</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className='info-placeholder'>No past diseases recorded.</span>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Surgeries</h4>
-                      {Array.isArray(surgeries) && surgeries.length > 0 ? (
-                        <ul className='history-list'>
-                          {surgeries.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.name}</strong> {item.date && <span>({item.date})</span>}
-                              {item.hospital && <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>{item.hospital}</p>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className='info-placeholder'>No surgeries recorded.</span>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Family History</h4>
-                      {Array.isArray(familyHistory) && familyHistory.length > 0 ? (
-                        <ul className='history-list'>
-                          {familyHistory.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.name}</strong> {item.relationship && <span>({item.relationship})</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className='info-placeholder'>No family history recorded.</span>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#0b5388' }}>Social History</h4>
-                      {Array.isArray(socialHistory) && socialHistory.length > 0 ? (
-                        <ul className='history-list'>
-                          {socialHistory.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.name}</strong> {item.details && <span>: {item.details}</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className='info-placeholder'>No social history recorded.</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
+              {selectedPatientMedicalHistory.length > 0 ? (
+                <ul className='history-list'>
+                  {selectedPatientMedicalHistory.map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              ) : (
+                <span className='info-placeholder'>No history available</span>
+              )}
             </div>
           </div>
 
@@ -1641,6 +1854,42 @@ const SpecialistDashboard = () => {
               {selectedPatient?.triageNotes || 'Vital signs not yet provided.'}
             </div>
           </div>
+
+          <div className='info-card'>
+            <div className='info-card-title'>Vital Signs (From Nurse)</div>
+            <div className='patient-info-grid'>
+              <div className='info-item'>
+                <span className='info-label'>Blood Pressure</span>
+                <span className='info-value'>{selectedPatient?.bloodPressure || 'N/A'}</span>
+              </div>
+              <div className='info-item'>
+                <span className='info-label'>Heart Rate</span>
+                <span className='info-value'>
+                  {selectedPatient?.heartRate ? `${selectedPatient.heartRate} bpm` : 'N/A'}
+                </span>
+              </div>
+              <div className='info-item'>
+                <span className='info-label'>Temperature</span>
+                <span className='info-value'>
+                  {selectedPatient?.temperature ? `${selectedPatient.temperature} C` : 'N/A'}
+                </span>
+              </div>
+              <div className='info-item'>
+                <span className='info-label'>Oxygen Saturation</span>
+                <span className='info-value'>
+                  {selectedPatient?.oxygenSaturation
+                    ? `${selectedPatient.oxygenSaturation}%`
+                    : 'N/A'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <PainMapSection
+            view={painMapView}
+            selectedAreas={painMapAreas}
+            readOnly
+          />
 
           <div className='info-card'>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -1671,19 +1920,39 @@ const SpecialistDashboard = () => {
             {encounter?.medicines && encounter.medicines.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {encounter.medicines.map((med, idx) => (
-                  <div key={idx} style={{
-                    border: '1px solid #e2eaf6',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    backgroundColor: '#fbfdff',
-                    position: 'relative',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                      <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
-                        Medication #{idx + 1}
+                  <div
+                    key={idx}
+                    role='button'
+                    tabIndex={0}
+                    onClick={() => openMedicineDetails(med, idx)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openMedicineDetails(med, idx);
+                      }
+                    }}
+                    style={{
+                      border: '1px solid #e2eaf6',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      backgroundColor: '#fbfdff',
+                      position: 'relative',
+                      cursor: 'pointer',
+                    }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px', gap: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: '#111827', fontWeight: '500', fontSize: '0.92rem', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {med.name || 'N/A'}
+                        </div>
+                        <div style={{ color: '#6b7280', fontSize: '0.78rem', marginTop: '2px' }}>
+                          {med.dosage || 'N/A'}
+                        </div>
                       </div>
                       <button
-                        onClick={() => removeMedicine(idx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeMedicine(idx);
+                        }}
                         style={{
                           background: 'none',
                           border: 'none',
@@ -1695,48 +1964,6 @@ const SpecialistDashboard = () => {
                       >
                         🗑️
                       </button>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                          Medication Name
-                        </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.name || 'N/A'}
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                          Dosage
-                        </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.dosage || 'N/A'}
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                          Frequency
-                        </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.frequency || 'N/A'}
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                          Duration
-                        </label>
-                        <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                          {med.duration || 'N/A'}
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
-                        Special Instructions
-                      </label>
-                      <div style={{ backgroundColor: '#f3f4f6', padding: '8px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#666' }}>
-                        {med.specialInstructions || 'N/A'}
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -1961,32 +2188,53 @@ const SpecialistDashboard = () => {
             {encounter?.labRequests && encounter.labRequests.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {encounter.labRequests.map((lab, idx) => (
-                  <div key={idx} style={{
-                    border: '1px solid #e2eaf6',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    backgroundColor: '#fbfdff',
-                    position: 'relative',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                      <div style={{ color: '#0b5388', fontWeight: '600', fontSize: '0.95rem' }}>
-                        Test #{idx + 1}
+                  <div
+                    key={idx}
+                    role='button'
+                    tabIndex={0}
+                    onClick={() => openLabRequestDetails(lab, idx)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openLabRequestDetails(lab, idx);
+                      }
+                    }}
+                    style={{
+                      border: '1px solid #e2eaf6',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      backgroundColor: '#fbfdff',
+                      position: 'relative',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ color: '#111827', fontWeight: '500', fontSize: '0.92rem', lineHeight: 1.25 }}>
+                          {lab.test === 'Custom Test'
+                            ? lab.customTestName || 'Custom Test'
+                            : lab.test || 'N/A'}
+                        </div>
                       </div>
                       <button
-                        onClick={() => removeLab(idx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeLab(idx);
+                        }}
                         style={{
                           background: 'none',
                           border: 'none',
                           color: '#d32f2f',
                           cursor: 'pointer',
-                          fontSize: '1.2rem',
+                          fontSize: '1rem',
                           padding: '0',
+                          lineHeight: 1,
                         }}
                       >
                         🗑️
                       </button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div style={{ display: 'none' }}>
                       <div>
                         <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
                           Test Name
@@ -2183,32 +2431,60 @@ const SpecialistDashboard = () => {
             )}
           </div>
 
-          <div className='info-card quick-message-card'>
-            <div className='info-card-title'>Quick Message</div>
-            <div className='quick-message-list'>
-              {quickMessages.length === 0 ? (
-                <div className='no-quick-message'>
-                  Type a message below to send a quick note to the patient.
-                </div>
-              ) : (
-                quickMessages.map((msg) => (
-                  <div key={msg.id} className='quick-message-item'>
-                    <span className='quick-message-text'>{msg.text}</span>
-                    <span className='quick-message-time'>{msg.timestamp}</span>
-                  </div>
-                ))
-              )}
+          </div>
+
+          <div className='patient-chat-panel'>
+            <div className='patient-chat-header'>
+              <div className='patient-chat-title-row'>
+                <FaRegComment className='patient-chat-title-icon' />
+                <div className='patient-chat-title'>Patient Communication</div>
+              </div>
             </div>
-            <form className='quick-message-form' onSubmit={handleQuickSend}>
+
+            <div
+              className={`patient-chat-messages ${
+                isStarterThread ? 'patient-chat-messages--centered' : ''
+              }`}
+              ref={patientChatMessagesRef}
+            >
+              {patientChatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`patient-chat-message ${
+                    message.sender === 'system'
+                      ? 'patient-chat-message--system'
+                      : message.sender === 'specialist'
+                      ? 'patient-chat-message--own'
+                      : 'patient-chat-message--patient'
+                  }`}
+                >
+                  <div className='patient-chat-bubble'>
+                    {message.sender === 'system' ? (
+                      <>
+                        <p>{message.text}</p>
+                        <span>{message.subtext || message.timestamp}</span>
+                      </>
+                    ) : (
+                      <>
+                        <p>{message.message}</p>
+                        <span>{message.timestamp}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <form className='patient-chat-form' onSubmit={handlePatientChatSend}>
               <input
                 type='text'
-                value={quickMessage}
-                onChange={(e) => setQuickMessage(e.target.value)}
+                value={patientChatDraft}
+                onChange={(e) => setPatientChatDraft(e.target.value)}
                 placeholder='Type a message...'
-                className='message-input'
+                className='patient-chat-input'
               />
-              <button type='submit' className='send-btn'>
-                Send
+              <button type='submit' className='patient-chat-send-btn' aria-label='Send message'>
+                <FaPaperPlane />
               </button>
             </form>
           </div>
@@ -2222,39 +2498,83 @@ const SpecialistDashboard = () => {
           <div className='soap-card soap-card--subjective'>
             <div className='soap-card-title'>S - Subjective</div>
             <textarea
-              value={encounter.subjective}
-              onChange={(e) => saveEncounter({ subjective: e.target.value })}
+              value={encounter.subjective || ''}
+              readOnly
+              onClick={() => openSoapModal('subjective')}
               placeholder='Patient reports experiencing...'
+              className='soap-card-textarea soap-card-textarea--display'
+              aria-label='Open subjective SOAP editor'
             />
           </div>
           <div className='soap-card soap-card--objective'>
             <div className='soap-card-title'>O - Objective</div>
             <textarea
-              value={encounter.objective}
-              onChange={(e) => saveEncounter({ objective: e.target.value })}
+              value={encounter.objective || ''}
+              readOnly
+              onClick={() => openSoapModal('objective')}
               placeholder='Physical examination reveals...'
+              className='soap-card-textarea soap-card-textarea--display'
+              aria-label='Open objective SOAP editor'
             />
           </div>
           <div className='soap-card soap-card--assessment'>
             <div className='soap-card-title'>A - Assessment</div>
             <textarea
-              value={encounter.assessment}
-              onChange={(e) => saveEncounter({ assessment: e.target.value })}
+              value={encounter.assessment || ''}
+              readOnly
+              onClick={() => openSoapModal('assessment')}
               placeholder='Diagnosis: ...'
+              className='soap-card-textarea soap-card-textarea--display'
+              aria-label='Open assessment SOAP editor'
             />
-            <div className='icd-selector-section'>
-              <ICDCodeSelector
-                value={encounter.icd10}
-                onChange={(newCode) => saveEncounter({ icd10: newCode })}
-              />
+            <div className='soap-card-icd-summary'>
+              {!chapterData ? (
+                <div className='soap-card-icd-summary__empty'>
+                  ICD Codes
+                </div>
+              ) : (
+                <>
+                  <div className='soap-card-icd-summary__field'>
+                    <span>CHAPTER</span>
+                    <div className='soap-card-icd-summary__value'>
+                      {chapterData ? `${chapterData.code} - ${chapterData.label}` : 'Not selected'}
+                    </div>
+                  </div>
+                  <div className='soap-card-icd-summary__field'>
+                    <span>BLOCK</span>
+                    <div className='soap-card-icd-summary__value'>
+                      {blockData ? `${blockData.code} - ${blockData.label}` : 'Not selected'}
+                    </div>
+                  </div>
+                  <div className='soap-card-icd-summary__field'>
+                    <span>CATEGORY</span>
+                    <div className='soap-card-icd-summary__value'>
+                      {categoryData ? `${categoryData.code} - ${categoryData.label}` : 'Not selected'}
+                    </div>
+                  </div>
+                  <div className='soap-card-icd-summary__details'>
+                    <div className='soap-card-icd-summary__details-label'>Selected Code:</div>
+                    <div className='soap-card-icd-summary__details-value'>
+                      {selectedCodeValue || 'Not selected'}
+                    </div>
+                    <div className='soap-card-icd-summary__details-desc'>
+                      <strong>Description:</strong>{' '}
+                      {categoryData?.description || 'Not selected'}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div className='soap-card soap-card--plan'>
             <div className='soap-card-title'>P - Plan</div>
             <textarea
-              value={encounter.plan}
-              onChange={(e) => saveEncounter({ plan: e.target.value })}
+              value={encounter.plan || ''}
+              readOnly
+              onClick={() => openSoapModal('plan')}
               placeholder='Treatment plan includes...'
+              className='soap-card-textarea soap-card-textarea--display'
+              aria-label='Open plan SOAP editor'
             />
           </div>
           <div className='soap-card medical-records-access-card'>
@@ -2849,7 +3169,6 @@ const SpecialistDashboard = () => {
             </button>
           </div>
         </div>
-        
         <div className='dashboard-nav'>
           <button
             className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
@@ -2886,12 +3205,7 @@ const SpecialistDashboard = () => {
 
       <div className='main-content'>
         {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'messages' && (
-          <Messages 
-            currentUser={currentUser} 
-            onNavigateToDashboard={() => setActiveTab('dashboard')} 
-          />
-        )}
+        {activeTab === 'messages' && <Messages currentUser={currentUser} />}
         {activeTab === 'profile' && renderProfile()}
         {activeTab === 'schedule' && renderSchedules()}
         {activeTab === 'services' && renderServices()}
@@ -3429,6 +3743,147 @@ const SpecialistDashboard = () => {
             >
               Okay
             </button>
+          </div>
+        </div>
+      )}
+
+      {selectedMedicalEntry && (
+        <div
+          className='modal'
+          onClick={(e) => e.target.className === 'modal' && closeMedicalEntryDetails()}
+        >
+          <div className='modal-content specialist-entry-modal' onClick={(e) => e.stopPropagation()}>
+            <div className='modal-header'>
+              <h3>{selectedMedicalEntry.title}</h3>
+              <button className='close-modal' onClick={closeMedicalEntryDetails}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className='specialist-entry-modal__body'>
+              {selectedMedicalEntry.type === 'medicine' ? (
+                <div className='specialist-entry-modal__grid'>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Medication Name</span>
+                    <strong>{selectedMedicalEntry.data?.name || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Dosage</span>
+                    <strong>{selectedMedicalEntry.data?.dosage || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Frequency</span>
+                    <strong>{selectedMedicalEntry.data?.frequency || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Duration</span>
+                    <strong>{selectedMedicalEntry.data?.duration || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field specialist-entry-modal__field--full'>
+                    <span>Special Instructions</span>
+                    <strong>{selectedMedicalEntry.data?.specialInstructions || 'N/A'}</strong>
+                  </div>
+                </div>
+              ) : (
+                <div className='specialist-entry-modal__grid'>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Test Name</span>
+                    <strong>
+                      {selectedMedicalEntry.data?.test === 'Custom Test'
+                        ? selectedMedicalEntry.data?.customTestName || 'N/A'
+                        : selectedMedicalEntry.data?.test || 'N/A'}
+                    </strong>
+                  </div>
+                  <div className='specialist-entry-modal__field'>
+                    <span>Test Type</span>
+                    <strong>{selectedMedicalEntry.data?.test || 'N/A'}</strong>
+                  </div>
+                  <div className='specialist-entry-modal__field specialist-entry-modal__field--full'>
+                    <span>Remarks</span>
+                    <strong>{selectedMedicalEntry.data?.remarks || 'N/A'}</strong>
+                  </div>
+                  {selectedMedicalEntry.data?.test === 'Custom Test' && (
+                    <div className='specialist-entry-modal__field specialist-entry-modal__field--full'>
+                      <span>Custom Test Name</span>
+                      <strong>{selectedMedicalEntry.data?.customTestName || 'N/A'}</strong>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {soapModalType && (
+        <div className='modal' onClick={(e) => e.target.className === 'modal' && closeSoapModal()}>
+          <div
+            className='modal-content soap-editor-modal'
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className='modal-header'>
+              <h3>
+                {soapModalType === 'subjective'
+                  ? 'Edit Subjective'
+                  : soapModalType === 'objective'
+                  ? 'Edit Objective'
+                  : soapModalType === 'assessment'
+                  ? 'Edit Assessment'
+                  : 'Edit Plan'}
+              </h3>
+              <button className='close-modal' onClick={closeSoapModal} type='button'>
+                <FaTimes />
+              </button>
+            </div>
+            <div className='soap-editor-modal__body'>
+              <div className='soap-editor-modal__field'>
+                <label>
+                  {soapModalType === 'subjective'
+                    ? 'Subjective'
+                    : soapModalType === 'objective'
+                    ? 'Objective'
+                    : soapModalType === 'assessment'
+                    ? 'Assessment'
+                    : 'Plan'}
+                </label>
+                <textarea
+                  value={soapModalValue}
+                  onChange={(e) => setSoapModalValue(e.target.value)}
+                  placeholder={
+                    soapModalType === 'subjective'
+                      ? 'Patient reports experiencing...'
+                      : soapModalType === 'objective'
+                      ? 'Physical examination reveals...'
+                      : soapModalType === 'assessment'
+                      ? 'Diagnosis: ...'
+                      : 'Treatment plan includes...'
+                  }
+                />
+              </div>
+
+              {soapModalType === 'assessment' && (
+                <div className='icd-selector-section'>
+                  <ICDCodeSelector
+                    value={soapModalIcdCode}
+                    onChange={setSoapModalIcdCode}
+                  />
+                </div>
+              )}
+            </div>
+            <div className='soap-editor-modal__actions'>
+              <button
+                type='button'
+                className='btn-primary soap-editor-modal__save-btn'
+                onClick={saveSoapModal}
+              >
+                Save {soapModalType === 'subjective'
+                  ? 'Subjective'
+                  : soapModalType === 'objective'
+                  ? 'Objective'
+                  : soapModalType === 'assessment'
+                  ? 'Assessment'
+                  : 'Plan'}
+              </button>
+            </div>
           </div>
         </div>
       )}

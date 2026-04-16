@@ -1,0 +1,451 @@
+/* Container & Headers */
+.rx-page-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  color: #343a40;
+  padding-bottom: 40px;
+}
+
+.rx-page-header {
+  margin-bottom: 24px;
+}
+
+.rx-page-title {
+  color: #4aa7ed;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.rx-page-subtitle {
+  color: #868e96;
+  font-size: 14px;
+}
+
+/* Utilities */
+.text-orange {
+  color: #f59f00;
+}
+.font-medium {
+  font-weight: 500;
+}
+.flex-1 {
+  flex: 1;
+}
+.mt-32 {
+  margin-top: 32px;
+}
+.mb-0 {
+  margin-bottom: 0 !important;
+}
+.full-width {
+  width: 100%;
+}
+.justify-center {
+  justify-content: center;
+}
+
+/* Banners & Reminder Box */
+.rx-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.rx-banner-yellow {
+  background-color: #fff9db;
+  border: 1px solid #ffe066;
+}
+
+.rx-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rx-banner-content h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: #343a40;
+}
+
+.rx-banner-content p {
+  font-size: 12px;
+  color: #868e96;
+}
+
+.rx-reminder-box {
+  background-color: rgba(74, 167, 237, 0.05);
+  border: 1px solid #4aa7ed;
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+}
+
+.rx-reminder-box h5 {
+  font-size: 16px;
+  color: #343a40;
+  margin-bottom: 8px;
+}
+
+.rx-reminder-box p {
+  font-size: 14px;
+  color: #868e96;
+  margin-bottom: 24px;
+}
+
+/* Controls (Search & Filter) */
+.rx-controls-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.rx-search-wrapper {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.rx-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #adb5bd;
+}
+
+.rx-search-input {
+  width: 100%;
+  padding: 10px 12px 10px 36px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.rx-search-input:focus {
+  border-color: #4aa7ed;
+}
+
+/* Filter Popover */
+.rx-popover-container {
+  position: relative;
+}
+
+.rx-popover-menu {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  width: 200px;
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  z-index: 100;
+}
+
+.rx-popover-title {
+  color: #4aa7ed;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.rx-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rx-checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #495057;
+  cursor: pointer;
+}
+
+input[type="checkbox"] {
+  accent-color: #4aa7ed;
+  cursor: pointer;
+}
+
+/* Buttons */
+.rx-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.rx-btn.icon-only {
+  padding: 10px;
+}
+
+.rx-btn-primary {
+  background-color: #4aa7ed;
+  color: white;
+}
+.rx-btn-primary:hover {
+  background-color: #3b8bc6;
+}
+
+.rx-btn-outline {
+  background-color: white;
+  border: 1px solid #dee2e6;
+  color: #495057;
+}
+.rx-btn-outline:hover {
+  background-color: #f8f9fa;
+}
+
+.rx-btn-yellow-outline {
+  background-color: transparent;
+  border: 1px solid #f59f00;
+  color: #f59f00;
+  border-radius: 20px;
+}
+.rx-btn-yellow-outline:hover {
+  background-color: rgba(245, 159, 0, 0.1);
+}
+
+/* Empty State */
+.rx-empty-state {
+  text-align: center;
+  padding: 48px;
+  background-color: white;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+}
+
+.rx-empty-state .empty-icon {
+  color: #dee2e6;
+  margin-bottom: 16px;
+}
+.rx-empty-state h3 {
+  color: #343a40;
+  margin-bottom: 8px;
+}
+.rx-empty-state p {
+  color: #868e96;
+  font-size: 14px;
+}
+
+/* Cards & Sections */
+.rx-section-title {
+  font-size: 16px;
+  color: #343a40;
+  margin-bottom: 16px;
+}
+
+.rx-cards-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rx-card {
+  background-color: white;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.rx-card.flex-row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+}
+
+.rx-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.rx-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rx-card-title-group h4 {
+  font-size: 16px;
+  color: #343a40;
+}
+
+.rx-card-dose {
+  font-size: 14px;
+  color: #868e96;
+  margin-bottom: 24px;
+}
+
+.rx-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.rx-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #868e96;
+}
+
+/* Custom Progress Bar */
+.rx-progress-container {
+  margin-bottom: 24px;
+}
+
+.rx-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #868e96;
+  margin-bottom: 8px;
+}
+
+.rx-progress-track {
+  width: 100%;
+  height: 8px;
+  background-color: #f1f3f5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rx-progress-fill {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.4s ease;
+}
+
+.fill-blue {
+  background-color: #4aa7ed;
+}
+.fill-orange {
+  background-color: #f59f00;
+}
+
+/* Next Refill Box */
+.rx-next-refill-box {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.rx-next-refill-box span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #868e96;
+}
+
+.rx-next-refill-box strong {
+  font-size: 14px;
+  color: #343a40;
+}
+
+/* Actions */
+.rx-card-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Past Medications Elements */
+.rx-past-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rx-icon-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #868e96;
+  flex-shrink: 0;
+}
+.bg-gray {
+  background-color: #f1f3f5;
+}
+
+.rx-past-info h5 {
+  font-size: 16px;
+  color: #343a40;
+  margin-bottom: 4px;
+}
+
+.rx-card-date {
+  font-size: 12px;
+  color: #adb5bd;
+  margin-top: 4px;
+}
+
+/* Badges */
+.rx-badge {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-active {
+  background-color: #ebfbee;
+  color: #2b8a3e;
+}
+.badge-completed {
+  background-color: #e7f5ff;
+  color: #1c7ed6;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 600px) {
+  .rx-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .rx-controls-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rx-search-wrapper {
+    max-width: 100%;
+  }
+  .rx-card-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

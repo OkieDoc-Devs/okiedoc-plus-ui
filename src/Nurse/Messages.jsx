@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   FaComments,
   FaTimes,
+  FaUser,
   FaFileAlt,
   FaPaperclip,
   FaPhone,
@@ -11,12 +12,12 @@ import {
   FaSpinner,
 } from 'react-icons/fa';
 import Avatar from '../components/Avatar';
+import NotificationBell from '../components/Notifications/NotificationBell';
 import { useNavigate } from 'react-router';
 import {
   getNurseFirstName,
   getNurseProfileImage,
 } from './services/storageService.js';
-import { useNotification } from '../contexts/NotificationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useChat } from './services/useChat.js';
 import {
@@ -30,8 +31,9 @@ import './NurseStyles.css';
 
 const Messages = () => {
   const navigate = useNavigate();
-  const { unreadCount } = useNotification();
   const { user, logout } = useAuth();
+  const nurseName = getNurseFirstName();
+  const nurseProfileImage = getNurseProfileImage();
   const [newMessage, setNewMessage] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -296,7 +298,7 @@ const Messages = () => {
   const remainingChars = CHARACTER_LIMIT - newMessage.length;
 
   return (
-    <div className='dashboard'>
+    <div className='dashboard nurse-messages-dashboard'>
       <div className='dashboard-header'>
         <div className='header-center'>
           <img
@@ -305,27 +307,34 @@ const Messages = () => {
             className='logo-image'
           />
         </div>
-        <h3 className='dashboard-title'>Nurse Dashboard</h3>
-        <div className='user-account'>
-          <img
-            src={getNurseProfileImage()}
-            alt='Account'
-            className='account-icon'
-          />
-          <span className='account-name'>{getNurseFirstName()}</span>
-          <div className='account-dropdown'>
-            <button
-              className='dropdown-item'
-              onClick={() => navigate('/nurse-myaccount')}
-            >
-              My Account
-            </button>
-            <button
-              className='dropdown-item logout-item'
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
+        <h3 className='dashboard-title'>Messages</h3>
+        <div className='nurse-header-actions'>
+          <NotificationBell />
+          <div className='user-account'>
+            <Avatar
+              profileImageUrl={nurseProfileImage !== '/account.svg' ? nurseProfileImage : null}
+              firstName={nurseName}
+              lastName={localStorage.getItem('nurse.lastName') || ''}
+              userType='nurse'
+              size={40}
+              alt='Account'
+              className='account-icon'
+            />
+            <span className='account-name'>{nurseName}</span>
+            <div className='account-dropdown'>
+              <button
+                className='dropdown-item'
+                onClick={() => navigate('/nurse-myaccount')}
+              >
+                My Account
+              </button>
+              <button
+                className='dropdown-item logout-item'
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
         <div className='dashboard-nav'>
@@ -342,12 +351,6 @@ const Messages = () => {
             Manage Appointments
           </button>
           <button className='nav-tab active'>Messages</button>
-          <button
-            className='nav-tab'
-            onClick={() => navigate('/nurse-notifications')}
-          >
-            Notifications ({unreadCount})
-          </button>
         </div>
       </div>
       <div className='nurse-page-content'>

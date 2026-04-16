@@ -135,33 +135,36 @@ export function createInitialTickets() {
  * @returns {Array} Filtered tickets
  */
 export function filterTicketsByStatus(tickets, status, nurseId = null) {
+  const normalizeStatus = (value) => String(value || "").trim().toLowerCase();
+  const isUnclaimed = (value) => value === null || value === undefined || value === "";
+
   if (status === "Pending") {
-    // Show tickets that are Pending and not claimed by anyone (nurse or specialist)
-    return tickets.filter((t) => t.status === "Pending" && !t.claimedBy);
+    // Do not surface waiting/pending tickets in Manage Appointments.
+    return [];
   }
   if (status === "Processing") {
     if (nurseId) {
       // Show tickets that are Processing and:
       // - Claimed by this nurse, OR
       // - Passed back to nurse (passedBackToNurse = true), OR
-      // - Pending but claimed by this nurse
+      // - Not claimed yet (for triage pickup)
       return tickets.filter(
         (t) =>
-          (t.status === "Processing" && t.claimedBy === nurseId) ||
-          (t.status === "Processing" && t.passedBackToNurse === true) ||
-          (t.claimedBy === nurseId && t.status === "Pending")
+          (normalizeStatus(t.status) === "processing" && t.claimedBy === nurseId) ||
+          (normalizeStatus(t.status) === "processing" && t.passedBackToNurse === true) ||
+          (normalizeStatus(t.status) === "processing" && isUnclaimed(t.claimedBy))
       );
     } else {
       // If no nurseId, show all Processing tickets (including those assigned to specialists)
-      return tickets.filter((t) => t.status === "Processing");
+      return tickets.filter((t) => normalizeStatus(t.status) === "processing");
     }
   }
   if (status === "Confirmed" && nurseId) {
     return tickets.filter(
-      (t) => t.status === "Confirmed" && t.claimedBy === nurseId
+      (t) => normalizeStatus(t.status) === "confirmed" && t.claimedBy === nurseId
     );
   }
-  return tickets.filter((t) => t.status === status);
+  return tickets.filter((t) => normalizeStatus(t.status) === normalizeStatus(status));
 }
 
 /**

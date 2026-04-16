@@ -14,6 +14,7 @@ const DEFAULT_REDIRECTS = {
   specialist: '/specialist-dashboard',
   patient: '/patient-dashboard',
   nurse: '/nurse-dashboard',
+  nurse_admin: '/nurse-dashboard',
   admin: '/admin/specialist-dashboard',
 };
 

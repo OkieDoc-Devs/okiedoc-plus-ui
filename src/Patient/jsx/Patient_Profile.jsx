@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   IconSettings,
   IconMail,
@@ -19,6 +19,10 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import "../css/Patient_Profile.css";
+import {
+  fetchPatientProfile,
+  updatePatientProfile,
+} from "../services/apiService";
 
 const settingsLinks = [
   { label: "Medical History", icon: IconHistory },
@@ -29,25 +33,95 @@ const settingsLinks = [
   { label: "Language & Region", icon: IconWorld },
 ];
 
+const BLOOD_TYPE_OPTIONS = [
+  "A+",
+  "A-",
+  "B+",
+  "B-",
+  "AB+",
+  "AB-",
+  "O+",
+  "O-",
+  "Unknown",
+];
+
+const DEFAULT_PROFILE_DATA = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  address: "",
+  dob: "",
+  bloodType: "Unknown",
+  allergies: [],
+  emergencyContactName: "",
+  emergencyContactPhone: "",
+  emergencyContactAddress: "",
+};
+
+const normalizeAllergies = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const buildAddress = (profile) => {
+  const parts = [
+    profile.addressLine1,
+    profile.addressLine2,
+    profile.barangay,
+    profile.city,
+    profile.province,
+    profile.region,
+    profile.zipCode,
+  ];
+
+  return parts.filter(Boolean).join(", ");
+};
+
+const mapApiProfileToState = (profile = {}) => ({
+  ...DEFAULT_PROFILE_DATA,
+  firstName: profile.firstName || "",
+  lastName: profile.lastName || "",
+  email: profile.email || "",
+  phone: profile.mobileNumber || profile.phone || "",
+  address: buildAddress(profile),
+  dob: profile.dateOfBirth || "",
+  bloodType: profile.bloodType || "Unknown",
+  allergies: normalizeAllergies(profile.allergies),
+});
+
 export default function Patient_Profile() {
-  // 1. Core State with updated array for allergies and expanded emergency contact
-  const [profileData, setProfileData] = useState({
-    firstName: "Allen",
-    lastName: "Valentin",
-    email: "valentin@gmail.com",
-    phone: "0912-345-6789",
-    address: "Philippines",
-    dob: "2000-01-15",
-    bloodType: "B",
-    allergies: ["Asthma", "Seafood"],
-    emergencyContactName: "Ro Valentin",
-    emergencyContactPhone: "+63 917 123 4567",
-    emergencyContactAddress: "123 Ayala Avenue, Makati City",
-  });
+  const [profileData, setProfileData] = useState(DEFAULT_PROFILE_DATA);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({ ...profileData });
-  const [allergyInput, setAllergyInput] = useState(""); // Temporary state for typing tags
+  const [editData, setEditData] = useState(DEFAULT_PROFILE_DATA);
+  const [allergyInput, setAllergyInput] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const profile = await fetchPatientProfile();
+        const mappedProfile = mapApiProfileToState(profile);
+        setProfileData(mappedProfile);
+        setEditData(mappedProfile);
+      } catch (error) {
+        console.error("Failed to load patient profile:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, []);
 
   const handleBackendAction = (action) => {
     alert(`Backend Hook: Trigger ${action}`);
@@ -61,14 +135,33 @@ export default function Patient_Profile() {
 
   const handleCancelEdit = () => setIsEditing(false);
 
-  const handleSaveChanges = () => {
-    // If they typed an allergy but forgot to press Enter, add it automatically
+  const handleSaveChanges = async () => {
     let finalData = { ...editData };
     if (allergyInput.trim() !== "") {
-      finalData.allergies = [...finalData.allergies, allergyInput.trim()];
+      finalData.allergies = [...finalData.allergies, allergyInput.trim()].filter(
+        Boolean,
+      );
     }
-    setProfileData(finalData);
-    setIsEditing(false);
+
+    const payload = {
+      birthday: finalData.dob || null,
+      bloodType: finalData.bloodType || "Unknown",
+      allergies: finalData.allergies,
+    };
+
+    try {
+      setIsSaving(true);
+      await updatePatientProfile(payload);
+      setProfileData(finalData);
+      setEditData(finalData);
+      setAllergyInput("");
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to save patient profile:", error);
+      alert("Failed to save patient profile. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleChange = (field, value) => {
@@ -113,6 +206,17 @@ export default function Patient_Profile() {
     const options = { year: "numeric", month: "long", day: "numeric" };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
+
+  if (isLoading) {
+    return (
+      <div className="profile-container">
+        <header className="profile-header-wrapper">
+          <h2 className="profile-page-title">Profile</h2>
+          <p className="profile-page-subtitle">Loading your profile...</p>
+        </header>
+      </div>
+    );
+  }
 
   return (
     <div className="profile-container">
@@ -200,11 +304,11 @@ export default function Patient_Profile() {
                 value={editData.bloodType}
                 onChange={(e) => handleChange("bloodType", e.target.value)}
               >
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="AB">AB</option>
-                <option value="O">O</option>
-                <option value="Unknown">Unknown</option>
+                {BLOOD_TYPE_OPTIONS.map((bloodType) => (
+                  <option key={bloodType} value={bloodType}>
+                    {bloodType}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -288,7 +392,7 @@ export default function Patient_Profile() {
               <IconX size={18} /> Cancel
             </button>
             <button className="profile-btn-save" onClick={handleSaveChanges}>
-              <IconCheck size={18} /> Save Changes
+              <IconCheck size={18} /> {isSaving ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>

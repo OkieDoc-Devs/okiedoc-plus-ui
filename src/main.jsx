@@ -137,8 +137,8 @@ createRoot(document.getElementById("root")).render(
             <Route
               path="/admin/specialist-dashboard"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <SpecialistDashboard />
+                <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                  <SuperAdminDashboard />
                 </ProtectedRoute>
               }
             />

@@ -7,6 +7,7 @@ import {
   IconUser,
   IconBell,
   IconMenu2,
+  IconPill,
 } from "@tabler/icons-react";
 import "../css/Patient_App.css";
 
@@ -14,11 +15,6 @@ import "../css/Patient_App.css";
 import Dashboard_Patient from "./Patient_Dashboard";
 import Services_Patient from "./Patient_Services";
 import Appointments_Patient from "./Patient_Appointments";
-import ConsultationIntakeForm from "./ConsultationIntakeForm";
-// import { MedicalRecords } from "./MedicalRecords";
-// import { Profile } from "./Profile";
-// import { BookSpecialist } from "./sub-page/BookSpecialist";
-// import { BookPhysical } from "./sub-page/BookPhysical";
 import MedicalRecords_Patient from "./Patient_MedicalRecords";
 import Prescriptions_Patient from "./Patient_Prescriptions";
 import Profile_Patient from "./Patient_Profile";
@@ -26,6 +22,7 @@ import Profile_Patient from "./Patient_Profile";
 // Sub-Pages for Patient
 import { BookSpecialist } from "../sub-pages/BookSpecialist";
 import { BookPhysical } from "../sub-pages/BookPhysical";
+import ConsultationIntakeForm from "../sub-pages/ConsultationIntakeForm";
 
 const navLinks = [
   { label: "Dashboard", route: "Dashboard", icon: IconLayoutDashboard },
@@ -36,6 +33,7 @@ const navLinks = [
     route: "MedicalRecords",
     icon: IconFileDescription,
   },
+  { label: "Prescriptions", route: "Prescriptions", icon: IconPill },
   { label: "Profile", route: "Profile", icon: IconUser },
 ];
 
@@ -158,6 +156,13 @@ function Patient_App() {
             )}
 
             {/* Your Sub-Pages */}
+            {mainRoute === "IntakeForm" && (
+              <ConsultationIntakeForm
+                setActive={navigate}
+                type={decodeURIComponent(typeParam || "Consultation")}
+              />
+            )}
+
             {mainRoute === "BookSpecialist" && (
               <BookSpecialist
                 onGoBack={() => navigate("Services")}
@@ -171,25 +176,19 @@ function Patient_App() {
                 onGoBack={() => navigate("Services")}
                 onGoToAppointments={() => navigate("Appointments")}
                 onGoToDashboard={() => navigate("Dashboard")}
-                  />
-            )}
-            {mainRoute === "IntakeForm" && (
-              <ConsultationIntakeForm
-                setActive={navigate}
-                type={decodeURIComponent(typeParam || "Consultation")}
               />
             )}
 
             {/* Custom 404 / Work In Progress State */}
             {mainRoute !== "Dashboard" &&
               mainRoute !== "Services" &&
-              mainRoute !== "Appointments" &&
+              mainRoute !== "IntakeForm" &&
               mainRoute !== "BookPhysical" &&
               mainRoute !== "BookSpecialist" &&
+              mainRoute !== "Appointments" &&
               mainRoute !== "MedicalRecords" &&
               mainRoute !== "Prescriptions" &&
-              mainRoute !== "Profile" &&
-              mainRoute !== "IntakeForm" && (
+              mainRoute !== "Profile" && (
                 <div className="not-found-container">
                   {ActiveIcon && (
                     <ActiveIcon size={64} className="not-found-icon" />

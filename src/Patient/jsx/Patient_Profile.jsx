@@ -23,6 +23,7 @@ import {
   fetchPatientProfile,
   updatePatientProfile,
 } from "../services/apiService";
+import { useModal } from "../contexts/Modals";
 
 const settingsLinks = [
   { label: "Medical History", icon: IconHistory },
@@ -47,6 +48,7 @@ const BLOOD_TYPE_OPTIONS = [
 
 const DEFAULT_PROFILE_DATA = {
   firstName: "",
+  middleName: "",
   lastName: "",
   email: "",
   phone: "",
@@ -59,12 +61,13 @@ const DEFAULT_PROFILE_DATA = {
   emergencyContactAddress: "",
 };
 
+const MAX_ALLERGIES = 20;
+
 const normalizeAllergies = (value) => {
   if (!value) return [];
   if (Array.isArray(value)) {
     return value.map((item) => String(item).trim()).filter(Boolean);
   }
-
   return String(value)
     .split(",")
     .map((item) => item.trim())
@@ -81,13 +84,13 @@ const buildAddress = (profile) => {
     profile.region,
     profile.zipCode,
   ];
-
   return parts.filter(Boolean).join(", ");
 };
 
 const mapApiProfileToState = (profile = {}) => ({
   ...DEFAULT_PROFILE_DATA,
   firstName: profile.firstName || "",
+  middleName: profile.middleName || "",
   lastName: profile.lastName || "",
   email: profile.email || "",
   phone: profile.mobileNumber || profile.phone || "",
@@ -95,17 +98,21 @@ const mapApiProfileToState = (profile = {}) => ({
   dob: profile.dateOfBirth || "",
   bloodType: profile.bloodType || "Unknown",
   allergies: normalizeAllergies(profile.allergies),
+  emergencyContactName: profile.emergencyContactName || "",
+  emergencyContactPhone: profile.emergencyContactPhone || "",
+  emergencyContactAddress: profile.emergencyContactAddress || "",
 });
 
 export default function Patient_Profile() {
+  const { openDiyModal } = useModal();
   const [profileData, setProfileData] = useState(DEFAULT_PROFILE_DATA);
-
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(DEFAULT_PROFILE_DATA);
   const [allergyInput, setAllergyInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // --- BACKEND LOAD HOOK ---
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -119,13 +126,8 @@ export default function Patient_Profile() {
         setIsLoading(false);
       }
     };
-
     loadProfile();
   }, []);
-
-  const handleBackendAction = (action) => {
-    alert(`Backend Hook: Trigger ${action}`);
-  };
 
   const handleEditClick = () => {
     setEditData({ ...profileData });
@@ -135,18 +137,35 @@ export default function Patient_Profile() {
 
   const handleCancelEdit = () => setIsEditing(false);
 
+  // --- BACKEND SAVE HOOK ---
   const handleSaveChanges = async () => {
     let finalData = { ...editData };
-    if (allergyInput.trim() !== "") {
-      finalData.allergies = [...finalData.allergies, allergyInput.trim()].filter(
-        Boolean,
-      );
+
+    // Add pending allergy input if valid and within limit
+    if (
+      allergyInput.trim() !== "" &&
+      finalData.allergies.length < MAX_ALLERGIES
+    ) {
+      finalData.allergies = [
+        ...finalData.allergies,
+        allergyInput.trim(),
+      ].filter(Boolean);
     }
 
+    // Payload structure
     const payload = {
+      firstName: finalData.firstName,
+      middleName: finalData.middleName,
+      lastName: finalData.lastName,
+      email: finalData.email,
+      mobileNumber: finalData.phone,
+      address: finalData.address,
       birthday: finalData.dob || null,
       bloodType: finalData.bloodType || "Unknown",
       allergies: finalData.allergies,
+      emergencyContactName: finalData.emergencyContactName,
+      emergencyContactPhone: finalData.emergencyContactPhone,
+      emergencyContactAddress: finalData.emergencyContactAddress,
     };
 
     try {
@@ -164,14 +183,74 @@ export default function Patient_Profile() {
     }
   };
 
-  const handleChange = (field, value) => {
-    setEditData((prev) => ({ ...prev, [field]: value }));
+  // --- CUSTOM UX: CHARACTER LIMIT HANDLER ---
+  const handleChangeWithLimit = (field, value, limit, ignoreSpaces = false) => {
+    if (ignoreSpaces) {
+      const nonSpaceCount = value.replace(/\s/g, "").length;
+      if (nonSpaceCount <= limit) {
+        setEditData((prev) => ({ ...prev, [field]: value }));
+      }
+    } else {
+      if (value.length <= limit) {
+        setEditData((prev) => ({ ...prev, [field]: value }));
+      }
+    }
   };
 
-  // --- ALLERGY TAG LOGIC ---
+  // --- CUSTOM UX: STRICT PHONE NUMBER FORMATTER ---
+  const handlePhoneChange = (field, value) => {
+    let digits = value.replace(/\D/g, "");
+
+    if (digits.length === 0) {
+      setEditData((prev) => ({ ...prev, [field]: "" }));
+      return;
+    }
+
+    if (digits.startsWith("0")) {
+      digits = "63" + digits.substring(1);
+    } else if (!digits.startsWith("63")) {
+      if (digits === "6") {
+        digits = "6";
+      } else {
+        digits = "63" + digits;
+      }
+    }
+
+    digits = digits.substring(0, 12);
+
+    let formatted = "+";
+    if (digits.length <= 2) {
+      formatted += digits;
+    } else if (digits.length <= 5) {
+      formatted += digits.substring(0, 2) + " " + digits.substring(2);
+    } else if (digits.length <= 8) {
+      formatted +=
+        digits.substring(0, 2) +
+        " " +
+        digits.substring(2, 5) +
+        " " +
+        digits.substring(5);
+    } else {
+      formatted +=
+        digits.substring(0, 2) +
+        " " +
+        digits.substring(2, 5) +
+        " " +
+        digits.substring(5, 8) +
+        " " +
+        digits.substring(8);
+    }
+
+    setEditData((prev) => ({ ...prev, [field]: formatted }));
+  };
+
+  // --- CUSTOM UX: ALLERGY TAG LOGIC ---
   const handleAllergyKeyDown = (e) => {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
+
+      if (editData.allergies.length >= MAX_ALLERGIES) return;
+
       const newAllergy = allergyInput.trim();
       if (newAllergy && !editData.allergies.includes(newAllergy)) {
         setEditData((prev) => ({
@@ -185,7 +264,6 @@ export default function Patient_Profile() {
       allergyInput === "" &&
       editData.allergies.length > 0
     ) {
-      // Remove last tag if backspacing on an empty input
       setEditData((prev) => {
         const newAllergies = [...prev.allergies];
         newAllergies.pop();
@@ -205,6 +283,12 @@ export default function Patient_Profile() {
     if (!dateString) return "";
     const options = { year: "numeric", month: "long", day: "numeric" };
     return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  const getInitials = () => {
+    const f = profileData.firstName?.[0] || "";
+    const l = profileData.lastName?.[0] || "";
+    return (f + l).toUpperCase();
   };
 
   if (isLoading) {
@@ -249,7 +333,22 @@ export default function Patient_Profile() {
                 type="text"
                 className="profile-form-input"
                 value={editData.firstName}
-                onChange={(e) => handleChange("firstName", e.target.value)}
+                onChange={(e) =>
+                  handleChangeWithLimit("firstName", e.target.value, 20, true)
+                }
+                placeholder="Max 20 chars"
+              />
+            </div>
+            <div className="profile-form-group">
+              <label className="profile-form-label">Middle Name</label>
+              <input
+                type="text"
+                className="profile-form-input"
+                value={editData.middleName}
+                onChange={(e) =>
+                  handleChangeWithLimit("middleName", e.target.value, 20, true)
+                }
+                placeholder="Max 20 chars"
               />
             </div>
             <div className="profile-form-group">
@@ -258,7 +357,22 @@ export default function Patient_Profile() {
                 type="text"
                 className="profile-form-input"
                 value={editData.lastName}
-                onChange={(e) => handleChange("lastName", e.target.value)}
+                onChange={(e) =>
+                  handleChangeWithLimit("lastName", e.target.value, 20, true)
+                }
+                placeholder="Max 20 chars"
+              />
+            </div>
+            <div className="profile-form-group">
+              <label className="profile-form-label">Date of Birth</label>
+              <input
+                type="date"
+                max="9999-12-31"
+                className="profile-form-input"
+                value={editData.dob}
+                onChange={(e) =>
+                  handleChangeWithLimit("dob", e.target.value, 10, false)
+                }
               />
             </div>
             <div className="profile-form-group">
@@ -267,7 +381,10 @@ export default function Patient_Profile() {
                 type="email"
                 className="profile-form-input"
                 value={editData.email}
-                onChange={(e) => handleChange("email", e.target.value)}
+                onChange={(e) =>
+                  handleChangeWithLimit("email", e.target.value, 254, false)
+                }
+                maxLength={254}
               />
             </div>
             <div className="profile-form-group">
@@ -276,7 +393,8 @@ export default function Patient_Profile() {
                 type="text"
                 className="profile-form-input"
                 value={editData.phone}
-                onChange={(e) => handleChange("phone", e.target.value)}
+                onChange={(e) => handlePhoneChange("phone", e.target.value)}
+                placeholder="+63 XXX XXX XXXX"
               />
             </div>
             <div className="profile-form-group profile-form-full-width">
@@ -285,24 +403,20 @@ export default function Patient_Profile() {
                 type="text"
                 className="profile-form-input"
                 value={editData.address}
-                onChange={(e) => handleChange("address", e.target.value)}
+                onChange={(e) =>
+                  handleChangeWithLimit("address", e.target.value, 254, true)
+                }
               />
             </div>
-            <div className="profile-form-group">
-              <label className="profile-form-label">Date of Birth</label>
-              <input
-                type="date"
-                className="profile-form-input"
-                value={editData.dob}
-                onChange={(e) => handleChange("dob", e.target.value)}
-              />
-            </div>
+
             <div className="profile-form-group">
               <label className="profile-form-label">Blood Type</label>
               <select
                 className="profile-form-input"
                 value={editData.bloodType}
-                onChange={(e) => handleChange("bloodType", e.target.value)}
+                onChange={(e) =>
+                  handleChangeWithLimit("bloodType", e.target.value, 10, false)
+                }
               >
                 {BLOOD_TYPE_OPTIONS.map((bloodType) => (
                   <option key={bloodType} value={bloodType}>
@@ -314,10 +428,35 @@ export default function Patient_Profile() {
 
             {/* CUSTOM ALLERGY TAG INPUT */}
             <div className="profile-form-group profile-form-full-width">
-              <label className="profile-form-label">
-                Known Allergies (Press Enter to add)
-              </label>
-              <div className="profile-tag-input-wrapper">
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: "8px",
+                }}
+              >
+                <label
+                  className="profile-form-label"
+                  style={{ marginBottom: 0 }}
+                >
+                  Known Allergies (Press Enter to add, max 30 chars per tag)
+                </label>
+                <span
+                  className="profile-form-label"
+                  style={{
+                    marginBottom: 0,
+                    color:
+                      editData.allergies.length >= MAX_ALLERGIES
+                        ? "#fa5252"
+                        : "#868e96",
+                  }}
+                >
+                  {editData.allergies.length} / {MAX_ALLERGIES} tags
+                </span>
+              </div>
+              <div
+                className={`profile-tag-input-wrapper ${editData.allergies.length >= MAX_ALLERGIES ? "disabled" : ""}`}
+              >
                 {editData.allergies.map((allergy) => (
                   <span key={allergy} className="profile-tag">
                     {allergy}
@@ -332,12 +471,16 @@ export default function Patient_Profile() {
                   type="text"
                   className="profile-tag-input-field"
                   value={allergyInput}
+                  maxLength={30}
+                  disabled={editData.allergies.length >= MAX_ALLERGIES}
                   onChange={(e) => setAllergyInput(e.target.value)}
                   onKeyDown={handleAllergyKeyDown}
                   placeholder={
-                    editData.allergies.length === 0
-                      ? "Type an allergy and press Enter..."
-                      : ""
+                    editData.allergies.length >= MAX_ALLERGIES
+                      ? "Maximum of 20 allergies reached"
+                      : editData.allergies.length === 0
+                        ? "Type an allergy and press Enter..."
+                        : ""
                   }
                 />
               </div>
@@ -359,8 +502,14 @@ export default function Patient_Profile() {
                 className="profile-form-input"
                 value={editData.emergencyContactName}
                 onChange={(e) =>
-                  handleChange("emergencyContactName", e.target.value)
+                  handleChangeWithLimit(
+                    "emergencyContactName",
+                    e.target.value,
+                    50,
+                    true,
+                  )
                 }
+                placeholder="Max 50 chars"
               />
             </div>
             <div className="profile-form-group">
@@ -370,8 +519,9 @@ export default function Patient_Profile() {
                 className="profile-form-input"
                 value={editData.emergencyContactPhone}
                 onChange={(e) =>
-                  handleChange("emergencyContactPhone", e.target.value)
+                  handlePhoneChange("emergencyContactPhone", e.target.value)
                 }
+                placeholder="+63 XXX XXX XXXX"
               />
             </div>
             <div className="profile-form-group profile-form-full-width">
@@ -381,17 +531,30 @@ export default function Patient_Profile() {
                 className="profile-form-input"
                 value={editData.emergencyContactAddress}
                 onChange={(e) =>
-                  handleChange("emergencyContactAddress", e.target.value)
+                  handleChangeWithLimit(
+                    "emergencyContactAddress",
+                    e.target.value,
+                    254,
+                    true,
+                  )
                 }
               />
             </div>
           </div>
 
           <div className="profile-form-actions">
-            <button className="profile-btn-cancel" onClick={handleCancelEdit}>
+            <button
+              className="profile-btn-cancel"
+              onClick={handleCancelEdit}
+              disabled={isSaving}
+            >
               <IconX size={18} /> Cancel
             </button>
-            <button className="profile-btn-save" onClick={handleSaveChanges}>
+            <button
+              className="profile-btn-save"
+              onClick={handleSaveChanges}
+              disabled={isSaving}
+            >
               <IconCheck size={18} /> {isSaving ? "Saving..." : "Save Changes"}
             </button>
           </div>
@@ -401,13 +564,12 @@ export default function Patient_Profile() {
         <>
           <div className="profile-card profile-hero-card">
             <div className="profile-hero-content">
-              <div className="profile-avatar">
-                {profileData.firstName[0]}
-                {profileData.lastName[0]}
-              </div>
+              <div className="profile-avatar">{getInitials()}</div>
               <div className="profile-hero-text">
                 <h3 className="profile-hero-name">
-                  {profileData.firstName} {profileData.lastName}
+                  {profileData.firstName}{" "}
+                  {profileData.middleName && `${profileData.middleName} `}
+                  {profileData.lastName}
                 </h3>
                 <p className="profile-hero-since">Member since January 2024</p>
                 <span className="profile-hero-badge">Premium Plus</span>
@@ -541,7 +703,7 @@ export default function Patient_Profile() {
               <button
                 key={link.label}
                 className="profile-settings-item"
-                onClick={() => handleBackendAction(`Maps to ${link.label}`)}
+                onClick={() => openDiyModal(`Maps to ${link.label}`)}
               >
                 <div className="profile-settings-item-left">
                   <link.icon size={20} className="profile-icon-muted" />
@@ -556,7 +718,7 @@ export default function Patient_Profile() {
 
           <button
             className="profile-btn-logout"
-            onClick={() => handleBackendAction("Auth SignOut & Clear Cookies")}
+            onClick={() => openDiyModal("Auth SignOut & Clear Cookies")}
           >
             <IconLogout size={18} /> Log Out
           </button>
@@ -564,21 +726,21 @@ export default function Patient_Profile() {
           <div className="profile-footer-links">
             <button
               className="profile-footer-link"
-              onClick={() => handleBackendAction("Go to Help Center")}
+              onClick={() => openDiyModal("Go to Help Center")}
             >
               Help Center
             </button>
             <span className="profile-footer-dot">•</span>
             <button
               className="profile-footer-link"
-              onClick={() => handleBackendAction("Go to ToS")}
+              onClick={() => openDiyModal("Go to ToS")}
             >
               Terms of Service
             </button>
             <span className="profile-footer-dot">•</span>
             <button
               className="profile-footer-link"
-              onClick={() => handleBackendAction("Go to Privacy Policy")}
+              onClick={() => openDiyModal("Go to Privacy Policy")}
             >
               Privacy Policy
             </button>

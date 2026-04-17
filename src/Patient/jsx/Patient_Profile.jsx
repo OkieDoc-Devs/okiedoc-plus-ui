@@ -17,12 +17,19 @@ import {
   IconChevronRight,
   IconCheck,
   IconX,
+  IconLoader2,
 } from "@tabler/icons-react";
 import "../css/Patient_Profile.css";
+
+// 1. Backend API Imports
 import {
   fetchPatientProfile,
   updatePatientProfile,
 } from "../services/apiService";
+
+// 2. Auth Import (Adjust path if your auth.js is in a different folder)
+import { logoutPatient } from "../services/auth";
+
 import { useModal } from "../contexts/Modals";
 
 const settingsLinks = [
@@ -111,6 +118,7 @@ export default function Patient_Profile() {
   const [allergyInput, setAllergyInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // --- BACKEND LOAD HOOK ---
   useEffect(() => {
@@ -136,6 +144,16 @@ export default function Patient_Profile() {
   };
 
   const handleCancelEdit = () => setIsEditing(false);
+
+  // --- PROPERLY SCOPED LOGOUT LOGIC ---
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logoutPatient();
+    } finally {
+      window.location.href = "/";
+    }
+  };
 
   // --- BACKEND SAVE HOOK ---
   const handleSaveChanges = async () => {
@@ -718,9 +736,19 @@ export default function Patient_Profile() {
 
           <button
             className="profile-btn-logout"
-            onClick={() => openDiyModal("Auth SignOut & Clear Cookies")}
+            onClick={handleLogout}
+            disabled={isLoggingOut}
           >
-            <IconLogout size={18} /> Log Out
+            {isLoggingOut ? (
+              <>
+                <IconLoader2 size={18} className="profile-spin" /> Logging
+                out...
+              </>
+            ) : (
+              <>
+                <IconLogout size={18} /> Log Out
+              </>
+            )}
           </button>
 
           <div className="profile-footer-links">

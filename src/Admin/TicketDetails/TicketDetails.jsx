@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { FaClock, FaFileMedical, FaComments, FaPrint, FaDownload, FaVideo, FaUserNurse, FaStethoscope, FaArrowRight } from 'react-icons/fa';
-import Avatar from '../../components/Avatar';
+import { FaUser, FaClock, FaFileMedical, FaComments, FaPrint, FaDownload, FaVideo, FaUserNurse, FaStethoscope, FaArrowRight } from 'react-icons/fa';
 import './TicketDetails.css';
 
 // Mock data generator (Updated with Video & Staff History)
@@ -77,14 +76,7 @@ const TicketDetails = () => {
         <aside className="td-sidebar">
             <div className="td-card patient-card">
                 <div className="td-avatar-large">
-                    <Avatar
-                      profileImageUrl={ticket.patient.avatar}
-                      firstName={ticket.patient.name?.split(' ')[0] || ''}
-                      lastName={ticket.patient.name?.split(' ').slice(1).join(' ') || ''}
-                      userType='patient'
-                      size={80}
-                      alt={ticket.patient.name}
-                    />
+                    <FaUser />
                 </div>
                 <h3>{ticket.patient.name}</h3>
                 <p className="td-subtext">{ticket.patient.age} yrs • {ticket.patient.gender}</p>

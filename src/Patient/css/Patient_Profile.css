@@ -613,7 +613,7 @@
   width: 100%;
 }
 
-/* --- ERROR BANNER (Inline) --- */
+/* --- ERRORS */
 .profile-error-banner {
   display: flex;
   align-items: center;
@@ -626,6 +626,27 @@
   margin-bottom: 24px;
   font-size: 14px;
   font-weight: 500;
+}
+
+.profile-error-field {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2 !important;
+}
+
+.profile-error-field:focus {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.profile-error-text {
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 6px;
+  display: block;
+}
+
+.text-red {
+  color: #ef4444 !important;
 }
 
 /* --- MOBILE ADJUSTMENTS --- */

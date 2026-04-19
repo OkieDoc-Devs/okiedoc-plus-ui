@@ -19,12 +19,11 @@ import {
   IconX,
   IconLoader2,
   IconActivity,
-  IconAlertCircle, // <-- Added for error/warning modals
+  IconAlertCircle,
   IconCamera,
 } from "@tabler/icons-react";
 import "../css/Patient_Profile.css";
 
-// 1. Backend API Imports
 import {
   fetchPatientProfile,
   updatePatientProfile,
@@ -134,10 +133,11 @@ export default function Patient_Profile() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isUploadingPic, setIsUploadingPic] = useState(false);
 
-  // --- NEW UX STATES ---
+  // --- UX STATES ---
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [formErrors, setFormErrors] = useState({}); // <-- NEW: Field specific errors
 
   const {
     regions,
@@ -153,16 +153,12 @@ export default function Patient_Profile() {
   const [pendingNavPath, setPendingNavPath] = useState(null);
 
   useEffect(() => {
-    // 1. Tell Patient_App.jsx that we are editing
     window.isProfileEditing = isEditing;
-
-    // 2. Give Patient_App.jsx a function to trigger our modal and pass the destination path
     window.triggerProfileCancelModal = (targetPath) => {
       setPendingNavPath(targetPath);
       setShowCancelModal(true);
     };
 
-    // 3. Keep the native browser warning ONLY for closing the browser tab completely
     const handleBeforeUnload = (e) => {
       if (isEditing) {
         e.preventDefault();
@@ -172,7 +168,6 @@ export default function Patient_Profile() {
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
-      // Clean up when the component unmounts
       window.isProfileEditing = false;
       window.triggerProfileCancelModal = null;
       window.removeEventListener("beforeunload", handleBeforeUnload);
@@ -283,13 +278,13 @@ export default function Patient_Profile() {
   const handleEditClick = () => {
     setEditData({ ...profileData });
     setAllergyInput("");
-    setSaveError(""); // Clear errors on new edit
+    setSaveError("");
+    setFormErrors({});
     setIsEditing(true);
   };
 
-  // Triggers the custom modal instead of instantly closing
   const handleCancelClick = () => {
-    setPendingNavPath(null); // Standard cancel, no navigation pending
+    setPendingNavPath(null);
     setShowCancelModal(true);
   };
 
@@ -298,19 +293,19 @@ export default function Patient_Profile() {
     setShowCancelModal(false);
     setEditData({ ...profileData });
 
-    // If we paused a sidebar navigation to show the modal, execute it now!
     if (pendingNavPath) {
       setTimeout(() => {
         window.location.hash = `#/${pendingNavPath}`;
-      }, 10); // Tiny delay ensures state settles before navigating
+      }, 10);
       setPendingNavPath(null);
     }
   };
 
   const handleKeepEditing = () => {
     setShowCancelModal(false);
-    setPendingNavPath(null); // Clear any pending navigation
+    setPendingNavPath(null);
   };
+
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
@@ -320,9 +315,54 @@ export default function Patient_Profile() {
     }
   };
 
+  // --- SUBMIT WITH VALIDATION ---
   const handleSaveChanges = async () => {
-    setSaveError(""); // Clear previous errors
+    setSaveError("");
+    setFormErrors({});
     let finalData = { ...editData };
+
+    // --- FORM VALIDATION ---
+    const errors = {};
+
+    if (!finalData.firstName.trim())
+      errors.firstName = "First Name is required.";
+    if (!finalData.lastName.trim()) errors.lastName = "Last Name is required.";
+    if (!finalData.addressLine1.trim())
+      errors.addressLine1 = "Street address is required.";
+    if (!finalData.region) errors.region = "Region is required.";
+    if (!finalData.province) errors.province = "Province is required.";
+    if (!finalData.city) errors.city = "City is required.";
+    if (!finalData.barangay) errors.barangay = "Barangay is required.";
+
+    if (!finalData.dob) {
+      errors.dob = "Date of Birth is required.";
+    } else {
+      // Calculate exactly if the user is 18 or older
+      const today = new Date();
+      const birthDate = new Date(finalData.dob);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDifference = today.getMonth() - birthDate.getMonth();
+
+      // If their birthday hasn't happened yet this year, subtract 1 from age
+      if (
+        monthDifference < 0 ||
+        (monthDifference === 0 && today.getDate() < birthDate.getDate())
+      ) {
+        age--;
+      }
+
+      if (age < 18) {
+        errors.dob = "You must be at least 18 years old to use this platform.";
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      setSaveError("Please fix the highlighted errors before saving.");
+      window.scrollTo({ top: 0, behavior: "smooth" }); // Scroll to top to see errors
+      return; // STOP EXECUTION!
+    }
+    // -----------------------
 
     if (
       allergyInput.trim() !== "" &&
@@ -335,9 +375,9 @@ export default function Patient_Profile() {
     }
 
     const payload = {
-      firstName: finalData.firstName,
-      middleName: finalData.middleName,
-      lastName: finalData.lastName,
+      firstName: finalData.firstName.trim(),
+      middleName: finalData.middleName.trim(),
+      lastName: finalData.lastName.trim(),
       email: finalData.email,
       mobileNumber: finalData.phone,
       addressLine1: finalData.addressLine1,
@@ -362,11 +402,9 @@ export default function Patient_Profile() {
       setEditData(finalData);
       setAllergyInput("");
 
-      // Open success modal INSTEAD of instantly closing the form
       setShowSuccessModal(true);
     } catch (error) {
       console.error("Failed to save patient profile:", error);
-      // Display error banner without closing the page
       setSaveError(
         error.message || "Failed to save patient profile. Please try again.",
       );
@@ -376,6 +414,9 @@ export default function Patient_Profile() {
   };
 
   const handleChangeWithLimit = (field, value, limit, ignoreSpaces = false) => {
+    if (formErrors[field])
+      setFormErrors((prev) => ({ ...prev, [field]: null })); // Clear error on typing
+
     if (ignoreSpaces) {
       const nonSpaceCount = value.replace(/\s/g, "").length;
       if (nonSpaceCount <= limit) {
@@ -515,7 +556,7 @@ export default function Patient_Profile() {
             </p>
           </div>
 
-          {/* Inline Error Banner (Does not close the form) */}
+          {/* Inline Error Banner */}
           {saveError && (
             <div className="profile-error-banner">
               <IconAlertCircle size={20} />
@@ -525,16 +566,26 @@ export default function Patient_Profile() {
 
           <div className="profile-form-grid">
             <div className="profile-form-group">
-              <label className="profile-form-label">First Name</label>
+              <label
+                className={`profile-form-label ${formErrors.firstName ? "text-red" : ""}`}
+              >
+                First Name *
+              </label>
               <input
                 type="text"
-                className="profile-form-input"
+                className={`profile-form-input ${formErrors.firstName ? "profile-error-field" : ""}`}
                 value={editData.firstName}
                 onChange={(e) =>
                   handleChangeWithLimit("firstName", e.target.value, 20, true)
                 }
               />
+              {formErrors.firstName && (
+                <span className="profile-error-text">
+                  {formErrors.firstName}
+                </span>
+              )}
             </div>
+
             <div className="profile-form-group">
               <label className="profile-form-label">Middle Name</label>
               <input
@@ -546,29 +597,50 @@ export default function Patient_Profile() {
                 }
               />
             </div>
+
             <div className="profile-form-group">
-              <label className="profile-form-label">Last Name</label>
+              <label
+                className={`profile-form-label ${formErrors.lastName ? "text-red" : ""}`}
+              >
+                Last Name *
+              </label>
               <input
                 type="text"
-                className="profile-form-input"
+                className={`profile-form-input ${formErrors.lastName ? "profile-error-field" : ""}`}
                 value={editData.lastName}
                 onChange={(e) =>
                   handleChangeWithLimit("lastName", e.target.value, 20, true)
                 }
               />
+              {formErrors.lastName && (
+                <span className="profile-error-text">
+                  {formErrors.lastName}
+                </span>
+              )}
             </div>
+
             <div className="profile-form-group">
-              <label className="profile-form-label">Date of Birth</label>
+              <label
+                className={`profile-form-label ${formErrors.dob ? "text-red" : ""}`}
+              >
+                Date of Birth *
+              </label>
               <input
                 type="date"
                 max="9999-12-31"
-                className="profile-form-input"
+                className={`profile-form-input ${formErrors.dob ? "profile-error-field" : ""}`}
                 value={editData.dob}
-                onChange={(e) =>
-                  handleChangeWithLimit("dob", e.target.value, 10, false)
-                }
+                onChange={(e) => {
+                  handleChangeWithLimit("dob", e.target.value, 10, false);
+                  if (formErrors.dob)
+                    setFormErrors((prev) => ({ ...prev, dob: null }));
+                }}
               />
+              {formErrors.dob && (
+                <span className="profile-error-text">{formErrors.dob}</span>
+              )}
             </div>
+
             <div className="profile-form-group">
               <label className="profile-form-label">Email Address</label>
               <input
@@ -579,6 +651,7 @@ export default function Patient_Profile() {
                   handleChangeWithLimit("email", e.target.value, 254, false)
                 }
                 maxLength={254}
+                readOnly // Usually emails shouldn't be edited freely here, but keeping inputs active for your needs
               />
             </div>
             <div className="profile-form-group">
@@ -594,17 +667,27 @@ export default function Patient_Profile() {
 
             {/* --- CASCADING ADDRESS SECTION --- */}
             <div className="profile-form-group profile-form-full-width">
-              <label className="profile-form-label">Address Line 1</label>
+              <label
+                className={`profile-form-label ${formErrors.addressLine1 ? "text-red" : ""}`}
+              >
+                Address Line 1 *
+              </label>
               <input
                 type="text"
-                className="profile-form-input"
+                className={`profile-form-input ${formErrors.addressLine1 ? "profile-error-field" : ""}`}
                 value={editData.addressLine1}
                 onChange={(e) =>
                   handleChangeWithLimit("addressLine1", e.target.value, 255)
                 }
                 placeholder="Street, House No., Building"
               />
+              {formErrors.addressLine1 && (
+                <span className="profile-error-text">
+                  {formErrors.addressLine1}
+                </span>
+              )}
             </div>
+
             <div className="profile-form-group profile-form-full-width">
               <label className="profile-form-label">
                 Address Line 2 (Optional)
@@ -621,11 +704,19 @@ export default function Patient_Profile() {
             </div>
 
             <div className="profile-form-group">
-              <label className="profile-form-label">Region</label>
+              <label
+                className={`profile-form-label ${formErrors.region ? "text-red" : ""}`}
+              >
+                Region *
+              </label>
               <select
-                className="profile-form-input"
+                className={`profile-form-input ${formErrors.region ? "profile-error-field" : ""}`}
                 value={editData.region}
-                onChange={handleRegionChange}
+                onChange={(e) => {
+                  handleRegionChange(e);
+                  if (formErrors.region)
+                    setFormErrors((prev) => ({ ...prev, region: null }));
+                }}
               >
                 <option value="">Select Region</option>
                 {regions
@@ -640,14 +731,25 @@ export default function Patient_Profile() {
                     </option>
                   ))}
               </select>
+              {formErrors.region && (
+                <span className="profile-error-text">{formErrors.region}</span>
+              )}
             </div>
 
             <div className="profile-form-group">
-              <label className="profile-form-label">Province</label>
+              <label
+                className={`profile-form-label ${formErrors.province ? "text-red" : ""}`}
+              >
+                Province *
+              </label>
               <select
-                className="profile-form-input"
+                className={`profile-form-input ${formErrors.province ? "profile-error-field" : ""}`}
                 value={editData.province}
-                onChange={handleProvinceChange}
+                onChange={(e) => {
+                  handleProvinceChange(e);
+                  if (formErrors.province)
+                    setFormErrors((prev) => ({ ...prev, province: null }));
+                }}
                 disabled={!editData.region}
               >
                 <option value="">Select Province</option>
@@ -657,14 +759,27 @@ export default function Patient_Profile() {
                   </option>
                 ))}
               </select>
+              {formErrors.province && (
+                <span className="profile-error-text">
+                  {formErrors.province}
+                </span>
+              )}
             </div>
 
             <div className="profile-form-group">
-              <label className="profile-form-label">City/Municipality</label>
+              <label
+                className={`profile-form-label ${formErrors.city ? "text-red" : ""}`}
+              >
+                City/Municipality *
+              </label>
               <select
-                className="profile-form-input"
+                className={`profile-form-input ${formErrors.city ? "profile-error-field" : ""}`}
                 value={editData.city}
-                onChange={handleCityChange}
+                onChange={(e) => {
+                  handleCityChange(e);
+                  if (formErrors.city)
+                    setFormErrors((prev) => ({ ...prev, city: null }));
+                }}
                 disabled={!editData.province}
               >
                 <option value="">Select City/Municipality</option>
@@ -674,14 +789,25 @@ export default function Patient_Profile() {
                   </option>
                 ))}
               </select>
+              {formErrors.city && (
+                <span className="profile-error-text">{formErrors.city}</span>
+              )}
             </div>
 
             <div className="profile-form-group">
-              <label className="profile-form-label">Barangay</label>
+              <label
+                className={`profile-form-label ${formErrors.barangay ? "text-red" : ""}`}
+              >
+                Barangay *
+              </label>
               <select
-                className="profile-form-input"
+                className={`profile-form-input ${formErrors.barangay ? "profile-error-field" : ""}`}
                 value={editData.barangay}
-                onChange={handleBarangayChange}
+                onChange={(e) => {
+                  handleBarangayChange(e);
+                  if (formErrors.barangay)
+                    setFormErrors((prev) => ({ ...prev, barangay: null }));
+                }}
                 disabled={!editData.city}
               >
                 <option value="">Select Barangay</option>
@@ -691,23 +817,11 @@ export default function Patient_Profile() {
                   </option>
                 ))}
               </select>
-            </div>
-
-            <div className="profile-form-group profile-form-full-width">
-              <label className="profile-form-label">Zip Code</label>
-              <input
-                type="text"
-                className="profile-form-input"
-                value={editData.zipCode}
-                onChange={(e) =>
-                  handleChangeWithLimit(
-                    "zipCode",
-                    e.target.value.replace(/\D/g, ""),
-                    10,
-                  )
-                }
-                placeholder="e.g. 1000"
-              />
+              {formErrors.barangay && (
+                <span className="profile-error-text">
+                  {formErrors.barangay}
+                </span>
+              )}
             </div>
             {/* ---------------------------------- */}
 
@@ -845,7 +959,6 @@ export default function Patient_Profile() {
           </div>
 
           <div className="profile-form-actions">
-            {/* Triggers the Cancel Modal */}
             <button
               className="profile-btn-cancel"
               onClick={handleCancelClick}
@@ -853,7 +966,6 @@ export default function Patient_Profile() {
             >
               <IconX size={18} /> Cancel
             </button>
-            {/* Triggers Save and opens Success Modal on completion */}
             <button
               className="profile-btn-save"
               onClick={handleSaveChanges}

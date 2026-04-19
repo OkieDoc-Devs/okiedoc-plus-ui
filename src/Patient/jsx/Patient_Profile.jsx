@@ -19,6 +19,8 @@ import {
   IconX,
   IconLoader2,
   IconActivity,
+  IconAlertCircle, // <-- Added for error/warning modals
+  IconCamera,
 } from "@tabler/icons-react";
 import "../css/Patient_Profile.css";
 
@@ -29,8 +31,6 @@ import {
   uploadProfilePicture,
   logoutPatient,
 } from "../services/apiService";
-
-// 3. PSGC Hook Import (Adjust the path to wherever your hooks folder is!)
 import { usePSGC } from "../../hooks/usePSGC";
 
 import { useModal } from "../contexts/Modals";
@@ -94,19 +94,6 @@ const normalizeAllergies = (value) => {
     .filter(Boolean);
 };
 
-const buildAddress = (profile) => {
-  const parts = [
-    profile.addressLine1,
-    profile.addressLine2,
-    profile.barangay,
-    profile.city,
-    profile.province,
-    profile.region,
-    profile.zipCode,
-  ];
-  return parts.filter(Boolean).join(", ");
-};
-
 const mapApiProfileToState = (profile = {}) => ({
   ...DEFAULT_PROFILE_DATA,
   firstName: profile.firstName || "",
@@ -135,17 +122,23 @@ const mapApiProfileToState = (profile = {}) => ({
 
 export default function Patient_Profile() {
   const { openDiyModal } = useModal();
+  const fileInputRef = useRef(null);
+
   const [profileData, setProfileData] = useState(DEFAULT_PROFILE_DATA);
-  const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(DEFAULT_PROFILE_DATA);
+
+  const [isEditing, setIsEditing] = useState(false);
   const [allergyInput, setAllergyInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const fileInputRef = useRef(null);
-  const [isUploadingPic, setIsUploadingPic] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isUploadingPic, setIsUploadingPic] = useState(false);
 
-  // --- CASCADING DROPDOWN HOOK ---
+  // --- NEW UX STATES ---
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
   const {
     regions,
     provinces,
@@ -156,7 +149,36 @@ export default function Patient_Profile() {
     fetchBarangays,
   } = usePSGC();
 
-  // --- BACKEND LOAD HOOK ---
+  // --- NAVIGATION PROTECTION ---
+  const [pendingNavPath, setPendingNavPath] = useState(null);
+
+  useEffect(() => {
+    // 1. Tell Patient_App.jsx that we are editing
+    window.isProfileEditing = isEditing;
+
+    // 2. Give Patient_App.jsx a function to trigger our modal and pass the destination path
+    window.triggerProfileCancelModal = (targetPath) => {
+      setPendingNavPath(targetPath);
+      setShowCancelModal(true);
+    };
+
+    // 3. Keep the native browser warning ONLY for closing the browser tab completely
+    const handleBeforeUnload = (e) => {
+      if (isEditing) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      // Clean up when the component unmounts
+      window.isProfileEditing = false;
+      window.triggerProfileCancelModal = null;
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isEditing]);
+
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -173,7 +195,6 @@ export default function Patient_Profile() {
     loadProfile();
   }, []);
 
-  // --- PRE-FILL DROPDOWNS ON LOAD ---
   useEffect(() => {
     if (regions.length > 0 && editData.region) {
       const selectedRegion = regions.find((r) => r.name === editData.region);
@@ -197,7 +218,6 @@ export default function Patient_Profile() {
     }
   }, [cities, editData.city, fetchBarangays]);
 
-  // --- DROPDOWN CHANGE HANDLERS ---
   const handleRegionChange = (e) => {
     const val = e.target.value;
     setEditData((prev) => ({
@@ -229,24 +249,16 @@ export default function Patient_Profile() {
     setEditData((prev) => ({ ...prev, barangay: e.target.value }));
   };
 
-  const handleEditClick = () => {
-    setEditData({ ...profileData });
-    setAllergyInput("");
-    setIsEditing(true);
-  };
-
   const handleProfilePicChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validation: 5MB limit, JPEG/PNG only
     const validTypes = ["image/jpeg", "image/png", "image/jpg"];
     if (!validTypes.includes(file.type)) {
       alert("Please upload a valid image file (JPEG, PNG).");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      // 5MB
       alert("File size must be less than 5MB.");
       return;
     }
@@ -256,10 +268,7 @@ export default function Patient_Profile() {
       const formData = new FormData();
       formData.append("photo", file);
 
-      // Call your API service
       const response = await uploadProfilePicture(formData);
-
-      // Update UI immediately (use response URL if provided, otherwise create a local preview)
       const newPicUrl = response?.url || URL.createObjectURL(file);
       setProfileData((prev) => ({ ...prev, profilePictureUrl: newPicUrl }));
     } catch (err) {
@@ -271,8 +280,37 @@ export default function Patient_Profile() {
     }
   };
 
-  const handleCancelEdit = () => setIsEditing(false);
+  const handleEditClick = () => {
+    setEditData({ ...profileData });
+    setAllergyInput("");
+    setSaveError(""); // Clear errors on new edit
+    setIsEditing(true);
+  };
 
+  // Triggers the custom modal instead of instantly closing
+  const handleCancelClick = () => {
+    setPendingNavPath(null); // Standard cancel, no navigation pending
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = () => {
+    setIsEditing(false);
+    setShowCancelModal(false);
+    setEditData({ ...profileData });
+
+    // If we paused a sidebar navigation to show the modal, execute it now!
+    if (pendingNavPath) {
+      setTimeout(() => {
+        window.location.hash = `#/${pendingNavPath}`;
+      }, 10); // Tiny delay ensures state settles before navigating
+      setPendingNavPath(null);
+    }
+  };
+
+  const handleKeepEditing = () => {
+    setShowCancelModal(false);
+    setPendingNavPath(null); // Clear any pending navigation
+  };
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
@@ -282,8 +320,8 @@ export default function Patient_Profile() {
     }
   };
 
-  // --- BACKEND SAVE HOOK ---
   const handleSaveChanges = async () => {
+    setSaveError(""); // Clear previous errors
     let finalData = { ...editData };
 
     if (
@@ -323,10 +361,15 @@ export default function Patient_Profile() {
       setProfileData(finalData);
       setEditData(finalData);
       setAllergyInput("");
-      setIsEditing(false);
+
+      // Open success modal INSTEAD of instantly closing the form
+      setShowSuccessModal(true);
     } catch (error) {
       console.error("Failed to save patient profile:", error);
-      alert("Failed to save patient profile. Please try again.");
+      // Display error banner without closing the page
+      setSaveError(
+        error.message || "Failed to save patient profile. Please try again.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -471,6 +514,14 @@ export default function Patient_Profile() {
               Update your personal and medical details below.
             </p>
           </div>
+
+          {/* Inline Error Banner (Does not close the form) */}
+          {saveError && (
+            <div className="profile-error-banner">
+              <IconAlertCircle size={20} />
+              <span>{saveError}</span>
+            </div>
+          )}
 
           <div className="profile-form-grid">
             <div className="profile-form-group">
@@ -794,19 +845,26 @@ export default function Patient_Profile() {
           </div>
 
           <div className="profile-form-actions">
+            {/* Triggers the Cancel Modal */}
             <button
               className="profile-btn-cancel"
-              onClick={handleCancelEdit}
+              onClick={handleCancelClick}
               disabled={isSaving}
             >
               <IconX size={18} /> Cancel
             </button>
+            {/* Triggers Save and opens Success Modal on completion */}
             <button
               className="profile-btn-save"
               onClick={handleSaveChanges}
               disabled={isSaving}
             >
-              <IconCheck size={18} /> {isSaving ? "Saving..." : "Save Changes"}
+              {isSaving ? (
+                <IconLoader2 size={18} className="profile-spin" />
+              ) : (
+                <IconCheck size={18} />
+              )}
+              {isSaving ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>
@@ -817,13 +875,12 @@ export default function Patient_Profile() {
             <div className="profile-hero-content">
               {/* Clickable Avatar for Upload */}
               <div
-                className="profile-avatar"
-                onClick={() => !isEditing && fileInputRef.current.click()}
-                style={{
-                  cursor: !isEditing ? "pointer" : "default",
-                  position: "relative",
-                  overflow: "hidden",
-                }}
+                className={`profile-avatar ${!isEditing ? "profile-avatar-editable" : ""}`}
+                onClick={() =>
+                  !isEditing &&
+                  fileInputRef.current &&
+                  fileInputRef.current.click()
+                }
               >
                 {isUploadingPic ? (
                   <IconLoader2 className="profile-spin" color="white" />
@@ -831,14 +888,17 @@ export default function Patient_Profile() {
                   <img
                     src={profileData.profilePictureUrl}
                     alt="Profile"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
+                    className="profile-avatar-img"
                   />
                 ) : (
                   getInitials()
+                )}
+
+                {/* The Hover Overlay */}
+                {!isEditing && !isUploadingPic && (
+                  <div className="profile-avatar-overlay">
+                    <IconCamera size={28} color="white" />
+                  </div>
                 )}
               </div>
 
@@ -857,15 +917,13 @@ export default function Patient_Profile() {
                   {profileData.middleName && `${profileData.middleName} `}
                   {profileData.lastName}
                 </h3>
-                {/* Dynamic Member Since Date */}
                 <p className="profile-hero-since">
-                  Member since{" "}
+                  Patient Member since{" "}
                   {new Date(profileData.createdAt).toLocaleDateString(
                     undefined,
                     { month: "long", year: "numeric" },
                   )}
                 </p>
-                {/* Dynamic Role Badge */}
                 <span
                   className="profile-hero-badge"
                   style={{ textTransform: "capitalize" }}
@@ -1145,6 +1203,81 @@ export default function Patient_Profile() {
             </button>
           </div>
         </>
+      )}
+
+      {/* --- CUSTOM MODALS --- */}
+
+      {/* Cancel Edit Modal */}
+      {showCancelModal && (
+        <div className="profile-modal-overlay">
+          <div className="profile-modal-container">
+            <div
+              className="profile-modal-icon-wrapper"
+              style={{ backgroundColor: "#fee2e2", color: "#ef4444" }}
+            >
+              <IconAlertCircle size={32} />
+            </div>
+            <h3 className="profile-modal-title">Discard Changes?</h3>
+            <p className="profile-modal-desc">
+              You have unsaved edits. Are you sure you want to cancel? All your
+              changes will be lost.
+            </p>
+            <div className="profile-modal-actions">
+              <button
+                className="profile-btn-save"
+                style={{
+                  backgroundColor: "#ef4444",
+                  width: "100%",
+                  justifyContent: "center",
+                }}
+                onClick={handleConfirmCancel}
+              >
+                Yes, Discard Changes
+              </button>
+              <button
+                className="profile-btn-cancel"
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  border: "none",
+                }}
+                onClick={handleKeepEditing}
+              >
+                Keep Editing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Save Modal */}
+      {showSuccessModal && (
+        <div className="profile-modal-overlay">
+          <div className="profile-modal-container">
+            <div
+              className="profile-modal-icon-wrapper"
+              style={{ backgroundColor: "#dcfce7", color: "#22c55e" }}
+            >
+              <IconCheck size={32} />
+            </div>
+            <h3 className="profile-modal-title">Profile Updated!</h3>
+            <p className="profile-modal-desc">
+              Your profile details have been successfully saved and updated.
+            </p>
+            <div className="profile-modal-actions">
+              <button
+                className="profile-btn-save"
+                style={{ width: "100%", justifyContent: "center" }}
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setIsEditing(false); // Close edit view only after clicking OK
+                }}
+              >
+                Awesome
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

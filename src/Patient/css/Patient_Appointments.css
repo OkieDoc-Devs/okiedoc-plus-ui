@@ -165,6 +165,8 @@ input[type="checkbox"] {
 .empty-icon {
   color: #dee2e6;
   margin-bottom: 16px;
+  display: inline-block;
+  vertical-align: middle;
 }
 .appt-empty-state h3 {
   color: #343a40;

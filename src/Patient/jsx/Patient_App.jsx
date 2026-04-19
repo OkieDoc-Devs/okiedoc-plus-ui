@@ -20,9 +20,10 @@ import Prescriptions_Patient from './Patient_Prescriptions';
 import Profile_Patient from './Patient_Profile';
 
 // Sub-Pages for Patient
-import { BookSpecialist } from '../sub-pages/BookSpecialist';
-import { BookPhysical } from '../sub-pages/BookPhysical';
+import BookSpecialist from '../sub-pages/BookSpecialist';
+import BookPhysical from '../sub-pages/BookPhysical';
 import ConsultationIntakeForm from '../sub-pages/ConsultationIntakeForm';
+import RecordSharing from '../sub-pages/RecordSharing';
 
 const navLinks = [
   { label: 'Dashboard', route: 'Dashboard', icon: IconLayoutDashboard },
@@ -60,16 +61,17 @@ function Patient_App() {
   };
 
   // Parse the current URL Hash
-  // Example: "#/BookSpecialist/BOK-1234" becomes -> mainRoute: "BookSpecialist", idParam: "BOK-1234"
+  // Example: '#/BookSpecialist/BOK-1234' becomes -> mainRoute: 'BookSpecialist', idParam: 'BOK-1234'
   const pathParts = currentHash.replace('#/', '').split('/');
   const mainRoute = pathParts[0] || 'Dashboard';
   const typeParam = pathParts[1];
 
-  // For the active highlight in the sidebar (we don't want "Services" highlighted if booking is open)
+  // For the active highlight in the sidebar (we don't want 'Services' highlighted if booking is open)
   const isBookingOpen =
     mainRoute === 'BookSpecialist' ||
     mainRoute === 'BookPhysical' ||
-    mainRoute === 'IntakeForm';
+    mainRoute === 'IntakeForm' ||
+    mainRoute === 'RecordSharing';
   const sidebarActiveTab = isBookingOpen ? null : mainRoute;
 
   const handleNotificationClick = () =>
@@ -189,6 +191,10 @@ function Patient_App() {
               />
             )}
 
+            {mainRoute === 'RecordSharing' && (
+              <RecordSharing onGoBack={() => navigate('MedicalRecords')} />
+            )}
+
             {/* Custom 404 / Work In Progress State */}
             {mainRoute !== 'Dashboard' &&
               mainRoute !== 'Services' &&
@@ -197,6 +203,7 @@ function Patient_App() {
               mainRoute !== 'BookSpecialist' &&
               mainRoute !== 'Appointments' &&
               mainRoute !== 'MedicalRecords' &&
+              mainRoute !== 'RecordSharing' &&
               mainRoute !== 'Prescriptions' &&
               mainRoute !== 'Profile' && (
                 <div className={styles['not-found-container']}>

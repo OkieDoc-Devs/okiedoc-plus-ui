@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   IconSettings,
   IconMail,
@@ -18,6 +18,7 @@ import {
   IconCheck,
   IconX,
   IconLoader2,
+  IconActivity,
 } from "@tabler/icons-react";
 import "../css/Patient_Profile.css";
 
@@ -25,10 +26,12 @@ import "../css/Patient_Profile.css";
 import {
   fetchPatientProfile,
   updatePatientProfile,
+  uploadProfilePicture,
+  logoutPatient,
 } from "../services/apiService";
 
-// 2. Auth Import (Adjust path if your auth.js is in a different folder)
-import { logoutPatient } from "../services/auth";
+// 3. PSGC Hook Import (Adjust the path to wherever your hooks folder is!)
+import { usePSGC } from "../../hooks/usePSGC";
 
 import { useModal } from "../contexts/Modals";
 
@@ -59,13 +62,23 @@ const DEFAULT_PROFILE_DATA = {
   lastName: "",
   email: "",
   phone: "",
-  address: "",
+  addressLine1: "",
+  addressLine2: "",
+  barangay: "",
+  city: "",
+  province: "",
+  region: "",
+  zipCode: "",
   dob: "",
   bloodType: "Unknown",
   allergies: [],
   emergencyContactName: "",
   emergencyContactPhone: "",
   emergencyContactAddress: "",
+  role: "Patient",
+  createdAt: new Date().toISOString(),
+  profilePictureUrl: null,
+  stats: { appointments: 0, prescriptions: 0, ptSessions: 0 },
 };
 
 const MAX_ALLERGIES = 20;
@@ -101,13 +114,23 @@ const mapApiProfileToState = (profile = {}) => ({
   lastName: profile.lastName || "",
   email: profile.email || "",
   phone: profile.mobileNumber || profile.phone || "",
-  address: buildAddress(profile),
+  addressLine1: profile.addressLine1 || "",
+  addressLine2: profile.addressLine2 || "",
+  barangay: profile.barangay || "",
+  city: profile.city || "",
+  province: profile.province || "",
+  region: profile.region || "",
+  zipCode: profile.zipCode || "",
   dob: profile.dateOfBirth || "",
   bloodType: profile.bloodType || "Unknown",
   allergies: normalizeAllergies(profile.allergies),
   emergencyContactName: profile.emergencyContactName || "",
   emergencyContactPhone: profile.emergencyContactPhone || "",
   emergencyContactAddress: profile.emergencyContactAddress || "",
+  role: profile.role || "Patient",
+  createdAt: profile.createdAt || new Date().toISOString(),
+  profilePictureUrl: profile.profilePictureUrl || null,
+  stats: profile.stats || { appointments: 0, prescriptions: 0, ptSessions: 0 },
 });
 
 export default function Patient_Profile() {
@@ -118,7 +141,20 @@ export default function Patient_Profile() {
   const [allergyInput, setAllergyInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef(null);
+  const [isUploadingPic, setIsUploadingPic] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // --- CASCADING DROPDOWN HOOK ---
+  const {
+    regions,
+    provinces,
+    cities,
+    barangays,
+    fetchProvinces,
+    fetchCities,
+    fetchBarangays,
+  } = usePSGC();
 
   // --- BACKEND LOAD HOOK ---
   useEffect(() => {
@@ -137,15 +173,106 @@ export default function Patient_Profile() {
     loadProfile();
   }, []);
 
+  // --- PRE-FILL DROPDOWNS ON LOAD ---
+  useEffect(() => {
+    if (regions.length > 0 && editData.region) {
+      const selectedRegion = regions.find((r) => r.name === editData.region);
+      if (selectedRegion) fetchProvinces(selectedRegion.code);
+    }
+  }, [regions, editData.region, fetchProvinces]);
+
+  useEffect(() => {
+    if (provinces.length > 0 && editData.province) {
+      const selectedProvince = provinces.find(
+        (p) => p.name === editData.province,
+      );
+      if (selectedProvince) fetchCities(selectedProvince.code);
+    }
+  }, [provinces, editData.province, fetchCities]);
+
+  useEffect(() => {
+    if (cities.length > 0 && editData.city) {
+      const selectedCity = cities.find((c) => c.name === editData.city);
+      if (selectedCity) fetchBarangays(selectedCity.code);
+    }
+  }, [cities, editData.city, fetchBarangays]);
+
+  // --- DROPDOWN CHANGE HANDLERS ---
+  const handleRegionChange = (e) => {
+    const val = e.target.value;
+    setEditData((prev) => ({
+      ...prev,
+      region: val,
+      province: "",
+      city: "",
+      barangay: "",
+    }));
+    const selectedRegion = regions.find((r) => r.name === val);
+    if (selectedRegion) fetchProvinces(selectedRegion.code);
+  };
+
+  const handleProvinceChange = (e) => {
+    const val = e.target.value;
+    setEditData((prev) => ({ ...prev, province: val, city: "", barangay: "" }));
+    const selectedProvince = provinces.find((p) => p.name === val);
+    if (selectedProvince) fetchCities(selectedProvince.code);
+  };
+
+  const handleCityChange = (e) => {
+    const val = e.target.value;
+    setEditData((prev) => ({ ...prev, city: val, barangay: "" }));
+    const selectedCity = cities.find((c) => c.name === val);
+    if (selectedCity) fetchBarangays(selectedCity.code);
+  };
+
+  const handleBarangayChange = (e) => {
+    setEditData((prev) => ({ ...prev, barangay: e.target.value }));
+  };
+
   const handleEditClick = () => {
     setEditData({ ...profileData });
     setAllergyInput("");
     setIsEditing(true);
   };
 
+  const handleProfilePicChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validation: 5MB limit, JPEG/PNG only
+    const validTypes = ["image/jpeg", "image/png", "image/jpg"];
+    if (!validTypes.includes(file.type)) {
+      alert("Please upload a valid image file (JPEG, PNG).");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      // 5MB
+      alert("File size must be less than 5MB.");
+      return;
+    }
+
+    try {
+      setIsUploadingPic(true);
+      const formData = new FormData();
+      formData.append("photo", file);
+
+      // Call your API service
+      const response = await uploadProfilePicture(formData);
+
+      // Update UI immediately (use response URL if provided, otherwise create a local preview)
+      const newPicUrl = response?.url || URL.createObjectURL(file);
+      setProfileData((prev) => ({ ...prev, profilePictureUrl: newPicUrl }));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to upload profile picture.");
+    } finally {
+      setIsUploadingPic(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleCancelEdit = () => setIsEditing(false);
 
-  // --- PROPERLY SCOPED LOGOUT LOGIC ---
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
@@ -159,7 +286,6 @@ export default function Patient_Profile() {
   const handleSaveChanges = async () => {
     let finalData = { ...editData };
 
-    // Add pending allergy input if valid and within limit
     if (
       allergyInput.trim() !== "" &&
       finalData.allergies.length < MAX_ALLERGIES
@@ -170,17 +296,22 @@ export default function Patient_Profile() {
       ].filter(Boolean);
     }
 
-    // Payload structure
     const payload = {
       firstName: finalData.firstName,
       middleName: finalData.middleName,
       lastName: finalData.lastName,
       email: finalData.email,
       mobileNumber: finalData.phone,
-      address: finalData.address,
+      addressLine1: finalData.addressLine1,
+      addressLine2: finalData.addressLine2,
+      barangay: finalData.barangay,
+      city: finalData.city,
+      province: finalData.province,
+      region: finalData.region,
+      zipCode: finalData.zipCode,
       birthday: finalData.dob || null,
       bloodType: finalData.bloodType || "Unknown",
-      allergies: finalData.allergies,
+      allergies: finalData.allergies.join(", "),
       emergencyContactName: finalData.emergencyContactName,
       emergencyContactPhone: finalData.emergencyContactPhone,
       emergencyContactAddress: finalData.emergencyContactAddress,
@@ -201,7 +332,6 @@ export default function Patient_Profile() {
     }
   };
 
-  // --- CUSTOM UX: CHARACTER LIMIT HANDLER ---
   const handleChangeWithLimit = (field, value, limit, ignoreSpaces = false) => {
     if (ignoreSpaces) {
       const nonSpaceCount = value.replace(/\s/g, "").length;
@@ -215,7 +345,6 @@ export default function Patient_Profile() {
     }
   };
 
-  // --- CUSTOM UX: STRICT PHONE NUMBER FORMATTER ---
   const handlePhoneChange = (field, value) => {
     let digits = value.replace(/\D/g, "");
 
@@ -262,7 +391,6 @@ export default function Patient_Profile() {
     setEditData((prev) => ({ ...prev, [field]: formatted }));
   };
 
-  // --- CUSTOM UX: ALLERGY TAG LOGIC ---
   const handleAllergyKeyDown = (e) => {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
@@ -354,7 +482,6 @@ export default function Patient_Profile() {
                 onChange={(e) =>
                   handleChangeWithLimit("firstName", e.target.value, 20, true)
                 }
-                placeholder="Max 20 chars"
               />
             </div>
             <div className="profile-form-group">
@@ -366,7 +493,6 @@ export default function Patient_Profile() {
                 onChange={(e) =>
                   handleChangeWithLimit("middleName", e.target.value, 20, true)
                 }
-                placeholder="Max 20 chars"
               />
             </div>
             <div className="profile-form-group">
@@ -378,7 +504,6 @@ export default function Patient_Profile() {
                 onChange={(e) =>
                   handleChangeWithLimit("lastName", e.target.value, 20, true)
                 }
-                placeholder="Max 20 chars"
               />
             </div>
             <div className="profile-form-group">
@@ -415,17 +540,125 @@ export default function Patient_Profile() {
                 placeholder="+63 XXX XXX XXXX"
               />
             </div>
+
+            {/* --- CASCADING ADDRESS SECTION --- */}
             <div className="profile-form-group profile-form-full-width">
-              <label className="profile-form-label">Address</label>
+              <label className="profile-form-label">Address Line 1</label>
               <input
                 type="text"
                 className="profile-form-input"
-                value={editData.address}
+                value={editData.addressLine1}
                 onChange={(e) =>
-                  handleChangeWithLimit("address", e.target.value, 254, true)
+                  handleChangeWithLimit("addressLine1", e.target.value, 255)
                 }
+                placeholder="Street, House No., Building"
               />
             </div>
+            <div className="profile-form-group profile-form-full-width">
+              <label className="profile-form-label">
+                Address Line 2 (Optional)
+              </label>
+              <input
+                type="text"
+                className="profile-form-input"
+                value={editData.addressLine2}
+                onChange={(e) =>
+                  handleChangeWithLimit("addressLine2", e.target.value, 255)
+                }
+                placeholder="Apartment, Suite, Unit, etc."
+              />
+            </div>
+
+            <div className="profile-form-group">
+              <label className="profile-form-label">Region</label>
+              <select
+                className="profile-form-input"
+                value={editData.region}
+                onChange={handleRegionChange}
+              >
+                <option value="">Select Region</option>
+                {regions
+                  .filter(
+                    (r) =>
+                      !r.name.includes("NCR") &&
+                      !r.name.includes("National Capital Region"),
+                  )
+                  .map((r) => (
+                    <option key={r.code} value={r.name}>
+                      {r.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div className="profile-form-group">
+              <label className="profile-form-label">Province</label>
+              <select
+                className="profile-form-input"
+                value={editData.province}
+                onChange={handleProvinceChange}
+                disabled={!editData.region}
+              >
+                <option value="">Select Province</option>
+                {provinces.map((p) => (
+                  <option key={p.code} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="profile-form-group">
+              <label className="profile-form-label">City/Municipality</label>
+              <select
+                className="profile-form-input"
+                value={editData.city}
+                onChange={handleCityChange}
+                disabled={!editData.province}
+              >
+                <option value="">Select City/Municipality</option>
+                {cities.map((c) => (
+                  <option key={c.code} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="profile-form-group">
+              <label className="profile-form-label">Barangay</label>
+              <select
+                className="profile-form-input"
+                value={editData.barangay}
+                onChange={handleBarangayChange}
+                disabled={!editData.city}
+              >
+                <option value="">Select Barangay</option>
+                {barangays.map((b) => (
+                  <option key={b.code} value={b.name}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="profile-form-group profile-form-full-width">
+              <label className="profile-form-label">Zip Code</label>
+              <input
+                type="text"
+                className="profile-form-input"
+                value={editData.zipCode}
+                onChange={(e) =>
+                  handleChangeWithLimit(
+                    "zipCode",
+                    e.target.value.replace(/\D/g, ""),
+                    10,
+                  )
+                }
+                placeholder="e.g. 1000"
+              />
+            </div>
+            {/* ---------------------------------- */}
 
             <div className="profile-form-group">
               <label className="profile-form-label">Blood Type</label>
@@ -582,36 +815,147 @@ export default function Patient_Profile() {
         <>
           <div className="profile-card profile-hero-card">
             <div className="profile-hero-content">
-              <div className="profile-avatar">{getInitials()}</div>
+              {/* Clickable Avatar for Upload */}
+              <div
+                className="profile-avatar"
+                onClick={() => !isEditing && fileInputRef.current.click()}
+                style={{
+                  cursor: !isEditing ? "pointer" : "default",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                {isUploadingPic ? (
+                  <IconLoader2 className="profile-spin" color="white" />
+                ) : profileData.profilePictureUrl ? (
+                  <img
+                    src={profileData.profilePictureUrl}
+                    alt="Profile"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  getInitials()
+                )}
+              </div>
+
+              {/* Hidden File Input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                accept="image/png, image/jpeg"
+                onChange={handleProfilePicChange}
+              />
+
               <div className="profile-hero-text">
                 <h3 className="profile-hero-name">
                   {profileData.firstName}{" "}
                   {profileData.middleName && `${profileData.middleName} `}
                   {profileData.lastName}
                 </h3>
-                <p className="profile-hero-since">Member since January 2024</p>
-                <span className="profile-hero-badge">Premium Plus</span>
+                {/* Dynamic Member Since Date */}
+                <p className="profile-hero-since">
+                  Member since{" "}
+                  {new Date(profileData.createdAt).toLocaleDateString(
+                    undefined,
+                    { month: "long", year: "numeric" },
+                  )}
+                </p>
+                {/* Dynamic Role Badge */}
+                <span
+                  className="profile-hero-badge"
+                  style={{ textTransform: "capitalize" }}
+                >
+                  {profileData.role}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="profile-card profile-journey-card">
-            <h4 className="profile-section-title">Your Health Journey</h4>
-            <div className="profile-journey-grid">
-              <div className="profile-journey-stat profile-border-right">
-                <h2 className="profile-stat-number">12</h2>
-                <p className="profile-stat-label">Appointments</p>
+          {/* --- HEALTH JOURNEY SECTION --- */}
+          {profileData.stats.appointments === 0 &&
+          profileData.stats.prescriptions === 0 &&
+          profileData.stats.ptSessions === 0 ? (
+            /* Empty State: Full Gray Box */
+            <div
+              className="profile-card"
+              style={{
+                backgroundColor: "#f8fafc",
+                border: "2px dashed #cbd5e1",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "40px 24px",
+                gap: "16px",
+                marginBottom: "24px",
+              }}
+            >
+              <div
+                style={{
+                  backgroundColor: "#e2e8f0",
+                  padding: "16px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  color: "#64748b",
+                }}
+              >
+                <IconActivity size={32} />
               </div>
-              <div className="profile-journey-stat profile-border-right">
-                <h2 className="profile-stat-number">5</h2>
-                <p className="profile-stat-label">Prescriptions</p>
-              </div>
-              <div className="profile-journey-stat">
-                <h2 className="profile-stat-number">3</h2>
-                <p className="profile-stat-label">PT Sessions</p>
+              <div style={{ textAlign: "center" }}>
+                <h4
+                  style={{
+                    margin: "0 0 8px 0",
+                    color: "#334155",
+                    fontSize: "18px",
+                    fontWeight: "600",
+                  }}
+                >
+                  Your Health Journey
+                </h4>
+                <p
+                  style={{
+                    margin: 0,
+                    color: "#64748b",
+                    fontSize: "14px",
+                    maxWidth: "400px",
+                  }}
+                >
+                  Start your Health Journey by booking Appointments, requesting
+                  Prescriptions, or attending PT Sessions.
+                </p>
               </div>
             </div>
-          </div>
+          ) : (
+            /* Populated State: Blue Card */
+            <div className="profile-card profile-journey-card">
+              <h4 className="profile-section-title">Your Health Journey</h4>
+              <div className="profile-journey-grid">
+                <div className="profile-journey-stat profile-border-right">
+                  <h2 className="profile-stat-number">
+                    {profileData.stats.appointments}
+                  </h2>
+                  <p className="profile-stat-label">Appointments</p>
+                </div>
+                <div className="profile-journey-stat profile-border-right">
+                  <h2 className="profile-stat-number">
+                    {profileData.stats.prescriptions}
+                  </h2>
+                  <p className="profile-stat-label">Prescriptions</p>
+                </div>
+                <div className="profile-journey-stat">
+                  <h2 className="profile-stat-number">
+                    {profileData.stats.ptSessions}
+                  </h2>
+                  <p className="profile-stat-label">PT Sessions</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="profile-section-header-flex">
             <h4 className="profile-section-title-no-margin">
@@ -647,7 +991,17 @@ export default function Patient_Profile() {
                 <div className="profile-info-text">
                   <span className="profile-info-label">Address:</span>
                   <span className="profile-info-value">
-                    {profileData.address}
+                    {[
+                      profileData.addressLine1,
+                      profileData.addressLine2,
+                      profileData.barangay,
+                      profileData.city,
+                      profileData.province,
+                      profileData.region,
+                      profileData.zipCode,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
                   </span>
                 </div>
               </div>
@@ -703,19 +1057,36 @@ export default function Patient_Profile() {
                   Emergency Contact
                 </span>
               </div>
-              <h4 className="profile-emergency-name">
-                {profileData.emergencyContactName}
-              </h4>
-              <p className="profile-emergency-detail">
-                <IconPhone size={14} /> {profileData.emergencyContactPhone}
-              </p>
-              <p className="profile-emergency-detail">
-                <IconMapPin size={14} /> {profileData.emergencyContactAddress}
-              </p>
+              {profileData.emergencyContactName ||
+              profileData.emergencyContactPhone ||
+              profileData.emergencyContactAddress ? (
+                <>
+                  {profileData.emergencyContactName && (
+                    <h4 className="profile-emergency-name">
+                      {profileData.emergencyContactName}
+                    </h4>
+                  )}
+                  {profileData.emergencyContactPhone && (
+                    <p className="profile-emergency-detail">
+                      <IconPhone size={14} />{" "}
+                      {profileData.emergencyContactPhone}
+                    </p>
+                  )}
+                  {profileData.emergencyContactAddress && (
+                    <p className="profile-emergency-detail">
+                      <IconMapPin size={14} />{" "}
+                      {profileData.emergencyContactAddress}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <span className="profile-medical-card-value">
+                  No emergency contact yet
+                </span>
+              )}
             </div>
           </div>
 
-          {/* 5. SETTINGS LIST */}
           <div className="profile-card profile-settings-card">
             {settingsLinks.map((link) => (
               <button

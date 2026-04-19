@@ -732,11 +732,23 @@ export default function ConsultationIntakeForm({
 
         {/* Sticky Footer */}
         <div className="intake-sticky-footer">
-          <div className="footer-content">
-            <button className="footer-save-btn" disabled={isSubmitting}>
-              <IconDeviceFloppy size={18} /> Save for Later
-            </button>
-            <div className="footer-right">
+          <div
+            className="footer-content"
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              width: "100%",
+            }}
+          >
+            <div
+              className="footer-right"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-end",
+                gap: "8px",
+              }}
+            >
               {submitError && (
                 <div
                   style={{
@@ -746,7 +758,6 @@ export default function ConsultationIntakeForm({
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
-                    marginBottom: "12px",
                   }}
                 >
                   <IconAlertCircle size={16} /> {submitError}

@@ -4,21 +4,19 @@
  */
 
 const resolvedApiUrl =
-  import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '';
+  import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "";
 
 if (import.meta.env.PROD) {
   if (!resolvedApiUrl) {
-    throw new Error('VITE_API_URL must be set in production.');
+    throw new Error("VITE_API_URL must be set in production.");
   }
 
-  if (!resolvedApiUrl.startsWith('https://')) {
-    throw new Error('VITE_API_URL must use HTTPS in production.');
+  if (!resolvedApiUrl.startsWith("https://")) {
+    throw new Error("VITE_API_URL must use HTTPS in production.");
   }
 }
 
-export const API_BASE_URL = resolvedApiUrl || 'http://localhost:1337';
-
-
+export const API_BASE_URL = resolvedApiUrl || "http://localhost:1337";
 
 /**
  * Generic API request handler
@@ -28,9 +26,9 @@ export const API_BASE_URL = resolvedApiUrl || 'http://localhost:1337';
  */
 export async function apiRequest(endpoint, options = {}) {
   const defaultOptions = {
-    credentials: 'omit',
+    credentials: "omit",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
   };
 
@@ -39,40 +37,38 @@ export async function apiRequest(endpoint, options = {}) {
     ...options.headers,
   };
 
-  const jwtToken = localStorage.getItem('jwt_token');
+  const jwtToken = localStorage.getItem("jwt_token");
   if (jwtToken) {
-    mergedHeaders['Authorization'] = `Bearer ${jwtToken}`;
+    mergedHeaders["Authorization"] = `Bearer ${jwtToken}`;
   }
 
   const { disableAuthRedirect = false, ...fetchOptions } = options;
 
   if (options.body instanceof FormData) {
-    delete mergedHeaders['Content-Type'];
+    delete mergedHeaders["Content-Type"];
   }
 
-  const url = endpoint.startsWith('http')
+  const url = endpoint.startsWith("http")
     ? endpoint
     : `${API_BASE_URL}${endpoint}`;
 
-  const method = (fetchOptions.method || 'GET').toUpperCase();
+  const method = (fetchOptions.method || "GET").toUpperCase();
 
-  if (import.meta.env.PROD && url.startsWith('http://')) {
-    throw new Error('Insecure API request blocked in production.');
+  if (import.meta.env.PROD && url.startsWith("http://")) {
+    throw new Error("Insecure API request blocked in production.");
   }
 
   try {
-
-
     let response = await fetch(url, {
       ...defaultOptions,
       ...fetchOptions,
       headers: mergedHeaders,
     });
 
-    const contentType = response.headers.get('content-type');
+    const contentType = response.headers.get("content-type");
     let responseData;
 
-    if (contentType && contentType.includes('application/json')) {
+    if (contentType && contentType.includes("application/json")) {
       responseData = await response.json().catch(() => ({}));
     } else {
       responseData = await response.text();
@@ -81,29 +77,25 @@ export async function apiRequest(endpoint, options = {}) {
       } catch (e) {}
     }
 
-
-
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
         if (!disableAuthRedirect) {
-          localStorage.removeItem('jwt_token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+          localStorage.removeItem("jwt_token");
+          localStorage.removeItem("user");
+          window.location.href = "/login";
         }
       }
 
       const errorPayload =
-        typeof responseData === 'object'
+        typeof responseData === "object"
           ? responseData
           : { error: responseData };
-      throw (
+      const errorMessage =
         errorPayload.error ||
         errorPayload.message ||
-        errorPayload ||
-        new Error(`HTTP error! status: ${response.status}`)
-      );
+        `HTTP error! status: ${response.status}`;
+      throw new Error(errorMessage);
     }
-
     return responseData;
   } catch (error) {
     console.error(`API Request Error [${endpoint}]:`, error);

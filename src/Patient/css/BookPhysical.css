@@ -1,8 +1,8 @@
-/* --- VARIABLES (Cyan Theme) --- */
+/* --- VARIABLES (Blue Theme) --- */
 :root {
-  --bp-primary: #0ba3b0;
-  --bp-primary-light: #e0f6f2;
-  --bp-primary-hover: #08818c;
+  --bp-primary: #4aa7ed; /* Changed from #0ba3b0 */
+  --bp-primary-light: #e3f2fd; /* Changed from #e0f6f2 */
+  --bp-primary-hover: #3b8bc6; /* Changed from #08818c */
 
   --bp-green: #2b8a3e;
   --bp-green-light: #ebfbee;

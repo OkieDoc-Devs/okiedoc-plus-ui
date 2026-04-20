@@ -10,11 +10,14 @@ import {
   IconStethoscope,
   IconLoader2,
   IconCalendarOff,
+  IconMapPin, // Added for Location
 } from "@tabler/icons-react";
 import { fetchPatientActiveTickets } from "../services/apiService";
 import "../css/Patient_Appointments.css";
+import { useModal } from "../contexts/Modals";
 
 export default function Patient_Appointments({ setActive }) {
+  const { openDiyModal } = useModal();
   const [appointments, setAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,21 +39,32 @@ export default function Patient_Appointments({ setActive }) {
 
   // Fetch data from MySQL backend
   useEffect(() => {
-    const loadAppointments = async () => {
+    const loadAppointments = async (isBackgroundRefresh = false) => {
       try {
-        setIsLoading(true);
+        if (!isBackgroundRefresh) {
+          setIsLoading(true);
+        }
+
         const response = await fetchPatientActiveTickets();
-        // The backend controller returns { success: true, activeTickets: [...] }
         const tickets = response?.activeTickets || [];
         setAppointments(tickets);
       } catch (error) {
         console.error("Failed to load appointments:", error);
       } finally {
-        setIsLoading(false);
+        if (!isBackgroundRefresh) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadAppointments();
+
+    const pollingInterval = setInterval(() => {
+      // Pass 'true' so we don't trigger the loading spinner and interrupt the user
+      loadAppointments(true);
+    }, 10000); // 10000 milliseconds = 10 seconds
+
+    return () => clearInterval(pollingInterval);
   }, []);
 
   // Filter logic
@@ -98,7 +112,8 @@ export default function Patient_Appointments({ setActive }) {
         </span>
       );
     }
-    return <span className="appt-badge badge-pending">Pending Triage</span>;
+    // Updated to exactly "Pending" to match the checklist
+    return <span className="appt-badge badge-pending">Pending</span>;
   };
 
   const getChannelIcon = (channel) => {
@@ -106,17 +121,17 @@ export default function Patient_Appointments({ setActive }) {
       return <IconMessageCircle size={16} className="detail-icon" />;
     if (channel === "mobile_call" || channel.includes("audio"))
       return <IconPhone size={16} className="detail-icon" />;
-    return <IconVideo size={16} className="detail-icon" />; // Default to video/platform
+    return <IconVideo size={16} className="detail-icon" />;
   };
 
   const getInitials = (name) => {
-    if (!name || name === "Unassigned") return "OD"; // OkieDoc default
+    if (!name || name === "TBA" || name === "Unassigned") return "OD";
     const parts = name.replace("Dr. ", "").split(" ");
     return (parts[0]?.[0] || "") + (parts[parts.length - 1]?.[0] || "");
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return "Awaiting Schedule";
+    if (!dateString) return "--/--/----";
     return new Date(dateString).toLocaleDateString(undefined, {
       weekday: "short",
       month: "short",
@@ -143,6 +158,7 @@ export default function Patient_Appointments({ setActive }) {
       </div>
 
       <div className="appt-controls-bar">
+        {/* ... Search and Filters remain the same ... */}
         <div className="appt-search-wrapper">
           <IconSearch size={18} className="appt-search-icon" />
           <input
@@ -242,103 +258,161 @@ export default function Patient_Appointments({ setActive }) {
         </div>
       ) : (
         <div className="appt-grid">
-          {filteredAppointments.map((appt) => (
-            <div key={appt.id} className="appt-card">
-              <div className="appt-card-header">
-                <div className="appt-avatar">
-                  {getInitials(appt.specialistName)}
-                </div>
-                <div className="full-width">
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <div className="appt-header-info">
-                      <h4>{appt.specialistName || "Doctor Unassigned"}</h4>
-                      <p
-                        className="appt-spec"
-                        style={{
-                          fontSize: "12px",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.5px",
-                        }}
-                      >
-                        {appt.ticketNumber}
-                      </p>
+          {filteredAppointments.map((appt) => {
+            // -------------------------------------------------------------
+            // CHECKLIST FALLBACK LOGIC
+            // -------------------------------------------------------------
+            const displaySpecialist = appt.specialistName || "TBA";
+            const displaySpecialization = appt.specialization || "TBA"; // Adjust if backend sends primarySpecialty
+            const displayDate = appt.preferredDate
+              ? formatDate(appt.preferredDate)
+              : "--/--/----";
+            const displayTime = appt.preferredTime || "--:--";
+            const displayLocation =
+              appt.consultationChannel === "in_person" && appt.city
+                ? appt.city
+                : "TBA";
+            // -------------------------------------------------------------
+
+            return (
+              <div key={appt.id} className="appt-card">
+                <div className="appt-card-header">
+                  <div className="appt-avatar">
+                    {getInitials(displaySpecialist)}
+                  </div>
+                  <div className="full-width">
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <div className="appt-header-info">
+                        <h4>
+                          {displaySpecialist !== "TBA"
+                            ? displaySpecialist
+                            : "TBA"}
+                        </h4>
+                        <p
+                          className="appt-spec"
+                          style={{
+                            fontSize: "12px",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}
+                        >
+                          {appt.ticketNumber} •{" "}
+                          <span style={{ textTransform: "capitalize" }}>
+                            {displaySpecialization}
+                          </span>
+                        </p>
+                      </div>
+                      {getStatusBadge(appt.status)}
                     </div>
-                    {getStatusBadge(appt.status)}
                   </div>
                 </div>
-              </div>
 
-              <div className="appt-details-stack">
-                <div className="appt-detail-row">
-                  <IconStethoscope size={16} className="detail-icon" />
-                  <span style={{ fontWeight: 500 }}>
-                    {appt.chiefComplaint || "General Consultation"}
-                  </span>
+                <div className="appt-details-stack">
+                  {/* CSS FIX APPLIED HERE: Prevents long text from crushing the icon */}
+                  <div
+                    className="appt-detail-row"
+                    style={{ width: "100%", alignItems: "flex-start" }}
+                  >
+                    <IconStethoscope
+                      size={16}
+                      className="detail-icon"
+                      style={{ flexShrink: 0, marginTop: "2px" }}
+                    />
+                    <span
+                      style={{
+                        fontWeight: 500,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        overflowWrap: "break-word",
+                        wordBreak: "break-word",
+                        minWidth: 0, // Crucial flexbox fix
+                      }}
+                    >
+                      {appt.chiefComplaint || "General Consultation"}
+                    </span>
+                  </div>
+
+                  <div className="appt-detail-row">
+                    <IconCalendarEvent
+                      size={16}
+                      className="detail-icon"
+                      style={{ flexShrink: 0 }}
+                    />
+                    <span>{displayDate}</span>
+                  </div>
+
+                  <div className="appt-detail-row">
+                    <IconClock
+                      size={16}
+                      className="detail-icon"
+                      style={{ flexShrink: 0 }}
+                    />
+                    <span>{displayTime}</span>
+                  </div>
+
+                  {/* Added Location Requirement */}
+                  <div className="appt-detail-row">
+                    <IconMapPin
+                      size={16}
+                      className="detail-icon"
+                      style={{ flexShrink: 0 }}
+                    />
+                    <span>{displayLocation}</span>
+                  </div>
+
+                  <div className="appt-detail-row">
+                    {getChannelIcon(appt.consultationChannel)}
+                    <span style={{ textTransform: "capitalize" }}>
+                      {(appt.consultationChannel || "Platform Call").replace(
+                        "_",
+                        " ",
+                      )}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="appt-detail-row">
-                  <IconCalendarEvent size={16} className="detail-icon" />
-                  <span>
-                    {formatDate(appt.preferredDate || appt.createdAt)}
-                  </span>
-                </div>
-
-                <div className="appt-detail-row">
-                  <IconClock size={16} className="detail-icon" />
-                  <span>{appt.preferredTime || "TBD by Nurse"}</span>
-                </div>
-
-                <div className="appt-detail-row">
-                  {getChannelIcon(appt.consultationChannel)}
-                  <span style={{ textTransform: "capitalize" }}>
-                    {(appt.consultationChannel || "Platform Call").replace(
-                      "_",
-                      " ",
-                    )}
-                  </span>
-                </div>
-              </div>
-
-              <div className="appt-card-actions">
-                <button
-                  className="appt-btn appt-btn-outline full-width"
-                  onClick={() =>
-                    alert(`DIY: View Details for ${appt.ticketNumber}`)
-                  }
-                >
-                  View Details
-                </button>
-                {appt.status === "for_payment" && (
+                <div className="appt-card-actions">
                   <button
-                    className="appt-btn appt-btn-primary full-width"
+                    className="appt-btn appt-btn-outline full-width"
                     onClick={() =>
-                      alert(
-                        `DIY: Route to Payment Gateway for ${appt.ticketNumber}`,
-                      )
+                      openDiyModal(`Viewing Ticket #${appt.ticketNumber}`)
                     }
                   >
-                    Pay Now
+                    View Details
                   </button>
-                )}
-                {["confirmed", "active"].includes(appt.status) && (
-                  <button
-                    className="appt-btn appt-btn-primary full-width"
-                    onClick={() =>
-                      alert(`DIY: Join Call for ${appt.ticketNumber}`)
-                    }
-                  >
-                    Join Room
-                  </button>
-                )}
+                  {appt.status === "for_payment" && (
+                    <button
+                      className="appt-btn appt-btn-primary full-width"
+                      onClick={() =>
+                        openDiyModal(`Viewing Ticket #${appt.ticketNumber}`)
+                      }
+                    >
+                      Pay Now
+                    </button>
+                  )}
+                  {["confirmed", "active"].includes(appt.status) && (
+                    <button
+                      className="appt-btn appt-btn-primary full-width"
+                      onClick={() =>
+                        openDiyModal(`Viewing Ticket #${appt.ticketNumber}`)
+                      }
+                    >
+                      Join Room
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

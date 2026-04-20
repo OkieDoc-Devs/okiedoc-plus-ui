@@ -220,13 +220,13 @@ export const uploadAdminAvatar = async (file) => {
   try {
     const formData = new FormData();
     formData.append('avatar', file);
-    
+
     return await fetch(`${API_BASE_URL}/api/v1/admin/avatar`, {
       method: 'POST',
       body: formData,
       credentials: 'include',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('admin_token') || ''}`,
+        Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}`,
       },
     }).then((res) => {
       if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);

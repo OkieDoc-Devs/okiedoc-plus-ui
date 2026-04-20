@@ -15,7 +15,7 @@ import {
   IconPhone,
   IconArrowRight,
 } from "@tabler/icons-react";
-import "../css/BookPhysical.css"; // Uses its own independent CSS file
+import "../css/BookPhysical.css";
 
 const STEPS = [
   { label: "Doctor", icon: IconStethoscope },
@@ -69,18 +69,42 @@ const doctors = [
   },
 ];
 
+// Expanded facilities to match the doctors' locations
 const facilities = [
   {
     id: 1,
     name: "OkieDoc+ Makati Clinic",
     address: "123 Ayala Avenue, Makati City",
     room: "Room 301 • 3rd Floor",
+    loc: "Makati City",
   },
   {
     id: 2,
     name: "OkieDoc+ Makati Annex",
     address: "456 Makati Avenue, Makati City",
     room: "Room 205 • 2nd Floor",
+    loc: "Makati City",
+  },
+  {
+    id: 3,
+    name: "OkieDoc+ Quezon City Clinic",
+    address: "789 Tomas Morato, Quezon City",
+    room: "Room 102 • 1st Floor",
+    loc: "Quezon City",
+  },
+  {
+    id: 4,
+    name: "OkieDoc+ BGC Clinic",
+    address: "One Bonifacio High Street, Taguig City",
+    room: "Suite 5A • 5th Floor",
+    loc: "Taguig City",
+  },
+  {
+    id: 5,
+    name: "OkieDoc+ Skin Clinic",
+    address: "Emerald Avenue, Ortigas",
+    room: "Room 404 • 4th Floor",
+    loc: "Ortigas",
   },
 ];
 
@@ -98,6 +122,7 @@ const symptomsList = [
   "Stomach Pain",
   "Loss of Appetite",
 ];
+
 const timeSlots = [
   "09:00 AM",
   "09:30 AM",
@@ -115,9 +140,10 @@ const timeSlots = [
   "04:30 PM",
   "05:00 PM",
 ];
+
 const CURRENT_DATE = new Date("2026-04-08T00:00:00");
 
-export function BookPhysical({
+export default function BookPhysical({
   onGoBack,
   onGoToAppointments,
   onGoToDashboard,
@@ -145,6 +171,11 @@ export function BookPhysical({
       doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.spec.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.loc.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  // Dynamic filter: only show facilities matching the chosen doctor's location
+  const availableFacilities = facilities.filter(
+    (fac) => fac.loc === doctor?.loc,
   );
 
   const isDateInvalid = date
@@ -181,6 +212,53 @@ export function BookPhysical({
     setSymptoms((prev) =>
       prev.includes(sym) ? prev.filter((s) => s !== sym) : [...prev, sym],
     );
+
+  // --- STRICT PHONE NUMBER FORMATTER ---
+  const handlePhoneChange = (value) => {
+    let digits = value.replace(/\D/g, "");
+
+    if (digits.length === 0) {
+      setPatientContact("");
+      return;
+    }
+
+    if (digits.startsWith("0")) {
+      digits = "63" + digits.substring(1);
+    } else if (!digits.startsWith("63")) {
+      if (digits === "6") {
+        digits = "6";
+      } else {
+        digits = "63" + digits;
+      }
+    }
+
+    digits = digits.substring(0, 12);
+
+    let formatted = "+";
+    if (digits.length <= 2) {
+      formatted += digits;
+    } else if (digits.length <= 5) {
+      formatted += digits.substring(0, 2) + " " + digits.substring(2);
+    } else if (digits.length <= 8) {
+      formatted +=
+        digits.substring(0, 2) +
+        " " +
+        digits.substring(2, 5) +
+        " " +
+        digits.substring(5);
+    } else {
+      formatted +=
+        digits.substring(0, 2) +
+        " " +
+        digits.substring(2, 5) +
+        " " +
+        digits.substring(5, 8) +
+        " " +
+        digits.substring(8);
+    }
+
+    setPatientContact(formatted);
+  };
 
   return (
     <div className="bp-container">
@@ -240,7 +318,7 @@ export function BookPhysical({
           {currentStep === 0 && (
             <div className="bp-step-content">
               <div className="bp-section-heading text-cyan">
-                <IconStethoscope size={20} /> <h3>Select Specialty / Doctor</h3>
+                <IconStethoscope size={20} /> <h3>Select Doctor</h3>
               </div>
               <div className="bp-search-box">
                 <IconSearch size={16} className="bp-search-icon" />
@@ -257,7 +335,12 @@ export function BookPhysical({
                   <div
                     key={doc.id}
                     className={`bp-doc-card ${doctor?.id === doc.id ? "bp-doc-selected" : ""} ${!doc.available ? "bp-doc-disabled" : ""}`}
-                    onClick={() => doc.available && setDoctor(doc)}
+                    onClick={() => {
+                      if (doc.available) {
+                        setDoctor(doc);
+                        setFacility(null); // Reset facility if doctor changes
+                      }
+                    }}
                   >
                     <div className="bp-doc-info-wrapper">
                       <div
@@ -309,37 +392,43 @@ export function BookPhysical({
                 <IconMapPin size={20} /> <h3>Select Facility / Location</h3>
               </div>
               <p className="bp-instruction-text">
-                Available locations for {doctor?.name}
+                Available locations for {doctor?.name} ({doctor?.loc})
               </p>
 
               <div className="bp-specialist-list">
-                {facilities.map((fac) => (
-                  <div
-                    key={fac.id}
-                    className={`bp-doc-card ${facility?.id === fac.id ? "bp-doc-selected" : ""}`}
-                    onClick={() => setFacility(fac)}
-                  >
-                    <div className="bp-doc-info-wrapper align-center">
-                      <div className="bp-icon-box bp-icon-cyan">
-                        <IconMapPin size={24} />
+                {availableFacilities.length > 0 ? (
+                  availableFacilities.map((fac) => (
+                    <div
+                      key={fac.id}
+                      className={`bp-doc-card ${facility?.id === fac.id ? "bp-doc-selected" : ""}`}
+                      onClick={() => setFacility(fac)}
+                    >
+                      <div className="bp-doc-info-wrapper align-center">
+                        <div className="bp-icon-box bp-icon-cyan">
+                          <IconMapPin size={24} />
+                        </div>
+                        <div className="bp-doc-details">
+                          <h4 className="bp-doc-name">{fac.name}</h4>
+                          <p className="bp-doc-meta">
+                            <IconMapPin size={14} /> {fac.address}
+                          </p>
+                          <p className="bp-doc-meta-last fw-500">{fac.room}</p>
+                        </div>
                       </div>
-                      <div className="bp-doc-details">
-                        <h4 className="bp-doc-name">{fac.name}</h4>
-                        <p className="bp-doc-meta">
-                          <IconMapPin size={14} /> {fac.address}
-                        </p>
-                        <p className="bp-doc-meta-last fw-500">{fac.room}</p>
-                      </div>
+                      <IconCheck
+                        size={24}
+                        className={
+                          facility?.id === fac.id ? "text-cyan" : "text-muted"
+                        }
+                        style={{ opacity: facility?.id === fac.id ? 1 : 0.2 }}
+                      />
                     </div>
-                    <IconCheck
-                      size={24}
-                      className={
-                        facility?.id === fac.id ? "text-cyan" : "text-muted"
-                      }
-                      style={{ opacity: facility?.id === fac.id ? 1 : 0.2 }}
-                    />
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="bp-empty-state">
+                    No matching facilities found for this doctor's location.
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -474,11 +563,12 @@ export function BookPhysical({
                   <label className="bp-form-label">Contact Number *</label>
                   <div className="bp-input-with-icon">
                     <IconPhone size={16} className="bp-inner-icon" />
+                    {/* UPDATED INPUT WITH HANDLEPHONECHANGE */}
                     <input
                       type="text"
-                      placeholder="+63 917 123 4567"
+                      placeholder="+63 XXX XXX XXXX"
                       value={patientContact}
-                      onChange={(e) => setPatientContact(e.target.value)}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
                       className="bp-form-number pl-36"
                     />
                   </div>

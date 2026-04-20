@@ -18,44 +18,7 @@ if (import.meta.env.PROD) {
 
 export const API_BASE_URL = resolvedApiUrl || 'http://localhost:1337';
 
-const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-let cachedCsrfToken = null;
 
-async function fetchCsrfToken(forceRefresh = false) {
-  if (!forceRefresh && cachedCsrfToken) {
-    return cachedCsrfToken;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/csrf-token`, {
-    method: 'GET',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error('Unable to retrieve CSRF token.');
-  }
-
-  const payload = await response.json().catch(() => ({}));
-  const token = payload._csrf || payload.csrfToken;
-
-  if (!token) {
-    throw new Error('CSRF token response was invalid.');
-  }
-
-  cachedCsrfToken = token;
-  return token;
-}
-
-function isLikelyCsrfFailure(responseData) {
-  const text =
-    typeof responseData === 'string'
-      ? responseData
-      : responseData?.error || responseData?.message || '';
-  return /csrf|forgery token|forbidden/i.test(String(text));
-}
 
 /**
  * Generic API request handler
@@ -65,7 +28,7 @@ function isLikelyCsrfFailure(responseData) {
  */
 export async function apiRequest(endpoint, options = {}) {
   const defaultOptions = {
-    credentials: 'include',
+    credentials: 'omit',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -75,6 +38,11 @@ export async function apiRequest(endpoint, options = {}) {
     ...defaultOptions.headers,
     ...options.headers,
   };
+
+  const jwtToken = localStorage.getItem('jwt_token');
+  if (jwtToken) {
+    mergedHeaders['Authorization'] = `Bearer ${jwtToken}`;
+  }
 
   const { disableAuthRedirect = false, ...fetchOptions } = options;
 
@@ -93,12 +61,7 @@ export async function apiRequest(endpoint, options = {}) {
   }
 
   try {
-    if (
-      MUTATING_METHODS.has(method) &&
-      !mergedHeaders['x-csrf-token']
-    ) {
-      mergedHeaders['x-csrf-token'] = await fetchCsrfToken();
-    }
+
 
     let response = await fetch(url, {
       ...defaultOptions,
@@ -118,37 +81,13 @@ export async function apiRequest(endpoint, options = {}) {
       } catch (e) {}
     }
 
-    if (
-      !response.ok &&
-      response.status === 403 &&
-      MUTATING_METHODS.has(method) &&
-      !options._hasRetriedCsrf &&
-      isLikelyCsrfFailure(responseData)
-    ) {
-      mergedHeaders['x-csrf-token'] = await fetchCsrfToken(true);
-      response = await fetch(url, {
-        ...defaultOptions,
-        ...fetchOptions,
-        _hasRetriedCsrf: true,
-        headers: mergedHeaders,
-      });
 
-      const retryContentType = response.headers.get('content-type');
-      if (retryContentType && retryContentType.includes('application/json')) {
-        responseData = await response.json().catch(() => ({}));
-      } else {
-        const retryText = await response.text();
-        try {
-          responseData = retryText ? JSON.parse(retryText) : {};
-        } catch (e) {
-          responseData = retryText;
-        }
-      }
-    }
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
         if (!disableAuthRedirect) {
+          localStorage.removeItem('jwt_token');
+          localStorage.removeItem('user');
           window.location.href = '/login';
         }
       }

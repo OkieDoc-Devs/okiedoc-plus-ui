@@ -123,7 +123,7 @@ const timeSlots = [
 ];
 const CURRENT_DATE = new Date("2026-04-08T00:00:00");
 
-export function BookSpecialist({
+export default function BookSpecialist({
   onGoBack,
   onGoToAppointments,
   onGoToDashboard,

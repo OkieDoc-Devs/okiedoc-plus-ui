@@ -93,8 +93,8 @@ export async function createTicket(ticketData) {
 export async function uploadPaymentProof(ticketId, file) {
   try {
     const formData = new FormData();
-    formData.append('ticketId', ticketId);
-    formData.append('proof', file);
+    formData.append("ticketId", ticketId);
+    formData.append("proof", file);
 
     return await apiRequest("/api/v1/tickets/upload-payment-proof", {
       method: "POST",
@@ -112,8 +112,8 @@ export async function uploadPaymentProof(ticketId, file) {
 export async function uploadLOA(ticketId, file) {
   try {
     const formData = new FormData();
-    formData.append('ticketId', ticketId);
-    formData.append('loa', file);
+    formData.append("ticketId", ticketId);
+    formData.append("loa", file);
 
     return await apiRequest("/api/v1/tickets/upload-loa", {
       method: "POST",
@@ -179,7 +179,7 @@ export async function payTicket(ticketId) {
   try {
     return await apiRequest("/api/v1/tickets/pay", {
       method: "POST",
-      headers: { "Accept": "application/json" },
+      headers: { Accept: "application/json" },
       body: JSON.stringify({ ticketId }),
     });
   } catch (error) {
@@ -196,7 +196,7 @@ export async function verifyTicketPayment(ticketId) {
   try {
     return await apiRequest("/api/v1/tickets/verify-payment", {
       method: "POST",
-      headers: { "Accept": "application/json" },
+      headers: { Accept: "application/json" },
       body: JSON.stringify({ ticketId }),
     });
   } catch (error) {
@@ -204,3 +204,19 @@ export async function verifyTicketPayment(ticketId) {
     throw error;
   }
 }
+
+/**
+ * Logout Patient
+ */
+export const logoutPatient = async () => {
+  try {
+    await apiRequest("/api/v1/auth/logout", {
+      method: "POST",
+    });
+  } catch (error) {
+    console.error("Logout failed:", error);
+  } finally {
+    localStorage.removeItem("currentUser");
+    localStorage.removeItem("okiedoc_user_type");
+  }
+};

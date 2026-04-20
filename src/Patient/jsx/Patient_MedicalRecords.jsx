@@ -582,7 +582,7 @@ export default function Patient_MedicalRecords() {
           </div>
           <button
             className="mr-btn mr-btn-primary"
-            onClick={() => handleDIY("Manage Sharing")}
+            onClick={() => (window.location.hash = "#/RecordSharing")}
           >
             <IconShare size={16} /> Manage Sharing
           </button>

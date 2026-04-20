@@ -14,7 +14,6 @@ const DEFAULT_REDIRECTS = {
   specialist: '/specialist-dashboard',
   patient: '/patient-dashboard',
   nurse: '/nurse-dashboard',
-  nurse_admin: '/nurse-dashboard',
   admin: '/admin/specialist-dashboard',
 };
 
@@ -71,6 +70,10 @@ export const AuthProvider = ({ children }) => {
         );
       }
 
+      if (result.token) {
+        localStorage.setItem('jwt_token', result.token);
+      }
+
       const normalizedUser = normalizeUser(result.user);
 
       if (roleMode === 'allow' && role && normalizedUser?.role !== role) {
@@ -102,6 +105,8 @@ export const AuthProvider = ({ children }) => {
       method: 'POST',
       disableAuthRedirect: true,
     }).catch(() => {});
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user');
     setUser(null);
   }, []);
 

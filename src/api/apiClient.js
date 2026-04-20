@@ -18,36 +18,43 @@ if (import.meta.env.PROD) {
 
 export const API_BASE_URL = resolvedApiUrl || 'http://localhost:1337';
 
-// Global variable to cache the CSRF token so we don't fetch it on every single click
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 let cachedCsrfToken = null;
 
-/**
- * Fetches the CSRF token from the Sails.js backend.
- */
-async function getCsrfToken() {
-  if (cachedCsrfToken) return cachedCsrfToken;
-  try {
-    let response = await fetch(`${API_BASE_URL}/api/v1/auth/csrf-token`, {
-      method: 'GET',
-      credentials: 'include',
-    });
-
-    if (response.status === 404) {
-      response = await fetch(`${API_BASE_URL}/csrfToken`, {
-        method: 'GET',
-        credentials: 'include',
-      });
-    }
-
-    if (response.ok) {
-      const data = await response.json();
-      cachedCsrfToken = data._csrf || data.csrfToken;
-      return cachedCsrfToken;
-    }
-  } catch (error) {
-    console.warn('Failed to fetch CSRF token:', error);
+async function fetchCsrfToken(forceRefresh = false) {
+  if (!forceRefresh && cachedCsrfToken) {
+    return cachedCsrfToken;
   }
-  return null;
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/csrf-token`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Unable to retrieve CSRF token.');
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  const token = payload._csrf || payload.csrfToken;
+
+  if (!token) {
+    throw new Error('CSRF token response was invalid.');
+  }
+
+  cachedCsrfToken = token;
+  return token;
+}
+
+function isLikelyCsrfFailure(responseData) {
+  const text =
+    typeof responseData === 'string'
+      ? responseData
+      : responseData?.error || responseData?.message || '';
+  return /csrf|forgery token|forbidden/i.test(String(text));
 }
 
 /**
@@ -58,7 +65,7 @@ async function getCsrfToken() {
  */
 export async function apiRequest(endpoint, options = {}) {
   const defaultOptions = {
-    credentials: 'include', 
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -68,20 +75,6 @@ export async function apiRequest(endpoint, options = {}) {
     ...defaultOptions.headers,
     ...options.headers,
   };
-
-  const jwtToken = localStorage.getItem('jwt_token');
-  if (jwtToken) {
-    mergedHeaders['Authorization'] = `Bearer ${jwtToken}`;
-  }
-
-  const method = (options.method || 'GET').toUpperCase();
-
-  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-    const csrfToken = await getCsrfToken();
-    if (csrfToken) {
-      mergedHeaders['X-CSRF-Token'] = csrfToken;
-    }
-  }
 
   const { disableAuthRedirect = false, ...fetchOptions } = options;
 
@@ -93,31 +86,25 @@ export async function apiRequest(endpoint, options = {}) {
     ? endpoint
     : `${API_BASE_URL}${endpoint}`;
 
+  const method = (fetchOptions.method || 'GET').toUpperCase();
+
   if (import.meta.env.PROD && url.startsWith('http://')) {
     throw new Error('Insecure API request blocked in production.');
   }
 
   try {
+    if (
+      MUTATING_METHODS.has(method) &&
+      !mergedHeaders['x-csrf-token']
+    ) {
+      mergedHeaders['x-csrf-token'] = await fetchCsrfToken();
+    }
+
     let response = await fetch(url, {
       ...defaultOptions,
       ...fetchOptions,
       headers: mergedHeaders,
-      method, 
     });
-
-    if (response.status === 403 && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-        cachedCsrfToken = null; 
-        const freshToken = await getCsrfToken();
-        if (freshToken) {
-           mergedHeaders['X-CSRF-Token'] = freshToken;
-           response = await fetch(url, {
-              ...defaultOptions,
-              ...fetchOptions,
-              headers: mergedHeaders,
-              method
-           });
-        }
-    }
 
     const contentType = response.headers.get('content-type');
     let responseData;
@@ -131,25 +118,51 @@ export async function apiRequest(endpoint, options = {}) {
       } catch (e) {}
     }
 
+    if (
+      !response.ok &&
+      response.status === 403 &&
+      MUTATING_METHODS.has(method) &&
+      !options._hasRetriedCsrf &&
+      isLikelyCsrfFailure(responseData)
+    ) {
+      mergedHeaders['x-csrf-token'] = await fetchCsrfToken(true);
+      response = await fetch(url, {
+        ...defaultOptions,
+        ...fetchOptions,
+        _hasRetriedCsrf: true,
+        headers: mergedHeaders,
+      });
+
+      const retryContentType = response.headers.get('content-type');
+      if (retryContentType && retryContentType.includes('application/json')) {
+        responseData = await response.json().catch(() => ({}));
+      } else {
+        const retryText = await response.text();
+        try {
+          responseData = retryText ? JSON.parse(retryText) : {};
+        } catch (e) {
+          responseData = retryText;
+        }
+      }
+    }
+
     if (!response.ok) {
-      if (response.status === 401) {
+      if (response.status === 401 || response.status === 403) {
         if (!disableAuthRedirect) {
-          localStorage.removeItem('jwt_token');
-          localStorage.removeItem('user');
           window.location.href = '/login';
         }
       }
 
-      if (typeof responseData === 'string') {
-        throw new Error(responseData || `HTTP error! status: ${response.status}`);
-      }
-
-      const errorMessage = 
-        responseData?.error || 
-        responseData?.message || 
-        `HTTP error! status: ${response.status}`;
-        
-      throw new Error(errorMessage);
+      const errorPayload =
+        typeof responseData === 'object'
+          ? responseData
+          : { error: responseData };
+      throw (
+        errorPayload.error ||
+        errorPayload.message ||
+        errorPayload ||
+        new Error(`HTTP error! status: ${response.status}`)
+      );
     }
 
     return responseData;

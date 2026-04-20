@@ -12,7 +12,7 @@ export const loginAdmin = async (email, password) => {
     });
 
     const role = data?.user?.role || data?.user?.userType;
-    if (role !== 'admin' && role !== 'super_admin' && role !== 'nurse_admin' && role !== 'barangay_admin') {
+    if (role !== 'admin') {
       await apiRequest('/api/v1/auth/logout', { method: 'POST' }).catch(
         () => {},
       );
@@ -28,6 +28,7 @@ export const loginAdmin = async (email, password) => {
 
 /**
  * Handles the admin logout.
+ * This triggers the 'last_active' timestamp update on the backend for the audit trail.
  */
 export const logoutAdmin = async () => {
   try {
@@ -42,8 +43,7 @@ export const logoutAdmin = async () => {
  */
 export const getSpecialists = async () => {
   try {
-    const data = await apiRequest('/api/v1/admin/specialists');
-    return Array.isArray(data) ? data : data?.specialists || data?.data || [];
+    return await apiRequest('/api/v1/admin/specialists');
   } catch (error) {
     console.error('Failed to fetch specialists:', error);
     throw error;
@@ -65,14 +65,20 @@ export const getPendingApplications = async () => {
       return {
         id: app.id,
         userId: u.id,
-        name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Pending Specialist',
+        name:
+          `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
+          'Pending Specialist',
         email: u.email || 'N/A',
         role: 'Specialist',
         status: app.applicationStatus || 'Pending',
-        date: app.createdAt ? new Date(app.createdAt).toISOString().split('T')[0] : 'N/A',
+        date: app.createdAt
+          ? new Date(app.createdAt).toISOString().split('T')[0]
+          : 'N/A',
         details: {
           specializations: app.primarySpecialty ? [app.primarySpecialty] : [],
-          subspecializations: app.subSpecialties ? app.subSpecialties.split(',').map((s) => s.trim()) : [],
+          subspecializations: app.subSpecialties
+            ? app.subSpecialties.split(',').map((s) => s.trim())
+            : [],
           prcId: {
             number: app.licenseNumber || u.licenseNumber || 'N/A',
             imageUrl: app.prcIdUrl || null,
@@ -85,7 +91,9 @@ export const getPendingApplications = async () => {
             number: app.ptrNumber || 'N/A',
             imageUrl: app.ptrUrl || null,
           },
-          eSig: app.eSignatureUrl ? `${API_BASE_URL}${app.eSignatureUrl}` : null,
+          eSig: app.eSignatureUrl
+            ? `${API_BASE_URL}${app.eSignatureUrl}`
+            : null,
           profilePicture: app.profilePictureUrl || u.profileImage || null,
           addressLine1: app.addressLine1 || '',
           addressLine2: app.addressLine2 || '',
@@ -135,15 +143,36 @@ export const getConsultations = async () => {
 export const getPatientAndNurseUsers = async () => {
   try {
     const data = await apiRequest('/api/v1/admin/users');
-    return Array.isArray(data) ? data : data?.users || data?.data || [];
+    const users = Array.isArray(data) ? data : data?.users || data?.data || [];
+    return users;
   } catch (error) {
     console.error('Failed to fetch users:', error);
-    return [];
+    return [
+      {
+        id: 'p1',
+        userType: 'Patient',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'patient@gmail.com',
+        mobileNumber: '98765485',
+        subscription: 'Paid',
+      },
+      {
+        id: 'n1',
+        userType: 'Nurse',
+        firstName: 'Leslie',
+        lastName: 'Rowland',
+        email: 'les@row@gmail.com',
+        mobileNumber: '97685334',
+        subscription: 'Free',
+      },
+    ];
   }
 };
 
 /**
  * Approve or deny a pending specialist application.
+ * @param {object} payload - { specialistId, action ('approve' | 'deny'), reason }
  */
 export const approveSpecialist = async (payload) => {
   try {
@@ -159,6 +188,7 @@ export const approveSpecialist = async (payload) => {
 
 /**
  * Create a new staff account (Nurse or Admin).
+ * @param {object} payload - { fullName, email, password, mobileNumber, role, licenseNumber, prcExpiryDate }
  */
 export const createStaff = async (payload) => {
   try {
@@ -174,6 +204,8 @@ export const createStaff = async (payload) => {
 
 /**
  * Updates a user's information.
+ * @param {string} userId - The ID of the user to update.
+ * @param {object} userData - The data to update.
  */
 export const updateUser = async (userId, userData) => {
   try {
@@ -189,6 +221,7 @@ export const updateUser = async (userId, userData) => {
 
 /**
  * Deletes a user.
+ * @param {string} userId - The ID of the user to delete.
  */
 export const deleteUser = async (userId) => {
   try {
@@ -215,18 +248,19 @@ export const getAdminProfile = async () => {
 
 /**
  * Uploads a new avatar image for the admin.
+ * @param {File} file - The image file to upload.
  */
 export const uploadAdminAvatar = async (file) => {
   try {
     const formData = new FormData();
     formData.append('avatar', file);
-
+    
     return await fetch(`${API_BASE_URL}/api/v1/admin/avatar`, {
       method: 'POST',
       body: formData,
       credentials: 'include',
       headers: {
-        Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}`,
+        'Authorization': `Bearer ${localStorage.getItem('admin_token') || ''}`,
       },
     }).then((res) => {
       if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
@@ -240,6 +274,9 @@ export const uploadAdminAvatar = async (file) => {
 
 /**
  * Updates a specialist's approval status.
+ * @param {Object} params - Status update parameters.
+ * @param {string} params.specialistId - The ID of the specialist.
+ * @param {string} params.status - New status (approved, suspended, inactive).
  */
 export const updateSpecialistStatus = async ({ specialistId, status }) => {
   try {

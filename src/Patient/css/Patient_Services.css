@@ -9,7 +9,7 @@
 .text-white {
   color: white;
 }
-.text-blue {
+.text-cyan {
   color: #4aa7ed;
 }
 .text-teal {
@@ -238,11 +238,9 @@
   margin-bottom: 60px;
   gap: 24px;
 }
-
 .svc-wide-card.border-cyan {
   border-color: #4aa7ed;
 }
-
 .svc-wide-card.border-violet {
   border-color: #7950f2;
 }
@@ -252,7 +250,6 @@
   align-items: flex-start;
   gap: 24px;
 }
-
 .flex-1 {
   flex: 1;
 }
@@ -395,7 +392,6 @@
   width: auto;
   padding: 12px 32px;
   border-radius: 24px;
-  border: 1px solid #4aa7ed;
 }
 
 .svc-footer-action {

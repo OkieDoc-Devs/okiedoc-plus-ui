@@ -14,13 +14,6 @@ body {
   text-align: initial;
 }
 
-.app-container {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 2rem 2rem 2rem;
-  text-align: center;
-}
-
 .app-container .header {
   display: flex;
   justify-content: space-between;
@@ -390,7 +383,9 @@ body {
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .action-item:hover {
@@ -1102,7 +1097,9 @@ body {
   background: #e0e0e0;
   cursor: pointer;
   position: relative;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
   flex-shrink: 0;
 }
 
@@ -1152,7 +1149,9 @@ body {
   background: #e0e0e0;
   cursor: pointer;
   position: relative;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
   flex-shrink: 0;
 }
 
@@ -1173,7 +1172,7 @@ body {
   background: white;
 }
 
-.cb-submit-btn {
+.app-cb-submit-btn {
   background: white;
   color: #4aa7ed;
   border: 2px solid #4aa7ed;
@@ -1186,7 +1185,7 @@ body {
   margin-top: 0.55rem;
 }
 
-.cb-submit-btn:hover {
+.app-cb-submit-btn:hover {
   background: #f0f8ff;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(74, 167, 237, 0.2);
@@ -1239,5 +1238,23 @@ body {
   to {
     transform: translateX(0);
     opacity: 1;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }

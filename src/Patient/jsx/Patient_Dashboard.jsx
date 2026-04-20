@@ -20,47 +20,41 @@ export default function Dashboard_Patient({ setActive }) {
   const { openDiyModal } = useModal();
 
   return (
-    <div className="pd-container">
+    <div className="dashboard-container">
       {/* --- HERO SECTION --- */}
-      <section className="pd-hero">
-        <h2 className="pd-hero-title">Good afternoon, Sarah!</h2>
-        <p className="pd-hero-subtitle">How can we help you today?</p>
+      <section className="hero-section">
+        <h2 className="hero-title">Good afternoon, Sarah!</h2>
+        <p className="hero-subtitle">How can we help you today?</p>
 
-        <div className="pd-hero-grid">
-          <button
-            className="pd-hero-card"
-            onClick={() => setActive("Services")}
-          >
-            <div className="pd-hero-icon pd-icon-video">
+        <div className="hero-grid">
+          <button className="hero-card" onClick={() => setActive("Services")}>
+            <div className="hero-icon-box bg-cyan">
               <IconVideo size={24} />
             </div>
-            <div className="pd-hero-text">
+            <div className="hero-card-text">
               <h4>Connect a Call</h4>
               <p>Video or Call with a doctor</p>
             </div>
           </button>
 
           <button
-            className="pd-hero-card"
+            className="hero-card"
             onClick={() => setActive("MedicalRecords")}
           >
-            <div className="pd-hero-icon pd-icon-records">
+            <div className="hero-icon-box bg-teal">
               <IconFileDescription size={24} />
             </div>
-            <div className="pd-hero-text">
+            <div className="hero-card-text">
               <h4>Medical Records</h4>
               <p>View your health history</p>
             </div>
           </button>
 
-          <button
-            className="pd-hero-card"
-            onClick={() => setActive("Services")}
-          >
-            <div className="pd-hero-icon pd-icon-message">
+          <button className="hero-card" onClick={() => setActive("Services")}>
+            <div className="hero-icon-box bg-blue">
               <IconMessage size={24} />
             </div>
-            <div className="pd-hero-text">
+            <div className="hero-card-text">
               <h4>Message</h4>
               <p>Chat with your care team</p>
             </div>
@@ -69,27 +63,31 @@ export default function Dashboard_Patient({ setActive }) {
       </section>
 
       {/* --- NEXT APPOINTMENT --- */}
-      <div className="pd-card pd-mb-32">
-        <div className="pd-appt-header">
-          <span className="pd-badge pd-badge-primary">TODAY</span>
-          <span className="pd-text-light pd-text-sm">Next Appointment</span>
+      <div className="dash-card appointment-card">
+        <div className="appointment-header">
+          <div className="patientdashboard-badge-group">
+            <span className="patientdashboard-badge patientdashboard-badge-cyan">
+              TODAY
+            </span>
+            <span className="text-muted text-sm">Next Appointment</span>
+          </div>
         </div>
 
-        <div className="pd-appt-body">
-          <div>
-            <h3 className="pd-appt-doctor">Dr. Sarah Johnson</h3>
-            <p className="pd-text-light pd-text-sm pd-mb-12">Family Medicine</p>
-            <div className="pd-appt-details">
-              <span className="pd-appt-time">
+        <div className="appointment-body">
+          <div className="appointment-info">
+            <h3>Dr. Sarah Johnson</h3>
+            <p className="text-muted text-sm spec-text">Family Medicine</p>
+            <div className="appointment-time-details">
+              <span className="time-item text-cyan">
                 <IconCalendarEvent size={16} /> 2:30 PM
               </span>
-              <span className="pd-appt-type">
-                <IconVideo size={16} /> Video Consultation
+              <span className="time-item text-muted">
+                <IconVideo size={16} className="text-cyan" /> Video Consultation
               </span>
             </div>
           </div>
           <button
-            className="pd-btn pd-btn-primary"
+            className="patientdashboard-btn patientdashboard-btn-cyan"
             onClick={() => openDiyModal("Join Video Call")}
           >
             Join Video Call
@@ -98,57 +96,56 @@ export default function Dashboard_Patient({ setActive }) {
       </div>
 
       {/* --- ACTION REQUIRED --- */}
-      <div className="pd-section-header">
-        <div className="pd-section-title">
-          <IconAlertCircle className="pd-text-warning" size={20} />
+      <div className="section-header">
+        <div className="patientdashboard-section-title">
+          <IconAlertCircle color="#f59f00" size={20} />
           <h4>Action Required</h4>
         </div>
-        <button
-          className="pd-btn-view-all"
-          onClick={() => setActive("MedicalRecords")}
-        >
-          View All <IconArrowRight size={14} />
+        <button className="patientdashboard-btn-view-all">
+          View All <IconArrowRight size={16} />
         </button>
       </div>
 
-      <div className="pd-action-list">
+      <div className="pending-list">
         {/* 1. Specialist Referral Card */}
-        <div className="pd-card pd-warning-card">
-          <div className="pd-warning-content">
-            <div className="pd-warning-info">
-              <h5>Specialist Referral - Orthopedic Surgeon</h5>
-              <p className="pd-text-light pd-text-sm pd-mb-8">
+        <div className="dash-card pending-card">
+          <div className="pending-content">
+            <div className="pending-details">
+              <h5 className="pending-title">
+                Specialist Referral - Orthopedic Surgeon
+              </h5>
+              <p className="text-muted text-sm referrer-text">
                 Referred by Dr. Sofia Lim (Cardiologist)
               </p>
 
-              <div className="pd-info-row">
-                <IconUser size={16} className="pd-text-light" />
-                <span className="pd-text-sm">
+              <div className="pending-info-row">
+                <IconUser size={16} className="text-muted" />
+                <span className="text-sm">
                   <strong>Reason:</strong> Knee pain after exercise
                 </span>
               </div>
-              <div className="pd-info-row">
-                <IconCalendarEvent size={16} className="pd-text-light" />
-                <span className="pd-text-sm">
+
+              <div className="pending-info-row">
+                <IconCalendarEvent size={16} className="text-muted" />
+                <span className="text-sm">
                   Referral Date: February 10, 2026
                 </span>
               </div>
             </div>
 
-            <div className="pd-warning-actions">
-              <div className="pd-warning-actions-top">
-                <span className="pd-badge pd-badge-warning">Pending</span>
+            <div className="pending-actions-col">
+              <div className="pending-actions-top">
+                <span className="patientdashboard-badge badge-pending-yellow">
+                  Pending
+                </span>
                 <button
-                  className="pd-btn pd-btn-warning"
+                  className="patientdashboard-btn patientdashboard-btn-orange"
                   onClick={() => setActive("Services")}
                 >
                   <IconUserPlus size={16} /> Book Appointment
                 </button>
               </div>
-              <button
-                className="pd-btn pd-btn-outline pd-w-full pd-mt-8"
-                onClick={() => openDiyModal("View Details")}
-              >
+              <button className="patientdashboard-btn patientdashboard-btn-outline w-full mt-8 flex-center">
                 View Details
               </button>
             </div>
@@ -156,42 +153,41 @@ export default function Dashboard_Patient({ setActive }) {
         </div>
 
         {/* 2. Pending Payment Card */}
-        <div className="pd-card pd-warning-card">
-          <div className="pd-warning-content">
-            <div className="pd-warning-info">
-              <h5>Consultation with Dr. Maria Santos</h5>
-              <p className="pd-text-light pd-text-sm pd-mb-8">
+        <div className="dash-card pending-card">
+          <div className="pending-content">
+            <div className="pending-details">
+              <h5 className="pending-title">
+                Consultation with Dr. Maria Santos
+              </h5>
+              <p className="text-muted text-sm referrer-text">
                 Consultation Date: March 28, 2026
               </p>
 
-              <div className="pd-info-row">
-                <IconLink size={16} className="pd-text-light" />
-                <span className="pd-text-sm">
+              <div className="pending-info-row">
+                <IconLink size={16} className="text-muted" />
+                <span className="text-sm">
                   <strong>Medical Certificate:</strong> $350 (unpaid)
                 </span>
               </div>
-              <div className="pd-info-row">
-                <IconLink size={16} className="pd-text-light" />
-                <span className="pd-text-sm">
+
+              <div className="pending-info-row">
+                <IconLink size={16} className="text-muted" />
+                <span className="text-sm">
                   <strong>Medical Clearance:</strong> $450 (unpaid)
                 </span>
               </div>
             </div>
 
-            <div className="pd-warning-actions">
-              <div className="pd-warning-actions-top">
-                <span className="pd-badge pd-badge-warning">Pending</span>
-                <button
-                  className="pd-btn pd-btn-warning"
-                  onClick={() => openDiyModal("Billing")}
-                >
+            <div className="pending-actions-col">
+              <div className="pending-actions-top">
+                <span className="patientdashboard-badge badge-pending-yellow">
+                  Pending
+                </span>
+                <button className="patientdashboard-btn patientdashboard-btn-orange">
                   <IconCreditCard size={16} /> Pay Now
                 </button>
               </div>
-              <button
-                className="pd-btn pd-btn-outline pd-w-full pd-mt-8"
-                onClick={() => openDiyModal("View Invoice")}
-              >
+              <button className="patientdashboard-btn patientdashboard-btn-outline w-full mt-8 flex-center">
                 View Invoice
               </button>
             </div>
@@ -200,77 +196,80 @@ export default function Dashboard_Patient({ setActive }) {
       </div>
 
       {/* --- HEALTH OVERVIEW --- */}
-      <h4 className="pd-mb-12">Health Overview</h4>
-      <div className="pd-overview-grid">
-        <div className="pd-card pd-overview-item">
-          <div className="pd-overview-icon pd-bg-light-primary pd-text-primary">
+      <h4 className="section-heading">Health Overview</h4>
+      <div className="overview-grid">
+        <div className="dash-card overview-card">
+          <div className="icon-circle bg-light-cyan text-cyan">
             <IconPill size={24} />
           </div>
           <h2>3</h2>
-          <p className="pd-text-light pd-text-sm">Active Medications</p>
+          <p className="text-muted text-sm">Active Medications</p>
         </div>
 
-        <div className="pd-card pd-overview-item">
-          <div className="pd-overview-icon pd-bg-light-primary pd-text-primary">
+        <div className="dash-card overview-card">
+          <div className="icon-circle bg-light-cyan text-cyan">
             <IconCalendarEvent size={24} />
           </div>
           <h2>2</h2>
-          <p className="pd-text-light pd-text-sm">Upcoming Appointments</p>
+          <p className="text-muted text-sm">Upcoming Appointments</p>
         </div>
 
-        <div className="pd-card pd-overview-item pd-relative">
-          <span className="pd-badge pd-badge-warning pd-badge-new">New</span>
-          <div className="pd-overview-icon pd-bg-light-primary pd-text-primary">
+        <div className="dash-card overview-card relative">
+          <span className="patientdashboard-badge patientdashboard-badge-orange new-badge">
+            New
+          </span>
+          <div className="icon-circle bg-light-cyan text-cyan">
             <IconActivity size={24} />
           </div>
           <h2>1 New</h2>
-          <p className="pd-text-light pd-text-sm">Lab Results</p>
+          <p className="text-muted text-sm">Lab Results</p>
         </div>
       </div>
 
       {/* --- BOTTOM GRID --- */}
-      <div className="pd-bottom-grid">
-        {/* Prescriptions */}
-        <div className="pd-column">
-          <div className="pd-section-header">
+      <div className="bottom-grid">
+        {/* Left: Prescriptions */}
+        <div className="grid-column">
+          <div className="section-header">
             <h4>Prescriptions</h4>
             <button
-              className="pd-btn-view-all"
-              onClick={() => openDiyModal("Presciptions")}
+              className="patientdashboard-btn-link"
+              onClick={() => setActive("Prescriptions")}
             >
               View All <IconArrowRight size={14} />
             </button>
           </div>
 
-          <div className="pd-column-list">
-            {/* APPLIED THE WARNING CARD CLASS HERE SO IT GETS THE GRADIENT AND BORDER */}
-            <div className="pd-card pd-warning-card pd-rx-card">
-              <div className="pd-rx-header">
+          <div className="patient-prescription-list">
+            <div className="dash-card prescription-card">
+              <div className="prescription-header">
                 <h5>Lisinopril</h5>
-                <span className="pd-badge pd-badge-warning">DUE SOON</span>
+                <span className="patientdashboard-badge patientdashboard-badge-orange">
+                  DUE SOON
+                </span>
               </div>
-              <p className="pd-text-light pd-text-sm pd-mb-16">10mg</p>
-              <div className="pd-rx-footer">
-                <p className="pd-text-light pd-text-sm">Refill in 5 days</p>
+              <p className="text-muted text-sm dose-text">10mg</p>
+              <div className="prescription-actions">
+                <p className="text-muted text-sm">Refill in 5 days</p>
                 <button
-                  className="pd-btn pd-btn-warning"
-                  onClick={() => openDiyModal("Prescriptions")}
+                  className="patientdashboard-btn-outline-cyan patientdashboard-btn-sm"
+                  onClick={() => handleDIY("Refill")}
                 >
                   Refill Now
                 </button>
               </div>
             </div>
 
-            <div className="pd-card pd-rx-card">
-              <div className="pd-rx-header">
+            <div className="dash-card prescription-card">
+              <div className="prescription-header">
                 <h5>Metformin</h5>
               </div>
-              <p className="pd-text-light pd-text-sm pd-mb-16">500mg</p>
-              <div className="pd-rx-footer">
-                <p className="pd-text-light pd-text-sm">Refill in 30 days</p>
+              <p className="text-muted text-sm dose-text">500mg</p>
+              <div className="prescription-actions">
+                <p className="text-muted text-sm">Refill in 30 days</p>
                 <button
-                  className="pd-btn pd-btn-outline-primary"
-                  onClick={() => openDiyModal("Prescriptions")}
+                  className="patientdashboard-btn-outline-cyan patientdashboard-btn-sm"
+                  onClick={() => handleDIY("Refill")}
                 >
                   Refill Now
                 </button>
@@ -279,53 +278,53 @@ export default function Dashboard_Patient({ setActive }) {
           </div>
         </div>
 
-        {/* Quick Access */}
-        <div className="pd-column">
-          <div className="pd-section-header">
+        {/* Right: Quick Access */}
+        <div className="grid-column">
+          <div className="section-header">
             <h4>Quick Access</h4>
           </div>
 
-          <div className="pd-column-list">
+          <div className="quick-access-list">
             <button
-              className="pd-quick-access-btn"
+              className="quick-access-patientdashboard-btn"
               onClick={() => setActive("MedicalRecords")}
             >
-              <div className="pd-qa-icon pd-bg-light-blue pd-text-blue">
+              <div className="icon-square bg-light-blue text-blue">
                 <IconFileDescription size={20} />
               </div>
-              <div className="pd-qa-text">
+              <div className="qa-text">
                 <strong>Medical Records</strong>
                 <p>View your health history</p>
               </div>
-              <IconArrowRight size={16} className="pd-text-light" />
+              <IconArrowRight size={16} className="text-muted" />
             </button>
 
             <button
-              className="pd-quick-access-btn"
-              onClick={() => openDiyModal("Physical Therapy")}
+              className="quick-access-patientdashboard-btn"
+              onClick={() => openDiyModal("PT")}
             >
-              <div className="pd-qa-icon pd-bg-light-teal pd-text-teal">
+              <div className="icon-square bg-light-teal text-teal">
                 <IconActivity size={20} />
               </div>
-              <div className="pd-qa-text">
+              <div className="qa-text">
                 <strong>Physical Therapy</strong>
                 <p>Track your progress</p>
               </div>
-              <IconArrowRight size={16} className="pd-text-light" />
+              <IconArrowRight size={16} className="text-muted" />
             </button>
 
             <button
-              className="pd-quick-access-btn"
-              onClick={() => openDiyModal("OkieDoc+ OTC Store")}
+              className="quick-access-patientdashboard-btn"
+              onClick={() => openDiyModal("Pharmacy")}
             >
-              <div className="pd-qa-icon pd-bg-light-warning pd-text-warning">
+              <div className="icon-square bg-light-orange text-orange">
                 <IconPill size={20} />
               </div>
-              <div className="pd-qa-text">
+              <div className="qa-text">
                 <strong>Pharmacy Orders</strong>
                 <p>Manage deliveries</p>
               </div>
-              <IconArrowRight size={16} className="pd-text-light" />
+              <IconArrowRight size={16} className="text-muted" />
             </button>
           </div>
         </div>

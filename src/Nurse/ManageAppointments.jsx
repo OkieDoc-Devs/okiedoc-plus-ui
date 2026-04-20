@@ -31,8 +31,6 @@ import { useAuth } from '../contexts/AuthContext';
 
 const USE_API = true;
 const TRIAGE_DRAFTS_STORAGE_KEY = 'nurse.triageDraftsByTicket';
-const getTicketDraftFingerprint = (ticket) =>
-  String(ticket?.createdAt || ticket?.updatedAt || '').trim();
 
 export default function ManageAppointment() {
   const navigate = useNavigate();
@@ -80,37 +78,13 @@ export default function ManageAppointment() {
           const apiTickets = data || [];
           const apiTicketIds = new Set(apiTickets.map((t) => t.id));
 
-          const prunedDrafts = {};
-          for (const apiTicket of apiTickets) {
-            const draft = triageDraftsByTicketId[Number(apiTicket.id)];
-            if (!draft) continue;
-
-            const ticketFingerprint = getTicketDraftFingerprint(apiTicket);
-            if (
-              !draft.__ticketFingerprint ||
-              !ticketFingerprint ||
-              draft.__ticketFingerprint === ticketFingerprint
-            ) {
-              prunedDrafts[Number(apiTicket.id)] = draft;
-            }
-          }
-
-          try {
-            localStorage.setItem(
-              TRIAGE_DRAFTS_STORAGE_KEY,
-              JSON.stringify(prunedDrafts),
-            );
-          } catch {
-            // Ignore localStorage write failures.
-          }
-
           const localOnlyTickets = prevTickets.filter(
             (t) => !apiTicketIds.has(t.id),
           );
 
           const mergedApiTickets = apiTickets.map((apiTicket) => {
             const localTicket = prevTickets.find((t) => t.id === apiTicket.id);
-            const localDraft = prunedDrafts[Number(apiTicket.id)] || {};
+            const localDraft = triageDraftsByTicketId[Number(apiTicket.id)] || {};
             const draftStatus = localDraft.status || localDraft.triageStatus || null;
 
             return {

@@ -49,6 +49,7 @@ export default function SpecialistRegistration() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Set default location and fetch provinces and cities on component mount
   useEffect(() => {
     const bicolRegion = regions.find((r) => r.name === "Bicol Region");
     if (bicolRegion) {

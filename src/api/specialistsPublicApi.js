@@ -13,12 +13,12 @@ export const fetchFeaturedSpecialists = async (limit = 12) => {
     }
 
     const data = await response.json();
-
+    
     // Handle both array and object responses
-    const specialists = Array.isArray(data)
-      ? data
+    const specialists = Array.isArray(data) 
+      ? data 
       : data?.specialists || data?.data || [];
-
+    
     // Return limited list of featured specialists
     return specialists.slice(0, limit).map((specialist) => ({
       id: specialist.id,
@@ -31,8 +31,6 @@ export const fetchFeaturedSpecialists = async (limit = 12) => {
     }));
   } catch (error) {
     console.error('Failed to fetch featured specialists:', error);
-
-    // Return empty array to prevent carousel from breaking
     return [];
   }
 };

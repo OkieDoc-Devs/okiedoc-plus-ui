@@ -14,80 +14,16 @@ import {
 } from "@tabler/icons-react";
 import "../css/Patient_Appointments.css";
 import { useModal } from "../contexts/Modals";
+import { fetchPatientActiveTickets } from "../services/apiService";
 
-const allAppointmentsMock = [
-  {
-    id: 1,
-    dr: "Dr. Sarah Johnson",
-    spec: "Family Medicine",
-    status: "Confirmed",
-    date: "March 31, 2026",
-    time: "2:30 PM",
-    type: "Video Consultation",
-    initials: "SJ",
-    canJoin: true,
-  },
-  {
-    id: 6,
-    dr: "Dr. Carlos Torres",
-    spec: "Dermatologist",
-    status: "Confirmed",
-    date: "March 31, 2026",
-    time: "10:00 AM",
-    type: "Video Consultation",
-    initials: "CT",
-    canJoin: false,
-  },
-  {
-    id: 2,
-    dr: "Dr. Michael Chen",
-    spec: "Cardiologist",
-    status: "Confirmed",
-    date: "April 5, 2026",
-    time: "10:00 AM",
-    type: "Medical Center - Floor 3",
-    initials: "MC",
-    canJoin: false,
-  },
-  {
-    id: 3,
-    dr: "Dr. Emily Rodriguez",
-    spec: "Physical Therapist",
-    status: "Pending",
-    date: "April 8, 2026",
-    time: "3:00 PM",
-    type: "PT Clinic - Room 201",
-    initials: "ER",
-    canJoin: false,
-  },
-  {
-    id: 4,
-    dr: "Dr. Sarah Johnson",
-    spec: "Family Medicine",
-    status: "Completed",
-    date: "March 15, 2026",
-    time: "2:00 PM",
-    type: "Video Consultation",
-    initials: "SJ",
-    canJoin: false,
-  },
-  {
-    id: 5,
-    dr: "Nurse Practitioner James Lee",
-    spec: "Follow-up Care",
-    status: "Completed",
-    date: "March 8, 2026",
-    time: "11:30 AM",
-    type: "Phone Consultation",
-    initials: "JL",
-    canJoin: false,
-  },
-];
+const allAppointmentsMock = [];
 
 export default function Appointments_Patient({ setActive }) {
   const { openDiyModal } = useModal();
   const [filterOpen, setFilterOpen] = useState(false);
   const popoverRef = useRef(null);
+  const [activeTickets, setActiveTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,8 +32,80 @@ export default function Appointments_Patient({ setActive }) {
     "Confirmed",
     "Pending",
     "Completed",
+    "Active",
+    "Inactive"
   ]);
-  const [typeFilter, setTypeFilter] = useState(["Video", "Phone", "In-Person"]);
+  const [typeFilter, setTypeFilter] = useState([
+    "Chat Consultation",
+    "Voice Consultation",
+    "Video Consultation",
+    "In-Person Consultation",
+    "Specialist Services",
+  ]);
+
+  // Fetch real tickets from database
+  useEffect(() => {
+    let mounted = true;
+    const fetchTickets = async () => {
+      try {
+        setLoading(true);
+        const response = await fetchPatientActiveTickets();
+        if (mounted && response.success) {
+          const mappedTickets = response.activeTickets.map(ticket => {
+            const channelLabels = {
+              chat: "Chat Consultation",
+              "Chat Consultation": "Chat Consultation",
+              mobile_call: "Voice Consultation",
+              "Voice Consultation": "Voice Consultation",
+              platform_call: "Video Consultation",
+              "Video Consultation": "Video Consultation",
+              viber_audio: "Voice Consultation",
+              viber_video: "Video Consultation"
+            };
+
+            const rawName = ticket.specialistName || "TBA";
+            const specialistName = (rawName === "Unassigned" || rawName === "TBA" || !ticket.specialistId) ? "TBA" : rawName;
+            
+            const rawSpec = ticket.specialization || "TBA";
+            const specialization = (rawSpec === "Unassigned" || rawSpec === "TBA" || !ticket.specialistId) ? "TBA" : rawSpec;
+
+            const status = ticket.status ? (ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1).toLowerCase()) : "Pending";
+            const date = (specialistName === "TBA" || !ticket.preferredDate) ? "--/--/----" : ticket.preferredDate;
+            const time = (specialistName === "TBA" || !ticket.preferredTime) ? "--:--" : ticket.preferredTime;
+            const location = ticket.city || "TBA";
+
+            return {
+              id: `real-${ticket.id}`,
+              dr: specialistName,
+              spec: specialization,
+              status: status,
+              date: date,
+              time: time,
+              type: channelLabels[ticket.consultationChannel] || "Consultation",
+              channel: ticket.consultationChannel, // Store raw channel for precise filtering
+              initials: specialistName === "TBA" ? "?" : specialistName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
+              canJoin: ticket.status === 'active' || ticket.status === 'confirmed',
+              location: (location === "" || location === null) ? "TBA" : location
+            };
+          });
+          setActiveTickets(mappedTickets);
+        }
+      } catch (error) {
+        console.error("Failed to fetch active tickets:", error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchTickets();
+    return () => { mounted = false; };
+  }, []);
+
+  // Combine Mock Data with Real Database Data
+  const combinedData = useMemo(() => {
+    // Return ONLY activeTickets to remove mock data
+    return activeTickets;
+  }, [activeTickets]);
 
   // Helper to toggle arrays for standard HTML checkboxes
   const toggleArrayItem = (array, setArray, item) => {
@@ -121,43 +129,59 @@ export default function Appointments_Patient({ setActive }) {
 
   // Dynamic Filtering and Sorting Engine
   const displayData = useMemo(() => {
-    return allAppointmentsMock
+    return combinedData
       .filter((item) => {
         if (
           searchQuery &&
           !item.dr.toLowerCase().includes(searchQuery.toLowerCase())
         )
           return false;
-        if (!statusFilter.includes(item.status)) return false;
+        
+        // Match status filter (case insensitive)
+        const currentStatus = item.status.toLowerCase();
+        const isStatusMatch = statusFilter.some(s => s.toLowerCase() === currentStatus);
+        
+        if (!isStatusMatch) return false;
 
-        let itemCategory = "In-Person";
-        if (item.type.includes("Video")) itemCategory = "Video";
-        else if (item.type.includes("Phone")) itemCategory = "Phone";
+        let itemCategory = "In-Person Consultation";
+        // Map consultation channels to categories correctly
+        const channel = item.channel || "";
+        const type = item.type || "";
+
+        if (channel === 'Chat Consultation' || channel === 'chat') {
+          itemCategory = "Chat Consultation";
+        } else if (channel === 'Voice Consultation' || channel === 'mobile_call' || channel === 'viber_audio') {
+          itemCategory = "Voice Consultation";
+        } else if (channel === 'Video Consultation' || channel === 'platform_call' || channel === 'viber_video' || type.includes("Video")) {
+          itemCategory = "Video Consultation";
+        } else if (type.includes("Specialist") || type.includes("Service")) {
+          itemCategory = "Specialist Services";
+        } else {
+          itemCategory = "In-Person Consultation";
+        }
 
         if (!typeFilter.includes(itemCategory)) return false;
 
         return true;
       })
       .sort((a, b) => {
-        const dateA = new Date(`${a.date} ${a.time}`);
-        const dateB = new Date(`${b.date} ${b.time}`);
-        const dayA = new Date(a.date).getTime();
-        const dayB = new Date(b.date).getTime();
+        // Custom Sort by Newest First (Created At / ID)
+        // Since we want newest first by default and ticket IDs follow creation order:
+        const idA = parseInt(a.id.replace('real-', '')) || 0;
+        const idB = parseInt(b.id.replace('real-', '')) || 0;
 
         if (sortOrder === "dateDesc") {
-          if (dayA === dayB) return dateA.getTime() - dateB.getTime();
-          return dateB.getTime() - dateA.getTime();
+          return idB - idA; // Simple newest first logic
         }
         if (sortOrder === "dateAsc") {
-          if (dayA === dayB) return dateA.getTime() - dateB.getTime();
-          return dateA.getTime() - dateB.getTime();
+          return idA - idB; 
         }
         if (sortOrder === "alphaAsc") return a.dr.localeCompare(b.dr);
         if (sortOrder === "alphaDesc") return b.dr.localeCompare(a.dr);
 
         return 0;
       });
-  }, [searchQuery, sortOrder, statusFilter, typeFilter]);
+  }, [activeTickets, searchQuery, sortOrder, statusFilter, typeFilter]);
 
   return (
     <div className="appt-page-container">
@@ -183,6 +207,8 @@ export default function Appointments_Patient({ setActive }) {
           <IconSearch size={16} className="appt-search-icon" />
           <input
             type="text"
+            id="appt-search-input"
+            name="appt-search"
             className="appt-search-input"
             placeholder="Search by Doctor's name..."
             value={searchQuery}
@@ -292,6 +318,34 @@ export default function Appointments_Patient({ setActive }) {
                   />{" "}
                   Completed
                 </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={statusFilter.includes("Active")}
+                    onChange={() =>
+                      toggleArrayItem(
+                        statusFilter,
+                        setStatusFilter,
+                        "Active",
+                      )
+                    }
+                  />{" "}
+                  Active
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={statusFilter.includes("Inactive")}
+                    onChange={() =>
+                      toggleArrayItem(
+                        statusFilter,
+                        setStatusFilter,
+                        "Inactive",
+                      )
+                    }
+                  />{" "}
+                  Inactive
+                </label>
               </div>
 
               <hr className="popover-divider" />
@@ -303,32 +357,52 @@ export default function Appointments_Patient({ setActive }) {
                 <label>
                   <input
                     type="checkbox"
-                    checked={typeFilter.includes("Video")}
+                    checked={typeFilter.includes("Chat Consultation")}
                     onChange={() =>
-                      toggleArrayItem(typeFilter, setTypeFilter, "Video")
+                      toggleArrayItem(typeFilter, setTypeFilter, "Chat Consultation")
                     }
                   />{" "}
-                  Video Call
+                  Chat Consultation
                 </label>
                 <label>
                   <input
                     type="checkbox"
-                    checked={typeFilter.includes("Phone")}
+                    checked={typeFilter.includes("Voice Consultation")}
                     onChange={() =>
-                      toggleArrayItem(typeFilter, setTypeFilter, "Phone")
+                      toggleArrayItem(typeFilter, setTypeFilter, "Voice Consultation")
                     }
                   />{" "}
-                  Phone Call
+                  Voice Consultation
                 </label>
                 <label>
                   <input
                     type="checkbox"
-                    checked={typeFilter.includes("In-Person")}
+                    checked={typeFilter.includes("Video Consultation")}
                     onChange={() =>
-                      toggleArrayItem(typeFilter, setTypeFilter, "In-Person")
+                      toggleArrayItem(typeFilter, setTypeFilter, "Video Consultation")
                     }
                   />{" "}
-                  In-Person Clinic
+                  Video Consultation
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={typeFilter.includes("In-Person Consultation")}
+                    onChange={() =>
+                      toggleArrayItem(typeFilter, setTypeFilter, "In-Person Consultation")
+                    }
+                  />{" "}
+                  In-Person Consultation
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={typeFilter.includes("Specialist Services")}
+                    onChange={() =>
+                      toggleArrayItem(typeFilter, setTypeFilter, "Specialist Services")
+                    }
+                  />{" "}
+                  Specialist Services
                 </label>
               </div>
             </div>
@@ -382,15 +456,23 @@ export default function Appointments_Patient({ setActive }) {
                 <span>{item.time}</span>
               </div>
               <div className="appt-detail-row">
-                {item.type.includes("Video") ? (
-                  <IconVideo size={18} className="detail-icon" />
-                ) : item.type.includes("Phone") ? (
+                {item.type === "Video Consultation" ? (
                   <IconPhone size={18} className="detail-icon" />
+                ) : item.type === "Voice Consultation" ? (
+                  <IconPhone size={18} className="detail-icon" />
+                ) : item.type === "Chat Consultation" ? (
+                  <IconMessage size={18} className="detail-icon" />
                 ) : (
                   <IconMapPin size={18} className="detail-icon" />
                 )}
                 <span>{item.type}</span>
               </div>
+              {item.location && !["Chat Consultation", "Voice Consultation", "Video Consultation"].includes(item.type) && (
+                <div className="appt-detail-row">
+                  <IconMapPin size={18} className="detail-icon" />
+                  <span>Location: {item.location}</span>
+                </div>
+              )}
             </div>
 
             {item.status !== "Completed" && (

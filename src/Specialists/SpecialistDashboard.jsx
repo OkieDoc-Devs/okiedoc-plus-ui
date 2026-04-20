@@ -1618,10 +1618,6 @@ const SpecialistDashboard = () => {
     };
 
     const selectedPatient = selectedTicket || null;
-    const selectedPatientAllergies = toStringList(selectedPatient?.allergies);
-    const selectedPatientMedicalHistory = toStringList(
-      selectedPatient?.medicalHistory,
-    );
     const painMapAreas = normalizePainMapAreas(selectedPatient);
     const painMapView = getPainMapView(selectedPatient, painMapAreas);
 
@@ -1821,8 +1817,8 @@ const SpecialistDashboard = () => {
           <div className='info-card'>
             <div className='info-card-title'>Allergies</div>
             <div className='info-card-body'>
-              {selectedPatientAllergies.length > 0 ? (
-                selectedPatientAllergies.map((a) => (
+              {selectedPatient?.allergies?.length > 0 ? (
+                selectedPatient.allergies.map((a) => (
                   <span key={a} className='pill'>
                     {a}
                   </span>
@@ -1836,9 +1832,9 @@ const SpecialistDashboard = () => {
           <div className='info-card'>
             <div className='info-card-title'>Medical History</div>
             <div className='info-card-body'>
-              {selectedPatientMedicalHistory.length > 0 ? (
+              {selectedPatient?.medicalHistory?.length > 0 ? (
                 <ul className='history-list'>
-                  {selectedPatientMedicalHistory.map((item, idx) => (
+                  {selectedPatient.medicalHistory.map((item, idx) => (
                     <li key={idx}>{item}</li>
                   ))}
                 </ul>

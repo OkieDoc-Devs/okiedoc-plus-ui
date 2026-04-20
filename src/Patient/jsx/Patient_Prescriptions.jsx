@@ -20,7 +20,7 @@ const activeMeds = [
     dose: "10mg • Once daily",
     dr: "Dr. Sarah Johnson",
     since: "Jan 15, 2026",
-    rem: 5, // Triggers the warning card!
+    rem: 5,
     total: 30,
     next: "April 5, 2026",
     refillsLeft: 2,
@@ -64,7 +64,7 @@ const pastMeds = [
   },
 ];
 
-export default function Patient_Prescriptions() {
+export default function Pateint_Prescriptions() {
   const { openDiyModal } = useModal();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -205,23 +205,13 @@ export default function Patient_Prescriptions() {
               const isLow = med.rem <= 5;
 
               return (
-                <div
-                  key={med.id}
-                  className={`rx-card ${isLow ? "rx-warning-card" : ""}`}
-                >
+                <div key={med.id} className="rx-card">
                   <div className="rx-card-header">
                     <div className="rx-card-title-group">
                       <IconPill color="#4AA7ED" size={20} />
                       <h4>{med.name}</h4>
                     </div>
-                    {/* Add a DUE SOON badge if it's low, else Active */}
-                    {isLow ? (
-                      <span className="rx-badge bg-light-yellow text-yellow">
-                        DUE SOON
-                      </span>
-                    ) : (
-                      <span className="rx-badge badge-active">Active</span>
-                    )}
+                    <span className="rx-badge badge-active">Active</span>
                   </div>
 
                   <p className="rx-card-dose">{med.dose}</p>
@@ -262,7 +252,7 @@ export default function Patient_Prescriptions() {
 
                   <div className="rx-card-actions">
                     <button
-                      className={`rx-btn flex-1 ${isLow ? "rx-btn-yellow" : "rx-btn-primary"}`}
+                      className="rx-btn rx-btn-primary flex-1"
                       onClick={() => openDiyModal(`Refill ${med.name}`)}
                     >
                       <IconRefresh size={16} /> Request Refill (

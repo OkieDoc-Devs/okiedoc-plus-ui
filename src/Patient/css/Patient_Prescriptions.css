@@ -98,30 +98,6 @@
   margin-bottom: 24px;
 }
 
-/* --- WARNING CARD STATE --- */
-.rx-warning-card {
-  border-left: 6px solid #f59f00 !important;
-  background: linear-gradient(135deg, #f59f00 -1000%, #ffffff 100%) !important;
-}
-
-/* Matching Yellow Button for Warning State */
-.rx-btn-yellow {
-  background: linear-gradient(90deg, #f59f00 0%, #cf9905 1000%);
-  color: white;
-  border: none;
-}
-.rx-btn-yellow:hover {
-  opacity: 0.9;
-}
-
-/* Badge Utilities */
-.bg-light-yellow {
-  background-color: #fff9db !important;
-}
-.text-yellow {
-  color: #f59f00 !important;
-}
-
 /* Controls (Search & Filter) */
 .rx-controls-bar {
   display: flex;

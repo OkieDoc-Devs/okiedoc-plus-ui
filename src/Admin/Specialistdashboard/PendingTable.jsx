@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import Modal from '../Components/Modal';
 import { FiEye, FiCheck, FiX } from 'react-icons/fi';
 
-const PendingTable = ({ applications, onApprove, onDeny, searchBar }) => {
+const PendingTable = ({ applications = [], onApprove, onDeny, searchBar }) => {
   const [selectedApp, setSelectedApp] = useState(null);
+  const safeApps = Array.isArray(applications) ? applications : [];
 
   return (
     <>
@@ -22,13 +23,13 @@ const PendingTable = ({ applications, onApprove, onDeny, searchBar }) => {
           </tr>
         </thead>
         <tbody>
-          {applications && applications.length > 0 ? (
-            applications.map((app) => (
-              <tr key={app.id}>
-                <td style={{fontWeight: 500}}>{app.name || `${app.firstName} ${app.lastName}`}</td>
+          {safeApps.length > 0 ? (
+            safeApps.map((app) => (
+              <tr key={app.id || Math.random()}>
+                <td style={{fontWeight: 500}}>{app.name || `${app.firstName || ''} ${app.lastName || ''}`.trim() || 'Unknown'}</td>
                 <td>{app.primarySpecialty || app.details?.specializations?.[0] || 'N/A'}</td>
                 <td>{app.licenseNumber || app.details?.prcId?.number || 'N/A'}</td>
-                <td>{app.email}</td>
+                <td>{app.email || 'N/A'}</td>
                 <td>
                   <button className="view-btn" onClick={() => setSelectedApp(app)}><FiEye style={{marginBottom:'-2px'}}/> View</button>
                   <button className="approve-btn" onClick={() => onApprove(app.id)}><FiCheck style={{marginBottom:'-2px'}}/> Approve</button>
@@ -51,7 +52,7 @@ const PendingTable = ({ applications, onApprove, onDeny, searchBar }) => {
           <div className="ticket-modal-grid">
             <div className="ticket-section">
               <h3>Applicant Information</h3>
-              <div className="ticket-row"><span className="ticket-label">Full Name</span><span className="ticket-value">{selectedApp.name || `${selectedApp.firstName} ${selectedApp.lastName}`}</span></div>
+              <div className="ticket-row"><span className="ticket-label">Full Name</span><span className="ticket-value">{selectedApp.name || `${selectedApp.firstName || ''} ${selectedApp.lastName || ''}`.trim()}</span></div>
               <div className="ticket-row"><span className="ticket-label">Email</span><span className="ticket-value">{selectedApp.email}</span></div>
               <div className="ticket-row"><span className="ticket-label">Phone</span><span className="ticket-value">{selectedApp.mobileNumber || 'N/A'}</span></div>
             </div>
@@ -59,7 +60,7 @@ const PendingTable = ({ applications, onApprove, onDeny, searchBar }) => {
               <h3>Credentials</h3>
               <div className="ticket-row"><span className="ticket-label">Primary Specialty</span><span className="ticket-value">{selectedApp.primarySpecialty || 'N/A'}</span></div>
               <div className="ticket-row"><span className="ticket-label">Sub-Specialty</span><span className="ticket-value">{selectedApp.subSpecialties || 'None'}</span></div>
-              <div className="ticket-row"><span className="ticket-label">PRC License</span><span className="ticket-value" style={{color: '#0ea5e9'}}>{selectedApp.licenseNumber || 'N/A'}</span></div>
+              <div className="ticket-row"><span className="ticket-label">PRC License</span><span className="ticket-value" style={{color: '#0ea5e9'}}>{selectedApp.licenseNumber || selectedApp.details?.prcId?.number || 'N/A'}</span></div>
             </div>
           </div>
           

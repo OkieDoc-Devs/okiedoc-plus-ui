@@ -28,7 +28,7 @@ const SuperAdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [adminAvatar, setAdminAvatar] = useState('/account.svg');
 
-  const [searchTerm, setSearchTerm] = useState(''); // This state is now shared globally!
+  const [searchTerm, setSearchTerm] = useState(''); 
   const [viewingTicket, setViewingTicket] = useState(null);
 
   const [transactions, setTransactions] = useState([]);
@@ -43,6 +43,17 @@ const SuperAdminDashboard = () => {
     convenienceFee: { isActive: true, name: 'Convenience Fee' },
   });
 
+  const safeArray = (data) => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data.users)) return data.users;
+    if (Array.isArray(data.transactions)) return data.transactions;
+    if (Array.isArray(data.specialists)) return data.specialists;
+    if (Array.isArray(data.pendingApplications)) return data.pendingApplications;
+    return [];
+  };
+
   useEffect(() => {
     setSearchTerm(''); 
   }, [activeTab]);
@@ -53,23 +64,27 @@ const SuperAdminDashboard = () => {
         const [
           specialistsData, pendingData, transactionsData, usersData, adminProfileData 
         ] = await Promise.all([
-          getSpecialists(), getPendingApplications(), getTransactions(),
-          getPatientAndNurseUsers(), getAdminProfile().catch(() => null) 
+          getSpecialists().catch(() => []), 
+          getPendingApplications().catch(() => []), 
+          getTransactions().catch(() => []),
+          getPatientAndNurseUsers().catch(() => []), 
+          getAdminProfile().catch(() => null) 
         ]);
 
-        if (adminProfileData?.profileUrl && !adminProfileData.profileUrl.includes('admin_avatar.png')) {
-          setAdminAvatar(adminProfileData.profileUrl);
+        const profile = adminProfileData?.data || adminProfileData;
+        if (profile?.profileUrl && !profile.profileUrl.includes('admin_avatar.png')) {
+          setAdminAvatar(profile.profileUrl);
         }
 
-        const processSpec = (arr) => (Array.isArray(arr) ? arr : arr?.data || []).map((spec) => ({
+        const rawSpecs = safeArray(specialistsData);
+        setSpecialists(rawSpecs.map(spec => ({
           ...spec,
-          name: `${spec.firstName || ''} ${spec.lastName || ''}`.trim(),
-        }));
-
-        setSpecialists(processSpec(specialistsData));
-        setPendingApplications((Array.isArray(pendingData) ? pendingData : pendingData?.data || []));
-        setTransactions(Array.isArray(transactionsData) ? transactionsData : transactionsData?.data || []);
-        setUsers(Array.isArray(usersData) ? usersData : usersData?.data || []);
+          name: `${spec.firstName || ''} ${spec.lastName || ''}`.trim() || 'Unknown',
+        })));
+        
+        setPendingApplications(safeArray(pendingData));
+        setTransactions(safeArray(transactionsData));
+        setUsers(safeArray(usersData));
       } catch (error) { console.error('Failed to fetch data:', error); }
     };
     fetchAndProcessData();
@@ -162,7 +177,7 @@ const SuperAdminDashboard = () => {
   const isSettingsTab = activeTab === 'fee_config' || activeTab === 'role_permissions';
 
   const displayedUsers = filteredUsers.filter(u => {
-    const role = (u.role || '').toLowerCase();
+    const role = String(u.role || u.userType || '').toLowerCase();
     if (activeTab === 'patients') return role === 'patient';
     if (activeTab === 'physicians') return role === 'physician' || role === 'general_physician' || role === 'specialist';
     if (activeTab === 'nurses') return role === 'nurse';
@@ -193,9 +208,9 @@ const SuperAdminDashboard = () => {
     >
       {activeTab === 'dashboard' && (
         <div className="metrics-grid">
-          <MetricCard title="Total Patients" value={users.filter(u=>u.role==='patient').length || "0"} trendText="Active" trendType="neutral" />
+          <MetricCard title="Total Patients" value={users.filter(u=>String(u.role || u.userType).toLowerCase() === 'patient').length || "0"} trendText="Active" trendType="neutral" />
           <MetricCard title="Active Specialists" value={specialists.length || "0"} trendText="Verified" trendType="up" />
-          <MetricCard title="Pending Applications" value={pendingApplications.length} trendText="Requires Review" trendType="warning" />
+          <MetricCard title="Pending Applications" value={pendingApplications.length || "0"} trendText="Requires Review" trendType="warning" />
           <MetricCard title="Total Transactions" value={transactions.length || "0"} trendText="Lifetime" trendType="neutral" />
         </div>
       )}
@@ -268,7 +283,7 @@ const SuperAdminDashboard = () => {
               </thead>
               <tbody>
                 {filteredTransactions.length > 0 ? filteredTransactions.map(t => {
-                  const statusLabel = t.status.toLowerCase();
+                  const statusLabel = String(t.status).toLowerCase();
                   let pillClass = 'status-pending';
                   if (statusLabel.includes('completed')) pillClass = 'status-completed';
                   if (statusLabel.includes('cancel')) pillClass = 'status-cancelled';

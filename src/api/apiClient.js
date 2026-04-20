@@ -16,7 +16,7 @@ if (import.meta.env.PROD) {
   }
 }
 
-export const API_BASE_URL = resolvedApiUrl || 'http://localhost:1337';
+export const API_BASE_URL = resolvedApiUrl || "http://localhost:1337";
 
 // Global variable to cache the CSRF token so we don't fetch it on every single click
 let cachedCsrfToken = null;
@@ -28,14 +28,14 @@ async function getCsrfToken() {
   if (cachedCsrfToken) return cachedCsrfToken;
   try {
     let response = await fetch(`${API_BASE_URL}/api/v1/auth/csrf-token`, {
-      method: 'GET',
-      credentials: 'include',
+      method: "GET",
+      credentials: "include",
     });
 
     if (response.status === 404) {
       response = await fetch(`${API_BASE_URL}/csrfToken`, {
-        method: 'GET',
-        credentials: 'include',
+        method: "GET",
+        credentials: "include",
       });
     }
 
@@ -45,7 +45,7 @@ async function getCsrfToken() {
       return cachedCsrfToken;
     }
   } catch (error) {
-    console.warn('Failed to fetch CSRF token:', error);
+    console.warn("Failed to fetch CSRF token:", error);
   }
   return null;
 }
@@ -58,7 +58,7 @@ async function getCsrfToken() {
  */
 export async function apiRequest(endpoint, options = {}) {
   const defaultOptions = {
-    credentials: 'include', 
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
@@ -74,12 +74,12 @@ export async function apiRequest(endpoint, options = {}) {
     mergedHeaders["Authorization"] = `Bearer ${jwtToken}`;
   }
 
-  const method = (options.method || 'GET').toUpperCase();
+  const method = (options.method || "GET").toUpperCase();
 
-  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+  if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
     const csrfToken = await getCsrfToken();
     if (csrfToken) {
-      mergedHeaders['X-CSRF-Token'] = csrfToken;
+      mergedHeaders["X-CSRF-Token"] = csrfToken;
     }
   }
 
@@ -93,8 +93,6 @@ export async function apiRequest(endpoint, options = {}) {
     ? endpoint
     : `${API_BASE_URL}${endpoint}`;
 
-  const method = (fetchOptions.method || "GET").toUpperCase();
-
   if (import.meta.env.PROD && url.startsWith("http://")) {
     throw new Error("Insecure API request blocked in production.");
   }
@@ -104,24 +102,27 @@ export async function apiRequest(endpoint, options = {}) {
       ...defaultOptions,
       ...fetchOptions,
       headers: mergedHeaders,
-      method, 
+      method,
     });
 
-    if (response.status === 403 && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-        cachedCsrfToken = null; 
-        const freshToken = await getCsrfToken();
-        if (freshToken) {
-           mergedHeaders['X-CSRF-Token'] = freshToken;
-           response = await fetch(url, {
-              ...defaultOptions,
-              ...fetchOptions,
-              headers: mergedHeaders,
-              method
-           });
-        }
+    if (
+      response.status === 403 &&
+      ["POST", "PUT", "DELETE", "PATCH"].includes(method)
+    ) {
+      cachedCsrfToken = null;
+      const freshToken = await getCsrfToken();
+      if (freshToken) {
+        mergedHeaders["X-CSRF-Token"] = freshToken;
+        response = await fetch(url, {
+          ...defaultOptions,
+          ...fetchOptions,
+          headers: mergedHeaders,
+          method,
+        });
+      }
     }
 
-    const contentType = response.headers.get('content-type');
+    const contentType = response.headers.get("content-type");
     let responseData;
 
     if (contentType && contentType.includes("application/json")) {
@@ -142,15 +143,21 @@ export async function apiRequest(endpoint, options = {}) {
         }
       }
 
-      if (typeof responseData === 'string') {
-        throw new Error(responseData || `HTTP error! status: ${response.status}`);
+      if (typeof responseData === "string") {
+        throw new Error(
+          responseData || `HTTP error! status: ${response.status}`,
+        );
       }
 
       // Create error object to preserve all response data for better error handling
-      const error = new Error(responseData?.message || responseData?.error || `HTTP error! status: ${response.status}`);
+      const error = new Error(
+        responseData?.message ||
+          responseData?.error ||
+          `HTTP error! status: ${response.status}`,
+      );
       error.status = response.status;
       error.response = responseData;
-      
+
       throw error;
     }
     return responseData;

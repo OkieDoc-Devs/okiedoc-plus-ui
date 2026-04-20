@@ -12,19 +12,21 @@ import Registration from './Login & Registration/Registration.jsx';
 import RegistrationOptions from './Login & Registration/RegistrationOptions.jsx';
 import GuardianRegistration from './Login & Registration/GuardianRegistration.jsx';
 import FamilyRegistration from './Login & Registration/FamilyRegistration.jsx';
+import SpecialistLogin from './Login & Registration/SpecialistLogin.jsx';
+import SpecialistRegistration from './Login & Registration/SpecialistRegistration.jsx';
 import Dashboard from './Nurse/Dashboard.jsx';
 import Notifications from './Nurse/Notifications.jsx';
 import MyAccount from './Nurse/MyAccount.jsx';
 import ManageAppointments from './Nurse/ManageAppointments.jsx';
 import Messages from './Nurse/Messages.jsx';
-import SpecialistDashboard from './Admin/Specialistdashboard/SpecialistDashboard.jsx';
 import PatientDashboard from './Patient/jsx/Patient_App.jsx';
 import ModalProvider from './Patient/contexts/Modals.jsx';
 import SpecialistDashboard2 from './Specialists/SpecialistDashboard.jsx';
-import SpecialistLogin from './Login & Registration/SpecialistLogin.jsx';
-import SpecialistRegistration from './Login & Registration/SpecialistRegistration.jsx';
 import PendingVerification from './Specialists/PendingVerification.jsx';
 import DeniedVerification from './Specialists/DeniedVerification.jsx';
+import SuperAdminDashboard from './Admin/SuperAdminDashboard.jsx';
+import NurseAdminDashboard from './Admin/NurseAdminDashboard.jsx';
+import BarangayAdminDashboard from './Admin/BarangayAdminDashboard.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import VideoCallPage from './components/VideoCall/VideoCallPage.jsx';
 
@@ -120,8 +122,9 @@ function AppContent() {
             <ProtectedRoute
               allowedRoles={[
                 'nurse',
-                'admin',
+                'super_admin',
                 'nurse_admin',
+                'barangay_admin',
                 'nurseadmin',
                 'na',
                 'patient',
@@ -175,10 +178,26 @@ function AppContent() {
         />
         {/* Admin Routes */}
         <Route
-          path='/admin'
+          path="/admin/specialist-dashboard"
+            element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+              <SuperAdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/nurse-dashboard"
           element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <SpecialistDashboard />
+            <ProtectedRoute allowedRoles={['nurseadmin','nurse_admin']}>
+              <NurseAdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/barangay-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['barangay_admin']}>
+              <BarangayAdminDashboard />
             </ProtectedRoute>
           }
         />

@@ -45,6 +45,7 @@
 .header-right {
   display: flex;
   align-items: center;
+  gap: 10px;
 }
 
 .icon-button {
@@ -80,6 +81,71 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.user-account {
+  position: relative;
+}
+
+.account-toggle {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-toggle:hover {
+  opacity: 0.95;
+}
+
+.account-toggle:focus-visible {
+  outline: 2px solid #4aa7ed;
+  outline-offset: 2px;
+}
+
+.account-avatar {
+  border: 1px solid #e0e0e0;
+}
+
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 180px;
+  background: #ffffff;
+  border: 1px solid #eef1f4;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  z-index: 30;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #2f3c4a;
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background: #f4f9fd;
+}
+
+.logout-item {
+  border-top: 1px solid #eef1f4;
+  color: #d94841;
+}
+
+.logout-item:hover {
+  background: #fff5f5;
 }
 
 /* --- LAYOUT BODY --- */
@@ -215,6 +281,11 @@
 @media (max-width: 768px) {
   .mobile-menu-btn {
     display: block;
+  }
+
+  .account-dropdown {
+    right: 0;
+    width: 170px;
   }
 
   .app-sidebar {

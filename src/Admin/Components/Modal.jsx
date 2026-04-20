@@ -1,29 +1,35 @@
-import React from 'react';
-import '../Specialistdashboard/SpecialistDashboard.css';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import '../AdminLayout.css';
 
 /**
  * A reusable modal component.
- * @param {object} props - Component props.
- * @param {React.ReactNode} props.children - Content to display inside the modal body.
- * @param {string} props.title - The title to display in the modal header.
- * @param {Function} props.onClose - Function to call when the close button is clicked.
- * @param {object} props.contentStyle - Optional style object to apply to the modal content.
+ * Upgraded to use createPortal to escape z-index trapping.
  */
 const Modal = ({ children, title, onClose, contentStyle }) => {
-  return (
-    // Modal overlay to cover the background
-    <div className='modal'>
-      <div className='modal-content' style={contentStyle}>
-        <div className='modal-header'>
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = 'auto'; };
+  }, []);
+
+  const modalContent = (
+    <div className='admin-modal-overlay' onClick={onClose}>
+      <div className='admin-modal-content' style={contentStyle} onClick={(e) => e.stopPropagation()}>
+        <div className='admin-modal-header'>
           <h2>{title}</h2>
-          <span className='close-btn' onClick={onClose}>
+          <button className='admin-modal-close-icon' onClick={onClose} title="Close">
             &times;
-          </span>
+          </button>
         </div>
-        {children}
+        <div className='admin-modal-body'>
+          {children}
+        </div>
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default Modal;

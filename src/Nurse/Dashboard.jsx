@@ -358,6 +358,9 @@ const getUrgencyLevelFromTicket = (ticket) => {
   return fromFields;
 };
 
+const getTicketDraftFingerprint = (ticket) =>
+  String(readValue(ticket, ['createdAt', 'updatedAt'], '') || '').trim();
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -473,11 +476,17 @@ export default function Dashboard() {
       return;
     }
 
+    const ticketForDraft = (tickets || []).find(
+      (entry) => Number(entry?.id) === normalizedTicketId,
+    );
+    const ticketFingerprint = getTicketDraftFingerprint(ticketForDraft);
+
     setTriageDraftsByTicketId((previous) => {
       const next = {
         ...previous,
         [normalizedTicketId]: {
           ...(previous[normalizedTicketId] || {}),
+          __ticketFingerprint: ticketFingerprint,
           ...patch,
         },
       };
@@ -491,6 +500,39 @@ export default function Dashboard() {
       return next;
     });
   };
+
+  useEffect(() => {
+    setTriageDraftsByTicketId((previous) => {
+      const validTicketIds = new Set(
+        (tickets || [])
+          .map((ticket) => Number(ticket?.id))
+          .filter((ticketId) => Number.isFinite(ticketId)),
+      );
+
+      let changed = false;
+      const next = {};
+
+      for (const [ticketId, draft] of Object.entries(previous || {})) {
+        const normalizedTicketId = Number(ticketId);
+        if (!validTicketIds.has(normalizedTicketId)) {
+          changed = true;
+          continue;
+        }
+
+        next[normalizedTicketId] = draft;
+      }
+
+      if (changed) {
+        try {
+          localStorage.setItem(TRIAGE_DRAFTS_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // Ignore localStorage write failures and keep in-memory state.
+        }
+      }
+
+      return changed ? next : previous;
+    });
+  }, [tickets]);
 
   useEffect(() => {
     let isMounted = true;
@@ -712,7 +754,12 @@ export default function Dashboard() {
       return;
     }
 
-    const localDraft = triageDraftsByTicketId[Number(selectedTicket.id)] || {};
+    const rawLocalDraft = triageDraftsByTicketId[Number(selectedTicket.id)] || {};
+    const selectedTicketFingerprint = getTicketDraftFingerprint(selectedTicket);
+    const shouldUseLocalDraft =
+      !selectedTicketFingerprint ||
+      rawLocalDraft.__ticketFingerprint === selectedTicketFingerprint;
+    const localDraft = shouldUseLocalDraft ? rawLocalDraft : {};
 
     const hydratedStatus =
       localDraft.status || localDraft.triageStatus || selectedTicket.status;

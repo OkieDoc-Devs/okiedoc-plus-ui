@@ -1,21 +1,15 @@
 //import './auth.css';
 import './Registration.css';
 import { useNavigate } from 'react-router';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { usePSGC } from '../hooks/usePSGC';
 import { Lock } from 'lucide-react';
 import RegistrationHeader from './RegistrationHeader';
-import { useAuth } from '../contexts/AuthContext';
 
 import { apiRequest } from '../api/apiClient';
 
 const registerPatient = async (formData) => {
-  // Define the default values that we want to treat as "not set" if unchanged
-  const defaultRegion = 'Bicol Region';
-  const defaultProvince = 'Camarines Sur';
-  const defaultCity = 'City of Naga';
-
   return await apiRequest('/api/v1/auth/register', {
     method: 'POST',
     disableAuthRedirect: true,
@@ -28,25 +22,19 @@ const registerPatient = async (formData) => {
       birthday: formData.birthday,
       gender: formData.gender || undefined,
       mobileNumber: formData.mobileNumber,
-      // Only send address if it's been modified from the default
       barangay: formData.barangay,
-      city: formData.city === defaultCity ? '' : formData.city,
-      province: formData.province === defaultProvince ? '' : formData.province,
-      region: formData.region === defaultRegion ? '' : formData.region,
+      city: formData.city,
+      province: formData.province,
+      region: formData.region,
       zipCode: formData.zipCode,
       addressLine1: formData.addressLine1,
       addressLine2: formData.addressLine2,
-      isPhilHealthMember: formData.isPhilHealthMember,
-      emergencyFullName: formData.emergencyFullName,
-      emergencyRelationship: formData.emergencyRelationship,
-      emergencyPhoneNumber: formData.emergencyPhoneNumber,
     }),
   });
 };
 
 export default function Registration() {
   const navigate = useNavigate();
-  const { refreshSession, getRedirectPathForRole } = useAuth();
   const {
     regions,
     provinces,
@@ -73,14 +61,7 @@ export default function Registration() {
     zipCode: '',
     addressLine1: '',
     addressLine2: '',
-    isPhilHealthMember: false,
-    emergencyFullName: '',
-    emergencyRelationship: '',
-    emergencyPhoneNumber: '',
   });
-  
-  const formRef = useRef(null);
-  
   const [success, setSuccess] = useState('');
   const [errors, setErrors] = useState({});
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -140,9 +121,8 @@ export default function Registration() {
     // Apply character restrictions
     if (['firstName', 'lastName', 'middleName'].includes(id)) {
       filteredValue = value.replace(/[^a-zA-Z\s-]/g, '');
-    } else if (id === 'mobileNumber' || id === 'emergencyPhoneNumber') {
-      // Ensure only + and numbers are entered, and max length for +639XXXXXXXXX (13 chars)
-      filteredValue = value.replace(/[^0-9+]/g, '').slice(0, 13);
+    } else if (id === 'mobileNumber') {
+      filteredValue = value.replace(/[^0-9+]/g, '');
     } else if (id === 'zipCode') {
       filteredValue = value.replace(/[^0-9]/g, '').slice(0, 4);
     } else if (['addressLine1', 'addressLine2'].includes(id)) {
@@ -282,18 +262,13 @@ export default function Registration() {
         newErrors.birthday = 'Birthday cannot be in the future';
     }
 
-    if (!formData.gender) {
-      newErrors.gender = 'Gender is required';
-    }
-
     if (!formData.mobileNumber.trim()) {
       newErrors.mobileNumber = 'Mobile number is required';
     } else {
-      // Philippine mobile number filter: starts with +639 followed by 9 digits
-      const mobileRegex = /^\+639\d{9}$/;
+      const mobileRegex = /^(09\d{9}|\+639\d{9})$/;
       if (!mobileRegex.test(formData.mobileNumber.trim())) {
         newErrors.mobileNumber =
-          'Must be a valid PH number starting with +639 (e.g., +639123456789)';
+          'Must be a valid PH number (e.g., 09123456789 or +639123456789)';
       }
     }
 
@@ -313,77 +288,57 @@ export default function Registration() {
     if (!privacyAccepted)
       newErrors.privacy = 'You must accept the privacy policy';
 
-    if (formData.emergencyPhoneNumber && formData.emergencyPhoneNumber.trim()) {
-      const mobileRegex = /^\+639\d{9}$/;
-      if (!mobileRegex.test(formData.emergencyPhoneNumber.trim())) {
-        newErrors.emergencyPhoneNumber =
-          'Must be a valid PH number starting with +639 (e.g., +639123456789)';
-      }
-    }
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      
-      if (Object.keys(newErrors).length === 1) {
-        // If only one error, scroll to that specific field
-        const firstErrorKey = Object.keys(newErrors)[0];
-        const element = document.getElementById(firstErrorKey);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      } else {
-        // If multiple errors, scroll to top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      window.scrollTo(0, 0);
       return;
     }
 
     try {
       const result = await registerPatient(formData);
       if (result.message || result.success) {
-        // Automatically sync session
-        await refreshSession();
         setSuccess(
-          'Your account has been successfully created. Welcome to OkieDoc+!',
+          result.message ||
+            'Your account has been successfully created. You may now log in.',
         );
         window.scrollTo(0, 0);
+        setFormData({
+          firstName: '',
+          lastName: '',
+          middleName: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          birthday: '',
+          gender: '',
+          mobileNumber: '',
+          barangay: '',
+          city: '',
+          province: '',
+          region: '',
+          zipCode: '',
+          addressLine1: '',
+          addressLine2: '',
+        });
       }
     } catch (error) {
       console.error('Registration failed:', error);
       
-      const newErrors = {};
+      let errorMessage = 'Registration failed.';
       
-      if (error && typeof error === 'object') {
-        if (error.emailAlreadyInUse) {
-          newErrors.email = error.emailAlreadyInUse.message || 'Email already in use';
-        } else if (error.mobileNumberAlreadyInUse) {
-          newErrors.mobileNumber = error.mobileNumberAlreadyInUse.message || 'Mobile number already in use';
-        } else if (error.message) {
-          newErrors.email = error.message;
-        } else {
-          newErrors.email = 'Registration failed. Please try again.';
-        }
-      } else {
-        newErrors.email = typeof error === 'string' ? error : 'Registration failed.';
+      // Handle the deep error structure from Sails/apiClient
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      } else if (error.emailAlreadyInUse) {
+        errorMessage = error.emailAlreadyInUse.message;
+      } else if (error.mobileNumberInUse) {
+        errorMessage = error.mobileNumberInUse.message;
       }
       
-      setErrors(newErrors);
-      
-      if (Object.keys(newErrors).length === 1) {
-        // If only one error, scroll to that specific field
-        const firstErrorKey = Object.keys(newErrors)[0];
-        const element = document.getElementById(firstErrorKey);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      } else {
-        // If multiple errors, scroll to top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      setErrors({ email: errorMessage });
+      window.scrollTo(0, 0);
     }
   };
 
@@ -400,12 +355,9 @@ export default function Registration() {
             <button
               className='login-btn'
               style={{ margin: 0, width: '100%' }}
-              onClick={() => {
-                const redirectPath = getRedirectPathForRole('patient');
-                navigate(redirectPath);
-              }}
+              onClick={() => navigate('/login')}
             >
-              Navigate to dashboard
+              Proceed to Login
             </button>
           </div>
         </div>
@@ -560,9 +512,7 @@ export default function Registration() {
                     style={{ color: '#64748b', cursor: 'pointer' }}
                   />
                   {errors.birthday && (
-                      <div className='registration-error-popup'>
-                        {errors.birthday}
-                      </div>
+                    <span className='registration-error-text'>{errors.birthday}</span>
                   )}
                 </div>
               </div>
@@ -573,7 +523,7 @@ export default function Registration() {
                 </label>
                 <select
                   id='gender'
-                  className={`registration-select ${errors.gender ? 'input-error' : ''}`}
+                  className='registration-select'
                   value={formData.gender}
                   onChange={handleInputChange}
                   style={{ color: '#64748b' }}
@@ -583,20 +533,11 @@ export default function Registration() {
                   <option value='Female'>Female</option>
                   <option value='Other'>Other</option>
                 </select>
-                {errors.gender && (
-                  <span className='registration-error-text'>{errors.gender}</span>
-                )}
               </div>
 
               <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
                 <div style={{ backgroundColor: '#f8fafc', padding: '1.25rem 1.5rem', borderRadius: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-                <input 
-                  type='checkbox' 
-                  className='registration-checkbox' 
-                  style={{ accentColor: '#2563eb' }} 
-                  checked={formData.isPhilHealthMember}
-                  onChange={(e) => setFormData({ ...formData, isPhilHealthMember: e.target.checked })}
-                />
+                <input type='checkbox' className='registration-checkbox' style={{ accentColor: '#2563eb' }} />
                 <div>
                   <div style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '1.1rem' }}>I am a PhilHealth Member</div>
                   <div style={{ color: '#3b82f6', fontSize: '0.95rem', marginTop: '0.25rem' }}>PhilHealth coverage helps reduce your consultation costs</div>
@@ -758,22 +699,17 @@ export default function Registration() {
                           style={{ backgroundColor: '#fff' }}
                         />
                       </div>
-                      <div className='registration-field' style={{ position: 'relative' }}>
+                      <div className='registration-field'>
                         <label className='registration-label'>Phone Number</label>
                         <input
                           id='emergencyPhoneNumber'
-                          className={`registration-input ${errors.emergencyPhoneNumber ? 'input-error' : ''}`}
+                          className='registration-input'
                           type='tel'
                           placeholder='+63 912 345 6789'
                           value={formData.emergencyPhoneNumber || ''}
                           onChange={handleInputChange}
                           style={{ backgroundColor: '#fff' }}
                         />
-                        {errors.emergencyPhoneNumber && (
-                          <div className='registration-error-popup'>
-                            {errors.emergencyPhoneNumber}
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   IconLayoutDashboard,
   IconStethoscope,
@@ -7,28 +7,23 @@ import {
   IconUser,
   IconBell,
   IconMenu2,
-  IconChevronDown,
+  IconPill,
 } from "@tabler/icons-react";
-import "../css/Patient_App.css";
+import styles from "../css/Patient_App.module.css";
 
 // Import your pages
 import Dashboard_Patient from "./Patient_Dashboard";
 import Services_Patient from "./Patient_Services";
 import Appointments_Patient from "./Patient_Appointments";
-import ConsultationIntakeForm from "./ConsultationIntakeForm";
-// import { MedicalRecords } from "./MedicalRecords";
-// import { Profile } from "./Profile";
-// import { BookSpecialist } from "./sub-page/BookSpecialist";
-// import { BookPhysical } from "./sub-page/BookPhysical";
 import MedicalRecords_Patient from "./Patient_MedicalRecords";
 import Prescriptions_Patient from "./Patient_Prescriptions";
 import Profile_Patient from "./Patient_Profile";
 
 // Sub-Pages for Patient
-import { BookSpecialist } from "../sub-pages/BookSpecialist";
-import { BookPhysical } from "../sub-pages/BookPhysical";
-import Avatar from "../../components/Avatar";
-import { useAuth } from "../../contexts/AuthContext";
+import BookSpecialist from "../sub-pages/BookSpecialist";
+import BookPhysical from "../sub-pages/BookPhysical";
+import ConsultationIntakeForm from "../sub-pages/ConsultationIntakeForm";
+import RecordSharing from "../sub-pages/RecordSharing";
 
 const navLinks = [
   { label: "Dashboard", route: "Dashboard", icon: IconLayoutDashboard },
@@ -39,68 +34,68 @@ const navLinks = [
     route: "MedicalRecords",
     icon: IconFileDescription,
   },
+  { label: "Prescriptions", route: "Prescriptions", icon: IconPill },
   { label: "Profile", route: "Profile", icon: IconUser },
 ];
 
 function Patient_App() {
-  const { user, logout } = useAuth();
   // THE ROUTING ENGINE: Reads the browser URL Hash
   const [currentHash, setCurrentHash] = useState(
     window.location.hash || "#/Dashboard",
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
 
   // Listen for native browser navigation (Back, Forward, Refresh, Links)
   useEffect(() => {
-    const handleHashChange = () => {
+    const handleHashChange = (e) => {
+      // 1. INTERCEPT BROWSER BACK BUTTON
+      if (
+        window.isProfileEditing &&
+        typeof window.triggerProfileCancelModal === "function"
+      ) {
+        const targetPath = e.newURL ? e.newURL.split("#/")[1] : "Dashboard";
+
+        // Silently revert the URL back to Profile without triggering an infinite loop
+        window.history.replaceState(null, "", "#/Profile");
+
+        // Trigger the custom modal inside the Profile component
+        window.triggerProfileCancelModal(targetPath);
+        return;
+      }
       setCurrentHash(window.location.hash || "#/Dashboard");
     };
+
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
-  // Handle click outside dropdown
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   // Custom Navigation function
   const navigate = (path) => {
+    // 2. INTERCEPT SIDEBAR CLICKS
+    if (
+      window.isProfileEditing &&
+      typeof window.triggerProfileCancelModal === "function"
+    ) {
+      window.triggerProfileCancelModal(path);
+      return; // Pause the navigation, let the Profile Modal handle it
+    }
+
     window.location.hash = `#/${path}`;
     setSidebarOpen(false); // Close sidebar on mobile
-    setDropdownOpen(false); // Close dropdown if navigating
-  };
-
-  const handleLogout = async () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      try {
-        await logout();
-        window.location.href = "/login";
-      } catch (err) {
-        console.error("Logout failed:", err);
-      }
-    }
   };
 
   // Parse the current URL Hash
-  // Example: "#/BookSpecialist/BOK-1234" becomes -> mainRoute: "BookSpecialist", idParam: "BOK-1234"
+  // Example: '#/BookSpecialist/BOK-1234' becomes -> mainRoute: 'BookSpecialist', idParam: 'BOK-1234'
   const pathParts = currentHash.replace("#/", "").split("/");
   const mainRoute = pathParts[0] || "Dashboard";
   const typeParam = pathParts[1];
 
-  // For the active highlight in the sidebar (we don't want "Services" highlighted if booking is open)
+  // For the active highlight in the sidebar (we don't want 'Services' highlighted if booking is open)
   const isBookingOpen =
     mainRoute === "BookSpecialist" ||
     mainRoute === "BookPhysical" ||
-    mainRoute === "IntakeForm";
+    mainRoute === "IntakeForm" ||
+    mainRoute === "RecordSharing";
   const sidebarActiveTab = isBookingOpen ? null : mainRoute;
 
   const handleNotificationClick = () =>
@@ -111,93 +106,59 @@ function Patient_App() {
   const ActiveIcon = currentNavLink ? currentNavLink.icon : null;
 
   return (
-    <div className="app-container">
+    <div className={styles["app-container"]}>
       {/* --- HEADER --- */}
-      <header className="app-header">
-        <div className="header-left">
+      <header className={styles["app-header"]}>
+        <div className={styles["header-left"]}>
           <button
-            className="mobile-menu-btn"
+            className={styles["mobile-menu-btn"]}
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
             <IconMenu2 size={24} />
           </button>
-          <div className="logo-container">
-            <img src="/okie-doc-logo.png" alt="OkieDoc+" className="logo" />
+          <div className={styles["logo-container"]}>
+            <img
+              src="/okie-doc-logo.png"
+              alt="OkieDoc+"
+              className={styles["logo"]}
+            />
           </div>
         </div>
 
-        <div className="header-right">
+        <div className={styles["header-right"]}>
           <button
-            className="icon-button notification-btn"
+            className={`${styles["icon-button"]} ${styles["notification-btn"]}`}
             onClick={handleNotificationClick}
           >
             <IconBell size={24} stroke={1.5} />
-            <span className="notification-badge">3</span>
+            <span className={styles["notification-badge"]}>3</span>
           </button>
-
-          <div
-            className={`profile-dropdown-container ${dropdownOpen ? "active" : ""}`}
-            ref={dropdownRef}
-          >
-            <button
-              className="avatar-toggle"
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-            >
-              <Avatar
-                firstName={user?.firstName || ""}
-                lastName={user?.lastName || ""}
-                profileImageUrl={user?.profileUrl}
-                size={36}
-                userType="patient"
-              />
-              <IconChevronDown size={14} className="chevron" />
-            </button>
-
-            {dropdownOpen && (
-              <div className="profile-dropdown-menu">
-                <div className="dropdown-header">
-                  <p className="user-name">
-                    {user?.firstName} {user?.lastName}
-                  </p>
-                  <p className="user-role">Patient</p>
-                </div>
-                <div className="dropdown-divider" />
-                <button
-                  className="dropdown-item"
-                  onClick={() => navigate("Profile")}
-                >
-                  <IconUser size={18} /> View Profile
-                </button>
-                <div className="dropdown-divider" />
-                <button
-                  className="dropdown-item logout-action"
-                  onClick={handleLogout}
-                >
-                  Logout
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </header>
 
-      <div className="app-body">
+      <div className={styles["app-body"]}>
         {/* --- SIDEBAR NAVBAR --- */}
-        <nav className={`app-sidebar ${sidebarOpen ? "open" : ""}`}>
-          <div className="patientapp-nav-links">
+        <nav
+          className={`${styles["app-sidebar"]} ${sidebarOpen ? styles["open"] : ""}`}
+        >
+          <div className={styles["patientapp-nav-links"]}>
             {navLinks.map((item) => (
               <button
                 key={item.label}
-                className={`nav-item ${sidebarActiveTab === item.route ? "active" : ""}`}
+                className={`${styles["nav-item"]} ${sidebarActiveTab === item.route ? styles["active"] : ""}`}
                 onClick={() => navigate(item.route)}
               >
-                <item.icon size={20} stroke={1.5} className="nav-icon" />
+                <item.icon
+                  size={20}
+                  stroke={1.5}
+                  className={styles["nav-icon"]}
+                />
                 <span>{item.label}</span>
               </button>
             ))}
           </div>
 
-          <div className="help-box">
+          <div className={styles["help-box"]}>
             <h4>Need Help?</h4>
             <p>
               Our support team is available
@@ -208,8 +169,8 @@ function Patient_App() {
         </nav>
 
         {/* --- MAIN CONTENT AREA --- */}
-        <main className="app-main">
-          <div className="main-content-wrapper">
+        <main className={styles["app-main"]}>
+          <div className={styles["main-content-wrapper"]}>
             {/* The Router Switch */}
             {mainRoute === "Dashboard" && (
               <Dashboard_Patient setActive={navigate} />
@@ -231,6 +192,13 @@ function Patient_App() {
             )}
 
             {/* Your Sub-Pages */}
+            {mainRoute === "IntakeForm" && (
+              <ConsultationIntakeForm
+                setActive={navigate}
+                type={decodeURIComponent(typeParam || "Consultation")}
+              />
+            )}
+
             {mainRoute === "BookSpecialist" && (
               <BookSpecialist
                 onGoBack={() => navigate("Services")}
@@ -244,33 +212,35 @@ function Patient_App() {
                 onGoBack={() => navigate("Services")}
                 onGoToAppointments={() => navigate("Appointments")}
                 onGoToDashboard={() => navigate("Dashboard")}
-                  />
-            )}
-            {mainRoute === "IntakeForm" && (
-              <ConsultationIntakeForm
-                setActive={navigate}
-                type={decodeURIComponent(typeParam || "Consultation")}
               />
+            )}
+
+            {mainRoute === "RecordSharing" && (
+              <RecordSharing onGoBack={() => navigate("MedicalRecords")} />
             )}
 
             {/* Custom 404 / Work In Progress State */}
             {mainRoute !== "Dashboard" &&
               mainRoute !== "Services" &&
-              mainRoute !== "Appointments" &&
+              mainRoute !== "IntakeForm" &&
               mainRoute !== "BookPhysical" &&
               mainRoute !== "BookSpecialist" &&
+              mainRoute !== "Appointments" &&
               mainRoute !== "MedicalRecords" &&
+              mainRoute !== "RecordSharing" &&
               mainRoute !== "Prescriptions" &&
-              mainRoute !== "Profile" &&
-              mainRoute !== "IntakeForm" && (
-                <div className="not-found-container">
+              mainRoute !== "Profile" && (
+                <div className={styles["not-found-container"]}>
                   {ActiveIcon && (
-                    <ActiveIcon size={64} className="not-found-icon" />
+                    <ActiveIcon
+                      size={64}
+                      className={styles["not-found-icon"]}
+                    />
                   )}
                   <h2>{currentNavLink ? currentNavLink.label : mainRoute}</h2>
                   <p>This page is currently under development.</p>
                   <button
-                    className="back-home-btn"
+                    className={styles["back-home-btn"]}
                     onClick={() => navigate("Dashboard")}
                   >
                     Return to Dashboard
@@ -283,7 +253,7 @@ function Patient_App() {
         {/* Mobile Overlay */}
         {sidebarOpen && (
           <div
-            className="sidebar-overlay"
+            className={styles["sidebar-overlay"]}
             onClick={() => setSidebarOpen(false)}
           ></div>
         )}

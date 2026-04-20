@@ -19,18 +19,14 @@ import Notifications from './Nurse/Notifications.jsx';
 import MyAccount from './Nurse/MyAccount.jsx';
 import ManageAppointments from './Nurse/ManageAppointments.jsx';
 import Messages from './Nurse/Messages.jsx';
-import SpecialistDashboard from './Admin/Specialistdashboard/SpecialistDashboard.jsx';
 import PatientDashboard from './Patient/jsx/Patient_App.jsx';
 import ModalProvider from './Patient/contexts/Modals.jsx';
 import SpecialistDashboard2 from './Specialists/SpecialistDashboard.jsx';
-import SpecialistLogin from './Login & Registration/SpecialistLogin.jsx';
-import SpecialistRegistration from './Login & Registration/SpecialistRegistration.jsx';
 import PendingVerification from './Specialists/PendingVerification.jsx';
 import DeniedVerification from './Specialists/DeniedVerification.jsx';
 import SuperAdminDashboard from './Admin/SuperAdminDashboard.jsx';
 import NurseAdminDashboard from './Admin/NurseAdminDashboard.jsx';
 import BarangayAdminDashboard from './Admin/BarangayAdminDashboard.jsx';
-import CommercialPage from './CommercialPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import VideoCallPage from './components/VideoCall/VideoCallPage.jsx';
 

@@ -4,15 +4,15 @@
  */
 
 const resolvedApiUrl =
-  import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '';
+  import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "";
 
 if (import.meta.env.PROD) {
   if (!resolvedApiUrl) {
-    throw new Error('VITE_API_URL must be set in production.');
+    throw new Error("VITE_API_URL must be set in production.");
   }
 
-  if (!resolvedApiUrl.startsWith('https://')) {
-    throw new Error('VITE_API_URL must use HTTPS in production.');
+  if (!resolvedApiUrl.startsWith("https://")) {
+    throw new Error("VITE_API_URL must use HTTPS in production.");
   }
 }
 
@@ -60,7 +60,7 @@ export async function apiRequest(endpoint, options = {}) {
   const defaultOptions = {
     credentials: 'include', 
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
   };
 
@@ -69,9 +69,9 @@ export async function apiRequest(endpoint, options = {}) {
     ...options.headers,
   };
 
-  const jwtToken = localStorage.getItem('jwt_token');
+  const jwtToken = localStorage.getItem("jwt_token");
   if (jwtToken) {
-    mergedHeaders['Authorization'] = `Bearer ${jwtToken}`;
+    mergedHeaders["Authorization"] = `Bearer ${jwtToken}`;
   }
 
   const method = (options.method || 'GET').toUpperCase();
@@ -86,15 +86,17 @@ export async function apiRequest(endpoint, options = {}) {
   const { disableAuthRedirect = false, ...fetchOptions } = options;
 
   if (options.body instanceof FormData) {
-    delete mergedHeaders['Content-Type'];
+    delete mergedHeaders["Content-Type"];
   }
 
-  const url = endpoint.startsWith('http')
+  const url = endpoint.startsWith("http")
     ? endpoint
     : `${API_BASE_URL}${endpoint}`;
 
-  if (import.meta.env.PROD && url.startsWith('http://')) {
-    throw new Error('Insecure API request blocked in production.');
+  const method = (fetchOptions.method || "GET").toUpperCase();
+
+  if (import.meta.env.PROD && url.startsWith("http://")) {
+    throw new Error("Insecure API request blocked in production.");
   }
 
   try {
@@ -122,7 +124,7 @@ export async function apiRequest(endpoint, options = {}) {
     const contentType = response.headers.get('content-type');
     let responseData;
 
-    if (contentType && contentType.includes('application/json')) {
+    if (contentType && contentType.includes("application/json")) {
       responseData = await response.json().catch(() => ({}));
     } else {
       responseData = await response.text();
@@ -134,9 +136,9 @@ export async function apiRequest(endpoint, options = {}) {
     if (!response.ok) {
       if (response.status === 401) {
         if (!disableAuthRedirect) {
-          localStorage.removeItem('jwt_token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+          localStorage.removeItem("jwt_token");
+          localStorage.removeItem("user");
+          window.location.href = "/login";
         }
       }
 
@@ -151,7 +153,6 @@ export async function apiRequest(endpoint, options = {}) {
       
       throw error;
     }
-
     return responseData;
   } catch (error) {
     console.error(`API Request Error [${endpoint}]:`, error);

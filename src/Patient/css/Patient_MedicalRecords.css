@@ -587,6 +587,8 @@
 .mr-empty-icon {
   color: var(--mr-border);
   margin-bottom: 16px;
+  display: inline-block;
+  vertical-align: middle;
 }
 .mr-empty-title {
   color: var(--mr-dark);

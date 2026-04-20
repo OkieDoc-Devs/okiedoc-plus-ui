@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   IconLayoutDashboard,
   IconStethoscope,
@@ -10,6 +10,8 @@ import {
   IconPill,
 } from "@tabler/icons-react";
 import styles from "../css/Patient_App.module.css";
+import Avatar from "../../components/Avatar";
+import { useAuth } from "../../contexts/AuthContext";
 
 // Import your pages
 import Dashboard_Patient from "./Patient_Dashboard";
@@ -39,11 +41,14 @@ const navLinks = [
 ];
 
 function Patient_App() {
+  const { user, logout } = useAuth();
   // THE ROUTING ENGINE: Reads the browser URL Hash
   const [currentHash, setCurrentHash] = useState(
     window.location.hash || "#/Dashboard",
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef(null);
 
   // Listen for native browser navigation (Back, Forward, Refresh, Links)
   useEffect(() => {
@@ -67,6 +72,20 @@ function Patient_App() {
 
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        accountMenuRef.current &&
+        !accountMenuRef.current.contains(event.target)
+      ) {
+        setIsAccountMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Custom Navigation function
@@ -101,6 +120,17 @@ function Patient_App() {
   const handleNotificationClick = () =>
     alert("DIY: Notification panel goes here!");
 
+  const handleOpenProfile = () => {
+    setIsAccountMenuOpen(false);
+    navigate("Profile");
+  };
+
+  const handleLogout = async () => {
+    setIsAccountMenuOpen(false);
+    await logout();
+    window.location.href = "/login";
+  };
+
   // Find icon for the 404 page
   const currentNavLink = navLinks.find((link) => link.route === mainRoute);
   const ActiveIcon = currentNavLink ? currentNavLink.icon : null;
@@ -133,6 +163,47 @@ function Patient_App() {
             <IconBell size={24} stroke={1.5} />
             <span className={styles["notification-badge"]}>3</span>
           </button>
+
+          <div className={styles["user-account"]} ref={accountMenuRef}>
+            <button
+              className={styles["account-toggle"]}
+              onClick={() => setIsAccountMenuOpen((prev) => !prev)}
+              aria-haspopup="menu"
+              aria-expanded={isAccountMenuOpen}
+              aria-label="Open account menu"
+            >
+              <Avatar
+                profileImageUrl={
+                  user?.profilePictureUrl || user?.profileImageUrl || null
+                }
+                firstName={user?.firstName || "Patient"}
+                lastName={user?.lastName || ""}
+                userType="patient"
+                size={36}
+                alt="Patient account"
+                className={styles["account-avatar"]}
+              />
+            </button>
+
+            {isAccountMenuOpen && (
+              <div className={styles["account-dropdown"]} role="menu">
+                <button
+                  className={styles["dropdown-item"]}
+                  onClick={handleOpenProfile}
+                  role="menuitem"
+                >
+                  View Profile
+                </button>
+                <button
+                  className={`${styles["dropdown-item"]} ${styles["logout-item"]}`}
+                  onClick={handleLogout}
+                  role="menuitem"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

@@ -144,12 +144,12 @@ export async function apiRequest(endpoint, options = {}) {
         throw new Error(responseData || `HTTP error! status: ${response.status}`);
       }
 
-      const errorMessage = 
-        responseData?.error || 
-        responseData?.message || 
-        `HTTP error! status: ${response.status}`;
-        
-      throw new Error(errorMessage);
+      // Create error object to preserve all response data for better error handling
+      const error = new Error(responseData?.message || responseData?.error || `HTTP error! status: ${response.status}`);
+      error.status = response.status;
+      error.response = responseData;
+      
+      throw error;
     }
 
     return responseData;

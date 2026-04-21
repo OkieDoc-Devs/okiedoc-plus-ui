@@ -1,11 +1,4 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../api/apiClient';
 
 const AuthContext = createContext(null);
@@ -15,6 +8,9 @@ const DEFAULT_REDIRECTS = {
   patient: '/patient-dashboard',
   nurse: '/nurse-dashboard',
   admin: '/admin/specialist-dashboard',
+  super_admin: '/admin/specialist-dashboard',
+  nurse_admin: '/admin/nurse-dashboard',
+  barangay_admin: '/admin/barangay-dashboard',
 };
 
 function normalizeUser(rawUser) {
@@ -39,9 +35,7 @@ export const AuthProvider = ({ children }) => {
       const data = await apiRequest('/api/v1/auth/me', {
         disableAuthRedirect: true,
       });
-      console.log('AuthContext received from /auth/me:', data);
       const normalizedUser = normalizeUser(data?.user);
-      console.log('AuthContext normalized user:', normalizedUser);
       setUser(normalizedUser);
       return normalizedUser;
     } catch {
@@ -65,9 +59,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (!result?.success || !result?.user) {
-        throw new Error(
-          result?.message || result?.error || 'Invalid email or password',
-        );
+        throw new Error(result?.message || result?.error || 'Invalid email or password');
       }
 
       if (result.token) {
@@ -77,21 +69,13 @@ export const AuthProvider = ({ children }) => {
       const normalizedUser = normalizeUser(result.user);
 
       if (roleMode === 'allow' && role && normalizedUser?.role !== role) {
-        await apiRequest('/api/v1/auth/logout', {
-          method: 'POST',
-          disableAuthRedirect: true,
-        }).catch(() => {});
+        await apiRequest('/api/v1/auth/logout', { method: 'POST', disableAuthRedirect: true }).catch(() => {});
         throw new Error(`Access denied: this portal is for ${role} accounts.`);
       }
 
       if (roleMode === 'deny' && role && normalizedUser?.role === role) {
-        await apiRequest('/api/v1/auth/logout', {
-          method: 'POST',
-          disableAuthRedirect: true,
-        }).catch(() => {});
-        throw new Error(
-          `Access denied: ${role} accounts must use their dedicated portal.`,
-        );
+        await apiRequest('/api/v1/auth/logout', { method: 'POST', disableAuthRedirect: true }).catch(() => {});
+        throw new Error(`Access denied: ${role} accounts must use their dedicated portal.`);
       }
 
       setUser(normalizedUser);
@@ -105,8 +89,13 @@ export const AuthProvider = ({ children }) => {
       method: 'POST',
       disableAuthRedirect: true,
     }).catch(() => {});
+    
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('user');
+    localStorage.removeItem('okiedoc_user_type');
+    localStorage.removeItem('okiedoc_specialist_user');
+    sessionStorage.clear();
+    
     setUser(null);
   }, []);
 

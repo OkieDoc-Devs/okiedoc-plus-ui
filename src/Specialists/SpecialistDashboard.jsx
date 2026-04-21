@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FaUpload, FaTimes, FaRegComment, FaPaperPlane } from 'react-icons/fa';
+import {
+  FaUpload,
+  FaTimes,
+  FaRegComment,
+  FaPaperPlane,
+  FaPrescriptionBottleAlt,
+  FaFlask,
+  FaFileMedical,
+} from 'react-icons/fa';
 import './SpecialistDashboard.css';
 import authService from './authService';
 import * as specialistApi from './services/apiService';
@@ -180,6 +188,24 @@ const toStringList = (value) => {
 
 const buildTriageNotes = (ticket) => String(ticket?.additionalRemarks || '').trim();
 
+const COMMON_LAB_TESTS = [
+  'Complete Blood Count (CBC)',
+  'Lipid Profile',
+  'HbA1c',
+  'Kidney Function Test (KFT)',
+  'Chest X-Ray',
+  'Ultrasound',
+  'Hepatitis B Surface Antigen',
+  'Pregnancy Test',
+  'Urinalysis',
+  'Blood Glucose (FBS)',
+  'Liver Function Test (LFT)',
+  'Thyroid Function Test',
+  'ECG (Electrocardiogram)',
+  'COVID-19 RT-PCR',
+  'Stool Examination',
+];
+
 const SpecialistDashboard = () => {
   const buildMedicalHistoryForSpecialist = (ticket) => {
     const triageHistory = toStringList(ticket?.triageMedicalHistory);
@@ -285,6 +311,9 @@ const SpecialistDashboard = () => {
   const [medForm, setMedForm] = useState(null);
 
   const [labForm, setLabForm] = useState(null);
+  const [selectedLabTests, setSelectedLabTests] = useState([]);
+  const [labCustomTestName, setLabCustomTestName] = useState('');
+  const [labInstructions, setLabInstructions] = useState('');
 
   const [mhRequests, setMhRequests] = useState([]);
   const [selectedMedicalEntry, setSelectedMedicalEntry] = useState(null);
@@ -301,6 +330,7 @@ const SpecialistDashboard = () => {
     upcomingAppointments: 0,
   });
   const patientChatMessagesRef = useRef(null);
+  const soapPanelRef = useRef(null);
 
   const createPatientChatMessages = useCallback((ticket) => {
     const patientName = ticket?.patientFullName || ticket?.patient || 'the patient';
@@ -729,6 +759,30 @@ const SpecialistDashboard = () => {
   }, [selectedTicketId]);
 
   useEffect(() => {
+    const savedLabRequests = Array.isArray(encounter?.labRequests) ? encounter.labRequests : [];
+    setSelectedLabTests(
+      savedLabRequests.map((request, index) => {
+        const isCustom = request?.test === 'Custom Test';
+        const label = isCustom
+          ? (request?.customTestName || '').trim() || 'Custom Test'
+          : (request?.test || '').trim();
+
+        return {
+          id:
+            request?.id ||
+            `${isCustom ? 'custom' : 'common'}-${label || 'lab'}-${index}`,
+          test: request?.test || '',
+          customTestName: request?.customTestName || '',
+          remarks: request?.remarks || '',
+          label,
+          isCustom,
+        };
+      }),
+    );
+    setLabInstructions(encounter?.labInstructions || '');
+  }, [encounter?.labInstructions, encounter?.labRequests]);
+
+  useEffect(() => {
     if (!selectedTicketId) return;
 
     const selectedTicketForChat = tickets.find(
@@ -748,6 +802,12 @@ const SpecialistDashboard = () => {
 
     setPatientChatDraft('');
   }, [selectedTicketId, tickets, createPatientChatMessages]);
+
+  useEffect(() => {
+    if (soapPanelRef.current) {
+      soapPanelRef.current.scrollTop = 0;
+    }
+  }, [centerTab]);
 
   useEffect(() => {
     const messagePanel = patientChatMessagesRef.current;
@@ -1146,6 +1206,72 @@ const SpecialistDashboard = () => {
         console.warn('Failed to save consultation data to API:', error);
       }
     }
+  };
+
+  const syncLabSelections = (nextSelections, nextInstructions = labInstructions) => {
+    setSelectedLabTests(nextSelections);
+    saveEncounter({
+      labRequests: nextSelections.map((item) => ({
+        test: item.test,
+        customTestName: item.customTestName || '',
+        remarks: item.remarks || '',
+      })),
+      labInstructions: nextInstructions,
+    });
+  };
+
+  const toggleCommonLabTest = (testName) => {
+    const exists = selectedLabTests.some((item) => !item.isCustom && item.test === testName);
+    if (exists) {
+      syncLabSelections(selectedLabTests.filter((item) => !(item.test === testName && !item.isCustom)));
+      return;
+    }
+
+    syncLabSelections([
+      ...selectedLabTests,
+      {
+        id: `common-${testName}`,
+        test: testName,
+        customTestName: '',
+        remarks: '',
+        label: testName,
+        isCustom: false,
+      },
+    ]);
+  };
+
+  const addCustomLabTest = () => {
+    const trimmedName = labCustomTestName.trim();
+    if (!trimmedName) return;
+
+    syncLabSelections([
+      ...selectedLabTests,
+      {
+        id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        test: 'Custom Test',
+        customTestName: trimmedName,
+        remarks: '',
+        label: trimmedName,
+        isCustom: true,
+      },
+    ]);
+    setLabCustomTestName('');
+  };
+
+  const removeSelectedLabTest = (itemId) => {
+    syncLabSelections(selectedLabTests.filter((item) => item.id !== itemId));
+  };
+
+  const handleLabInstructionsChange = (value) => {
+    setLabInstructions(value);
+    saveEncounter({
+      labInstructions: value,
+      labRequests: selectedLabTests.map((item) => ({
+        test: item.test,
+        customTestName: item.customTestName || '',
+        remarks: item.remarks || '',
+      })),
+    });
   };
 
   const openSoapModal = (section) => {
@@ -1891,7 +2017,237 @@ const SpecialistDashboard = () => {
             readOnly
           />
 
-          <div className='info-card'>
+        <div className='soap-panel'>
+          <div className='soap-header'>
+            <h3>SOAP Notes</h3>
+            <p>Document your clinical findings and treatment plan</p>
+          </div>
+          <div className='soap-card soap-card--subjective'>
+            <div className='soap-card-title'>S - Subjective</div>
+            <textarea
+              value={encounter.subjective || ''}
+              readOnly
+              onClick={() => openSoapModal('subjective')}
+              placeholder='Patient reports experiencing...'
+              className='soap-card-textarea soap-card-textarea--display'
+              aria-label='Open subjective SOAP editor'
+            />
+          </div>
+          <div className='soap-card soap-card--objective'>
+            <div className='soap-card-title'>O - Objective</div>
+            <textarea
+              value={encounter.objective || ''}
+              readOnly
+              onClick={() => openSoapModal('objective')}
+              placeholder='Physical examination reveals...'
+              className='soap-card-textarea soap-card-textarea--display'
+              aria-label='Open objective SOAP editor'
+            />
+          </div>
+          <div className='soap-card soap-card--assessment'>
+            <div className='soap-card-title'>A - Assessment</div>
+            <textarea
+              value={encounter.assessment || ''}
+              readOnly
+              onClick={() => openSoapModal('assessment')}
+              placeholder='Diagnosis: ...'
+              className='soap-card-textarea soap-card-textarea--display'
+              aria-label='Open assessment SOAP editor'
+            />
+            <div className='soap-card-icd-summary'>
+              {!chapterData ? (
+                <div className='soap-card-icd-summary__empty'>
+                  ICD Codes
+                </div>
+              ) : (
+                <>
+                  <div className='soap-card-icd-summary__field'>
+                    <span>CHAPTER</span>
+                    <div className='soap-card-icd-summary__value'>
+                      {chapterData ? `${chapterData.code} - ${chapterData.label}` : 'Not selected'}
+                    </div>
+                  </div>
+                  <div className='soap-card-icd-summary__field'>
+                    <span>BLOCK</span>
+                    <div className='soap-card-icd-summary__value'>
+                      {blockData ? `${blockData.code} - ${blockData.label}` : 'Not selected'}
+                    </div>
+                  </div>
+                  <div className='soap-card-icd-summary__field'>
+                    <span>CATEGORY</span>
+                    <div className='soap-card-icd-summary__value'>
+                      {categoryData ? `${categoryData.code} - ${categoryData.label}` : 'Not selected'}
+                    </div>
+                  </div>
+                  <div className='soap-card-icd-summary__details'>
+                    <div className='soap-card-icd-summary__details-label'>Selected Code:</div>
+                    <div className='soap-card-icd-summary__details-value'>
+                      {selectedCodeValue || 'Not selected'}
+                    </div>
+                    <div className='soap-card-icd-summary__details-desc'>
+                      <strong>Description:</strong>{' '}
+                      {categoryData?.description || 'Not selected'}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          <div className='soap-card soap-card--plan'>
+            <div className='soap-card-title'>P - Plan</div>
+            <textarea
+              value={encounter.plan || ''}
+              readOnly
+              onClick={() => openSoapModal('plan')}
+              placeholder='Treatment plan includes...'
+              className='soap-card-textarea soap-card-textarea--display'
+              aria-label='Open plan SOAP editor'
+            />
+          </div>
+          <div className='soap-card medical-records-access-card'>
+            <div className='medical-records-header'>
+              <div>
+                <div className='soap-card-title'>Medical Records Access</div>
+                <p className='medical-records-description'>Patient record permissions and shared details.</p>
+              </div>
+              {mhRequests.length > 0 && (
+                <span className='status-pill status-pill--shared'>Shared</span>
+              )}
+            </div>
+            {mhRequests.length === 0 ? (
+              <div className='medical-records-empty'>
+                <div className='medical-records-icon'>🔒</div>
+                <div className='medical-records-empty-text'>
+                  No medical records shared yet
+                </div>
+                <button 
+                  className='request-record-btn' 
+                  onClick={requestPatientRecords}
+                  disabled={profileData.specialization === 'General Practitioner'}
+                  title={profileData.specialization === 'General Practitioner' ? 'General practitioners cannot request medical history' : ''}
+                >
+                  Request Record from Patient
+                </button>
+                {profileData.specialization === 'General Practitioner' && (
+                  <p style={{ color: '#66788d', fontSize: '0.87rem', margin: '8px 0 0 0', textAlign: 'center' }}>
+                    General practitioners cannot request patient medical history
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className='medical-records-list'>
+                {[
+                  { label: 'Previous Consultations', icon: '📄' },
+                  { label: 'Prescriptions', icon: '💊' },
+                  { label: 'Lab Results', icon: '🧪' },
+                  { label: 'Treatment Plans', icon: '🩺' },
+                ].map((item) => (
+                  <div key={item.label} className='medical-records-item'>
+                    <span className='medical-records-item-icon'>{item.icon}</span>
+                    <span className='medical-records-item-label'>{item.label}</span>
+                    <span className='medical-records-item-arrow'>▸</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+          </div>
+
+          <div className='patient-chat-panel'>
+            <div className='patient-chat-header'>
+              <div className='patient-chat-title-row'>
+                <FaRegComment className='patient-chat-title-icon' />
+                <div className='patient-chat-title'>Patient Communication</div>
+              </div>
+            </div>
+
+            <div
+              className={`patient-chat-messages ${
+                isStarterThread ? 'patient-chat-messages--centered' : ''
+              }`}
+              ref={patientChatMessagesRef}
+            >
+              {patientChatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`patient-chat-message ${
+                    message.sender === 'system'
+                      ? 'patient-chat-message--system'
+                      : message.sender === 'specialist'
+                      ? 'patient-chat-message--own'
+                      : 'patient-chat-message--patient'
+                  }`}
+                >
+                  <div className='patient-chat-bubble'>
+                    {message.sender === 'system' ? (
+                      <>
+                        <p>{message.text}</p>
+                        <span>{message.subtext || message.timestamp}</span>
+                      </>
+                    ) : (
+                      <>
+                        <p>{message.message}</p>
+                        <span>{message.timestamp}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <form className='patient-chat-form' onSubmit={handlePatientChatSend}>
+              <input
+                type='text'
+                value={patientChatDraft}
+                onChange={(e) => setPatientChatDraft(e.target.value)}
+                placeholder='Type a message...'
+                className='patient-chat-input'
+              />
+              <button type='submit' className='patient-chat-send-btn' aria-label='Send message'>
+                <FaPaperPlane />
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className='soap-panel' ref={soapPanelRef}>
+          <div className='clinical-tabs' role='tablist' aria-label='Clinical tools'>
+            <button
+              type='button'
+              className={`clinical-tab ${centerTab === 'medicine' ? 'active' : ''}`}
+              onClick={() => setCenterTab('medicine')}
+              role='tab'
+              aria-selected={centerTab === 'medicine'}
+            >
+              <FaPrescriptionBottleAlt />
+              <span>Prescription</span>
+            </button>
+            <button
+              type='button'
+              className={`clinical-tab ${centerTab === 'lab' ? 'active' : ''}`}
+              onClick={() => setCenterTab('lab')}
+              role='tab'
+              aria-selected={centerTab === 'lab'}
+            >
+              <FaFlask />
+              <span>Lab Requests</span>
+            </button>
+            <button
+              type='button'
+              className={`clinical-tab ${centerTab === 'certificate' ? 'active' : ''}`}
+              onClick={() => setCenterTab('certificate')}
+              role='tab'
+              aria-selected={centerTab === 'certificate'}
+            >
+              <FaFileMedical />
+              <span>Med Certificate</span>
+            </button>
+          </div>
+
+          <div className='clinical-content'>
+          <div className='info-card' style={{ display: centerTab === 'medicine' ? 'block' : 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div>
                 <div className='info-card-title' style={{ marginBottom: '2px' }}>Prescription</div>
@@ -2159,7 +2515,93 @@ const SpecialistDashboard = () => {
             )}
           </div>
 
-          <div className='info-card'>
+          {centerTab === 'lab' && (
+            <div className='info-card'>
+              <div className='lab-request-page'>
+                <div className='lab-request-header'>
+                  <div className='info-card-title' style={{ marginBottom: '2px' }}>
+                    Laboratory Requests
+                  </div>
+                  <p className='lab-request-subtitle'>Select tests to be performed</p>
+                </div>
+
+                <section className='lab-section-card'>
+                  <div className='lab-section-title'>
+                    <FaFlask />
+                    <span>Common Laboratory Tests</span>
+                  </div>
+                  <div className='lab-tests-grid'>
+                    {COMMON_LAB_TESTS.map((testName) => {
+                      const checked = selectedLabTests.some(
+                        (item) => !item.isCustom && item.test === testName,
+                      );
+
+                      return (
+                        <label key={testName} className='lab-test-option'>
+                          <input
+                            type='checkbox'
+                            checked={checked}
+                            onChange={() => toggleCommonLabTest(testName)}
+                          />
+                          <span>{testName}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section className='lab-section-card'>
+                  <div className='lab-section-title'>Add Custom Test</div>
+                  <div className='lab-custom-row'>
+                    <input
+                      type='text'
+                      value={labCustomTestName}
+                      onChange={(e) => setLabCustomTestName(e.target.value)}
+                      placeholder='Enter custom test name'
+                      className='lab-custom-input'
+                    />
+                    <button type='button' className='lab-add-btn' onClick={addCustomLabTest}>
+                      + Add
+                    </button>
+                  </div>
+                </section>
+
+                <section className='lab-section-card'>
+                  <div className='lab-section-title'>Selected Tests</div>
+                  {selectedLabTests.length > 0 ? (
+                    <div className='lab-selected-list'>
+                      {selectedLabTests.map((item) => (
+                        <div key={item.id} className='lab-selected-item'>
+                          <span className='lab-selected-label'>{item.label}</span>
+                          <button
+                            type='button'
+                            className='lab-remove-btn'
+                            onClick={() => removeSelectedLabTest(item.id)}
+                            aria-label={`Remove ${item.label}`}
+                          >
+                            <FaTimes />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className='lab-empty-state'>No selected tests yet</div>
+                  )}
+                </section>
+
+                <section className='lab-section-card lab-instructions-card'>
+                  <div className='lab-section-title'>Additional Instructions</div>
+                  <textarea
+                    value={labInstructions}
+                    onChange={(e) => handleLabInstructionsChange(e.target.value)}
+                    placeholder='Add any special instructions for the laboratory...'
+                  />
+                </section>
+              </div>
+            </div>
+          )}
+
+          <div className='info-card' style={{ display: 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
                 <div className='info-card-title' style={{ marginBottom: '2px' }}>Laboratory Requests</div>
@@ -2431,198 +2873,9 @@ const SpecialistDashboard = () => {
             )}
           </div>
 
-          </div>
-
-          <div className='patient-chat-panel'>
-            <div className='patient-chat-header'>
-              <div className='patient-chat-title-row'>
-                <FaRegComment className='patient-chat-title-icon' />
-                <div className='patient-chat-title'>Patient Communication</div>
-              </div>
-            </div>
-
-            <div
-              className={`patient-chat-messages ${
-                isStarterThread ? 'patient-chat-messages--centered' : ''
-              }`}
-              ref={patientChatMessagesRef}
-            >
-              {patientChatMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`patient-chat-message ${
-                    message.sender === 'system'
-                      ? 'patient-chat-message--system'
-                      : message.sender === 'specialist'
-                      ? 'patient-chat-message--own'
-                      : 'patient-chat-message--patient'
-                  }`}
-                >
-                  <div className='patient-chat-bubble'>
-                    {message.sender === 'system' ? (
-                      <>
-                        <p>{message.text}</p>
-                        <span>{message.subtext || message.timestamp}</span>
-                      </>
-                    ) : (
-                      <>
-                        <p>{message.message}</p>
-                        <span>{message.timestamp}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <form className='patient-chat-form' onSubmit={handlePatientChatSend}>
-              <input
-                type='text'
-                value={patientChatDraft}
-                onChange={(e) => setPatientChatDraft(e.target.value)}
-                placeholder='Type a message...'
-                className='patient-chat-input'
-              />
-              <button type='submit' className='patient-chat-send-btn' aria-label='Send message'>
-                <FaPaperPlane />
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <div className='soap-panel'>
-          <div className='soap-header'>
-            <h3>SOAP Notes</h3>
-            <p>Document your clinical findings and treatment plan</p>
-          </div>
-          <div className='soap-card soap-card--subjective'>
-            <div className='soap-card-title'>S - Subjective</div>
-            <textarea
-              value={encounter.subjective || ''}
-              readOnly
-              onClick={() => openSoapModal('subjective')}
-              placeholder='Patient reports experiencing...'
-              className='soap-card-textarea soap-card-textarea--display'
-              aria-label='Open subjective SOAP editor'
-            />
-          </div>
-          <div className='soap-card soap-card--objective'>
-            <div className='soap-card-title'>O - Objective</div>
-            <textarea
-              value={encounter.objective || ''}
-              readOnly
-              onClick={() => openSoapModal('objective')}
-              placeholder='Physical examination reveals...'
-              className='soap-card-textarea soap-card-textarea--display'
-              aria-label='Open objective SOAP editor'
-            />
-          </div>
-          <div className='soap-card soap-card--assessment'>
-            <div className='soap-card-title'>A - Assessment</div>
-            <textarea
-              value={encounter.assessment || ''}
-              readOnly
-              onClick={() => openSoapModal('assessment')}
-              placeholder='Diagnosis: ...'
-              className='soap-card-textarea soap-card-textarea--display'
-              aria-label='Open assessment SOAP editor'
-            />
-            <div className='soap-card-icd-summary'>
-              {!chapterData ? (
-                <div className='soap-card-icd-summary__empty'>
-                  ICD Codes
-                </div>
-              ) : (
-                <>
-                  <div className='soap-card-icd-summary__field'>
-                    <span>CHAPTER</span>
-                    <div className='soap-card-icd-summary__value'>
-                      {chapterData ? `${chapterData.code} - ${chapterData.label}` : 'Not selected'}
-                    </div>
-                  </div>
-                  <div className='soap-card-icd-summary__field'>
-                    <span>BLOCK</span>
-                    <div className='soap-card-icd-summary__value'>
-                      {blockData ? `${blockData.code} - ${blockData.label}` : 'Not selected'}
-                    </div>
-                  </div>
-                  <div className='soap-card-icd-summary__field'>
-                    <span>CATEGORY</span>
-                    <div className='soap-card-icd-summary__value'>
-                      {categoryData ? `${categoryData.code} - ${categoryData.label}` : 'Not selected'}
-                    </div>
-                  </div>
-                  <div className='soap-card-icd-summary__details'>
-                    <div className='soap-card-icd-summary__details-label'>Selected Code:</div>
-                    <div className='soap-card-icd-summary__details-value'>
-                      {selectedCodeValue || 'Not selected'}
-                    </div>
-                    <div className='soap-card-icd-summary__details-desc'>
-                      <strong>Description:</strong>{' '}
-                      {categoryData?.description || 'Not selected'}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-          <div className='soap-card soap-card--plan'>
-            <div className='soap-card-title'>P - Plan</div>
-            <textarea
-              value={encounter.plan || ''}
-              readOnly
-              onClick={() => openSoapModal('plan')}
-              placeholder='Treatment plan includes...'
-              className='soap-card-textarea soap-card-textarea--display'
-              aria-label='Open plan SOAP editor'
-            />
-          </div>
-          <div className='soap-card medical-records-access-card'>
-            <div className='medical-records-header'>
-              <div>
-                <div className='soap-card-title'>Medical Records Access</div>
-                <p className='medical-records-description'>Patient record permissions and shared details.</p>
-              </div>
-              {mhRequests.length > 0 && (
-                <span className='status-pill status-pill--shared'>Shared</span>
-              )}
-            </div>
-            {mhRequests.length === 0 ? (
-              <div className='medical-records-empty'>
-                <div className='medical-records-icon'>🔒</div>
-                <div className='medical-records-empty-text'>
-                  No medical records shared yet
-                </div>
-                <button 
-                  className='request-record-btn' 
-                  onClick={requestPatientRecords}
-                  disabled={profileData.specialization === 'General Practitioner'}
-                  title={profileData.specialization === 'General Practitioner' ? 'General practitioners cannot request medical history' : ''}
-                >
-                  Request Record from Patient
-                </button>
-                {profileData.specialization === 'General Practitioner' && (
-                  <p style={{ color: '#66788d', fontSize: '0.87rem', margin: '8px 0 0 0', textAlign: 'center' }}>
-                    General practitioners cannot request patient medical history
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className='medical-records-list'>
-                {[
-                  { label: 'Previous Consultations', icon: '📄' },
-                  { label: 'Prescriptions', icon: '💊' },
-                  { label: 'Lab Results', icon: '🧪' },
-                  { label: 'Treatment Plans', icon: '🩺' },
-                ].map((item) => (
-                  <div key={item.label} className='medical-records-item'>
-                    <span className='medical-records-item-icon'>{item.icon}</span>
-                    <span className='medical-records-item-label'>{item.label}</span>
-                    <span className='medical-records-item-arrow'>▸</span>
-                  </div>
-                ))}
-              </div>
-            )}
+          {centerTab === 'certificate' && (
+            <div className='info-card' style={{ minHeight: 'calc(100vh - 260px)' }} />
+          )}
           </div>
         </div>
       </div>

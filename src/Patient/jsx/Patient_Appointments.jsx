@@ -10,7 +10,7 @@ import {
   IconStethoscope,
   IconLoader2,
   IconCalendarOff,
-  IconMapPin, // Added for Location
+  IconMapPin,
 } from "@tabler/icons-react";
 import { fetchPatientActiveTickets } from "../services/apiService";
 import "../css/Patient_Appointments.css";

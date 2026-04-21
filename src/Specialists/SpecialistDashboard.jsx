@@ -9,6 +9,7 @@ import {
   FaFlask,
   FaFileMedical,
 } from 'react-icons/fa';
+import jsPDF from 'jspdf';
 import './SpecialistDashboard.css';
 import authService from './authService';
 import * as specialistApi from './services/apiService';
@@ -206,6 +207,28 @@ const COMMON_LAB_TESTS = [
   'Stool Examination',
 ];
 
+const formatDisplayDate = (dateValue) => {
+  if (!dateValue) return '';
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return dateValue;
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
+
+const formatShortDisplayDate = (dateValue) => {
+  if (!dateValue) return '';
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return dateValue;
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+};
+
 const SpecialistDashboard = () => {
   const buildMedicalHistoryForSpecialist = (ticket) => {
     const triageHistory = toStringList(ticket?.triageMedicalHistory);
@@ -314,6 +337,13 @@ const SpecialistDashboard = () => {
   const [selectedLabTests, setSelectedLabTests] = useState([]);
   const [labCustomTestName, setLabCustomTestName] = useState('');
   const [labInstructions, setLabInstructions] = useState('');
+  const [certificateForm, setCertificateForm] = useState({
+    diagnosisReason: '',
+    dateIssued: new Date().toISOString().slice(0, 10),
+    restStartDate: new Date().toISOString().slice(0, 10),
+    restEndDate: '',
+    additionalRemarks: '',
+  });
 
   const [mhRequests, setMhRequests] = useState([]);
   const [selectedMedicalEntry, setSelectedMedicalEntry] = useState(null);
@@ -781,6 +811,21 @@ const SpecialistDashboard = () => {
     );
     setLabInstructions(encounter?.labInstructions || '');
   }, [encounter?.labInstructions, encounter?.labRequests]);
+
+  useEffect(() => {
+    if (!selectedTicketId) return;
+
+    const activeTicket = tickets.find((ticket) => String(ticket.id) === String(selectedTicketId));
+    const today = new Date().toISOString().slice(0, 10);
+
+    setCertificateForm({
+      diagnosisReason: activeTicket?.service || activeTicket?.chiefComplaint || '',
+      dateIssued: today,
+      restStartDate: today,
+      restEndDate: '',
+      additionalRemarks: '',
+    });
+  }, [selectedTicketId, tickets]);
 
   useEffect(() => {
     if (!selectedTicketId) return;
@@ -1272,6 +1317,102 @@ const SpecialistDashboard = () => {
         remarks: item.remarks || '',
       })),
     });
+  };
+
+  const handleCertificateChange = (field, value) => {
+    setCertificateForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const printCertificate = () => {
+    const activeTicket = tickets.find((ticket) => String(ticket.id) === String(selectedTicketId));
+    const patientName = activeTicket?.patientFullName || activeTicket?.patient || 'Patient';
+    const clinicName = 'Healthcare Clinic';
+    const clinicAddress = '123 Medical Center, Manila, Philippines';
+    const clinicPhone = 'Tel: +63 2 1234 5678';
+    const doctorName =
+      [profileData.firstName, profileData.lastName].filter(Boolean).join(' ').trim() ||
+      currentUser?.user?.name ||
+      'Attending Physician';
+    const licenseNumber = profileData.prcNumber || currentUser?.user?.licenseNumber || '';
+
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 18;
+    const centerX = pageWidth / 2;
+    let y = 24;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('MEDICAL CERTIFICATE', centerX, y, { align: 'center' });
+
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(clinicName, centerX, y, { align: 'center' });
+    y += 6;
+    doc.text(clinicAddress, centerX, y, { align: 'center' });
+    y += 6;
+    doc.text(clinicPhone, centerX, y, { align: 'center' });
+
+    y += 14;
+    doc.setFontSize(11);
+    doc.text(`Date Issued: ${formatShortDisplayDate(certificateForm.dateIssued)}`, margin, y);
+    y += 12;
+    doc.text('This is to certify that:', margin, y);
+    y += 12;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(patientName, centerX, y, { align: 'center' });
+    y += 10;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text('was examined and treated at this clinic and is diagnosed with:', margin, y, {
+      maxWidth: pageWidth - margin * 2,
+    });
+
+    y += 14;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text(certificateForm.diagnosisReason || '________________', centerX, y, {
+      align: 'center',
+    });
+
+    y += 22;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text(
+      `Rest period: ${formatShortDisplayDate(certificateForm.restStartDate) || '____/__/____'} to ${
+        formatShortDisplayDate(certificateForm.restEndDate) || '____/__/____'
+      }`,
+      margin,
+      y,
+      { maxWidth: pageWidth - margin * 2 },
+    );
+
+    y += 12;
+    if (certificateForm.additionalRemarks) {
+      doc.text(`Remarks: ${certificateForm.additionalRemarks}`, margin, y, {
+        maxWidth: pageWidth - margin * 2,
+      });
+      y += 14;
+    }
+
+    y = Math.max(y, 235);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text('________________', pageWidth - margin, y, { align: 'right' });
+    y += 6;
+    doc.text(doctorName || 'Attending Physician', pageWidth - margin, y, { align: 'right' });
+    y += 6;
+    doc.setFontSize(10);
+    doc.text(`License No. ${licenseNumber || '__________'}`, pageWidth - margin, y, {
+      align: 'right',
+    });
+
+    doc.save(`medical-certificate-${selectedTicketId || 'patient'}.pdf`);
   };
 
   const openSoapModal = (section) => {
@@ -2874,7 +3015,124 @@ const SpecialistDashboard = () => {
           </div>
 
           {centerTab === 'certificate' && (
-            <div className='info-card' style={{ minHeight: 'calc(100vh - 260px)' }} />
+            <div className='certificate-panel'>
+              <div className='certificate-header'>
+                <div>
+                  <div className='info-card-title' style={{ marginBottom: '2px' }}>
+                    Medical Certificate
+                  </div>
+                  <p className='certificate-subtitle'>
+                    Issue medical certificate for{' '}
+                    {selectedPatient?.patientFullName || selectedPatient?.patient || 'Patient'}
+                  </p>
+                </div>
+                <button
+                  type='button'
+                  className='certificate-print-btn'
+                  onClick={printCertificate}
+                >
+                  <FaFileMedical />
+                  <span>Print Certificate</span>
+                </button>
+              </div>
+
+              <section className='certificate-form-card'>
+                <div className='certificate-field'>
+                  <label>Diagnosis / Reason</label>
+                  <input
+                    type='text'
+                    value={certificateForm.diagnosisReason}
+                    onChange={(e) => handleCertificateChange('diagnosisReason', e.target.value)}
+                    placeholder='e.g., Acute Upper Respiratory Tract Infection'
+                  />
+                </div>
+
+                <div className='certificate-field'>
+                  <label>Date Issued</label>
+                  <input
+                    type='date'
+                    value={certificateForm.dateIssued}
+                    onChange={(e) => handleCertificateChange('dateIssued', e.target.value)}
+                  />
+                </div>
+
+                <div className='certificate-grid'>
+                  <div className='certificate-field'>
+                    <label>Rest Period Start Date</label>
+                    <input
+                      type='date'
+                      value={certificateForm.restStartDate}
+                      onChange={(e) => handleCertificateChange('restStartDate', e.target.value)}
+                    />
+                  </div>
+                  <div className='certificate-field'>
+                    <label>Rest Period End Date</label>
+                    <input
+                      type='date'
+                      value={certificateForm.restEndDate}
+                      onChange={(e) => handleCertificateChange('restEndDate', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className='certificate-field'>
+                  <label>Additional Remarks</label>
+                  <textarea
+                    value={certificateForm.additionalRemarks}
+                    onChange={(e) => handleCertificateChange('additionalRemarks', e.target.value)}
+                    placeholder='Any additional notes or instructions...'
+                  />
+                </div>
+              </section>
+
+              <section className='certificate-preview-card' id='medical-certificate-preview'>
+                <div className='certificate-preview-title'>MEDICAL CERTIFICATE</div>
+                <div className='certificate-preview-clinic'>Healthcare Clinic</div>
+                <div className='certificate-preview-clinic'>123 Medical Center, Manila, Philippines</div>
+                <div className='certificate-preview-clinic'>Tel: +63 2 1234 5678</div>
+
+                <div className='certificate-preview-meta'>
+                  <FaFileMedical />
+                  <span>Date Issued: {formatDisplayDate(certificateForm.dateIssued) || '____________'}</span>
+                </div>
+
+                <div className='certificate-preview-body'>
+                  <p>This is to certify that:</p>
+                  <div className='certificate-preview-patient'>
+                    {selectedPatient?.patientFullName || selectedPatient?.patient || 'Patient'}
+                  </div>
+                  <p className='certificate-preview-text'>
+                    was examined and treated at this clinic and is diagnosed with:
+                  </p>
+                  <div className='certificate-preview-diagnosis'>
+                    {certificateForm.diagnosisReason || '________________'}
+                  </div>
+                  <div className='certificate-preview-rest'>
+                    Rest period:{' '}
+                    {formatDisplayDate(certificateForm.restStartDate) || '____________'} to{' '}
+                    {formatDisplayDate(certificateForm.restEndDate) || '____________'}
+                  </div>
+                  {certificateForm.additionalRemarks ? (
+                    <div className='certificate-preview-remarks'>
+                      <span>Additional Remarks:</span>
+                      <p>{certificateForm.additionalRemarks}</p>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className='certificate-signature'>
+                  <div className='certificate-signature-line'>________________</div>
+                  <div className='certificate-signature-name'>
+                    {([profileData.firstName, profileData.lastName].filter(Boolean).join(' ').trim() ||
+                      currentUser?.user?.name ||
+                      'Attending Physician')}
+                  </div>
+                  <div className='certificate-signature-license'>
+                    License No. {profileData.prcNumber || currentUser?.user?.licenseNumber || '__________'}
+                  </div>
+                </div>
+              </section>
+            </div>
           )}
           </div>
         </div>

@@ -390,7 +390,7 @@
 /* --- BOTTOM GRID --- */
 .pd-bottom-grid {
   display: grid;
-  grid-template-columns: 1.5fr 1fr;
+  grid-template-columns: 1fr;
   gap: 24px;
 }
 .pd-column {

@@ -278,57 +278,6 @@ export default function Dashboard_Patient({ setActive }) {
             </div>
           </div>
         </div>
-
-        {/* Quick Access */}
-        <div className="pd-column">
-          <div className="pd-section-header">
-            <h4>Quick Access</h4>
-          </div>
-
-          <div className="pd-column-list">
-            <button
-              className="pd-quick-access-btn"
-              onClick={() => setActive("MedicalRecords")}
-            >
-              <div className="pd-qa-icon pd-bg-light-blue pd-text-blue">
-                <IconFileDescription size={20} />
-              </div>
-              <div className="pd-qa-text">
-                <strong>Medical Records</strong>
-                <p>View your health history</p>
-              </div>
-              <IconArrowRight size={16} className="pd-text-light" />
-            </button>
-
-            <button
-              className="pd-quick-access-btn"
-              onClick={() => openDiyModal("Physical Therapy")}
-            >
-              <div className="pd-qa-icon pd-bg-light-teal pd-text-teal">
-                <IconActivity size={20} />
-              </div>
-              <div className="pd-qa-text">
-                <strong>Physical Therapy</strong>
-                <p>Track your progress</p>
-              </div>
-              <IconArrowRight size={16} className="pd-text-light" />
-            </button>
-
-            <button
-              className="pd-quick-access-btn"
-              onClick={() => openDiyModal("OkieDoc+ OTC Store")}
-            >
-              <div className="pd-qa-icon pd-bg-light-warning pd-text-warning">
-                <IconPill size={20} />
-              </div>
-              <div className="pd-qa-text">
-                <strong>Pharmacy Orders</strong>
-                <p>Manage deliveries</p>
-              </div>
-              <IconArrowRight size={16} className="pd-text-light" />
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -517,14 +517,6 @@ export default function Dashboard() {
     });
   };
 
-  const handleEditAllergy = async (allergyToEdit) => {
-    // Move the misspelled word back into the input box
-    setNewAllergy(allergyToEdit);
-
-    // Instantly remove the old misspelled word from the database
-    await handleRemoveAllergy(allergyToEdit);
-  };
-
   const closeTransferModal = () => {
     setShowTransferModal(false);
     setIsDepartmentMenuOpen(false);
@@ -2488,26 +2480,6 @@ export default function Dashboard() {
                                 marginLeft: "8px",
                               }}
                             >
-                              {/* THE EDIT BUTTON */}
-                              <button
-                                type="button"
-                                onClick={() => handleEditAllergy(allergy)}
-                                style={{
-                                  background: "transparent",
-                                  border: "none",
-                                  color: "#c62828",
-                                  cursor: "pointer",
-                                  padding: "0",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  opacity: 0.7,
-                                }}
-                                title="Edit allergy"
-                              >
-                                <Pencil size={12} strokeWidth={2.5} />
-                              </button>
-
                               {/* THE DELETE BUTTON */}
                               <button
                                 type="button"

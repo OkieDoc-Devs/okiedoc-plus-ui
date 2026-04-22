@@ -364,16 +364,6 @@ export default function Patient_Profile() {
     }
     // -----------------------
 
-    if (
-      allergyInput.trim() !== "" &&
-      finalData.allergies.length < MAX_ALLERGIES
-    ) {
-      finalData.allergies = [
-        ...finalData.allergies,
-        allergyInput.trim(),
-      ].filter(Boolean);
-    }
-
     const payload = {
       firstName: finalData.firstName.trim(),
       middleName: finalData.middleName.trim(),
@@ -473,40 +463,6 @@ export default function Patient_Profile() {
     }
 
     setEditData((prev) => ({ ...prev, [field]: formatted }));
-  };
-
-  const handleAllergyKeyDown = (e) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-
-      if (editData.allergies.length >= MAX_ALLERGIES) return;
-
-      const newAllergy = allergyInput.trim();
-      if (newAllergy && !editData.allergies.includes(newAllergy)) {
-        setEditData((prev) => ({
-          ...prev,
-          allergies: [...prev.allergies, newAllergy],
-        }));
-      }
-      setAllergyInput("");
-    } else if (
-      e.key === "Backspace" &&
-      allergyInput === "" &&
-      editData.allergies.length > 0
-    ) {
-      setEditData((prev) => {
-        const newAllergies = [...prev.allergies];
-        newAllergies.pop();
-        return { ...prev, allergies: newAllergies };
-      });
-    }
-  };
-
-  const removeAllergy = (allergyToRemove) => {
-    setEditData((prev) => ({
-      ...prev,
-      allergies: prev.allergies.filter((a) => a !== allergyToRemove),
-    }));
   };
 
   const formatDateForDisplay = (dateString) => {
@@ -840,66 +796,6 @@ export default function Patient_Profile() {
                   </option>
                 ))}
               </select>
-            </div>
-
-            {/* CUSTOM ALLERGY TAG INPUT */}
-            <div className="profile-form-group profile-form-full-width">
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "8px",
-                }}
-              >
-                <label
-                  className="profile-form-label"
-                  style={{ marginBottom: 0 }}
-                >
-                  Known Allergies (Press Enter to add, max 30 chars per tag)
-                </label>
-                <span
-                  className="profile-form-label"
-                  style={{
-                    marginBottom: 0,
-                    color:
-                      editData.allergies.length >= MAX_ALLERGIES
-                        ? "#fa5252"
-                        : "#868e96",
-                  }}
-                >
-                  {editData.allergies.length} / {MAX_ALLERGIES} tags
-                </span>
-              </div>
-              <div
-                className={`profile-tag-input-wrapper ${editData.allergies.length >= MAX_ALLERGIES ? "disabled" : ""}`}
-              >
-                {editData.allergies.map((allergy) => (
-                  <span key={allergy} className="profile-tag">
-                    {allergy}
-                    <IconX
-                      size={14}
-                      className="profile-tag-remove"
-                      onClick={() => removeAllergy(allergy)}
-                    />
-                  </span>
-                ))}
-                <input
-                  type="text"
-                  className="profile-tag-input-field"
-                  value={allergyInput}
-                  maxLength={30}
-                  disabled={editData.allergies.length >= MAX_ALLERGIES}
-                  onChange={(e) => setAllergyInput(e.target.value)}
-                  onKeyDown={handleAllergyKeyDown}
-                  placeholder={
-                    editData.allergies.length >= MAX_ALLERGIES
-                      ? "Maximum of 20 allergies reached"
-                      : editData.allergies.length === 0
-                        ? "Type an allergy and press Enter..."
-                        : ""
-                  }
-                />
-              </div>
             </div>
           </div>
 

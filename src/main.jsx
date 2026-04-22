@@ -94,7 +94,7 @@ function AppContent() {
       <Routes>
         <Route path='/' element={<LandingPage activeView={activeView} setActiveView={setActiveView} />} />
         <Route path='/search' element={<SearchPage />} />
-        <Route path='/specialist/:id' element={<SpecialistProfile />} />
+        <Route path='/specialist' element={<SpecialistProfile />} />
         <Route path='/login' element={<Login />} />
         <Route path='/registration' element={<RegistrationOptions />} />
         <Route path='/registration-options' element={<RegistrationOptions />} />
@@ -102,7 +102,7 @@ function AppContent() {
         <Route path='/registration-child' element={<GuardianRegistration />} />
         <Route path='/registration-family' element={<FamilyRegistration />} />
         <Route path='/specialist-login' element={<SpecialistLogin />} />
-        
+
         <Route
           path='/video-call'
           element={
@@ -120,7 +120,7 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-        
+
         <Route path='/specialist-registration' element={<SpecialistRegistration />} />
 
         {/* Nurse Routes */}
@@ -129,7 +129,7 @@ function AppContent() {
         <Route path='/nurse-myaccount' element={<ProtectedRoute allowedRoles={['nurse']}><MyAccount /></ProtectedRoute>} />
         <Route path='/nurse-manage-appointments' element={<ProtectedRoute allowedRoles={['nurse']}></ProtectedRoute>} />
         <Route path='/nurse-messages' element={<ProtectedRoute allowedRoles={['nurse']}><Messages /></ProtectedRoute>} />
-        
+
         {/* Admin Routes */}
         <Route
           path="/admin/specialist-dashboard"

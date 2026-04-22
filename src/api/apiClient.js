@@ -48,7 +48,7 @@ async function getCsrfToken() {
 
 export async function apiRequest(endpoint, options = {}) {
   const defaultOptions = {
-    credentials: 'include', 
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -92,21 +92,24 @@ export async function apiRequest(endpoint, options = {}) {
       ...defaultOptions,
       ...fetchOptions,
       headers: mergedHeaders,
-      method, 
+      method,
     });
 
-    if (response.status === 403 && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-        cachedCsrfToken = null; 
-        const freshToken = await getCsrfToken();
-        if (freshToken) {
-           mergedHeaders['X-CSRF-Token'] = freshToken;
-           response = await fetch(url, {
-              ...defaultOptions,
-              ...fetchOptions,
-              headers: mergedHeaders,
-              method
-           });
-        }
+    if (
+      response.status === 403 &&
+      ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)
+    ) {
+      cachedCsrfToken = null;
+      const freshToken = await getCsrfToken();
+      if (freshToken) {
+        mergedHeaders['X-CSRF-Token'] = freshToken;
+        response = await fetch(url, {
+          ...defaultOptions,
+          ...fetchOptions,
+          headers: mergedHeaders,
+          method,
+        });
+      }
     }
 
     const contentType = response.headers.get('content-type');
@@ -133,14 +136,16 @@ export async function apiRequest(endpoint, options = {}) {
       }
 
       if (typeof responseData === 'string') {
-        throw new Error(responseData || `HTTP error! status: ${response.status}`);
+        throw new Error(
+          responseData || `HTTP error! status: ${response.status}`,
+        );
       }
 
-      const errorMessage = 
-        responseData?.error || 
-        responseData?.message || 
+      const errorMessage =
+        responseData?.error ||
+        responseData?.message ||
         `HTTP error! status: ${response.status}`;
-        
+
       throw new Error(errorMessage);
     }
 
@@ -149,4 +154,50 @@ export async function apiRequest(endpoint, options = {}) {
     console.error(`API Request Error [${endpoint}]:`, error);
     throw error;
   }
+}
+
+// Callback Request Functions
+export async function createCallbackRequest(data) {
+  return apiRequest('/api/callback-requests', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function fetchCallbacks(status = null) {
+  const params = new URLSearchParams();
+  if (status) {
+    params.append('status', status);
+  }
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest(`/api/v1/nurse/callbacks${query}`, {
+    method: 'GET',
+  });
+}
+
+export async function updateCallbackStatus(callbackId, status) {
+  return apiRequest(`/api/v1/nurse/callbacks/${callbackId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function fetchPatientMedicalHistory(patientId) {
+  return apiRequest(`/api/v1/patients/medical-history?patientId=${patientId}`, {
+    method: 'GET',
+  });
+}
+
+export async function fetchPatientProfile(patientId) {
+  return apiRequest(`/api/v1/patients/profile?patientId=${patientId}`, {
+    method: 'GET',
+  });
+}
+
+export async function updatePatientProfile(patientId, payload = {}) {
+  const query = patientId ? `?patientId=${encodeURIComponent(patientId)}` : '';
+  return apiRequest(`/api/v1/patients/update-profile${query}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }

@@ -59,6 +59,7 @@ import { SpecialtyCard } from './components/ui/specialtyCard';
 import { SpecialtyCardWide } from './components/ui/specialtyCardWide';
 import { SpecialistCard } from './components/ui/specialistCard';
 import { Link, useNavigate } from 'react-router';
+import { apiRequest, API_BASE_URL } from './api/apiClient';
 import { PartnerCard } from './components/ui/partnerCard';
 
 type CallbackRequestProps = {
@@ -72,6 +73,9 @@ function CallbackRequest({ isOpen, onClose }: CallbackRequestProps) {
   const [email, setEmail] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleOverlayClick = () => {
     // Mobile: close only through Cancel button. Desktop/tablet: allow backdrop close.
@@ -80,12 +84,69 @@ function CallbackRequest({ isOpen, onClose }: CallbackRequestProps) {
     }
   };
 
-  const handleSubmit = () => {
-    setFullName('');
-    setEmail('');
-    setContactNumber('');
-    setMessage('');
-    onClose();
+  const handleSubmit = async () => {
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    // Validation
+    if (
+      !fullName.trim() ||
+      !email.trim() ||
+      !contactNumber.trim() ||
+      !message.trim()
+    ) {
+      setErrorMessage('All fields are required');
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setErrorMessage('Please enter a valid email address');
+      return;
+    }
+
+    // Filipino phone number validation
+    const phoneRegex = /^(\+63|09)\d{9,10}$/;
+    if (!phoneRegex.test(contactNumber.trim())) {
+      setErrorMessage('Please enter a valid Filipino phone number (+63 or 09)');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await apiRequest('/api/callback-requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          email: email.trim(),
+          contactNumber: contactNumber.trim(),
+          contactMethod: 'phone',
+          message: message.trim(),
+        }),
+      });
+
+      if (response?.success) {
+        setSuccessMessage('Callback request submitted successfully!');
+        setTimeout(() => {
+          setFullName('');
+          setEmail('');
+          setContactNumber('');
+          setMessage('');
+          setSuccessMessage('');
+          onClose();
+        }, 2000);
+      } else {
+        setErrorMessage(
+          response?.message || 'Failed to submit callback request',
+        );
+      }
+    } catch (error) {
+      console.error('Error submitting callback request:', error);
+      setErrorMessage('Failed to submit callback request. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleMessageChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -122,6 +183,18 @@ function CallbackRequest({ isOpen, onClose }: CallbackRequestProps) {
           </p>
         </div>
 
+        {errorMessage && (
+          <div className='mt-4 p-3 bg-red-50 border border-red-200 rounded-lg'>
+            <p className='text-red-700 text-sm'>{errorMessage}</p>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className='mt-4 p-3 bg-green-50 border border-green-200 rounded-lg'>
+            <p className='text-green-700 text-sm'>{successMessage}</p>
+          </div>
+        )}
+
         <div className='p-2 flex flex-col gap-4 '>
           <div>
             <span className='font-semibold text-sm'>Full Name*</span>
@@ -133,8 +206,9 @@ function CallbackRequest({ isOpen, onClose }: CallbackRequestProps) {
                 type='text'
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                disabled={isLoading}
                 placeholder='Juan Dela Cruz'
-                className='w-full rounded-lg bg-gray-100 p-2 pl-10 placeholder:text-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-gray-400'
+                className='w-full rounded-lg bg-gray-100 p-2 pl-10 placeholder:text-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50'
               />
             </div>
           </div>
@@ -145,11 +219,12 @@ function CallbackRequest({ isOpen, onClose }: CallbackRequestProps) {
                 <Mail className='text-gray-500 size-5' />
               </div>
               <input
-                type='text'
+                type='email'
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder='Juan Dela Cruz'
-                className='w-full rounded-lg bg-gray-100 p-2 pl-10 placeholder:text-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-gray-400'
+                disabled={isLoading}
+                placeholder='juan@example.com'
+                className='w-full rounded-lg bg-gray-100 p-2 pl-10 placeholder:text-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50'
               />
             </div>
           </div>
@@ -161,9 +236,33 @@ function CallbackRequest({ isOpen, onClose }: CallbackRequestProps) {
               </div>
               <input
                 type='tel'
-                maxLength={13}
                 value={contactNumber}
-                onChange={(e) => setContactNumber(e.target.value)}
+                onChange={(e) => {
+                  let value = e.target.value.trim();
+
+                  // Remove all non-digits except the initial + sign
+                  if (value.startsWith('+')) {
+                    value = '+' + value.substring(1).replace(/\D/g, '');
+                  } else {
+                    value = value.replace(/\D/g, '');
+                  }
+
+                  // Auto-add + if user types 63 at the start
+                  if (value.startsWith('63') && !value.startsWith('+')) {
+                    value = '+' + value;
+                  }
+
+                  // Enforce length limits
+                  if (value.startsWith('+63') && value.length > 13) {
+                    return;
+                  }
+                  if (value.startsWith('09') && value.length > 11) {
+                    return;
+                  }
+
+                  setContactNumber(value);
+                }}
+                disabled={isLoading}
                 onKeyDown={(e) => {
                   if (
                     ![
@@ -188,8 +287,8 @@ function CallbackRequest({ isOpen, onClose }: CallbackRequestProps) {
                     e.preventDefault();
                   }
                 }}
-                placeholder='09XX XXX XXXX'
-                className='w-full rounded-lg bg-gray-100 p-2 pl-10 placeholder:text-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-gray-400'
+                placeholder='+63 or 09 followed by numbers'
+                className='w-full rounded-lg bg-gray-100 p-2 pl-10 placeholder:text-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50'
               />
             </div>
           </div>
@@ -201,9 +300,10 @@ function CallbackRequest({ isOpen, onClose }: CallbackRequestProps) {
               <textarea
                 value={message}
                 onChange={handleMessageChange}
+                disabled={isLoading}
                 placeholder='Please describe your symptoms or health concerns...'
                 rows={4}
-                className='w-full rounded-lg bg-gray-100 p-2 pl-4 placeholder:text-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none overflow-hidden'
+                className='w-full rounded-lg bg-gray-100 p-2 pl-4 placeholder:text-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none overflow-hidden disabled:opacity-50'
               />
               <span
                 className={`text-xs absolute bottom-2 right-3 ${message.length >= MAX_CHARS ? 'text-red-400' : 'text-gray-400'}`}
@@ -233,16 +333,18 @@ function CallbackRequest({ isOpen, onClose }: CallbackRequestProps) {
           </div>
           <div className='flex items-center justify-center gap-2'>
             <button
-              className='bg-white w-full rounded-lg p-2 border border-gray-200 hover:cursor-pointer hover:bg-gray-200 transition-all'
+              className='bg-white w-full rounded-lg p-2 border border-gray-200 hover:cursor-pointer hover:bg-gray-200 transition-all disabled:opacity-50'
               onClick={onClose}
+              disabled={isLoading}
             >
               Cancel
             </button>
             <button
-              className='bg-blue-400 text-white w-full rounded-lg hover:bg-blue-600 p-2 transition-all hover:cursor-pointer'
+              className='bg-blue-400 text-white w-full rounded-lg hover:bg-blue-600 p-2 transition-all hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
               onClick={handleSubmit}
+              disabled={isLoading}
             >
-              Submit Request
+              {isLoading ? 'Submitting...' : 'Submit Request'}
             </button>
           </div>
         </div>
@@ -845,7 +947,6 @@ function PatientView({
   const [isCallbackModalOpen, setIsCallbackModalOpen] = useState(false);
   const [searchType, setSearchType] = useState('Doctor');
   const [isSearchTypeOpen, setIsSearchTypeOpen] = useState(false);
-  const [open, setOpen] = useState(false);
   const searchTypeRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -861,6 +962,7 @@ function PatientView({
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
+
   const isExternalLink = (href: string) => /^https?:\/\//i.test(href);
   const handleNavigate = (path: string) => {
     setOpen(false);
@@ -887,6 +989,7 @@ function PatientView({
     {
       label: 'PhilHealth',
       href: 'https://www.philhealth.gov.ph/',
+      label: 'PhilHeath',
       icon: Heart,
       bgColor: 'bg-red-50',
       hoverColor: 'hover:bg-red-50',

@@ -1,4 +1,5 @@
 import '../App.css';
+import '../index.css';
 import './NurseStyles.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -21,8 +22,11 @@ import { transformProfileFromAPI } from './services/profileService.js';
 import { sendMessage as sendMessageToTicket } from './services/chatService.js';
 import NotificationBell from '../components/Notifications/NotificationBell';
 import Avatar from '../components/Avatar';
+import CallbackQueueCard from '../components/CallbackQueueCard';
+import PatientMedicalRecordsModal from '../components/MedicalRecords';
 import { disconnectSocket } from '../utils/socketClient';
 import { useChat } from './services/useChat.js';
+import { fetchCallbacks, updateCallbackStatus } from '../api/apiClient';
 import {
   Activity,
   AlertCircle,
@@ -141,9 +145,7 @@ const readValue = (source, keys, fallback = DEFAULT_TEXT) => {
 
 const toList = (value) => {
   if (Array.isArray(value)) {
-    return value
-      .map((entry) => String(entry || '').trim())
-      .filter(Boolean);
+    return value.map((entry) => String(entry || '').trim()).filter(Boolean);
   }
 
   if (typeof value === 'string') {
@@ -267,7 +269,9 @@ const getPatientIdFromTicket = (ticket) => {
 };
 
 const mapTicketStatusToTriageStatus = (statusValue) => {
-  const value = String(statusValue || '').trim().toLowerCase();
+  const value = String(statusValue || '')
+    .trim()
+    .toLowerCase();
   if (!value) return 'Waiting';
   if (value === 'pending') return 'Waiting';
   if (value === 'processing') return 'In Triage';
@@ -280,7 +284,9 @@ const mapTicketStatusToTriageStatus = (statusValue) => {
 };
 
 const mapTriageStatusToTicketStatus = (triageStatus) => {
-  const value = String(triageStatus || '').trim().toLowerCase();
+  const value = String(triageStatus || '')
+    .trim()
+    .toLowerCase();
   if (value === 'waiting') return 'pending';
   if (value === 'in triage') return 'processing';
   if (value === 'ready for doctor') return 'confirmed';
@@ -290,7 +296,9 @@ const mapTriageStatusToTicketStatus = (triageStatus) => {
 };
 
 const normalizeUrgencyLevel = (value) => {
-  const normalized = String(value || '').trim().toLowerCase();
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
   if (!normalized) return '';
   if (normalized === 'high') return 'Urgent';
   if (normalized === 'low') return 'Low';
@@ -319,19 +327,31 @@ const renderTriageStatusIcon = (statusValue) => {
   const statusKey = getTriageStatusKey(statusValue);
 
   if (statusKey === 'waiting') {
-    return <Clock3 size={16} strokeWidth={2.2} className='triage-status-icon' />;
+    return (
+      <Clock3 size={16} strokeWidth={2.2} className='triage-status-icon' />
+    );
   }
 
   if (statusKey === 'in-triage') {
-    return <Activity size={16} strokeWidth={2.2} className='triage-status-icon' />;
+    return (
+      <Activity size={16} strokeWidth={2.2} className='triage-status-icon' />
+    );
   }
 
   if (statusKey === 'ready-for-doctor') {
-    return <CheckCircle2 size={16} strokeWidth={2.2} className='triage-status-icon' />;
+    return (
+      <CheckCircle2
+        size={16}
+        strokeWidth={2.2}
+        className='triage-status-icon'
+      />
+    );
   }
 
   if (statusKey === 'urgent') {
-    return <AlertCircle size={16} strokeWidth={2.2} className='triage-status-icon' />;
+    return (
+      <AlertCircle size={16} strokeWidth={2.2} className='triage-status-icon' />
+    );
   }
 
   if (statusKey === 'completed') {
@@ -366,7 +386,9 @@ export default function Dashboard() {
   const { user, logout } = useAuth();
 
   const [nurseName, setNurseName] = useState(getNurseFirstName());
-  const [nurseProfileImage, setNurseProfileImage] = useState(getNurseProfileImage());
+  const [nurseProfileImage, setNurseProfileImage] = useState(
+    getNurseProfileImage(),
+  );
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [hasManualDeselection, setHasManualDeselection] = useState(false);
@@ -382,7 +404,9 @@ export default function Dashboard() {
   const [medicalHistoryDraft, setMedicalHistoryDraft] = useState('');
   const [additionalRemarksDraft, setAdditionalRemarksDraft] = useState('');
   const [selectedUrgencyLevel, setSelectedUrgencyLevel] = useState('');
-  const [urgencyOverridesByTicketId, setUrgencyOverridesByTicketId] = useState({});
+  const [urgencyOverridesByTicketId, setUrgencyOverridesByTicketId] = useState(
+    {},
+  );
   const [selectedSymptomPills, setSelectedSymptomPills] = useState([]);
   const [selectedRosItems, setSelectedRosItems] = useState([]);
   const [painMapView, setPainMapView] = useState('front');
@@ -407,7 +431,8 @@ export default function Dashboard() {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferTarget, setTransferTarget] = useState('doctor');
   const [availableDoctors, setAvailableDoctors] = useState([]);
-  const [availableDepartments, setAvailableDepartments] = useState(FALLBACK_DEPARTMENTS);
+  const [availableDepartments, setAvailableDepartments] =
+    useState(FALLBACK_DEPARTMENTS);
   const [availableNurses, setAvailableNurses] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
@@ -417,6 +442,8 @@ export default function Dashboard() {
   const [isDepartmentMenuOpen, setIsDepartmentMenuOpen] = useState(false);
   const [isDoctorMenuOpen, setIsDoctorMenuOpen] = useState(false);
   const [isNurseMenuOpen, setIsNurseMenuOpen] = useState(false);
+  const [callbacks, setCallbacks] = useState([]);
+  const [showMedicalRecords, setShowMedicalRecords] = useState(false);
 
   const selectedPatientId = useMemo(
     () => (selectedTicket ? getPatientIdFromTicket(selectedTicket) : null),
@@ -603,6 +630,36 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadCallbacks = async () => {
+      try {
+        const response = await fetchCallbacks();
+        if (
+          isMounted &&
+          response?.callbacks &&
+          Array.isArray(response.callbacks)
+        ) {
+          setCallbacks(response.callbacks);
+        }
+      } catch (error) {
+        console.error('Error loading callbacks:', error);
+        if (isMounted) {
+          setCallbacks([]);
+        }
+      }
+    };
+
+    loadCallbacks();
+    const interval = setInterval(loadCallbacks, DASHBOARD_REFRESH_MS);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!showTransferModal) {
       return;
     }
@@ -619,7 +676,11 @@ export default function Dashboard() {
               (doctors || [])
                 .map((doctor) =>
                   String(
-                    readValue(doctor, ['specialization', 'department', 'specialty'], ''),
+                    readValue(
+                      doctor,
+                      ['specialization', 'department', 'specialty'],
+                      '',
+                    ),
                   ).trim(),
                 )
                 .filter(Boolean),
@@ -690,12 +751,20 @@ export default function Dashboard() {
 
     const fallbackConversation = {
       id: selectedTicketId,
-      name: readValue(selectedTicket, ['patientName', 'fullName', 'name'], 'Patient'),
+      name: readValue(
+        selectedTicket,
+        ['patientName', 'fullName', 'name'],
+        'Patient',
+      ),
       type: 'direct',
       participants: [
         {
           id: selectedPatientId,
-          name: readValue(selectedTicket, ['patientName', 'fullName', 'name'], 'Patient'),
+          name: readValue(
+            selectedTicket,
+            ['patientName', 'fullName', 'name'],
+            'Patient',
+          ),
           type: 'p',
         },
       ],
@@ -754,7 +823,8 @@ export default function Dashboard() {
       return;
     }
 
-    const rawLocalDraft = triageDraftsByTicketId[Number(selectedTicket.id)] || {};
+    const rawLocalDraft =
+      triageDraftsByTicketId[Number(selectedTicket.id)] || {};
     const selectedTicketFingerprint = getTicketDraftFingerprint(selectedTicket);
     const shouldUseLocalDraft =
       !selectedTicketFingerprint ||
@@ -768,7 +838,11 @@ export default function Dashboard() {
       readValue(selectedTicket, ['isInquiry', 'is_inquiry', 'inquiry'], false),
     );
     const incompleteFlag = toBooleanFlag(
-      readValue(selectedTicket, ['isIncomplete', 'is_incomplete', 'incomplete'], false),
+      readValue(
+        selectedTicket,
+        ['isIncomplete', 'is_incomplete', 'incomplete'],
+        false,
+      ),
     );
 
     // Only allow one close reason at a time. If both are true from API, prefer Inquiry.
@@ -795,7 +869,14 @@ export default function Dashboard() {
       localDraft.chiefComplaintDraft ??
         readValue(
           selectedTicket,
-          ['chiefComplaint', 'consultationType', 'intakeDetails', '0', 'mainConcern', 'symptoms'],
+          [
+            'chiefComplaint',
+            'consultationType',
+            'intakeDetails',
+            '0',
+            'mainConcern',
+            'symptoms',
+          ],
           '',
         ),
     );
@@ -804,7 +885,12 @@ export default function Dashboard() {
         toDraftTextValue(
           readValue(
             selectedTicket,
-            ['triageMedicalHistory', 'medicalHistory', 'Medical_History', 'history'],
+            [
+              'triageMedicalHistory',
+              'medicalHistory',
+              'Medical_History',
+              'history',
+            ],
             '',
           ),
         ),
@@ -823,7 +909,11 @@ export default function Dashboard() {
       localDraft.selectedUrgencyLevel ||
         urgencyOverridesByTicketId[Number(selectedTicket.id)] ||
         normalizeUrgencyLevel(
-          readValue(selectedTicket, ['urgencyLevel', 'urgency', 'priority'], ''),
+          readValue(
+            selectedTicket,
+            ['urgencyLevel', 'urgency', 'priority'],
+            '',
+          ),
         ),
     );
     setSelectedSymptomPills(
@@ -832,18 +922,31 @@ export default function Dashboard() {
         : toList(
             readValue(
               selectedTicket,
-              ['symptoms', 'symptomTags', 'symptomPills', 'intakeDetails', '0', 'symptoms'],
+              [
+                'symptoms',
+                'symptomTags',
+                'symptomPills',
+                'intakeDetails',
+                '0',
+                'symptoms',
+              ],
               '',
             ),
           )
-            .map((entry) => String(entry || '').trim().toLowerCase())
+            .map((entry) =>
+              String(entry || '')
+                .trim()
+                .toLowerCase(),
+            )
             .map((normalizedEntry) => {
               if (normalizedEntry === 'body pain') return 'Body pain';
               if (normalizedEntry === 'chest pain') return 'Chest pain';
               if (normalizedEntry === 'sore throat') return 'Sore throat';
-              if (normalizedEntry === 'shortness of breath') return 'Shortness of breath';
+              if (normalizedEntry === 'shortness of breath')
+                return 'Shortness of breath';
               if (normalizedEntry === 'stomach pain') return 'Stomach pain';
-              if (normalizedEntry === 'loss of appetite') return 'Loss of appetite';
+              if (normalizedEntry === 'loss of appetite')
+                return 'Loss of appetite';
               return SYMPTOM_PILL_OPTIONS.find(
                 (option) => option.toLowerCase() === normalizedEntry,
               );
@@ -857,22 +960,42 @@ export default function Dashboard() {
     );
 
     const toEditableValue = (value) =>
-      value === DEFAULT_TEXT || value === null || value === undefined ? '' : String(value);
+      value === DEFAULT_TEXT || value === null || value === undefined
+        ? ''
+        : String(value);
 
     setVitalsDraft({
       bloodPressure:
         localDraft.vitalsDraft?.bloodPressure ??
-        toEditableValue(readValue(selectedTicket, ['bloodPressure', 'bp', 'vitalBloodPressure'], '')),
+        toEditableValue(
+          readValue(
+            selectedTicket,
+            ['bloodPressure', 'bp', 'vitalBloodPressure'],
+            '',
+          ),
+        ),
       heartRate:
         localDraft.vitalsDraft?.heartRate ??
-        toEditableValue(readValue(selectedTicket, ['heartRate', 'bpm', 'vitalHeartRate'], '')),
+        toEditableValue(
+          readValue(selectedTicket, ['heartRate', 'bpm', 'vitalHeartRate'], ''),
+        ),
       temperature:
         localDraft.vitalsDraft?.temperature ??
-        toEditableValue(readValue(selectedTicket, ['temperature', 'temp', 'vitalTemperature'], '')),
+        toEditableValue(
+          readValue(
+            selectedTicket,
+            ['temperature', 'temp', 'vitalTemperature'],
+            '',
+          ),
+        ),
       oxygenSaturation:
         localDraft.vitalsDraft?.oxygenSaturation ??
         toEditableValue(
-          readValue(selectedTicket, ['oxygenSaturation', 'spo2', 'vitalOxygenSaturation'], ''),
+          readValue(
+            selectedTicket,
+            ['oxygenSaturation', 'spo2', 'vitalOxygenSaturation'],
+            '',
+          ),
         ),
     });
   }, [selectedTicket, triageDraftsByTicketId, urgencyOverridesByTicketId]);
@@ -884,10 +1007,18 @@ export default function Dashboard() {
 
     const bloodType = readValue(selectedTicket, ['bloodType', 'Blood_Type']);
     const allergies = toList(
-      readValue(selectedTicket, ['allergies', 'Allergies', 'patientAllergies'], ''),
+      readValue(
+        selectedTicket,
+        ['allergies', 'Allergies', 'patientAllergies'],
+        '',
+      ),
     );
     const medicalHistory = toList(
-      readValue(selectedTicket, ['medicalHistory', 'Medical_History', 'history'], ''),
+      readValue(
+        selectedTicket,
+        ['medicalHistory', 'Medical_History', 'history'],
+        '',
+      ),
     );
     const addressLine = readValue(
       selectedTicket,
@@ -895,8 +1026,16 @@ export default function Dashboard() {
       '',
     );
     const city = readValue(selectedTicket, ['city', 'patientCity'], '');
-    const province = readValue(selectedTicket, ['province', 'state', 'patientProvince'], '');
-    const country = readValue(selectedTicket, ['country', 'patientCountry'], '');
+    const province = readValue(
+      selectedTicket,
+      ['province', 'state', 'patientProvince'],
+      '',
+    );
+    const country = readValue(
+      selectedTicket,
+      ['country', 'patientCountry'],
+      '',
+    );
     const composedAddress = [addressLine, city, province, country]
       .map((part) => String(part || '').trim())
       .filter((part, index, array) => part && array.indexOf(part) === index)
@@ -906,7 +1045,13 @@ export default function Dashboard() {
       fullName: readValue(selectedTicket, ['patientName', 'fullName', 'name']),
       age:
         readValue(selectedTicket, ['age'], null) ||
-        calculateAge(readValue(selectedTicket, ['patientBirthdate', 'birthdate', 'dob'], null)),
+        calculateAge(
+          readValue(
+            selectedTicket,
+            ['patientBirthdate', 'birthdate', 'dob'],
+            null,
+          ),
+        ),
       gender: readValue(selectedTicket, ['gender', 'sex']),
       phone: readValue(selectedTicket, ['mobile', 'phone', 'contactNumber']),
       email: readValue(selectedTicket, ['email', 'patientEmail']),
@@ -921,10 +1066,26 @@ export default function Dashboard() {
           null,
         ),
       ),
-      temperature: readValue(selectedTicket, ['temperature', 'temp', 'vitalTemperature']),
-      bloodPressure: readValue(selectedTicket, ['bloodPressure', 'bp', 'vitalBloodPressure']),
-      heartRate: readValue(selectedTicket, ['heartRate', 'bpm', 'vitalHeartRate']),
-      additionalDetails: readValue(selectedTicket, ['additionalDetails', 'intakeDetails', '0', 'additionalDetails'], ''),
+      temperature: readValue(selectedTicket, [
+        'temperature',
+        'temp',
+        'vitalTemperature',
+      ]),
+      bloodPressure: readValue(selectedTicket, [
+        'bloodPressure',
+        'bp',
+        'vitalBloodPressure',
+      ]),
+      heartRate: readValue(selectedTicket, [
+        'heartRate',
+        'bpm',
+        'vitalHeartRate',
+      ]),
+      additionalDetails: readValue(
+        selectedTicket,
+        ['additionalDetails', 'intakeDetails', '0', 'additionalDetails'],
+        '',
+      ),
     };
   }, [selectedTicket]);
 
@@ -938,11 +1099,17 @@ export default function Dashboard() {
     }
 
     const normalizeDisplayValue = (value) =>
-      value === DEFAULT_TEXT || value === null || value === undefined ? '' : String(value);
+      value === DEFAULT_TEXT || value === null || value === undefined
+        ? ''
+        : String(value);
 
     return {
       painScore: normalizeDisplayValue(
-        readValue(selectedTicket, ['severity', 'painScore', 'painSeverity'], ''),
+        readValue(
+          selectedTicket,
+          ['severity', 'painScore', 'painSeverity'],
+          '',
+        ),
       ),
       durationValue: normalizeDisplayValue(
         readValue(selectedTicket, ['durationValue', 'painDurationValue'], ''),
@@ -978,7 +1145,11 @@ export default function Dashboard() {
     }
 
     const starterTimestamp = formatTime(
-      readValue(selectedTicket, ['createdAt', 'preferredDate', 'updatedAt'], null),
+      readValue(
+        selectedTicket,
+        ['createdAt', 'preferredDate', 'updatedAt'],
+        null,
+      ),
     );
 
     return [
@@ -993,7 +1164,7 @@ export default function Dashboard() {
   }, [quickMessages, selectedPatient?.fullName, selectedTicket]);
 
   const queueCards = useMemo(() => {
-    return (tickets || []).map((ticket) => {
+    const ticketCards = (tickets || []).map((ticket) => {
       const queueStatus = normalizeStatus(
         ticket,
         Number(ticket?.id) === Number(selectedTicket?.id),
@@ -1007,6 +1178,7 @@ export default function Dashboard() {
         urgencyOverridesByTicketId[Number(ticket?.id)] ||
         getUrgencyLevelFromTicket(ticket);
       return {
+        type: 'ticket',
         ticket,
         queueStatus,
         statusLabel,
@@ -1014,10 +1186,40 @@ export default function Dashboard() {
         urgencyLevel,
       };
     });
-  }, [selectedTicket?.id, tickets, triageDraftsByTicketId, urgencyOverridesByTicketId]);
+
+    const callbackCards = (callbacks || []).map((callback) => ({
+      type: 'callback',
+      callback,
+    }));
+
+    // Combine and sort by created date (most recent first)
+    return [...callbackCards, ...ticketCards].sort((a, b) => {
+      const dateA = new Date(
+        a.type === 'callback'
+          ? a.callback.createdAt
+          : a.ticket.createdAt || a.ticket.preferredDate,
+      ).getTime();
+      const dateB = new Date(
+        b.type === 'callback'
+          ? b.callback.createdAt
+          : b.ticket.createdAt || b.ticket.preferredDate,
+      ).getTime();
+      return dateB - dateA;
+    });
+  }, [
+    callbacks,
+    selectedTicket?.id,
+    tickets,
+    triageDraftsByTicketId,
+    urgencyOverridesByTicketId,
+  ]);
 
   const shouldEnableCloseTicket = markInquiry || markIncomplete;
-  const closeReasonLabel = markInquiry ? 'Inquiry' : markIncomplete ? 'Incomplete' : '';
+  const closeReasonLabel = markInquiry
+    ? 'Inquiry'
+    : markIncomplete
+      ? 'Incomplete'
+      : '';
 
   const applyTicketPatch = async (ticketId, patch) => {
     try {
@@ -1080,7 +1282,9 @@ export default function Dashboard() {
 
   const selectedNurse = useMemo(
     () =>
-      availableNurses.find((nurse) => Number(nurse.id) === Number(selectedNurseId)) || null,
+      availableNurses.find(
+        (nurse) => Number(nurse.id) === Number(selectedNurseId),
+      ) || null,
     [availableNurses, selectedNurseId],
   );
 
@@ -1115,7 +1319,10 @@ export default function Dashboard() {
       return;
     }
 
-    if (transferTarget === 'doctor' && (!selectedDepartment || !selectedDoctorId)) {
+    if (
+      transferTarget === 'doctor' &&
+      (!selectedDepartment || !selectedDoctorId)
+    ) {
       return;
     }
 
@@ -1169,8 +1376,10 @@ export default function Dashboard() {
       return;
     }
 
-    const nextInquiry = reason === 'inquiry' ? checked : checked ? false : markInquiry;
-    const nextIncomplete = reason === 'incomplete' ? checked : checked ? false : markIncomplete;
+    const nextInquiry =
+      reason === 'inquiry' ? checked : checked ? false : markInquiry;
+    const nextIncomplete =
+      reason === 'incomplete' ? checked : checked ? false : markIncomplete;
 
     setMarkInquiry(nextInquiry);
     setMarkIncomplete(nextIncomplete);
@@ -1209,7 +1418,10 @@ export default function Dashboard() {
       return cleaned.slice(0, maxDigits);
     }
 
-    const integerPart = cleaned.slice(0, firstDotIndex).replace(/\./g, '').slice(0, maxDigits);
+    const integerPart = cleaned
+      .slice(0, firstDotIndex)
+      .replace(/\./g, '')
+      .slice(0, maxDigits);
     const decimalPart = cleaned
       .slice(firstDotIndex + 1)
       .replace(/\./g, '')
@@ -1224,7 +1436,9 @@ export default function Dashboard() {
     const rawDiastolic = rest.join('');
 
     const systolic = rawSystolic.replace(/\//g, '').slice(0, maxDigitsPerSide);
-    const diastolic = rawDiastolic.replace(/\//g, '').slice(0, maxDigitsPerSide);
+    const diastolic = rawDiastolic
+      .replace(/\//g, '')
+      .slice(0, maxDigitsPerSide);
 
     if (cleaned.includes('/')) {
       return `${systolic}/${diastolic}`;
@@ -1362,7 +1576,10 @@ export default function Dashboard() {
       const exists = previous.some((entry) => entry.id === areaId);
       const next = exists
         ? previous.filter((entry) => entry.id !== areaId)
-        : [...previous, { id: areaId, view: painMapView, key: area.key, label: area.label }];
+        : [
+            ...previous,
+            { id: areaId, view: painMapView, key: area.key, label: area.label },
+          ];
 
       if (selectedTicket?.id) {
         persistTriageDraft(selectedTicket.id, { selectedPainAreas: next });
@@ -1412,12 +1629,20 @@ export default function Dashboard() {
         await sendMessageToTicket(Number(selectedTicket.id), trimmedMessage);
         await openConversation({
           id: Number(selectedTicket.id),
-          name: readValue(selectedTicket, ['patientName', 'fullName', 'name'], 'Patient'),
+          name: readValue(
+            selectedTicket,
+            ['patientName', 'fullName', 'name'],
+            'Patient',
+          ),
           type: 'direct',
           participants: [
             {
               id: selectedPatientId,
-              name: readValue(selectedTicket, ['patientName', 'fullName', 'name'], 'Patient'),
+              name: readValue(
+                selectedTicket,
+                ['patientName', 'fullName', 'name'],
+                'Patient',
+              ),
               type: 'p',
             },
           ],
@@ -1442,7 +1667,11 @@ export default function Dashboard() {
     <div className='dashboard triage-dashboard'>
       <div className='dashboard-header'>
         <div className='header-center'>
-          <img src='/okie-doc-logo.png' alt='Okie-Doc+' className='logo-image' />
+          <img
+            src='/okie-doc-logo.png'
+            alt='Okie-Doc+'
+            className='logo-image'
+          />
         </div>
         <h3 className='dashboard-title'>Nurse Dashboard</h3>
 
@@ -1450,7 +1679,9 @@ export default function Dashboard() {
           <NotificationBell />
           <div className='user-account'>
             <Avatar
-              profileImageUrl={nurseProfileImage !== '/account.svg' ? nurseProfileImage : null}
+              profileImageUrl={
+                nurseProfileImage !== '/account.svg' ? nurseProfileImage : null
+              }
               firstName={nurseName}
               lastName={localStorage.getItem('nurse.lastName') || ''}
               userType='nurse'
@@ -1466,14 +1697,20 @@ export default function Dashboard() {
               >
                 My Account
               </button>
-              <button className='dropdown-item logout-item' onClick={handleLogout}>
+              <button
+                className='dropdown-item logout-item'
+                onClick={handleLogout}
+              >
                 Logout
               </button>
             </div>
           </div>
         </div>
         <div className='dashboard-nav'>
-          <button className='nav-tab active' onClick={() => navigate('/nurse-dashboard')}>
+          <button
+            className='nav-tab active'
+            onClick={() => navigate('/nurse-dashboard')}
+          >
             Dashboard
           </button>
           <button
@@ -1482,7 +1719,10 @@ export default function Dashboard() {
           >
             Manage Appointments
           </button>
-          <button className='nav-tab' onClick={() => navigate('/nurse-messages')}>
+          <button
+            className='nav-tab'
+            onClick={() => navigate('/nurse-messages')}
+          >
             Messages
           </button>
         </div>
@@ -1497,8 +1737,27 @@ export default function Dashboard() {
             </div>
             <div className='triage-queue-list'>
               {queueCards.length > 0 ? (
-                queueCards.map(({ ticket, queueStatus, statusLabel, channelLabel, urgencyLevel }) => {
-                  const isSelected = Number(selectedTicket?.id) === Number(ticket.id);
+                queueCards.map((item) => {
+                  if (item.type === 'callback') {
+                    return (
+                      <CallbackQueueCard
+                        key={`callback-${item.callback.id}`}
+                        callback={item.callback}
+                        onStatusChange={updateCallbackStatus}
+                      />
+                    );
+                  }
+
+                  // Ticket card
+                  const {
+                    ticket,
+                    queueStatus,
+                    statusLabel,
+                    channelLabel,
+                    urgencyLevel,
+                  } = item;
+                  const isSelected =
+                    Number(selectedTicket?.id) === Number(ticket.id);
                   const urgencyKey = urgencyLevel.toLowerCase();
                   return (
                     <button
@@ -1527,7 +1786,11 @@ export default function Dashboard() {
                               T-{String(ticket.id).padStart(3, '0')}
                             </div>
                             <div className='triage-ticket-name'>
-                              {readValue(ticket, ['patientName', 'fullName', 'name'])}
+                              {readValue(ticket, [
+                                'patientName',
+                                'fullName',
+                                'name',
+                              ])}
                             </div>
                           </div>
                         </div>
@@ -1550,13 +1813,28 @@ export default function Dashboard() {
                       <div className='triage-queue-footer'>
                         <div className='triage-ticket-time'>
                           <Clock3 size={14} strokeWidth={2.2} />
-                          <span>{formatTime(readValue(ticket, ['preferredDate', 'createdAt'], null))}</span>
+                          <span>
+                            {formatTime(
+                              readValue(
+                                ticket,
+                                ['preferredDate', 'createdAt'],
+                                null,
+                              ),
+                            )}
+                          </span>
                         </div>
 
                         {urgencyLevel ? (
-                          <span className={`triage-urgency-badge ${urgencyKey}`}>{urgencyLevel}</span>
+                          <span
+                            className={`triage-urgency-badge ${urgencyKey}`}
+                          >
+                            {urgencyLevel}
+                          </span>
                         ) : (
-                          <span className='triage-urgency-badge triage-urgency-badge-placeholder' aria-hidden='true'>
+                          <span
+                            className='triage-urgency-badge triage-urgency-badge-placeholder'
+                            aria-hidden='true'
+                          >
                             Placeholder
                           </span>
                         )}
@@ -1565,7 +1843,9 @@ export default function Dashboard() {
                   );
                 })
               ) : (
-                <div className='triage-empty-note'>No tickets available.</div>
+                <div className='triage-empty-note'>
+                  No patients or callbacks in queue.
+                </div>
               )}
             </div>
           </section>
@@ -1577,7 +1857,9 @@ export default function Dashboard() {
             </div>
             <div className='triage-snapshot-scroll'>
               {!selectedPatient ? (
-                <div className='triage-empty-note'>Select a patient from queue.</div>
+                <div className='triage-empty-note'>
+                  Select a patient from queue.
+                </div>
               ) : (
                 <>
                   <article className='triage-profile-card'>
@@ -1593,7 +1875,8 @@ export default function Dashboard() {
                       <div>
                         <h4>{selectedPatient.fullName}</h4>
                         <p>
-                          {selectedPatient.age} years {'\u2022'} {selectedPatient.gender}
+                          {selectedPatient.age} years {'\u2022'}{' '}
+                          {selectedPatient.gender}
                         </p>
                       </div>
                     </div>
@@ -1662,13 +1945,25 @@ export default function Dashboard() {
                       <span>Last visit:</span>
                       <strong>{selectedPatient.lastVisit}</strong>
                     </div>
+
+                    <div className='triage-divider' />
+
+                    <button
+                      onClick={() => setShowMedicalRecords(true)}
+                      className='w-full px-4 py-3 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium text-sm transition-colors flex items-center justify-center gap-2'
+                    >
+                      <FileText size={14} strokeWidth={2} />
+                      View Medical Records
+                    </button>
                   </article>
 
                   <article className='triage-details-panel'>
                     <button
                       type='button'
                       className='triage-details-toggle'
-                      onClick={() => setIsAdditionalDetailsOpen((prev) => !prev)}
+                      onClick={() =>
+                        setIsAdditionalDetailsOpen((prev) => !prev)
+                      }
                     >
                       <span className='triage-details-title'>
                         <MapPin size={14} strokeWidth={2.2} />
@@ -1690,7 +1985,6 @@ export default function Dashboard() {
                       </div>
                     )}
                   </article>
-
                 </>
               )}
             </div>
@@ -1704,11 +1998,16 @@ export default function Dashboard() {
 
                 <div className='triage-chat-list'>
                   {!selectedPatient ? (
-                    <div className='triage-empty-note'>Select a patient to open chat.</div>
+                    <div className='triage-empty-note'>
+                      Select a patient to open chat.
+                    </div>
                   ) : chatEntries.length > 0 ? (
                     chatEntries.map((message) =>
                       message.isSystem ? (
-                        <div key={message.id} className='triage-chat-system-row'>
+                        <div
+                          key={message.id}
+                          className='triage-chat-system-row'
+                        >
                           <span className='triage-chat-system-avatar'>
                             <UserRound size={14} strokeWidth={2.2} />
                           </span>
@@ -1728,11 +2027,16 @@ export default function Dashboard() {
                       ),
                     )
                   ) : (
-                    <div className='triage-empty-note'>No messages yet for this patient.</div>
+                    <div className='triage-empty-note'>
+                      No messages yet for this patient.
+                    </div>
                   )}
                 </div>
 
-                <form className='triage-chat-input-row' onSubmit={handleQuickSendMessage}>
+                <form
+                  className='triage-chat-input-row'
+                  onSubmit={handleQuickSendMessage}
+                >
                   <input
                     type='text'
                     placeholder='Type a message...'
@@ -1743,13 +2047,19 @@ export default function Dashboard() {
                   <button
                     className='triage-chat-send-btn'
                     type='submit'
-                    disabled={!selectedPatient || !quickMessage.trim() || isSendingQuickMessage}
+                    disabled={
+                      !selectedPatient ||
+                      !quickMessage.trim() ||
+                      isSendingQuickMessage
+                    }
                   >
                     <SendHorizontal size={14} strokeWidth={2.3} />
                   </button>
                 </form>
 
-                {quickMessageError && <p className='nurse-quick-error'>{quickMessageError}</p>}
+                {quickMessageError && (
+                  <p className='nurse-quick-error'>{quickMessageError}</p>
+                )}
               </article>
             </div>
           </section>
@@ -1794,12 +2104,18 @@ export default function Dashboard() {
                             onClick={() => handleStatusChange(option)}
                           >
                             <span className='triage-status-option-main'>
-                              <span className={`dot ${option.toLowerCase().replace(/\s+/g, '-')}`} />
+                              <span
+                                className={`dot ${option.toLowerCase().replace(/\s+/g, '-')}`}
+                              />
                               {renderTriageStatusIcon(option)}
                               <span>{option}</span>
                             </span>
                             {triageStatus === option ? (
-                              <Check size={16} strokeWidth={2.4} className='triage-status-selected-check' />
+                              <Check
+                                size={16}
+                                strokeWidth={2.4}
+                                className='triage-status-selected-check'
+                              />
                             ) : (
                               <span />
                             )}
@@ -1826,7 +2142,10 @@ export default function Dashboard() {
                       type='checkbox'
                       checked={markIncomplete}
                       onChange={(event) =>
-                        handleCloseReasonToggle('incomplete', event.target.checked)
+                        handleCloseReasonToggle(
+                          'incomplete',
+                          event.target.checked,
+                        )
                       }
                     />
                     <span>Mark as Incomplete</span>
@@ -1931,7 +2250,9 @@ export default function Dashboard() {
                     <h4>Chief Complaint & Symptoms</h4>
                     <textarea
                       value={chiefComplaintDraft}
-                      onChange={(event) => handleChiefComplaintChange(event.target.value)}
+                      onChange={(event) =>
+                        handleChiefComplaintChange(event.target.value)
+                      }
                       placeholder="Describe the patient's main complaint..."
                     />
                     <div className='triage-symptom-pills'>
@@ -1954,7 +2275,11 @@ export default function Dashboard() {
                   <article className='triage-pain-map-card'>
                     <h4>Pain Map</h4>
                     <div className='triage-pain-map-controls-row'>
-                      <div className='triage-pain-map-view-toggle' role='tablist' aria-label='Pain map view'>
+                      <div
+                        className='triage-pain-map-view-toggle'
+                        role='tablist'
+                        aria-label='Pain map view'
+                      >
                         <button
                           type='button'
                           role='tab'
@@ -1979,7 +2304,9 @@ export default function Dashboard() {
                           <div className='triage-pain-meta-item'>
                             <label>Pain Score</label>
                             <div className='triage-vital-input-wrap triage-vital-input-wrap-readonly triage-vital-input-wrap-meta'>
-                              <span className='triage-pain-meta-value'>{painMapReadOnlyMeta.painScore || 'N/A'}</span>
+                              <span className='triage-pain-meta-value'>
+                                {painMapReadOnlyMeta.painScore || 'N/A'}
+                              </span>
                               <span className='triage-vital-unit'>/10</span>
                             </div>
                           </div>
@@ -1999,10 +2326,14 @@ export default function Dashboard() {
                     </div>
 
                     <div className='triage-pain-map-content'>
-                      <div className={`triage-pain-map-figure ${painMapView === 'back' ? 'back' : 'front'}`}>
+                      <div
+                        className={`triage-pain-map-figure ${painMapView === 'back' ? 'back' : 'front'}`}
+                      >
                         {PAIN_MAP_AREAS[painMapView].map((area) => {
                           const areaId = `${painMapView}:${area.key}`;
-                          const isSelected = selectedPainAreas.some((entry) => entry.id === areaId);
+                          const isSelected = selectedPainAreas.some(
+                            (entry) => entry.id === areaId,
+                          );
 
                           return (
                             <button
@@ -2018,13 +2349,20 @@ export default function Dashboard() {
                       </div>
 
                       <div className='triage-pain-map-selection'>
-                        <div className='triage-pain-map-selection-title'>Selected pain areas:</div>
+                        <div className='triage-pain-map-selection-title'>
+                          Selected pain areas:
+                        </div>
                         {selectedPainAreas.length === 0 ? (
-                          <div className='triage-pain-map-empty'>No areas selected</div>
+                          <div className='triage-pain-map-empty'>
+                            No areas selected
+                          </div>
                         ) : (
                           <div className='triage-pain-map-chips'>
                             {selectedPainAreas.map((area) => (
-                              <div key={area.id} className='triage-pain-map-chip'>
+                              <div
+                                key={area.id}
+                                className='triage-pain-map-chip'
+                              >
                                 <span>
                                   {area.label}
                                   {` (${area.view === 'back' ? 'Back' : 'Front'})`}
@@ -2054,7 +2392,9 @@ export default function Dashboard() {
                     <div className='triage-ros-grid'>
                       {ROS_GROUPS.map((group) => (
                         <section key={group.title} className='triage-ros-group'>
-                          <div className='triage-ros-group-title'>{group.title}</div>
+                          <div className='triage-ros-group-title'>
+                            {group.title}
+                          </div>
                           <div className='triage-ros-items'>
                             {group.items.map((item) => {
                               const isChecked = selectedRosItems.includes(item);
@@ -2083,7 +2423,9 @@ export default function Dashboard() {
                     <textarea
                       className='triage-note-textarea'
                       value={medicalHistoryDraft}
-                      onChange={(event) => handleMedicalHistoryChange(event.target.value)}
+                      onChange={(event) =>
+                        handleMedicalHistoryChange(event.target.value)
+                      }
                       onBlur={handleMedicalHistoryBlur}
                       placeholder='Relevant medical history, medications, allergies...'
                     />
@@ -2097,7 +2439,9 @@ export default function Dashboard() {
                     <textarea
                       className='triage-note-textarea'
                       value={additionalRemarksDraft}
-                      onChange={(event) => handleAdditionalRemarksChange(event.target.value)}
+                      onChange={(event) =>
+                        handleAdditionalRemarksChange(event.target.value)
+                      }
                       onBlur={handleAdditionalRemarksBlur}
                       placeholder='Add remarks or important notes...'
                     />
@@ -2126,12 +2470,16 @@ export default function Dashboard() {
                   </article>
                 </>
               ) : (
-                <div className='triage-empty-note'>Select a patient from queue.</div>
+                <div className='triage-empty-note'>
+                  Select a patient from queue.
+                </div>
               )}
             </div>
 
             {selectedPatient && (
-              <div className={`triage-workspace-footer ${shouldEnableCloseTicket ? 'active' : 'inactive'}`}>
+              <div
+                className={`triage-workspace-footer ${shouldEnableCloseTicket ? 'active' : 'inactive'}`}
+              >
                 <div className='triage-bottom-actions'>
                   <button
                     type='button'
@@ -2149,7 +2497,11 @@ export default function Dashboard() {
                   >
                     <span className='triage-close-x'>&times;</span>
                     <span>Close Ticket</span>
-                    {closeReasonLabel && <span className='triage-close-tag'>{closeReasonLabel}</span>}
+                    {closeReasonLabel && (
+                      <span className='triage-close-tag'>
+                        {closeReasonLabel}
+                      </span>
+                    )}
                   </button>
                 </div>
 
@@ -2188,7 +2540,8 @@ export default function Dashboard() {
 
             <h3 className='triage-transfer-title'>Transfer Patient</h3>
             <p className='triage-transfer-subtitle'>
-              Transfer {selectedPatient.fullName} to another healthcare provider.
+              Transfer {selectedPatient.fullName} to another healthcare
+              provider.
             </p>
 
             <div className='triage-transfer-targets'>
@@ -2225,7 +2578,9 @@ export default function Dashboard() {
                   <button
                     type='button'
                     className={`triage-transfer-select ${selectedDepartment ? '' : 'placeholder'}`}
-                    onClick={() => setIsDepartmentMenuOpen((previous) => !previous)}
+                    onClick={() =>
+                      setIsDepartmentMenuOpen((previous) => !previous)
+                    }
                   >
                     <span>{selectedDepartment || 'Choose a department'}</span>
                     <ChevronDown size={17} strokeWidth={2.1} />
@@ -2283,7 +2638,9 @@ export default function Dashboard() {
                           </button>
                         ))
                       ) : (
-                        <div className='triage-transfer-empty'>No doctors found for this department</div>
+                        <div className='triage-transfer-empty'>
+                          No doctors found for this department
+                        </div>
                       )}
                     </div>
                   )}
@@ -2297,7 +2654,9 @@ export default function Dashboard() {
                     <button
                       type='button'
                       className={`triage-transfer-select ${selectedNurse ? '' : 'placeholder'}`}
-                      onClick={() => setIsNurseMenuOpen((previous) => !previous)}
+                      onClick={() =>
+                        setIsNurseMenuOpen((previous) => !previous)
+                      }
                     >
                       <span>{selectedNurse?.name || 'Choose a nurse'}</span>
                       <ChevronDown size={17} strokeWidth={2.1} />
@@ -2319,7 +2678,9 @@ export default function Dashboard() {
                             </button>
                           ))
                         ) : (
-                          <div className='triage-transfer-empty'>No nurses available</div>
+                          <div className='triage-transfer-empty'>
+                            No nurses available
+                          </div>
                         )}
                       </div>
                     )}
@@ -2353,15 +2714,29 @@ export default function Dashboard() {
                 type='button'
                 className='triage-transfer-submit'
                 disabled={
-                  transferTarget === 'doctor' ? !canTransferToDoctor : !canTransferToNurse
+                  transferTarget === 'doctor'
+                    ? !canTransferToDoctor
+                    : !canTransferToNurse
                 }
                 onClick={handleTransferSubmit}
               >
-                {transferTarget === 'doctor' ? 'Transfer to Doctor' : 'Transfer to Nurse'}
+                {transferTarget === 'doctor'
+                  ? 'Transfer to Doctor'
+                  : 'Transfer to Nurse'}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {showMedicalRecords && selectedPatient && selectedTicket && (
+        <PatientMedicalRecordsModal
+          onClose={() => setShowMedicalRecords(false)}
+          patient={selectedPatient}
+          patientId={selectedPatientId}
+          ticketId={`T-${String(selectedTicket.id).padStart(3, '0')}`}
+          consultationType={getChannelLabel(selectedTicket)}
+        />
       )}
     </div>
   );

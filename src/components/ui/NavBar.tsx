@@ -3,7 +3,6 @@ import OkieDocLogo from '@/assets/okie-doc-logo.png';
 import { Menu } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 
-// Define the props we expect to receive from the LandingPage
 interface NavBarProps {
   activeView: 'patient' | 'specialist';
   setActiveView: (view: 'patient' | 'specialist') => void;
@@ -12,29 +11,33 @@ interface NavBarProps {
 export function NavBar({ activeView, setActiveView }: NavBarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
-
   const secondaryBtn =
     activeView === 'patient'
       ? {
-          label: 'Register as Patient',
-          onClick: () => navigate('/registration'),
+        label: 'Register as Patient',
+        onClick: () => navigate('/registration'),
+      }
+      : {
+        label: 'Find a Doctor',
+        onClick: () => {
+          setActiveView('patient');
+          navigate('/');
         }
-      : { label: 'Find a Doctor', onClick: () => setActiveView('patient') };
+      };
 
   const primaryBtn =
     activeView === 'patient'
       ? {
-          label: 'Join as a Specialist',
-          onClick: () => {
-            setActiveView('specialist');
-          },
-        }
+        label: 'Join as a Specialist',
+        onClick: () => {
+          setActiveView('specialist');
+          navigate('/');
+        },
+      }
       : {
-          label: 'Register as Specialist',
-          onClick: () => {
-            navigate('/specialist-registration');
-          },
-        };
+        label: 'Register as Specialist',
+        onClick: () => navigate('/specialist-registration'),
+      };
 
   return (
     <>
@@ -46,7 +49,6 @@ export function NavBar({ activeView, setActiveView }: NavBarProps) {
             className='h-10 xl:h-12 xl:pl-4 2xl:pl-48 transition-all'
           />
         </Link>
-
         {activeView === 'patient' && (
           <ul className='hidden lg:flex items-center text-base xl:text-base gap-4 xl:gap-8 pl-6 xl:pl-12 '>
             <li className='hover:cursor-pointer hover:text-blue-700 transition-all'>
@@ -70,9 +72,7 @@ export function NavBar({ activeView, setActiveView }: NavBarProps) {
         <div className='hidden lg:flex justify-between text-sm xl:text-base gap-1 xl:gap-2 xl:pr-4 2xl:pr-48'>
           <button
             onClick={() =>
-              navigate(
-                activeView === 'patient' ? '/login' : '/specialist-login',
-              )
+              navigate(activeView === 'patient' ? '/login' : '/specialist-login')
             }
             className='hover:cursor-pointer rounded hover:bg-gray-300 px-4 py-2 transition-all'
           >
@@ -100,7 +100,6 @@ export function NavBar({ activeView, setActiveView }: NavBarProps) {
         </button>
       </nav>
 
-      {/* Mobile Nav */}
       {isMobileMenuOpen && (
         <nav className='fixed top-20 left-0 right-0 z-30 p-4 bg-white block w-full text-base border-b border-gray-200 lg:hidden shadow-lg'>
           {activeView === 'patient' && (
@@ -133,9 +132,7 @@ export function NavBar({ activeView, setActiveView }: NavBarProps) {
           <div className='flex flex-col w-full gap-2 mt-2'>
             <button
               onClick={() => {
-                navigate(
-                  activeView === 'patient' ? '/login' : '/specialist-login',
-                );
+                navigate(activeView === 'patient' ? '/login' : '/specialist-login');
                 setIsMobileMenuOpen(false);
               }}
               className='hover:cursor-pointer rounded-lg border border-gray-200 hover:bg-gray-200 px-4 py-2 transition-all'

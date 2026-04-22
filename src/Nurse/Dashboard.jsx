@@ -1088,17 +1088,6 @@ export default function Dashboard() {
       ["country", "patientCountry"],
       "",
     );
-    const city = readValue(selectedTicket, ['city', 'patientCity'], '');
-    const province = readValue(
-      selectedTicket,
-      ['province', 'state', 'patientProvince'],
-      '',
-    );
-    const country = readValue(
-      selectedTicket,
-      ['country', 'patientCountry'],
-      '',
-    );
     const composedAddress = [addressLine, city, province, country]
       .map((part) => String(part || "").trim())
       .filter((part, index, array) => part && array.indexOf(part) === index)
@@ -1862,6 +1851,7 @@ export default function Dashboard() {
                             {statusLabel}
                           </span>
                         </div>
+                      </div>
 
                       <div className='triage-channel-chip'>
                         {channelLabel === 'Video' ? (

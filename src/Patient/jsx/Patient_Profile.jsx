@@ -324,37 +324,12 @@ export default function Patient_Profile() {
     // --- FORM VALIDATION ---
     const errors = {};
 
-    if (!finalData.firstName.trim())
-      errors.firstName = "First Name is required.";
-    if (!finalData.lastName.trim()) errors.lastName = "Last Name is required.";
     if (!finalData.addressLine1.trim())
       errors.addressLine1 = "Street address is required.";
     if (!finalData.region) errors.region = "Region is required.";
     if (!finalData.province) errors.province = "Province is required.";
     if (!finalData.city) errors.city = "City is required.";
     if (!finalData.barangay) errors.barangay = "Barangay is required.";
-
-    if (!finalData.dob) {
-      errors.dob = "Date of Birth is required.";
-    } else {
-      // Calculate exactly if the user is 18 or older
-      const today = new Date();
-      const birthDate = new Date(finalData.dob);
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const monthDifference = today.getMonth() - birthDate.getMonth();
-
-      // If their birthday hasn't happened yet this year, subtract 1 from age
-      if (
-        monthDifference < 0 ||
-        (monthDifference === 0 && today.getDate() < birthDate.getDate())
-      ) {
-        age--;
-      }
-
-      if (age < 18) {
-        errors.dob = "You must be at least 18 years old to use this platform.";
-      }
-    }
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -365,9 +340,6 @@ export default function Patient_Profile() {
     // -----------------------
 
     const payload = {
-      firstName: finalData.firstName.trim(),
-      middleName: finalData.middleName.trim(),
-      lastName: finalData.lastName.trim(),
       email: finalData.email,
       mobileNumber: finalData.phone,
       addressLine1: finalData.addressLine1,
@@ -377,9 +349,6 @@ export default function Patient_Profile() {
       province: finalData.province,
       region: finalData.region,
       zipCode: finalData.zipCode,
-      birthday: finalData.dob || null,
-      bloodType: finalData.bloodType || "Unknown",
-      allergies: finalData.allergies.join(", "),
       emergencyContactName: finalData.emergencyContactName,
       emergencyContactPhone: finalData.emergencyContactPhone,
       emergencyContactAddress: finalData.emergencyContactAddress,
@@ -501,9 +470,12 @@ export default function Patient_Profile() {
         /* --- EDIT MODE VIEW --- */
         <div className="profile-card profile-edit-card">
           <div className="profile-edit-header">
-            <div className="profile-edit-title-group">
+            <div
+              className="profile-edit-title-group"
+              style={{ display: "flex", alignItems: "center", gap: "8px" }}
+            >
               <IconSettings className="profile-icon-primary" size={24} />
-              <h3 className="profile-section-title">
+              <h3 className="profile-section-title" style={{ margin: 0 }}>
                 Edit Profile Information
               </h3>
             </div>
@@ -522,79 +494,75 @@ export default function Patient_Profile() {
 
           <div className="profile-form-grid">
             <div className="profile-form-group">
-              <label
-                className={`profile-form-label ${formErrors.firstName ? "text-red" : ""}`}
-              >
-                First Name *
+              <label className="profile-form-label">
+                First Name{" "}
+                <span style={{ color: "#868e96", fontWeight: "normal" }}></span>
               </label>
               <input
                 type="text"
-                className={`profile-form-input ${formErrors.firstName ? "profile-error-field" : ""}`}
+                className="profile-form-input disabled"
                 value={editData.firstName}
-                onChange={(e) =>
-                  handleChangeWithLimit("firstName", e.target.value, 20, true)
-                }
-              />
-              {formErrors.firstName && (
-                <span className="profile-error-text">
-                  {formErrors.firstName}
-                </span>
-              )}
-            </div>
-
-            <div className="profile-form-group">
-              <label className="profile-form-label">Middle Name</label>
-              <input
-                type="text"
-                className="profile-form-input"
-                value={editData.middleName}
-                onChange={(e) =>
-                  handleChangeWithLimit("middleName", e.target.value, 20, true)
-                }
+                disabled
+                style={{
+                  backgroundColor: "#f8f9fa",
+                  cursor: "not-allowed",
+                  color: "#6c757d",
+                }}
               />
             </div>
 
             <div className="profile-form-group">
-              <label
-                className={`profile-form-label ${formErrors.lastName ? "text-red" : ""}`}
-              >
-                Last Name *
+              <label className="profile-form-label">
+                Middle Name{" "}
+                <span style={{ color: "#868e96", fontWeight: "normal" }}></span>
               </label>
               <input
                 type="text"
-                className={`profile-form-input ${formErrors.lastName ? "profile-error-field" : ""}`}
-                value={editData.lastName}
-                onChange={(e) =>
-                  handleChangeWithLimit("lastName", e.target.value, 20, true)
-                }
+                className="profile-form-input disabled"
+                value={editData.middleName}
+                disabled
+                style={{
+                  backgroundColor: "#f8f9fa",
+                  cursor: "not-allowed",
+                  color: "#6c757d",
+                }}
               />
-              {formErrors.lastName && (
-                <span className="profile-error-text">
-                  {formErrors.lastName}
-                </span>
-              )}
             </div>
 
             <div className="profile-form-group">
-              <label
-                className={`profile-form-label ${formErrors.dob ? "text-red" : ""}`}
-              >
-                Date of Birth *
+              <label className="profile-form-label">
+                Last Name{" "}
+                <span style={{ color: "#868e96", fontWeight: "normal" }}></span>
+              </label>
+              <input
+                type="text"
+                className="profile-form-input disabled"
+                value={editData.lastName}
+                disabled
+                style={{
+                  backgroundColor: "#f8f9fa",
+                  cursor: "not-allowed",
+                  color: "#6c757d",
+                }}
+              />
+            </div>
+
+            <div className="profile-form-group">
+              <label className="profile-form-label">
+                Date of Birth{" "}
+                <span style={{ color: "#868e96", fontWeight: "normal" }}></span>
               </label>
               <input
                 type="date"
-                max="9999-12-31"
-                className={`profile-form-input ${formErrors.dob ? "profile-error-field" : ""}`}
+                className="profile-form-input disabled"
                 value={editData.dob}
-                onChange={(e) => {
-                  handleChangeWithLimit("dob", e.target.value, 10, false);
-                  if (formErrors.dob)
-                    setFormErrors((prev) => ({ ...prev, dob: null }));
+                disabled
+                style={{
+                  backgroundColor: "#f8f9fa",
+                  cursor: "not-allowed",
+                  color: "#6c757d",
                 }}
               />
-              {formErrors.dob && (
-                <span className="profile-error-text">{formErrors.dob}</span>
-              )}
             </div>
 
             <div className="profile-form-group">
@@ -779,22 +747,23 @@ export default function Patient_Profile() {
                 </span>
               )}
             </div>
-            {/* ---------------------------------- */}
 
             <div className="profile-form-group">
-              <label className="profile-form-label">Blood Type</label>
+              <label className="profile-form-label">
+                Blood Type{" "}
+                <span style={{ color: "#868e96", fontWeight: "normal" }}></span>
+              </label>
               <select
-                className="profile-form-input"
+                className="profile-form-input disabled"
                 value={editData.bloodType}
-                onChange={(e) =>
-                  handleChangeWithLimit("bloodType", e.target.value, 10, false)
-                }
+                disabled
+                style={{
+                  backgroundColor: "#f8f9fa",
+                  cursor: "not-allowed",
+                  color: "#6c757d",
+                }}
               >
-                {BLOOD_TYPE_OPTIONS.map((bloodType) => (
-                  <option key={bloodType} value={bloodType}>
-                    {bloodType}
-                  </option>
-                ))}
+                <option value={editData.bloodType}>{editData.bloodType}</option>
               </select>
             </div>
           </div>

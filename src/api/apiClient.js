@@ -4,38 +4,34 @@
  */
 
 const resolvedApiUrl =
-  import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "";
+  import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '';
 
 if (import.meta.env.PROD) {
   if (!resolvedApiUrl) {
-    throw new Error("VITE_API_URL must be set in production.");
+    throw new Error('VITE_API_URL must be set in production.');
   }
 
-  if (!resolvedApiUrl.startsWith("https://")) {
-    throw new Error("VITE_API_URL must use HTTPS in production.");
+  if (!resolvedApiUrl.startsWith('https://')) {
+    throw new Error('VITE_API_URL must use HTTPS in production.');
   }
 }
 
-export const API_BASE_URL = resolvedApiUrl || "http://localhost:1337";
+export const API_BASE_URL = resolvedApiUrl || 'http://localhost:1337';
 
-// Global variable to cache the CSRF token so we don't fetch it on every single click
 let cachedCsrfToken = null;
 
-/**
- * Fetches the CSRF token from the Sails.js backend.
- */
 async function getCsrfToken() {
   if (cachedCsrfToken) return cachedCsrfToken;
   try {
     let response = await fetch(`${API_BASE_URL}/api/v1/auth/csrf-token`, {
-      method: "GET",
-      credentials: "include",
+      method: 'GET',
+      credentials: 'include',
     });
 
     if (response.status === 404) {
       response = await fetch(`${API_BASE_URL}/csrfToken`, {
-        method: "GET",
-        credentials: "include",
+        method: 'GET',
+        credentials: 'include',
       });
     }
 
@@ -45,22 +41,16 @@ async function getCsrfToken() {
       return cachedCsrfToken;
     }
   } catch (error) {
-    console.warn("Failed to fetch CSRF token:", error);
+    console.warn('Failed to fetch CSRF token:', error);
   }
   return null;
 }
 
-/**
- * Generic API request handler
- * @param {string} endpoint - API endpoint (relative to API_BASE_URL or absolute path)
- * @param {object} options - Fetch options
- * @returns {Promise<any>} API response payload
- */
 export async function apiRequest(endpoint, options = {}) {
   const defaultOptions = {
-    credentials: "include",
+    credentials: 'include',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
   };
 
@@ -69,32 +59,32 @@ export async function apiRequest(endpoint, options = {}) {
     ...options.headers,
   };
 
-  const jwtToken = localStorage.getItem("jwt_token");
+  const jwtToken = localStorage.getItem('jwt_token');
   if (jwtToken) {
-    mergedHeaders["Authorization"] = `Bearer ${jwtToken}`;
+    mergedHeaders['Authorization'] = `Bearer ${jwtToken}`;
   }
 
-  const method = (options.method || "GET").toUpperCase();
+  const method = (options.method || 'GET').toUpperCase();
 
-  if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
     const csrfToken = await getCsrfToken();
     if (csrfToken) {
-      mergedHeaders["X-CSRF-Token"] = csrfToken;
+      mergedHeaders['X-CSRF-Token'] = csrfToken;
     }
   }
 
   const { disableAuthRedirect = false, ...fetchOptions } = options;
 
   if (options.body instanceof FormData) {
-    delete mergedHeaders["Content-Type"];
+    delete mergedHeaders['Content-Type'];
   }
 
-  const url = endpoint.startsWith("http")
+  const url = endpoint.startsWith('http')
     ? endpoint
     : `${API_BASE_URL}${endpoint}`;
 
-  if (import.meta.env.PROD && url.startsWith("http://")) {
-    throw new Error("Insecure API request blocked in production.");
+  if (import.meta.env.PROD && url.startsWith('http://')) {
+    throw new Error('Insecure API request blocked in production.');
   }
 
   try {
@@ -107,12 +97,12 @@ export async function apiRequest(endpoint, options = {}) {
 
     if (
       response.status === 403 &&
-      ["POST", "PUT", "DELETE", "PATCH"].includes(method)
+      ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)
     ) {
       cachedCsrfToken = null;
       const freshToken = await getCsrfToken();
       if (freshToken) {
-        mergedHeaders["X-CSRF-Token"] = freshToken;
+        mergedHeaders['X-CSRF-Token'] = freshToken;
         response = await fetch(url, {
           ...defaultOptions,
           ...fetchOptions,
@@ -122,10 +112,10 @@ export async function apiRequest(endpoint, options = {}) {
       }
     }
 
-    const contentType = response.headers.get("content-type");
+    const contentType = response.headers.get('content-type');
     let responseData;
 
-    if (contentType && contentType.includes("application/json")) {
+    if (contentType && contentType.includes('application/json')) {
       responseData = await response.json().catch(() => ({}));
     } else {
       responseData = await response.text();
@@ -136,33 +126,78 @@ export async function apiRequest(endpoint, options = {}) {
 
     if (!response.ok) {
       if (response.status === 401) {
-        if (!disableAuthRedirect) {
-          localStorage.removeItem("jwt_token");
-          localStorage.removeItem("user");
-          window.location.href = "/login";
+        // CRITICAL FIX: Ensure we don't redirect loop if already on login
+        if (!disableAuthRedirect && window.location.pathname !== '/login') {
+          localStorage.removeItem('jwt_token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('okiedoc_user_type');
+          window.location.href = '/login';
         }
       }
 
-      if (typeof responseData === "string") {
+      if (typeof responseData === 'string') {
         throw new Error(
           responseData || `HTTP error! status: ${response.status}`,
         );
       }
 
-      // Create error object to preserve all response data for better error handling
-      const error = new Error(
+      const errorMessage =
+        responseData?.error ||
         responseData?.message ||
-          responseData?.error ||
-          `HTTP error! status: ${response.status}`,
-      );
-      error.status = response.status;
-      error.response = responseData;
+        `HTTP error! status: ${response.status}`;
 
-      throw error;
+      throw new Error(errorMessage);
     }
+
     return responseData;
   } catch (error) {
     console.error(`API Request Error [${endpoint}]:`, error);
     throw error;
   }
+}
+
+// Callback Request Functions
+export async function createCallbackRequest(data) {
+  return apiRequest('/api/callback-requests', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function fetchCallbacks(status = null) {
+  const params = new URLSearchParams();
+  if (status) {
+    params.append('status', status);
+  }
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest(`/api/v1/nurse/callbacks${query}`, {
+    method: 'GET',
+  });
+}
+
+export async function updateCallbackStatus(callbackId, status) {
+  return apiRequest(`/api/v1/nurse/callbacks/${callbackId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function fetchPatientMedicalHistory(patientId) {
+  return apiRequest(`/api/v1/patients/medical-history?patientId=${patientId}`, {
+    method: 'GET',
+  });
+}
+
+export async function fetchPatientProfile(patientId) {
+  return apiRequest(`/api/v1/patients/profile?patientId=${patientId}`, {
+    method: 'GET',
+  });
+}
+
+export async function updatePatientProfile(patientId, payload = {}) {
+  const query = patientId ? `?patientId=${encodeURIComponent(patientId)}` : '';
+  return apiRequest(`/api/v1/patients/update-profile${query}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }

@@ -149,7 +149,6 @@ export default function SpecialistProfile() {
             </div>
           </div>
 
-          {/* Certifications */}
           <div className='flex flex-col gap-4 bg-white p-8 py-10 shadow-sm mx-5 my-5 xl:mx-0 rounded-lg border border-gray-100'>
             <span className='text-2xl font-bold'>Certifications</span>
             <div className='flex flex-col gap-2'>
@@ -169,9 +168,7 @@ export default function SpecialistProfile() {
           </div>
         </div>
 
-        {/* Right sticky column */}
         <div className='xl:w-100 xl:shrink-0 xl:self-stretch flex flex-col gap-4 mx-5 xl:mx-0 my-5'>
-          {/* Book Appointment - sticky */}
           <div className='bg-blue-600 p-6 rounded-lg xl:sticky xl:top-24'>
             <div className='text-white flex flex-col gap-2 mb-4'>
               <span className='text-xl font-bold'>Book an Appointment</span>
@@ -191,7 +188,7 @@ export default function SpecialistProfile() {
             </div>
           </div>
 
-          {/* Hospital Affiliations - not sticky, stays in place */}
+
           <div className='bg-white p-6 rounded-lg border border-gray-200 shadow-xs'>
             <div className='flex flex-col gap-2'>
               <span className='text-xl text-black font-bold flex items-center gap-2 pb-2'>
@@ -207,7 +204,6 @@ export default function SpecialistProfile() {
             </div>
           </div>
 
-          {/* HMO Coverage - not sticky, stays in place */}
           <div className='bg-white p-6 rounded-lg border border-gray-200 shadow-xs'>
             <div className='flex flex-col gap-2'>
               <span className='text-xl text-black font-bold flex items-center gap-2 pb-2'>

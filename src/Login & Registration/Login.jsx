@@ -1,14 +1,20 @@
 import './auth.css';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import authService from '../Specialists/authService';
-import { apiRequest } from '../api/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, getRedirectPathForRole } = useAuth();
+
+  useEffect(() => {
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('okiedoc_user_type');
+    localStorage.removeItem('okiedoc_specialist_user');
+    sessionStorage.clear();
+  }, []);
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -37,13 +43,13 @@ export default function Login() {
         role: 'specialist',
       });
 
-      const role = user.role;
+      const role = user.role || user.userType;
       localStorage.setItem('okiedoc_user_type', role);
       localStorage.setItem('okiedoc_specialist_user', JSON.stringify(user));
 
-      const { getRedirectPathForRole } = await import('../contexts/AuthContext');
       const redirectPath = getRedirectPathForRole(role);
-      navigate(redirectPath);
+      navigate(redirectPath, { replace: true });
+      
     } catch (error) {
       console.error('Login error:', error);
       setError(error.message || 'An error occurred. Please try again.');

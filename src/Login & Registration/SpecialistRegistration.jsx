@@ -286,7 +286,7 @@ export default function SpecialistRegistration() {
       if (prcIdFile) payload.append("prcId", prcIdFile);
       if (eSignatureFile) payload.append("eSignature", eSignatureFile);
 
-      const result = await apiRequest("/api/v1/auth/specialist-register", {
+      const result = await apiRequest("/api/v1/specialist/register", {
         method: "POST",
         disableAuthRedirect: true,
         body: payload,

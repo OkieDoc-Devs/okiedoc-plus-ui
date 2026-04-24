@@ -31,24 +31,23 @@ const formatTime = (dateString) => {
   }
 };
 
-export default function CallbackQueueCard({ callback, onStatusChange }) {
+export default function CallbackQueueCard({
+  callback,
+  onSelect,
+  isSelected = false,
+}) {
   const statusInfo = statusConfig[callback.status] || statusConfig.new;
-  const isVideo = callback.callType === 'video';
-
-  const handleStatusChange = async () => {
-    if (!onStatusChange) return;
-    const statusCycle = ['new', 'in_progress', 'expired'];
-    const currentIndex = statusCycle.indexOf(callback.status);
-    const nextStatus = statusCycle[(currentIndex + 1) % statusCycle.length];
-    await onStatusChange(callback.id, nextStatus);
-  };
+  const channel = String(callback.callType || callback.contactMethod || '')
+    .trim()
+    .toLowerCase();
+  const isVideo = channel.includes('video');
 
   return (
     <button
       type='button'
-      onClick={handleStatusChange}
-      title='Click to change callback status'
-      className='w-full  bg-white border-l-4 border border-blue-500 rounded-2xl px-4 pt-3.5 pb-3 flex flex-col gap-1.5 text-left cursor-pointer hover:shadow-md transition-shadow duration-150'
+      onClick={() => onSelect?.(callback)}
+      title='Open callback details'
+      className={`w-full bg-white border-l-4 border border-blue-500 rounded-2xl px-4 pt-3.5 pb-3 flex flex-col gap-1.5 text-left cursor-pointer hover:shadow-md transition-shadow duration-150 ${isSelected ? 'ring-2 ring-blue-300 ring-offset-1' : ''}`}
     >
       <div className='flex items-center justify-between gap-2'>
         <div className='flex items-center gap-1.5'>

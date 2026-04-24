@@ -747,25 +747,6 @@ export default function Patient_Profile() {
                 </span>
               )}
             </div>
-
-            <div className="profile-form-group">
-              <label className="profile-form-label">
-                Blood Type{" "}
-                <span style={{ color: "#868e96", fontWeight: "normal" }}></span>
-              </label>
-              <select
-                className="profile-form-input disabled"
-                value={editData.bloodType}
-                disabled
-                style={{
-                  backgroundColor: "#f8f9fa",
-                  cursor: "not-allowed",
-                  color: "#6c757d",
-                }}
-              >
-                <option value={editData.bloodType}>{editData.bloodType}</option>
-              </select>
-            </div>
           </div>
 
           <div className="profile-edit-header" style={{ marginTop: "16px" }}>

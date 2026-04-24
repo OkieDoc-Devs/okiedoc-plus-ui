@@ -127,7 +127,7 @@ function AppContent() {
         <Route path='/nurse-dashboard' element={<ProtectedRoute allowedRoles={['nurse']}><Dashboard /></ProtectedRoute>} />
         <Route path='/nurse-notifications' element={<ProtectedRoute allowedRoles={['nurse']}><Notifications /></ProtectedRoute>} />
         <Route path='/nurse-myaccount' element={<ProtectedRoute allowedRoles={['nurse']}><MyAccount /></ProtectedRoute>} />
-        <Route path='/nurse-manage-appointments' element={<ProtectedRoute allowedRoles={['nurse']}></ProtectedRoute>} />
+        <Route path='/nurse-manage-appointments' element={<ProtectedRoute allowedRoles={['nurse']}><ManageAppointments /></ProtectedRoute>} />
         <Route path='/nurse-messages' element={<ProtectedRoute allowedRoles={['nurse']}><Messages /></ProtectedRoute>} />
 
         {/* Admin Routes */}

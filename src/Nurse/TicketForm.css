@@ -1,0 +1,222 @@
+/* Ticket Form Responsive Styles */
+
+.nurse-ticket-container {
+  width: 100%;
+  padding: 1.5rem;
+  background-color: #f8fafc;
+  /* Ensure it fills height if content is short but scrolls if long */
+  display: flex;
+  flex-direction: column;
+}
+
+.nurse-ticket-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 0 0.5rem;
+}
+
+.header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.back-circle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.back-circle-btn:hover {
+  background-color: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-plus-icon {
+  position: relative;
+  color: #3b82f6;
+  display: flex;
+  align-items: center;
+}
+
+.plus-plus {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.nurse-ticket-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.nurse-ticket-header .subtitle {
+  font-size: 0.95rem;
+  color: #64748b;
+  margin: 0.25rem 0 0 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Button Styles from Picture */
+.btn-draft, .btn-assign, .btn-create-ticket {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-draft {
+  background-color: white;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-assign {
+  background-color: white;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-create-ticket {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.btn-draft:hover, .btn-assign:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.btn-create-ticket:hover {
+  background-color: #2563eb;
+}
+
+/* Updated Layout: Container takes full width, content is centered and restricted */
+.ticket-form-content {
+  width: 100%;
+  max-width: 1200px; /* Restrict width of the actual form content */
+  margin: 0 auto;   /* Center the content */
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-card {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 1.5rem 0;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.field-row.full-width {
+  grid-template-columns: 1fr;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.form-field label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  padding: 0.75rem 1rem;
+  background-color: #f1f5f9;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  color: #1e293b;
+  transition: all 0.2s;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  outline: none;
+  background-color: white;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+@media (max-width: 1024px) {
+  .nurse-ticket-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .btn-draft, .btn-assign, .btn-create-ticket {
+    flex: 1;
+    justify-content: center;
+  }
+}

@@ -16,6 +16,7 @@ import {
   triageTicket,
   updateTicket,
 } from "./services/apiService.js";
+import { fetchCallbackRequestsFromAPI, updateCallbackRequest } from "./services/callbackService.js";
 import { useAuth } from "../contexts/AuthContext";
 import { transformProfileFromAPI } from "./services/profileService.js";
 import { sendMessage as sendMessageToTicket } from "./services/chatService.js";
@@ -23,6 +24,7 @@ import NotificationBell from "../components/Notifications/NotificationBell";
 import Avatar from "../components/Avatar";
 import { disconnectSocket } from "../utils/socketClient";
 import { useChat } from "./services/useChat.js";
+import CreateConsultationTicket from "./CreateConsultationTicket";
 import {
   Activity,
   AlertCircle,
@@ -38,8 +40,10 @@ import {
   MapPin,
   MessageSquare,
   Phone,
+  Play,
   SendHorizontal,
   Pencil,
+  Eye,
   Users,
   UserRound,
   Video,
@@ -387,6 +391,9 @@ export default function Dashboard() {
     getNurseProfileImage(),
   );
   const [tickets, setTickets] = useState([]);
+  const [callbackRequests, setCallbackRequests] = useState([]);
+  const [activeDashboardTab, setActiveDashboardTab] = useState("queue"); // "queue", "callback", or "create-ticket"
+  const [queueFilter, setQueueFilter] = useState("all"); // "all", "consults", "callbacks"
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [hasManualDeselection, setHasManualDeselection] = useState(false);
   const [quickMessage, setQuickMessage] = useState("");
@@ -440,6 +447,12 @@ export default function Dashboard() {
   const [isDepartmentMenuOpen, setIsDepartmentMenuOpen] = useState(false);
   const [isDoctorMenuOpen, setIsDoctorMenuOpen] = useState(false);
   const [isNurseMenuOpen, setIsNurseMenuOpen] = useState(false);
+
+  // Callback Details Modal state
+  const [showCallbackModal, setShowCallbackModal] = useState(false);
+  const [selectedCallback, setSelectedCallback] = useState(null);
+  const [nurseRemarks, setNurseRemarks] = useState("");
+  const [callbackNotes, setCallbackNotes] = useState("");
 
   const selectedPatientId = useMemo(
     () => (selectedTicket ? getPatientIdFromTicket(selectedTicket) : null),
@@ -523,6 +536,58 @@ export default function Dashboard() {
     setIsDoctorMenuOpen(false);
     setIsNurseMenuOpen(false);
     setTransferReason("");
+  };
+
+  const openCallbackModal = (request) => {
+    setSelectedCallback(request);
+    setNurseRemarks(request.nurseRemarks || "");
+    setCallbackNotes(request.callbackNotes || "");
+    setShowCallbackModal(true);
+  };
+
+  const closeCallbackModal = () => {
+    setShowCallbackModal(false);
+    setSelectedCallback(null);
+    setNurseRemarks("");
+    setCallbackNotes("");
+  };
+
+  const handleUpdateCallback = async (status, requestData = null) => {
+    const callbackToUpdate = requestData || selectedCallback;
+    if (!callbackToUpdate) return;
+    
+    try {
+      // Logic for status toggle/update
+      let nextStatus = status;
+      if (status === 'Start') {
+        nextStatus = 'In Progress';
+      }
+
+      await updateCallbackRequest(callbackToUpdate.id, {
+        status: nextStatus,
+        nurseRemarks: nurseRemarks
+      });
+
+      setCallbackRequests(prev => prev.map(req => 
+        req.id === callbackToUpdate.id 
+          ? { ...req, status: nextStatus, nurseRemarks } 
+          : req
+      ));
+
+      if (status === 'Ticket') {
+        const dataToPass = { ...callbackToUpdate, status: nextStatus, nurseRemarks };
+        closeCallbackModal();
+        setSelectedCallback(dataToPass); // Keep it selected for the form
+        setActiveDashboardTab('create-ticket');
+        return;
+      }
+      
+      if (!requestData) {
+        closeCallbackModal();
+      }
+    } catch (error) {
+      console.error("Failed to update callback request:", error);
+    }
   };
 
   const closeTransferMenus = () => {
@@ -662,6 +727,18 @@ export default function Dashboard() {
         console.error("Tickets API error:", ticketError.message);
         if (isMounted) {
           setTickets([]);
+        }
+      }
+
+      try {
+        const callbacks = await fetchCallbackRequestsFromAPI();
+        if (isMounted) {
+          setCallbackRequests(Array.isArray(callbacks) ? callbacks : []);
+        }
+      } catch (callbackError) {
+        console.error("Callback requests API error:", callbackError.message);
+        if (isMounted) {
+          setCallbackRequests([]);
         }
       }
     };
@@ -1180,32 +1257,81 @@ export default function Dashboard() {
   }, [quickMessages, selectedPatient?.fullName, selectedTicket]);
 
   const queueCards = useMemo(() => {
-    return (tickets || []).map((ticket) => {
-      const queueStatus = normalizeStatus(
-        ticket,
-        Number(ticket?.id) === Number(selectedTicket?.id),
-      );
-      const statusLabel = getStatusLabel(queueStatus);
-      const channelLabel = getChannelLabel(ticket);
+    let combinedItems = [];
+
+    if (queueFilter === "all" || queueFilter === "consults") {
+      const consultItems = (tickets || []).map((ticket) => ({
+        ...ticket,
+        isCallbackTicket: false,
+      }));
+      combinedItems = [...combinedItems, ...consultItems];
+    }
+
+    if (queueFilter === "all" || queueFilter === "callbacks") {
+      const callbackItems = (callbackRequests || []).map((req) => ({
+        id: `cb-${req.id}`,
+        isCallbackTicket: true,
+        ticketNumber: `CB-${req.id}`,
+        patientName: `${req.firstName} ${req.lastName}`,
+        createdAt: req.requestTime,
+        status: req.status,
+        consultationChannel: req.contactMethod?.toLowerCase().includes("video")
+          ? "video"
+          : "voice",
+        chiefComplaint: req.chiefComplaint,
+        originalData: req,
+      }));
+      combinedItems = [...combinedItems, ...callbackItems];
+    }
+
+    return combinedItems.map((item) => {
+      const isCallback = item.isCallbackTicket;
+      const ticket = isCallback ? item : item;
+
+      const queueStatus = isCallback
+        ? item.status === "Waiting" || item.status === "pending"
+          ? "pending"
+          : "processing"
+        : normalizeStatus(
+            ticket,
+            Number(ticket?.id) === Number(selectedTicket?.id),
+          );
+
+      const statusLabel = isCallback
+        ? item.status === "pending"
+          ? "Waiting"
+          : item.status
+        : getStatusLabel(queueStatus);
+      const channelLabel = isCallback
+        ? item.consultationChannel === "video"
+          ? "Video"
+          : "Voice"
+        : getChannelLabel(ticket);
+
       const persistedUrgencyLevel =
         triageDraftsByTicketId[Number(ticket?.id)]?.selectedUrgencyLevel || "";
-      const urgencyLevel =
-        persistedUrgencyLevel ||
-        urgencyOverridesByTicketId[Number(ticket?.id)] ||
-        getUrgencyLevelFromTicket(ticket);
+      const urgencyLevel = isCallback
+        ? "Normal"
+        : persistedUrgencyLevel ||
+          urgencyOverridesByTicketId[Number(ticket?.id)] ||
+          getUrgencyLevelFromTicket(ticket);
+
       return {
         ticket,
         queueStatus,
         statusLabel,
         channelLabel,
         urgencyLevel,
+        isCallback,
       };
     });
   }, [
     selectedTicket?.id,
     tickets,
+    callbackRequests,
     triageDraftsByTicketId,
     urgencyOverridesByTicketId,
+    queueFilter,
   ]);
 
   const shouldEnableCloseTicket = markInquiry || markIncomplete;
@@ -1659,6 +1785,116 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard triage-dashboard">
+      {showCallbackModal && selectedCallback && (
+        <div className="callback-modal-overlay" onClick={closeCallbackModal}>
+          <div className="callback-modal-content" onClick={e => e.stopPropagation()}>
+            <button className="callback-modal-close" onClick={closeCallbackModal}>&times;</button>
+            
+            <div className="callback-modal-header">
+              <h3>Callback Details - CB-2024-{String(selectedCallback.id).padStart(3, '0')}</h3>
+              <p>Patient inquiry and triage assessment</p>
+            </div>
+
+            <div className="callback-patient-info-card">
+              <div className="info-grid">
+                <div className="info-item">
+                  <label>Patient Name</label>
+                  <strong>{selectedCallback.firstName} {selectedCallback.lastName}</strong>
+                </div>
+                <div className="info-item">
+                  <label>Contact Number</label>
+                  <strong>{selectedCallback.contactNumber}</strong>
+                </div>
+                <div className="info-item">
+                  <label>Preferred Method</label>
+                  <div className="method-display">
+                    {selectedCallback.contactMethod?.includes('Video') ? (
+                      <Video size={16} />
+                    ) : (
+                      <Phone size={16} />
+                    )}
+                    <span>{selectedCallback.contactMethod}</span>
+                  </div>
+                </div>
+                <div className="info-item">
+                  <label>Request Time</label>
+                  <strong>
+                    {new Date(selectedCallback.requestTime).toLocaleString('en-US', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    }).replace(',', '')}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="callback-section">
+              <div className="section-header">
+                <h4>Chief Complaint</h4>
+                <span className="status-badge-inline">{selectedCallback.status}</span>
+              </div>
+              <div className="complaint-box">
+                {selectedCallback.chiefComplaint}
+              </div>
+            </div>
+
+            <div className="callback-section">
+              <h4>Symptoms</h4>
+              <div className="symptoms-box">
+                <input 
+                  type="text" 
+                  value={selectedCallback.symptoms || ""} 
+                  readOnly 
+                  className="read-only-input"
+                />
+              </div>
+            </div>
+
+            <div className="callback-section">
+              <h4>Nurse Remarks</h4>
+              <textarea 
+                placeholder="Add your assessment and recommendations..."
+                value={nurseRemarks}
+                onChange={(e) => setNurseRemarks(e.target.value)}
+                className="callback-textarea"
+              />
+            </div>
+
+            <div className="callback-section">
+              <h4>Callback Notes</h4>
+              <textarea 
+                placeholder="Internal notes about the callback..."
+                value={callbackNotes}
+                onChange={(e) => setCallbackNotes(e.target.value)}
+                className="callback-textarea"
+              />
+            </div>
+
+            <div className="callback-modal-footer">
+              <button className="btn-modal-close" onClick={closeCallbackModal}>Close</button>
+              <div className="footer-actions">
+                <button className="btn-outline" onClick={() => handleUpdateCallback('Inquiry')}>
+                  <Info size={16} /> Mark as Inquiry
+                </button>
+                <button className="btn-outline" onClick={() => handleUpdateCallback('Ticket')}>
+                  <SendHorizontal size={16} /> Convert to Ticket
+                </button>
+                <button className="btn-outline-orange" onClick={() => handleUpdateCallback('Escalated')}>
+                  <SendHorizontal size={16} /> Escalate to Doctor
+                </button>
+                <button className="btn-success" onClick={() => handleUpdateCallback('Completed')}>
+                  <CheckCircle2 size={16} /> Mark as Completed
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="dashboard-header">
         <div className="header-center">
           <img
@@ -1722,66 +1958,128 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="callback-requests-tab-row">
+        <div className="callback-tabs">
+          <button 
+            className={`callback-tab ${activeDashboardTab === "queue" ? "active" : ""}`}
+            onClick={() => setActiveDashboardTab("queue")}
+          >
+            Patient Queue
+          </button>
+          <button 
+            className={`callback-tab ${activeDashboardTab === "callback" || activeDashboardTab === "create-ticket" ? "active" : ""}`}
+            onClick={() => setActiveDashboardTab("callback")}
+          >
+            Callback Requests
+          </button>
+        </div>
+      </div>
+
       <div className="triage-shell">
-        <div className="triage-grid">
-          <section className="triage-queue-col">
+        {activeDashboardTab === "queue" ? (
+          <div className="triage-grid">
+            <section className="triage-queue-col">
             <div className="triage-col-header">
               <Users size={16} strokeWidth={2.2} />
               <h3>Patient Queue</h3>
             </div>
+
+            <div className="queue-filter-container">
+              <div className="queue-filter-tabs">
+                <button 
+                  className={`queue-filter-btn ${queueFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setQueueFilter('all')}
+                >
+                  All <span className="filter-count">{(tickets || []).length + (callbackRequests || []).length}</span>
+                </button>
+                <button 
+                  className={`queue-filter-btn ${queueFilter === 'consults' ? 'active' : ''}`}
+                  onClick={() => setQueueFilter('consults')}
+                >
+                  Consults <span className="filter-count">{(tickets || []).length}</span>
+                </button>
+                <button 
+                  className={`queue-filter-btn ${queueFilter === 'callbacks' ? 'active' : ''}`}
+                  onClick={() => setQueueFilter('callbacks')}
+                >
+                  Callbacks <span className="filter-count highlight">{(callbackRequests || []).length}</span>
+                </button>
+              </div>
+            </div>
+
             <div className="triage-queue-list">
               {queueCards.length > 0 ? (
-                queueCards.map(
-                  ({
+                queueCards.map((item) => {
+                  const {
                     ticket,
                     queueStatus,
                     statusLabel,
                     channelLabel,
                     urgencyLevel,
-                  }) => {
-                    const isSelected =
-                      Number(selectedTicket?.id) === Number(ticket.id);
-                    const urgencyKey = urgencyLevel.toLowerCase();
-                    return (
-                      <button
-                        key={ticket.id}
-                        type="button"
-                        className={`triage-queue-card ${isSelected ? "selected" : ""}`}
-                        onClick={() => {
-                          if (isSelected) {
-                            setSelectedTicket(null);
-                            setHasManualDeselection(true);
-                          } else {
-                            setSelectedTicket(ticket);
-                            setHasManualDeselection(false);
-                          }
-                          setQuickMessageError("");
-                        }}
-                      >
+                  } = item;
+                  const isSelected =
+                    !item.isCallback &&
+                    Number(selectedTicket?.id) === Number(ticket.id);
+                  const urgencyKey = urgencyLevel.toLowerCase();
+                  return (
+                    <button
+                      key={item.isCallback ? item.ticket.id : ticket.id}
+                      type="button"
+                      className={`triage-queue-card ${isSelected ? "selected" : ""} ${item.isCallback ? "callback-card" : ""}`}
+                      onClick={() => {
+                        if (item.isCallback) {
+                          setSelectedCallback(item.ticket.originalData);
+                          setActiveDashboardTab("callback");
+                          return;
+                        }
+                        if (isSelected) {
+                          setSelectedTicket(null);
+                          setHasManualDeselection(true);
+                        } else {
+                          setSelectedTicket(ticket);
+                          setHasManualDeselection(false);
+                        }
+                        setQuickMessageError("");
+                      }}
+                    >
                         <div className="triage-queue-card-top">
                           <div className="triage-queue-main">
                             <div className="triage-queue-avatar">
-                              <UserRound size={15} strokeWidth={2.2} />
+                              {item.isCallback ? (
+                                <Phone size={15} strokeWidth={2.2} />
+                              ) : (
+                                <UserRound size={15} strokeWidth={2.2} />
+                              )}
                             </div>
 
                             <div>
                               <div className="triage-ticket-code">
-                                T-{String(ticket.id).padStart(3, "0")}
+                                {item.isCallback
+                                  ? item.ticket.ticketNumber
+                                  : `T-${String(ticket.id).padStart(3, "0")}`}
                               </div>
                               <div className="triage-ticket-name">
-                                {readValue(ticket, [
-                                  "patientName",
-                                  "fullName",
-                                  "name",
-                                ])}
+                                {item.isCallback
+                                  ? item.ticket.patientName
+                                  : readValue(ticket, [
+                                      "patientName",
+                                      "fullName",
+                                      "name",
+                                    ])}
                               </div>
                             </div>
                           </div>
-                          <span
-                            className={`triage-status-badge ${queueStatus}`}
-                          >
-                            {statusLabel}
-                          </span>
+                  {item.isCallback ? (
+                    <span className={`triage-status-badge ${item.status === 'pending' ? 'pending' : 'processing'}`}>
+                      {item.status === 'pending' ? 'Waiting' : item.status}
+                    </span>
+                  ) : (
+                    <span
+                      className={`triage-status-badge ${queueStatus}`}
+                    >
+                      {statusLabel}
+                    </span>
+                  )}
                         </div>
 
                         <div className="triage-channel-chip">
@@ -1799,13 +2097,15 @@ export default function Dashboard() {
                           <div className="triage-ticket-time">
                             <Clock3 size={14} strokeWidth={2.2} />
                             <span>
-                              {formatTime(
-                                readValue(
-                                  ticket,
-                                  ["preferredDate", "createdAt"],
-                                  null,
-                                ),
-                              )}
+                              {item.isCallback
+                                ? formatTime(item.ticket.createdAt)
+                                : formatTime(
+                                    readValue(
+                                      ticket,
+                                      ["preferredDate", "createdAt"],
+                                      null,
+                                    ),
+                                  )}
                             </span>
                           </div>
 
@@ -2607,9 +2907,128 @@ export default function Dashboard() {
             )}
           </section>
         </div>
-      </div>
+      ) : activeDashboardTab === "create-ticket" ? (
+        <div style={{ width: '100%', height: '100%', overflowY: 'auto' }}>
+          <CreateConsultationTicket 
+            callbackData={selectedCallback} 
+            onBack={() => setActiveDashboardTab("callback")} 
+          />
+        </div>
+      ) : (
+        <div className="callback-requests-container">
+          <div className="callback-header-row">
+            <div className="header-info">
+              <div className="header-title">
+                <Phone size={24} className="icon" style={{ color: '#28a745' }} />
+                <h2>Callback Requests</h2>
+              </div>
+              <p>Free inquiry and triage assessment</p>
+            </div>
+            <div className="callback-stats-header">
+              <span className="stat-pill-white">
+                {callbackRequests.filter(r => r.status === 'Waiting' || r.status === 'pending').length} Waiting
+              </span>
+              <span className="stat-pill-blue">
+                {callbackRequests.filter(r => r.status === 'In Progress').length} In Progress
+              </span>
+            </div>
+          </div>
 
-      {showTransferModal && selectedPatient && (
+          <div className="callback-table-card">
+            <table className="callback-table">
+              <thead>
+                <tr>
+                  <th>Ticket ID</th>
+                  <th>Patient Name</th>
+                  <th>Contact Number</th>
+                  <th>Contact Method</th>
+                  <th>Request Time</th>
+                  <th>Chief Complaint</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {callbackRequests.length > 0 ? (
+                  callbackRequests.map((request) => (
+                    <tr key={request.id}>
+                      <td className="ticket-id">CB-2024-{String(request.id).padStart(3, '0')}</td>
+                      <td className="patient-name">
+                        <strong>{request.firstName} {request.lastName}</strong>
+                      </td>
+                      <td className="contact-number">{request.contactNumber}</td>
+                      <td className="contact-method">
+                        <span className="method-icon">
+                          {request.contactMethod?.includes('Video') ? (
+                            <Video size={16} style={{ color: '#7349ac' }} />
+                          ) : request.contactMethod?.includes('Viber') ? (
+                            <Phone size={16} style={{ color: '#7349ac' }} />
+                          ) : (
+                            <Phone size={16} style={{ color: '#28a745' }} />
+                          )}
+                        </span>
+                        {request.contactMethod}
+                      </td>
+                      <td className="request-time">
+                        {new Date(request.requestTime).toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        }).replace(',', '')}
+                      </td>
+                      <td className="chief-complaint">{request.chiefComplaint}</td>
+                      <td className="status">
+                        <span className={`status-pill ${request.status?.toLowerCase().replace(/\s+/g, '-')}`}>
+                          {request.status}
+                        </span>
+                      </td>
+                      <td className="actions">
+                        {(request.status === 'Waiting' || request.status === 'pending') && (
+                          <button 
+                            className="btn-start"
+                            onClick={() => {
+                              openCallbackModal(request);
+                              handleUpdateCallback('Start', request);
+                            }}
+                          >
+                            <Play size={14} fill="currentColor" /> Start
+                          </button>
+                        )}
+                        {request.status === 'In Progress' && (
+                          <button 
+                            className="btn-view"
+                            onClick={() => openCallbackModal(request)}
+                          >
+                            <Eye size={14} /> View
+                          </button>
+                        )}
+                        {request.status === 'Escalated' && (
+                          <button 
+                            className="btn-details"
+                            onClick={() => openCallbackModal(request)}
+                          >
+                            <Info size={14} /> View Details
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="empty-state">No callback requests found</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+
+    {showTransferModal && selectedPatient && (
         <div
           className="triage-transfer-modal-overlay"
           onClick={closeTransferModal}

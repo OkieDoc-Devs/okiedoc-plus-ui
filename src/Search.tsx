@@ -536,7 +536,7 @@ export default function SearchPage() {
                             <button
                               onClick={() => {
                                 window.scrollTo(0, 0);
-                                navigate(`/specialist/${index}`);
+                                navigate(`/specialist`);
                               }}
                               className='flex items-center justify-center gap-2 w-30 text-[14px] bg-white text-black border border-gray-700 font-semibold rounded-lg py-2 hover:bg-gray-100 transition-all hover:cursor-pointer'
                             >

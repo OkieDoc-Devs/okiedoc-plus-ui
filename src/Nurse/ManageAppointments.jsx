@@ -488,20 +488,28 @@ export default function ManageAppointment() {
       <div className='appointments-section'>
         <div className='tickets-container'>
           <div className='processing-tickets'>
-            <h2>Processing Tickets ({processingTickets.length})</h2>
+            <div className='processing-tickets-header'>
+              <div>
+                <h2>Processing Tickets</h2>
+                <p>Patients currently being handled by triage.</p>
+              </div>
+              <span>{processingTickets.length}</span>
+            </div>
             {processingTickets.map((ticket) => (
               <div
                 key={ticket.id}
-                className='ticket-card-new'
+                className='ticket-card-new processing-ticket-card'
                 onClick={() => {
                   setSelectedTicket(ticket);
                   setShowTicketDetailModal(true);
                   setTicketDetailTab('assessment');
                 }}
-                style={{ cursor: 'pointer', borderLeftColor: '#2196f3' }}
               >
                 <div className='ticket-card-header'>
                   <span className='ticket-number'>TICKET #{ticket.id}</span>
+                  <span className='ticket-status-text processing'>
+                    {ticket.status}
+                  </span>
                 </div>
 
                 <div className='ticket-card-body'>
@@ -559,23 +567,10 @@ export default function ManageAppointment() {
                         <strong>Date Created:</strong>{' '}
                         {formatDate(ticket.createdAt) || ticket.dateCreated}
                       </p>
-                      <p>
-                        <strong>Status:</strong>{' '}
-                        <span
-                          className='ticket-status-text processing'
-                          style={{ color: '#2196f3' }}
-                        >
-                          {ticket.status}
-                        </span>
-                      </p>
                     </div>
 
                     <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 8,
-                      }}
+                      className='ticket-actions'
                       onClick={(e) => e.stopPropagation()}
                     >
                       {ticket.claimedBy ? (
@@ -594,8 +589,7 @@ export default function ManageAppointment() {
                         </button>
                       )}
                       <button
-                        className='ticket-history-btn'
-                        style={{ background: '#4caf50' }}
+                        className='ticket-history-btn ticket-history-btn-success'
                         onClick={() => simulatePayment(ticket.id)}
                       >
                         Simulate Payment

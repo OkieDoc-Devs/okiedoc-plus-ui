@@ -1740,6 +1740,49 @@ export default function Dashboard() {
   );
   const canTransferToNurse = Boolean(selectedNurseId && !isTransferSubmitting);
 
+  const buildTransferTriagePayload = () => {
+    const clinicalConcern = String(chiefComplaintDraft || '').trim();
+    const patientConcern = String(patientSubmittedConcern || '').trim();
+    const remarks = String(additionalRemarksDraft || '').trim();
+
+    return {
+      chiefComplaint: clinicalConcern || selectedTicket?.chiefComplaint || '',
+      clinicalChiefComplaint: clinicalConcern || null,
+      patientSubmittedConcern: patientConcern || null,
+      submittedConcern: patientConcern || null,
+      additionalRemarks: remarks || null,
+      bloodPressure: String(vitalsDraft.bloodPressure || '').trim() || null,
+      heartRate: String(vitalsDraft.heartRate || '').trim() || null,
+      temperature: String(vitalsDraft.temperature || '').trim() || null,
+      oxygenSaturation:
+        String(vitalsDraft.oxygenSaturation || '').trim() || null,
+      selectedPainAreas,
+      painAreas: selectedPainAreas,
+      painMapView,
+      durationValue:
+        Number(painMapReadOnlyMeta.durationValue) ||
+        Number(selectedTicket?.durationValue) ||
+        null,
+      durationUnit: painMapReadOnlyMeta.durationUnit || null,
+      severity:
+        Number(painMapReadOnlyMeta.painScore) ||
+        Number(selectedTicket?.severity) ||
+        null,
+      selectedSymptomPills,
+      selectedRosItems,
+      activeDiseases: activeDiseasesDraft,
+      pastDiseases: String(pastDiseasesDraft || '').trim() || null,
+      familyHistory: String(familyHistoryDraft || '').trim() || null,
+      smoking: String(smokingDraft || '').trim() || null,
+      drinking: String(drinkingDraft || '').trim() || null,
+      lifestyleNotes: String(lifestyleNotesDraft || '').trim() || null,
+      surgeries: String(surgeriesDraft || '').trim() || null,
+      currentMedications: currentMedicationsDraft,
+      urgencyLevel: selectedUrgencyLevel || null,
+      transferReason: transferReason.trim() || null,
+    };
+  };
+
   const handleTransferSubmit = async () => {
     if (!selectedTicket || isTransferSubmitting) {
       return;
@@ -1762,25 +1805,18 @@ export default function Dashboard() {
         const transferredTicketId = Number(selectedTicket.id);
 
         if (transferTarget === "doctor") {
-          const clinicalConcern = String(chiefComplaintDraft || '').trim();
-          const patientConcern = String(patientSubmittedConcern || '').trim();
+          const triagePayload = buildTransferTriagePayload();
 
           await triageTicket({
             ticketId: Number(selectedTicket.id),
             targetSpecialty: selectedDepartment,
             specialistId: Number(selectedDoctorId),
             urgency: "medium",
-            chiefComplaint: clinicalConcern || null,
-            clinicalChiefComplaint: clinicalConcern || null,
-            patientSubmittedConcern: patientConcern || null,
+            ...triagePayload,
           });
 
           await applyTicketPatch(selectedTicket.id, {
-            transferReason: transferReason.trim() || null,
-            chiefComplaint: clinicalConcern || null,
-            clinicalChiefComplaint: clinicalConcern || null,
-            patientSubmittedConcern: patientConcern || null,
-            submittedConcern: patientConcern || null,
+            ...triagePayload,
           });
         } else {
         await applyTicketPatch(selectedTicket.id, {

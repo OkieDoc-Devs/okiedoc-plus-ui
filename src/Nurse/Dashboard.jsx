@@ -186,6 +186,99 @@ const toList = (value) => {
   return [];
 };
 
+const parseJsonValue = (value, fallback = null) => {
+  if (value === null || value === undefined || value === '') {
+    return fallback;
+  }
+
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+};
+
+const getIntakeValue = (ticket, keys, fallback = '') => {
+  const intakeDetails = parseJsonValue(ticket?.intakeDetails, ticket?.intakeDetails);
+  const intakeEntries = Array.isArray(intakeDetails)
+    ? intakeDetails
+    : intakeDetails && typeof intakeDetails === 'object'
+      ? [intakeDetails]
+      : [];
+
+  for (const key of keys) {
+    const directValue = readValue(ticket, [key], null);
+    if (directValue !== null && directValue !== undefined && directValue !== '') {
+      return directValue;
+    }
+
+    for (const entry of intakeEntries) {
+      const nestedValue = readValue(entry, [key], null);
+      if (
+        nestedValue !== null &&
+        nestedValue !== undefined &&
+        nestedValue !== ''
+      ) {
+        return nestedValue;
+      }
+    }
+  }
+
+  return fallback;
+};
+
+const normalizePainAreas = (value) => {
+  const parsed = parseJsonValue(value, value);
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+
+  return parsed
+    .map((entry) => {
+      if (entry && typeof entry === 'object') {
+        const view = PAIN_MAP_VIEWS.includes(entry.view) ? entry.view : 'front';
+        const key = entry.key || String(entry.id || '').split(':').pop();
+        const label = entry.label || key;
+
+        if (!key || !label) {
+          return null;
+        }
+
+        return {
+          id: entry.id || `${view}:${key}`,
+          view,
+          key,
+          label,
+        };
+      }
+
+      const raw = String(entry || '').trim();
+      if (!raw) {
+        return null;
+      }
+
+      const [maybeView, maybeKey] = raw.includes(':')
+        ? raw.split(':')
+        : ['front', raw];
+      const view = PAIN_MAP_VIEWS.includes(maybeView) ? maybeView : 'front';
+      const key = maybeKey || raw;
+      return {
+        id: `${view}:${key}`,
+        view,
+        key,
+        label: key
+          .split('-')
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' '),
+      };
+    })
+    .filter(Boolean);
+};
+
 const formatDate = (dateString) => {
   if (!dateString) return DEFAULT_TEXT;
 
@@ -543,6 +636,8 @@ export default function Dashboard() {
   const [isNurseMenuOpen, setIsNurseMenuOpen] = useState(false);
   const [callbacks, setCallbacks] = useState([]);
   const [showMedicalRecords, setShowMedicalRecords] = useState(false);
+  const [optimisticQuickMessagesByTicketId, setOptimisticQuickMessagesByTicketId] =
+    useState({});
 
   const selectedPatientId = useMemo(
     () => (selectedTicket ? getPatientIdFromTicket(selectedTicket) : null),
@@ -551,6 +646,7 @@ export default function Dashboard() {
   const isSelectedCallbackTicket = Boolean(selectedTicket?.isCallback);
 
   const creatingConversationFor = useRef(null);
+  const quickChatListRef = useRef(null);
 
   const {
     conversations,
@@ -1089,10 +1185,8 @@ export default function Dashboard() {
             'patientConcern',
             'chiefComplaint',
             'mainConcern',
-            'symptoms',
-            'intakeDetails',
           ],
-          '',
+          getIntakeValue(selectedTicket, ['mainConcern'], ''),
         ),
       ),
     );
@@ -1120,7 +1214,11 @@ export default function Dashboard() {
               'associatedSymptoms',
               'additionalSymptoms',
             ],
-            '',
+            getIntakeValue(
+              selectedTicket,
+              ['otherSymptoms', 'associatedSymptoms', 'additionalSymptoms'],
+              '',
+            ),
           ),
         ),
     );
@@ -1199,15 +1297,12 @@ export default function Dashboard() {
       Array.isArray(localDraft.selectedSymptomPills)
         ? localDraft.selectedSymptomPills
         : toList(
-            readValue(
+            getIntakeValue(
               selectedTicket,
               [
                 'symptoms',
                 'symptomTags',
                 'symptomPills',
-                'intakeDetails',
-                '0',
-                'symptoms',
               ],
               '',
             ),
@@ -1235,7 +1330,13 @@ export default function Dashboard() {
     setSelectedPainAreas(
       Array.isArray(localDraft.selectedPainAreas)
         ? localDraft.selectedPainAreas
-        : readValue(selectedTicket, ["intakeDetails", "0", "painAreas"], []),
+        : normalizePainAreas(
+            getIntakeValue(
+              selectedTicket,
+              ['selectedPainAreas', 'painAreas', 'painMap'],
+              [],
+            ),
+          ),
     );
 
     const toEditableValue = (value) =>
@@ -1384,25 +1485,50 @@ export default function Dashboard() {
 
     return {
       painScore: normalizeDisplayValue(
-        readValue(
+        getIntakeValue(
           selectedTicket,
           ['severity', 'painScore', 'painSeverity'],
           '',
         ),
       ),
       durationValue: normalizeDisplayValue(
-        readValue(selectedTicket, ["durationValue", "painDurationValue"], ""),
+        getIntakeValue(
+          selectedTicket,
+          ['durationValue', 'painDurationValue', 'duration'],
+          '',
+        ),
       ),
       durationUnit: normalizeDisplayValue(
-        readValue(selectedTicket, ["durationUnit", "painDurationUnit"], ""),
+        getIntakeValue(
+          selectedTicket,
+          ['durationUnit', 'painDurationUnit', 'durationType'],
+          '',
+        ),
       ),
     };
   }, [selectedTicket]);
 
-  const quickMessages = useMemo(
-    () => messages.slice(-QUICK_MESSAGE_LIMIT),
-    [messages],
-  );
+  const quickMessages = useMemo(() => {
+    const selectedTicketId = Number(selectedTicket?.id);
+    const activeConversationId = Number(activeConversation?.id);
+    const activeTicketMessages =
+      Number.isFinite(selectedTicketId) &&
+      Number.isFinite(activeConversationId) &&
+      selectedTicketId === activeConversationId
+        ? messages
+        : [];
+    const optimisticMessages =
+      optimisticQuickMessagesByTicketId[selectedTicketId] || [];
+
+    return [...activeTicketMessages, ...optimisticMessages].slice(
+      -QUICK_MESSAGE_LIMIT,
+    );
+  }, [
+    activeConversation?.id,
+    messages,
+    optimisticQuickMessagesByTicketId,
+    selectedTicket?.id,
+  ]);
 
   const chatEntries = useMemo(() => {
     const patientName = String(selectedPatient?.fullName || "").trim();
@@ -1441,6 +1567,19 @@ export default function Dashboard() {
       ...quickMessages,
     ];
   }, [quickMessages, selectedPatient?.fullName, selectedTicket]);
+
+  useEffect(() => {
+    const chatList = quickChatListRef.current;
+    if (!chatList) {
+      return undefined;
+    }
+
+    const scrollFrame = window.requestAnimationFrame(() => {
+      chatList.scrollTop = chatList.scrollHeight;
+    });
+
+    return () => window.cancelAnimationFrame(scrollFrame);
+  }, [chatEntries, selectedTicket?.id]);
 
   const queueCards = useMemo(() => {
     const ticketCards = (tickets || []).map((ticket) => {
@@ -2058,8 +2197,31 @@ export default function Dashboard() {
     setIsSendingQuickMessage(true);
     setQuickMessageError("");
 
+    const selectedTicketId = Number(selectedTicket?.id);
+    const optimisticMessage = {
+      id: `optimistic-${selectedTicketId}-${Date.now()}`,
+      text: trimmedMessage,
+      timestamp: formatTime(new Date()),
+      isSent: true,
+      sender: 'nurse',
+      pending: true,
+    };
+
+    if (Number.isFinite(selectedTicketId)) {
+      setOptimisticQuickMessagesByTicketId((previous) => ({
+        ...previous,
+        [selectedTicketId]: [
+          ...(previous[selectedTicketId] || []),
+          optimisticMessage,
+        ].slice(-QUICK_MESSAGE_LIMIT),
+      }));
+    }
+
     try {
-      if (activeConversation?.id) {
+      if (
+        activeConversation?.id &&
+        Number(activeConversation.id) === Number(selectedTicket?.id)
+      ) {
         await sendChatMessage(trimmedMessage);
       } else if (selectedTicket?.id) {
         await sendMessageToTicket(Number(selectedTicket.id), trimmedMessage);
@@ -2091,9 +2253,35 @@ export default function Dashboard() {
         return;
       }
       setQuickMessage("");
+      window.setTimeout(() => {
+        setOptimisticQuickMessagesByTicketId((previous) => {
+          const currentMessages = previous[selectedTicketId] || [];
+          const nextMessages = currentMessages.filter(
+            (message) => message.id !== optimisticMessage.id,
+          );
+
+          if (nextMessages.length === currentMessages.length) {
+            return previous;
+          }
+
+          return {
+            ...previous,
+            [selectedTicketId]: nextMessages,
+          };
+        });
+      }, 8000);
     } catch (error) {
       console.error("Failed to send quick message:", error);
       setQuickMessageError("Unable to send your message right now.");
+      setOptimisticQuickMessagesByTicketId((previous) => {
+        const currentMessages = previous[selectedTicketId] || [];
+        return {
+          ...previous,
+          [selectedTicketId]: currentMessages.filter(
+            (message) => message.id !== optimisticMessage.id,
+          ),
+        };
+      });
     } finally {
       setIsSendingQuickMessage(false);
     }
@@ -2474,7 +2662,7 @@ export default function Dashboard() {
                   <p>Context for triage assessment</p>
                 </header>
 
-                  <div className="triage-chat-list">
+                  <div className="triage-chat-list" ref={quickChatListRef}>
                     {!selectedPatient ? (
                       <div className='triage-empty-note'>
                         Select a patient to open chat.

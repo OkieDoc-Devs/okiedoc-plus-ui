@@ -3,6 +3,7 @@
   overflow: hidden;
   border-radius: 8px;
   margin-bottom: 5px;
+  margin: 0 0 4px;
 }
 
 .nurse-message-image {
@@ -2001,7 +2002,6 @@ body::-webkit-scrollbar {
   flex: 1 1 auto;
   width: 100%;
   box-sizing: border-box;
-  /* Keep width constant, but visually align with snapshot column */
   transform: translate(-1px, 3px);
 }
 
@@ -2760,6 +2760,254 @@ body::-webkit-scrollbar {
   outline: none;
 }
 
+.triage-note-textarea-compact {
+  min-height: 72px;
+}
+
+.triage-note-textarea.triage-note-textarea-compact {
+  margin-top: 0;
+  padding-top: 14px;
+}
+
+.triage-medical-history-card {
+  margin: 10px;
+  background: #ffffff;
+  border: 1px solid #d8dde5;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.triage-medical-history-title {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e6eaf1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.triage-medical-history-title svg,
+.triage-medical-history-section h5 svg {
+  color: #60a5fa;
+}
+
+.triage-medications-title svg {
+  color: #10b981;
+  stroke: currentColor;
+  fill: none !important;
+  stroke-width: 2.2 !important;
+}
+
+.triage-medications-title svg * {
+  stroke: #10b981 !important;
+  fill: none !important;
+}
+
+.triage-medical-history-section h5 svg.triage-active-diseases-icon {
+  color: #f97316;
+}
+
+.triage-medical-history-section {
+  padding: 12px 16px;
+  border-top: none;
+}
+
+.triage-medical-history-section:first-of-type {
+  border-top: none;
+}
+
+.triage-medical-history-section h5 {
+  margin: 0 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #283548;
+}
+
+.triage-medical-history-section--compact {
+  padding-top: 12px;
+}
+
+.triage-medical-history-section--compact h5 {
+  margin-bottom: 8px;
+}
+
+.triage-medical-history-section--compact:has(.triage-family-history-title),
+.triage-medical-history-section--compact:has(.triage-medications-title) {
+  padding-top: 6px;
+}
+
+.triage-medical-history-section--compact .triage-tag-list:not(:empty),
+.triage-medical-history-section--compact .triage-tag-list-medications:not(:empty) {
+  padding-bottom: 6px;
+}
+
+.triage-medical-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.triage-medical-choice-pill {
+  border: 1px solid #d4dbe6;
+  background: #f8fafc;
+  color: #273244;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.25;
+}
+
+.triage-medical-choice-pill.selected {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.triage-medical-history-alert {
+  background: #fff5f6;
+  border: 1px solid #f7d9df;
+  border-radius: 12px;
+  margin: 6px 16px;
+  padding: 10px 14px;
+  width: auto;
+  box-sizing: border-box;
+}
+
+.triage-medical-history-alert h5 {
+  color: #c62828;
+}
+
+.triage-medical-history-alert h5 svg {
+  color: #ef4444;
+}
+
+.triage-medical-history-alert .triage-vital-input {
+  border-color: #f4c8d1;
+  background: #ffffff;
+}
+
+.triage-medical-history-alert .triage-vital-input::placeholder {
+  color: #d08a98;
+}
+
+.triage-social-history-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.triage-social-history-grid label {
+  display: block;
+  color: #2f6bd9;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.triage-social-history-box {
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e6ebf4;
+  padding: 10px 14px;
+  margin: 6px 16px;
+  width: auto;
+  box-sizing: border-box;
+}
+
+.triage-lifestyle-label {
+  display: block;
+  color: #2f6bd9;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 10px 0 4px;
+}
+
+.triage-inline-add-row {
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.triage-inline-add-row .triage-vital-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+}
+
+.triage-empty-medical-history {
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.triage-inline-add-btn {
+  min-width: 38px;
+  height: 36px;
+  border-radius: 12px;
+  border: none;
+  background: #334155;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.triage-inline-add-btn-alert {
+  background: #ef5d75;
+}
+
+.triage-inline-add-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.triage-tag-list-medications {
+  margin-top: 10px;
+}
+
+.triage-tag-list-medications span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  font-size: 11px;
+  padding: 4px 10px;
+}
+
+.triage-medical-allergy-list span {
+  background: #ffebee;
+  border-color: #f5b7c2;
+  color: #c62828;
+}
+
+.triage-medication-remove-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+}
+
 .triage-urgency-card {
   margin: 10px;
   background: #ffffff;
@@ -2830,7 +3078,9 @@ body::-webkit-scrollbar {
 }
 
 .triage-vitals-card h4,
-.triage-complaint-card h4 {
+.triage-submitted-concern-card h4,
+.triage-clinical-complaint-card h4,
+.triage-complaint-symptoms h4 {
   margin: 0;
   color: #0f141d;
   font-size: 14px;
@@ -2939,15 +3189,56 @@ body::-webkit-scrollbar {
   background: #f3f6fb;
 }
 
-.triage-complaint-card {
-  padding: 12px;
-  margin-top: 10px;
-  height: auto;
-  min-height: 0;
-  display: block;
+.triage-submitted-concern-card {
+  margin: 10px;
+  padding: 18px 20px;
+  border: 1px solid #bfd8ff;
+  border-radius: 18px;
+  background: #eef5ff;
+  box-sizing: border-box;
 }
 
-.triage-complaint-card textarea {
+.triage-clinical-complaint-card,
+.triage-complaint-symptoms {
+  margin: 10px;
+  padding: 20px;
+  border: 1px solid #d8dde5;
+  border-radius: 18px;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.triage-submitted-concern-quote {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border: 1px solid #d8dde5;
+  border-radius: 12px;
+  background: #ffffff;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.triage-submitted-concern-quote.filled {
+  color: #334155;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.triage-submitted-concern-quote.empty {
+  color: #64748b;
+  font-style: italic;
+}
+
+.triage-complaint-help {
+  margin: 14px 0 0;
+  color: #46607d;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.triage-clinical-complaint-card textarea,
+.triage-complaint-symptoms textarea,
+.triage-complaint-card > textarea {
   margin-top: 12px;
   width: 100%;
   min-height: 104px;
@@ -2962,8 +3253,12 @@ body::-webkit-scrollbar {
   outline: none;
 }
 
-.triage-complaint-card textarea:focus,
-.triage-complaint-card textarea:focus-visible {
+.triage-clinical-complaint-card textarea:focus,
+.triage-clinical-complaint-card textarea:focus-visible,
+.triage-complaint-symptoms textarea:focus,
+.triage-complaint-symptoms textarea:focus-visible,
+.triage-complaint-card > textarea:focus,
+.triage-complaint-card > textarea:focus-visible {
   border-color: #9db1d6;
   background: #f3f6fb;
   outline: none;
@@ -2977,16 +3272,22 @@ body::-webkit-scrollbar {
 }
 
 .triage-symptom-pill {
-  border: 1px solid #c9cfda;
+  border: 1px solid #b7c3d6;
   border-radius: 12px;
   background: #f4f6fa;
   color: #0f141d;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  line-height: 1;
-  padding: 9px 12px;
+  line-height: 1.05;
+  min-height: 34px;
+  padding: 3px 10px;
   cursor: pointer;
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
 }
 
 .triage-symptom-pill.selected {
@@ -3753,10 +4054,13 @@ body::-webkit-scrollbar {
   .triage-chat-badge,
   .triage-status-select,
   .triage-vitals-card h4,
-  .triage-complaint-card h4,
+  .triage-submitted-concern-card h4,
+  .triage-clinical-complaint-card h4,
+  .triage-complaint-symptoms h4,
   .triage-vitals-grid label,
   .triage-vitals-grid div > div,
-  .triage-complaint-card textarea {
+  .triage-clinical-complaint-card textarea,
+  .triage-complaint-symptoms textarea {
     font-size: 14px;
   }
 }
@@ -5793,10 +6097,6 @@ body::-webkit-scrollbar {
     height: 40px;
   }
 }
-
-/* ============================================
-   NEW CHAT MODAL STYLES
-   ============================================ */
 
 .nurse-modal-overlay {
   position: fixed;

@@ -7,7 +7,7 @@ import {
   getNurseFirstName,
   getNurseProfileImage,
   saveNurseProfileImage,
-} from './services/storageService.js';
+} from "./services/storageService.js";
 import {
   fetchDashboardFromAPI,
   fetchDoctorsFromAPI,
@@ -26,7 +26,7 @@ import CallbackQueueCard from '../components/CallbackQueueCard';
 import PatientMedicalRecordsModal from '../components/MedicalRecords';
 import { disconnectSocket } from '../utils/socketClient';
 import { useChat } from './services/useChat.js';
-import { fetchCallbacks } from '../api/apiClient';
+import { fetchCallbacks, updateCallbackStatus } from '../api/apiClient';
 import {
   Activity,
   AlertCircle,
@@ -37,6 +37,7 @@ import {
   Clock3,
   Droplet,
   FileText,
+  Heart,
   Info,
   Mail,
   MapPin,
@@ -44,90 +45,102 @@ import {
   Phone,
   SendHorizontal,
   Pencil,
+  Pill,
   Users,
   UserRound,
   Video,
-} from 'lucide-react';
+} from "lucide-react";
 
-const DEFAULT_TEXT = 'N/A';
+const DEFAULT_TEXT = "N/A";
 const DASHBOARD_REFRESH_MS = 30000;
 const QUICK_MESSAGE_LIMIT = 60;
+const DASHBOARD_TICKETS_CACHE_KEY = 'nurse.dashboardTicketsCache';
 const TRIAGE_STATUS_OPTIONS = [
-  'Waiting',
-  'In Triage',
-  'Ready for Doctor',
-  'Urgent',
-  'Completed',
+  "Waiting",
+  "In Triage",
+  "Ready for Doctor",
+  "Urgent",
+  "Completed",
 ];
 const SYMPTOM_PILL_OPTIONS = [
-  'Fever',
-  'Cough',
-  'Headache',
-  'Sore throat',
-  'Body pain',
-  'Nausea',
-  'Dizziness',
-  'Chest pain',
-  'Fatigue',
-  'Shortness of breath',
-  'Stomach pain',
-  'Loss of appetite',
+  "Fever",
+  "Headache",
+  "Cough",
+  "Body Pain",
+  "Dizziness",
+  "Chest Pain",
+  "Sore Throat",
+  "Nausea",
+  "Fatigue",
+  "Shortness of Breath",
+  "Stomach Pain",
+  "Loss of Appetite",
+];
+const ACTIVE_DISEASE_OPTIONS = [
+  'Hypertension',
+  'Diabetes',
+  'Asthma',
+  'Heart Disease',
+  'Kidney Disease',
+  'Thyroid Disorder',
+  'Cancer',
+  'Arthritis',
 ];
 const ROS_GROUPS = [
   {
-    title: 'General',
-    items: ['Fever', 'Fatigue', 'Weight Loss'],
+    title: "General",
+    items: ["Fever", "Fatigue", "Weight Loss"],
   },
   {
-    title: 'Respiratory',
-    items: ['Cough', 'Shortness of Breath', 'Wheezing'],
+    title: "Respiratory",
+    items: ["Cough", "Shortness of Breath", "Wheezing"],
   },
   {
-    title: 'Cardiovascular',
-    items: ['Chest Pain', 'Palpitations'],
+    title: "Cardiovascular",
+    items: ["Chest Pain", "Palpitations"],
   },
   {
-    title: 'Gastrointestinal',
-    items: ['Nausea', 'Vomiting', 'Diarrhea', 'Constipation', 'Abdominal Pain'],
+    title: "Gastrointestinal",
+    items: ["Nausea", "Vomiting", "Diarrhea", "Constipation", "Abdominal Pain"],
   },
   {
-    title: 'Neurological',
-    items: ['Dizziness', 'Headache', 'Numbness', 'Weakness'],
+    title: "Neurological",
+    items: ["Dizziness", "Headache", "Numbness", "Weakness"],
   },
 ];
-const URGENCY_LEVEL_OPTIONS = ['Low', 'Normal', 'Urgent', 'Critical'];
-const PAIN_MAP_VIEWS = ['front', 'back'];
+const URGENCY_LEVEL_OPTIONS = ["Low", "Normal", "Urgent", "Critical"];
+const PAIN_MAP_VIEWS = ["front", "back"];
 const PAIN_MAP_AREAS = {
   front: [
-    { key: 'head', label: 'Head', className: 'part-head' },
-    { key: 'neck', label: 'Neck', className: 'part-neck' },
-    { key: 'chest', label: 'Chest', className: 'part-chest' },
-    { key: 'abdomen', label: 'Abdomen', className: 'part-abdomen' },
-    { key: 'left-arm', label: 'Left Arm', className: 'part-left-arm' },
-    { key: 'right-arm', label: 'Right Arm', className: 'part-right-arm' },
-    { key: 'left-leg', label: 'Left Leg', className: 'part-left-leg' },
-    { key: 'right-leg', label: 'Right Leg', className: 'part-right-leg' },
+    { key: "head", label: "Head", className: "part-head" },
+    { key: "neck", label: "Neck", className: "part-neck" },
+    { key: "chest", label: "Chest", className: "part-chest" },
+    { key: "abdomen", label: "Abdomen", className: "part-abdomen" },
+    { key: "left-arm", label: "Left Arm", className: "part-left-arm" },
+    { key: "right-arm", label: "Right Arm", className: "part-right-arm" },
+    { key: "left-leg", label: "Left Leg", className: "part-left-leg" },
+    { key: "right-leg", label: "Right Leg", className: "part-right-leg" },
   ],
   back: [
-    { key: 'head', label: 'Head', className: 'part-head' },
-    { key: 'neck', label: 'Neck', className: 'part-neck' },
-    { key: 'upper-back', label: 'Upper Back', className: 'part-chest' },
-    { key: 'lower-back', label: 'Lower Back', className: 'part-abdomen' },
-    { key: 'left-arm', label: 'Left Arm', className: 'part-left-arm' },
-    { key: 'right-arm', label: 'Right Arm', className: 'part-right-arm' },
-    { key: 'left-leg', label: 'Left Leg', className: 'part-left-leg' },
-    { key: 'right-leg', label: 'Right Leg', className: 'part-right-leg' },
+    { key: "head", label: "Head", className: "part-head" },
+    { key: "neck", label: "Neck", className: "part-neck" },
+    { key: "upper-back", label: "Upper Back", className: "part-chest" },
+    { key: "lower-back", label: "Lower Back", className: "part-abdomen" },
+    { key: "left-arm", label: "Left Arm", className: "part-left-arm" },
+    { key: "right-arm", label: "Right Arm", className: "part-right-arm" },
+    { key: "left-leg", label: "Left Leg", className: "part-left-leg" },
+    { key: "right-leg", label: "Right Leg", className: "part-right-leg" },
   ],
 };
-const TRIAGE_DRAFTS_STORAGE_KEY = 'nurse.triageDraftsByTicket';
+const TRIAGE_DRAFTS_STORAGE_KEY = "nurse.triageDraftsByTicket";
 const FALLBACK_DEPARTMENTS = [
-  'General Medicine',
-  'Cardiology',
-  'Pediatrics',
-  'Orthopedics',
-  'Dermatology',
-  'Internal Medicine',
-  'Surgery',
+  "General Medicine",
+  "Cardiology",
+  "Pediatrics",
+  "Orthopedics",
+  "Dermatology",
+  "Internal Medicine",
+  "Surgery",
 ];
 
 const readValue = (source, keys, fallback = DEFAULT_TEXT) => {
@@ -136,7 +149,7 @@ const readValue = (source, keys, fallback = DEFAULT_TEXT) => {
       Object.prototype.hasOwnProperty.call(source || {}, key) &&
       source[key] !== null &&
       source[key] !== undefined &&
-      String(source[key]).trim() !== ''
+      String(source[key]).trim() !== ""
     ) {
       return source[key];
     }
@@ -149,7 +162,7 @@ const toList = (value) => {
     return value.map((entry) => String(entry || '').trim()).filter(Boolean);
   }
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const trimmed = value.trim();
     if (!trimmed) {
       return [];
@@ -159,12 +172,10 @@ const toList = (value) => {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed)) {
         return parsed
-          .map((entry) => String(entry || '').trim())
+          .map((entry) => String(entry || "").trim())
           .filter(Boolean);
       }
-    } catch {
-      // Keep plain text parsing path below when value is not JSON.
-    }
+    } catch {}
 
     return trimmed
       .split(/\n|,|;/)
@@ -183,16 +194,16 @@ const formatDate = (dateString) => {
     if (Number.isNaN(date.getTime())) return String(dateString);
 
     if (
-      typeof dateString === 'string' &&
-      /^\d{4}-\d{2}-\d{2}$/.test(dateString.split('T')[0])
+      typeof dateString === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(dateString.split("T")[0])
     ) {
       date = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
     }
 
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   } catch {
     return String(dateString);
@@ -200,12 +211,12 @@ const formatDate = (dateString) => {
 };
 
 const formatTime = (dateString) => {
-  if (!dateString) return '--:--';
+  if (!dateString) return "--:--";
   const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return '--:--';
-  return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
+  if (Number.isNaN(date.getTime())) return "--:--";
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 
@@ -227,22 +238,22 @@ const calculateAge = (birthdate) => {
 
 const normalizeStatus = (ticket, isSelected) => {
   if (isSelected) {
-    return 'active';
+    return "active";
   }
 
-  const status = String(ticket.status || '').toLowerCase();
+  const status = String(ticket.status || "").toLowerCase();
 
-  if (status === 'urgent' || status.includes('urgent')) {
-    return 'urgent';
+  if (status === "urgent" || status.includes("urgent")) {
+    return "urgent";
   }
 
-  return 'pending';
+  return "pending";
 };
 
 const getStatusLabel = (status) => {
-  if (!status) return 'pending';
-  if (status === 'active') return 'active';
-  if (status === 'urgent') return 'Urgent';
+  if (!status) return "pending";
+  if (status === "active") return "active";
+  if (status === "urgent") return "Urgent";
   return status;
 };
 
@@ -257,11 +268,11 @@ const getPatientIdFromTicket = (ticket) => {
     nestedPatientId ??
     readValue(
       ticket,
-      ['patientId', 'Patient_ID', 'patientUserId', 'User_ID', 'userId'],
+      ["patientId", "Patient_ID", "patientUserId", "User_ID", "userId"],
       null,
     );
 
-  if (id === null || id === undefined || id === '') {
+  if (id === null || id === undefined || id === "") {
     return null;
   }
 
@@ -311,18 +322,18 @@ const normalizeUrgencyLevel = (value) => {
 
 const toBooleanFlag = (value) => {
   if (value === true || value === 1) return true;
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
-    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+    return normalized === "true" || normalized === "1" || normalized === "yes";
   }
   return false;
 };
 
 const getTriageStatusKey = (statusValue) =>
-  String(statusValue || '')
+  String(statusValue || "")
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '-');
+    .replace(/\s+/g, "-");
 
 const renderTriageStatusIcon = (statusValue) => {
   const statusKey = getTriageStatusKey(statusValue);
@@ -355,28 +366,20 @@ const renderTriageStatusIcon = (statusValue) => {
     );
   }
 
-  if (statusKey === 'completed') {
-    return <span className='triage-status-icon triage-status-icon-x'>x</span>;
+  if (statusKey === "completed") {
+    return <span className="triage-status-icon triage-status-icon-x">x</span>;
   }
 
-  return <Clock3 size={16} strokeWidth={2.2} className='triage-status-icon' />;
+  return <Clock3 size={16} strokeWidth={2.2} className="triage-status-icon" />;
 };
 
 const getChannelLabel = (ticket) => {
   const channel = String(
-    readValue(ticket, ['consultationChannel', 'channel'], 'chat'),
+    readValue(ticket, ["consultationChannel", "channel"], "chat"),
   ).toLowerCase();
-  if (channel.includes('video')) return 'Video';
-  if (channel.includes('voice') || channel.includes('call')) return 'Voice';
-  return 'Chat';
-};
-
-const getUrgencyLevelFromTicket = (ticket) => {
-  const fromFields = normalizeUrgencyLevel(
-    readValue(ticket, ['urgencyLevel', 'urgency', 'priority'], ''),
-  );
-
-  return fromFields;
+  if (channel.includes("video")) return "Video";
+  if (channel.includes("voice") || channel.includes("call")) return "Voice";
+  return "Chat";
 };
 
 const getCallbackChannelLabel = (callback) => {
@@ -444,8 +447,26 @@ const buildTicketFromCallback = (callback) => {
   };
 };
 
+const getUrgencyLevelFromTicket = (ticket) => {
+  const fromFields = normalizeUrgencyLevel(
+    readValue(ticket, ["urgencyLevel", "urgency", "priority"], ""),
+  );
+
+  return fromFields;
+};
+
 const getTicketDraftFingerprint = (ticket) =>
-  String(readValue(ticket, ['createdAt', 'updatedAt'], '') || '').trim();
+  String(readValue(ticket, ["createdAt", "updatedAt"], "") || "").trim();
+
+const loadCachedDashboardTickets = () => {
+  try {
+    const raw = localStorage.getItem(DASHBOARD_TICKETS_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -455,19 +476,20 @@ export default function Dashboard() {
   const [nurseProfileImage, setNurseProfileImage] = useState(
     getNurseProfileImage(),
   );
-  const [tickets, setTickets] = useState([]);
+  const [tickets, setTickets] = useState(() => loadCachedDashboardTickets());
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [hasManualDeselection, setHasManualDeselection] = useState(false);
-  const [quickMessage, setQuickMessage] = useState('');
-  const [quickMessageError, setQuickMessageError] = useState('');
+  const [quickMessage, setQuickMessage] = useState("");
+  const [quickMessageError, setQuickMessageError] = useState("");
   const [isSendingQuickMessage, setIsSendingQuickMessage] = useState(false);
-  const [triageStatus, setTriageStatus] = useState('Waiting');
+  const [triageStatus, setTriageStatus] = useState("Waiting");
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [markInquiry, setMarkInquiry] = useState(false);
   const [markIncomplete, setMarkIncomplete] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [patientSubmittedConcern, setPatientSubmittedConcern] = useState('');
   const [chiefComplaintDraft, setChiefComplaintDraft] = useState('');
-  const [medicalHistoryDraft, setMedicalHistoryDraft] = useState('');
+  const [associatedSymptomsDraft, setAssociatedSymptomsDraft] = useState('');
   const [additionalRemarksDraft, setAdditionalRemarksDraft] = useState('');
   const [selectedUrgencyLevel, setSelectedUrgencyLevel] = useState('');
   const [urgencyOverridesByTicketId, setUrgencyOverridesByTicketId] = useState(
@@ -475,36 +497,46 @@ export default function Dashboard() {
   );
   const [selectedSymptomPills, setSelectedSymptomPills] = useState([]);
   const [selectedRosItems, setSelectedRosItems] = useState([]);
-  const [painMapView, setPainMapView] = useState('front');
+  const [painMapView, setPainMapView] = useState("front");
   const [selectedPainAreas, setSelectedPainAreas] = useState([]);
   const [isAdditionalDetailsOpen, setIsAdditionalDetailsOpen] = useState(false);
-  const [newAllergy, setNewAllergy] = useState('');
+  const [newAllergy, setNewAllergy] = useState("");
+  const [activeDiseasesDraft, setActiveDiseasesDraft] = useState([]);
+  const [customActiveDiseaseDraft, setCustomActiveDiseaseDraft] = useState('');
+  const [pastDiseasesDraft, setPastDiseasesDraft] = useState('');
+  const [familyHistoryDraft, setFamilyHistoryDraft] = useState('');
+  const [smokingDraft, setSmokingDraft] = useState('');
+  const [drinkingDraft, setDrinkingDraft] = useState('');
+  const [lifestyleNotesDraft, setLifestyleNotesDraft] = useState('');
+  const [surgeriesDraft, setSurgeriesDraft] = useState('');
+  const [currentMedicationsDraft, setCurrentMedicationsDraft] = useState([]);
+  const [newMedication, setNewMedication] = useState('');
   const [triageDraftsByTicketId, setTriageDraftsByTicketId] = useState(() => {
     try {
       const raw = localStorage.getItem(TRIAGE_DRAFTS_STORAGE_KEY);
       if (!raw) return {};
       const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' ? parsed : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
     } catch {
       return {};
     }
   });
   const [vitalsDraft, setVitalsDraft] = useState({
-    bloodPressure: '',
-    heartRate: '',
-    temperature: '',
-    oxygenSaturation: '',
+    bloodPressure: "",
+    heartRate: "",
+    temperature: "",
+    oxygenSaturation: "",
   });
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [transferTarget, setTransferTarget] = useState('doctor');
+  const [transferTarget, setTransferTarget] = useState("doctor");
   const [availableDoctors, setAvailableDoctors] = useState([]);
   const [availableDepartments, setAvailableDepartments] =
     useState(FALLBACK_DEPARTMENTS);
   const [availableNurses, setAvailableNurses] = useState([]);
-  const [selectedDepartment, setSelectedDepartment] = useState('');
-  const [selectedDoctorId, setSelectedDoctorId] = useState('');
-  const [selectedNurseId, setSelectedNurseId] = useState('');
-  const [transferReason, setTransferReason] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [selectedDoctorId, setSelectedDoctorId] = useState("");
+  const [selectedNurseId, setSelectedNurseId] = useState("");
+  const [transferReason, setTransferReason] = useState("");
   const [isTransferSubmitting, setIsTransferSubmitting] = useState(false);
   const [isDepartmentMenuOpen, setIsDepartmentMenuOpen] = useState(false);
   const [isDoctorMenuOpen, setIsDoctorMenuOpen] = useState(false);
@@ -512,14 +544,10 @@ export default function Dashboard() {
   const [callbacks, setCallbacks] = useState([]);
   const [showMedicalRecords, setShowMedicalRecords] = useState(false);
 
-  const selectedPatientId = useMemo(() => {
-    if (!selectedTicket || selectedTicket.isCallback) {
-      return null;
-    }
-
-    return getPatientIdFromTicket(selectedTicket);
-  }, [selectedTicket]);
-
+  const selectedPatientId = useMemo(
+    () => (selectedTicket ? getPatientIdFromTicket(selectedTicket) : null),
+    [selectedTicket],
+  );
   const isSelectedCallbackTicket = Boolean(selectedTicket?.isCallback);
 
   const creatingConversationFor = useRef(null);
@@ -531,65 +559,117 @@ export default function Dashboard() {
     openConversation,
     startConversation,
     sendMessage: sendChatMessage,
-  } = useChat({ currentUserId: user?.id || null, currentUserType: 'n' });
+  } = useChat({ currentUserId: user?.id || null, currentUserType: "n" });
 
   const handleLogout = async () => {
     try {
       disconnectSocket();
       await logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     }
-    navigate('/');
+    navigate("/");
   };
 
-  const handleAddAllergy = async () => {
+  const handleAddAllergy = async (incomingValue) => {
     if (!newAllergy.trim() || !selectedTicket) {
-      return;
+      if (!String(incomingValue || '').trim() || !selectedTicket) {
+        return false;
+      }
     }
 
-    const incomingAllergy = newAllergy.trim();
+    const incomingAllergy = String(
+      incomingValue !== undefined ? incomingValue : newAllergy,
+    ).trim();
 
-    // Grab current allergies from the memoized selectedPatient
     const currentAllergies = selectedPatient?.allergies || [];
 
-    // Frontend Deduplication (Case-insensitive check)
     const isDuplicate = currentAllergies.some(
       (a) => a.toLowerCase() === incomingAllergy.toLowerCase(),
     );
 
     if (!isDuplicate) {
-      // Merge and format as a comma-separated string for the database
       const updatedAllergies = [...currentAllergies, incomingAllergy];
-      const allergiesString = updatedAllergies.join(', ');
+      const allergiesString = updatedAllergies.join(", ");
 
-      // Send to backend and update the UI instantly!
       await applyTicketPatch(selectedTicket.id, {
         allergies: allergiesString,
       });
     }
 
-    // Clear the input field whether it was a duplicate or not
-    setNewAllergy('');
+    if (incomingValue === undefined) {
+      setNewAllergy("");
+    }
+    return !isDuplicate;
   };
 
   const handleRemoveAllergy = async (allergyToRemove) => {
     if (!selectedTicket) return;
 
-    // Grab current allergies from the memoized patient
     const currentAllergies = selectedPatient?.allergies || [];
 
-    // Filter out the specific allergy the nurse clicked
     const updatedAllergies = currentAllergies.filter(
       (a) => a.toLowerCase() !== allergyToRemove.toLowerCase(),
     );
 
-    // Format back to a string (if empty, it correctly becomes "")
-    const allergiesString = updatedAllergies.join(', ');
+    const allergiesString = updatedAllergies.join(", ");
 
-    // Send the updated list to the backend!
     await applyTicketPatch(selectedTicket.id, {
       allergies: allergiesString,
+    });
+  };
+
+  const handleActiveDiseaseToggle = async (disease) => {
+    if (!selectedTicket) return;
+
+    const next = activeDiseasesDraft.includes(disease)
+      ? activeDiseasesDraft.filter((entry) => entry !== disease)
+      : [...activeDiseasesDraft, disease];
+    setActiveDiseasesDraft(next);
+    persistTriageDraft(selectedTicket.id, { activeDiseasesDraft: next });
+    await applyTicketPatch(selectedTicket.id, {
+      activeDiseases: next,
+    });
+  };
+
+  const handleAddActiveDisease = async (incomingValue) => {
+    if (!selectedTicket) return;
+    const incoming = String(
+      incomingValue !== undefined ? incomingValue : customActiveDiseaseDraft,
+    ).trim();
+    if (!incoming) return;
+
+    const isDuplicate = activeDiseasesDraft.some(
+      (entry) => entry.toLowerCase() === incoming.toLowerCase(),
+    );
+    if (isDuplicate) {
+      if (incomingValue === undefined) {
+        setCustomActiveDiseaseDraft('');
+      }
+      return;
+    }
+
+    const next = [...activeDiseasesDraft, incoming];
+    setActiveDiseasesDraft(next);
+    if (incomingValue === undefined) {
+      setCustomActiveDiseaseDraft('');
+    }
+    persistTriageDraft(selectedTicket.id, { activeDiseasesDraft: next });
+    await applyTicketPatch(selectedTicket.id, {
+      activeDiseases: next,
+    });
+  };
+
+  const handleRemoveActiveDisease = async (diseaseToRemove) => {
+    if (!selectedTicket) return;
+
+    const next = activeDiseasesDraft.filter(
+      (entry) => entry.toLowerCase() !== diseaseToRemove.toLowerCase(),
+    );
+    setActiveDiseasesDraft(next);
+    persistTriageDraft(selectedTicket.id, { activeDiseasesDraft: next });
+    await applyTicketPatch(selectedTicket.id, {
+      activeDiseases: next,
     });
   };
 
@@ -598,7 +678,7 @@ export default function Dashboard() {
     setIsDepartmentMenuOpen(false);
     setIsDoctorMenuOpen(false);
     setIsNurseMenuOpen(false);
-    setTransferReason('');
+    setTransferReason("");
   };
 
   const closeTransferMenus = () => {
@@ -609,11 +689,11 @@ export default function Dashboard() {
 
   const openTransferModal = () => {
     setShowTransferModal(true);
-    setTransferTarget('doctor');
-    setSelectedDepartment('');
-    setSelectedDoctorId('');
-    setSelectedNurseId('');
-    setTransferReason('');
+    setTransferTarget("doctor");
+    setSelectedDepartment("");
+    setSelectedDoctorId("");
+    setSelectedNurseId("");
+    setTransferReason("");
     setIsDepartmentMenuOpen(false);
     setIsDoctorMenuOpen(false);
     setIsNurseMenuOpen(false);
@@ -642,13 +722,20 @@ export default function Dashboard() {
 
       try {
         localStorage.setItem(TRIAGE_DRAFTS_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // Ignore localStorage write failures and keep in-memory draft.
-      }
+      } catch {}
 
       return next;
     });
   };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        DASHBOARD_TICKETS_CACHE_KEY,
+        JSON.stringify(Array.isArray(tickets) ? tickets : []),
+      );
+    } catch {}
+  }, [tickets]);
 
   useEffect(() => {
     setTriageDraftsByTicketId((previous) => {
@@ -674,9 +761,7 @@ export default function Dashboard() {
       if (changed) {
         try {
           localStorage.setItem(TRIAGE_DRAFTS_STORAGE_KEY, JSON.stringify(next));
-        } catch {
-          // Ignore localStorage write failures and keep in-memory state.
-        }
+        } catch {}
       }
 
       return changed ? next : previous;
@@ -697,18 +782,18 @@ export default function Dashboard() {
 
         if (profileData.firstName) {
           setNurseName(profileData.firstName);
-          localStorage.setItem('nurse.firstName', profileData.firstName);
+          localStorage.setItem("nurse.firstName", profileData.firstName);
         }
 
         if (profileData.profileImage) {
           saveNurseProfileImage(profileData.profileImage);
           setNurseProfileImage(getNurseProfileImage());
         } else {
-          localStorage.removeItem('nurse.profileImage');
-          setNurseProfileImage('/account.svg');
+          localStorage.removeItem("nurse.profileImage");
+          setNurseProfileImage("/account.svg");
         }
       } catch (profileError) {
-        console.error('Could not fetch nurse profile:', profileError.message);
+        console.error("Could not fetch nurse profile:", profileError.message);
       }
 
       try {
@@ -725,20 +810,20 @@ export default function Dashboard() {
           setTickets(dashboardTickets);
           return;
         }
-      } catch {
-        // Fallback to tickets endpoint below.
-      }
+      } catch {}
 
       try {
         const apiTickets = await fetchTicketsFromAPI();
         if (isMounted) {
-          setTickets(Array.isArray(apiTickets) ? apiTickets : []);
+          setTickets((previous) => {
+            if (Array.isArray(apiTickets) && apiTickets.length > 0) {
+              return apiTickets;
+            }
+            return previous;
+          });
         }
       } catch (ticketError) {
-        console.error('Tickets API error:', ticketError.message);
-        if (isMounted) {
-          setTickets([]);
-        }
+        console.error("Tickets API error:", ticketError.message);
       }
     };
 
@@ -812,9 +897,7 @@ export default function Dashboard() {
             setAvailableDepartments(departments);
           }
         }
-      } catch {
-        // Keep fallback departments.
-      }
+      } catch {}
 
       try {
         const nurses = await fetchNursesFromAPI();
@@ -824,7 +907,7 @@ export default function Dashboard() {
               .filter((entry) => Number(entry?.id) !== Number(user?.id))
               .map((entry) => ({
                 id: Number(entry?.id),
-                name: String(entry?.name || '').trim() || 'Unknown Nurse',
+                name: String(entry?.name || "").trim() || "Unknown Nurse",
               })),
           );
         }
@@ -843,7 +926,7 @@ export default function Dashboard() {
   }, [showTransferModal, user?.id]);
 
   useEffect(() => {
-    if (!selectedTicket || !selectedPatientId) {
+    if (!selectedTicket || !selectedPatientId || selectedTicket.isCallback) {
       return;
     }
 
@@ -859,7 +942,7 @@ export default function Dashboard() {
     if (existingConversation) {
       if (Number(activeConversation?.id) !== Number(existingConversation.id)) {
         openConversation(existingConversation).catch((error) => {
-          console.error('Failed to open quick conversation:', error);
+          console.error("Failed to open quick conversation:", error);
         });
       }
       return;
@@ -890,18 +973,18 @@ export default function Dashboard() {
           type: 'p',
         },
       ],
-      lastMessage: 'No messages yet',
+      lastMessage: "No messages yet",
       unreadCount: 0,
-      otherUserType: 'p',
+      otherUserType: "p",
     };
 
     openConversation(fallbackConversation)
       .catch(async (error) => {
-        console.error('Failed to open quick conversation by ticket id:', error);
+        console.error("Failed to open quick conversation by ticket id:", error);
         try {
-          await startConversation('direct', selectedPatientId);
+          await startConversation("direct", selectedPatientId);
         } catch (createError) {
-          console.error('Failed to create quick conversation:', createError);
+          console.error("Failed to create quick conversation:", createError);
         }
       })
       .finally(() => {
@@ -924,23 +1007,33 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!selectedTicket) {
-      setTriageStatus('Waiting');
+      setTriageStatus("Waiting");
       setMarkInquiry(false);
       setMarkIncomplete(false);
-      setChiefComplaintDraft('');
-      setMedicalHistoryDraft('');
-      setAdditionalRemarksDraft('');
-      setSelectedUrgencyLevel('');
+      setChiefComplaintDraft("");
+      setAssociatedSymptomsDraft("");
+      setAdditionalRemarksDraft("");
+      setSelectedUrgencyLevel("");
       setSelectedSymptomPills([]);
       setSelectedRosItems([]);
-      setPainMapView('front');
+      setPainMapView("front");
       setSelectedPainAreas([]);
       setIsAdditionalDetailsOpen(false);
+      setActiveDiseasesDraft([]);
+      setCustomActiveDiseaseDraft('');
+      setPastDiseasesDraft('');
+      setFamilyHistoryDraft('');
+      setSmokingDraft('');
+      setDrinkingDraft('');
+      setLifestyleNotesDraft('');
+      setSurgeriesDraft('');
+      setCurrentMedicationsDraft([]);
+      setNewMedication('');
       setVitalsDraft({
-        bloodPressure: '',
-        heartRate: '',
-        temperature: '',
-        oxygenSaturation: '',
+        bloodPressure: "",
+        heartRate: "",
+        temperature: "",
+        oxygenSaturation: "",
       });
       return;
     }
@@ -957,7 +1050,7 @@ export default function Dashboard() {
       localDraft.status || localDraft.triageStatus || selectedTicket.status;
     setTriageStatus(mapTicketStatusToTriageStatus(hydratedStatus));
     const inquiryFlag = toBooleanFlag(
-      readValue(selectedTicket, ['isInquiry', 'is_inquiry', 'inquiry'], false),
+      readValue(selectedTicket, ["isInquiry", "is_inquiry", "inquiry"], false),
     );
     const incompleteFlag = toBooleanFlag(
       readValue(
@@ -967,51 +1060,65 @@ export default function Dashboard() {
       ),
     );
 
-    // Only allow one close reason at a time. If both are true from API, prefer Inquiry.
     setMarkInquiry(inquiryFlag);
     setMarkIncomplete(!inquiryFlag && incompleteFlag);
     setIsAdditionalDetailsOpen(false);
 
     const toDraftTextValue = (value) => {
       if (value === DEFAULT_TEXT || value === null || value === undefined) {
-        return '';
+        return "";
       }
 
       if (Array.isArray(value)) {
         return value
-          .map((entry) => String(entry || '').trim())
+          .map((entry) => String(entry || "").trim())
           .filter(Boolean)
-          .join(', ');
+          .join(", ");
       }
 
       return String(value);
     };
 
-    setChiefComplaintDraft(
-      localDraft.chiefComplaintDraft ??
+    setPatientSubmittedConcern(
+      toDraftTextValue(
         readValue(
           selectedTicket,
           [
+            'patientSubmittedConcern',
+            'submittedConcern',
+            'patientConcern',
             'chiefComplaint',
-            'consultationType',
-            'intakeDetails',
-            '0',
             'mainConcern',
             'symptoms',
+            'intakeDetails',
           ],
           '',
         ),
+      ),
     );
-    setMedicalHistoryDraft(
-      localDraft.medicalHistoryDraft ??
+    setChiefComplaintDraft(
+      localDraft.chiefComplaintDraft ??
         toDraftTextValue(
           readValue(
             selectedTicket,
             [
-              'triageMedicalHistory',
-              'medicalHistory',
-              'Medical_History',
-              'history',
+              'clinicalChiefComplaint',
+              'nurseChiefComplaint',
+              'professionalChiefComplaint',
+            ],
+            '',
+          ),
+        ),
+    );
+    setAssociatedSymptomsDraft(
+      localDraft.associatedSymptomsDraft ??
+        toDraftTextValue(
+          readValue(
+            selectedTicket,
+            [
+              'otherSymptoms',
+              'associatedSymptoms',
+              'additionalSymptoms',
             ],
             '',
           ),
@@ -1022,11 +1129,61 @@ export default function Dashboard() {
         toDraftTextValue(
           readValue(
             selectedTicket,
-            ['additionalRemarks', 'nurseRemarks', 'remarks', 'notes'],
-            '',
+            ["additionalRemarks", "nurseRemarks", "remarks", "notes"],
+            "",
           ),
         ),
     );
+    setPastDiseasesDraft(
+      localDraft.pastDiseasesDraft ??
+        toDraftTextValue(
+          readValue(selectedTicket, ['pastDiseases', 'pastMedicalHistory'], ''),
+        ),
+    );
+    setActiveDiseasesDraft(
+      Array.isArray(localDraft.activeDiseasesDraft)
+        ? localDraft.activeDiseasesDraft
+        : toList(
+            readValue(
+              selectedTicket,
+              ['activeDiseases', 'activeDisease', 'active_conditions'],
+              '',
+            ),
+          ),
+    );
+    setCustomActiveDiseaseDraft('');
+    setFamilyHistoryDraft(
+      localDraft.familyHistoryDraft ??
+        toDraftTextValue(readValue(selectedTicket, ['familyHistory'], '')),
+    );
+    setSmokingDraft(
+      localDraft.smokingDraft ??
+        toDraftTextValue(readValue(selectedTicket, ['smoking'], '')),
+    );
+    setDrinkingDraft(
+      localDraft.drinkingDraft ??
+        toDraftTextValue(readValue(selectedTicket, ['drinking'], '')),
+    );
+    setLifestyleNotesDraft(
+      localDraft.lifestyleNotesDraft ??
+        toDraftTextValue(readValue(selectedTicket, ['lifestyleNotes'], '')),
+    );
+    setSurgeriesDraft(
+      localDraft.surgeriesDraft ??
+        toDraftTextValue(readValue(selectedTicket, ['surgeries'], '')),
+    );
+    setCurrentMedicationsDraft(
+      Array.isArray(localDraft.currentMedicationsDraft)
+        ? localDraft.currentMedicationsDraft
+        : toList(
+            readValue(
+              selectedTicket,
+              ['currentMedications', 'medications', 'currentMedication'],
+              '',
+            ),
+          ),
+    );
+    setNewMedication('');
     setSelectedUrgencyLevel(
       localDraft.selectedUrgencyLevel ||
         urgencyOverridesByTicketId[Number(selectedTicket.id)] ||
@@ -1078,7 +1235,7 @@ export default function Dashboard() {
     setSelectedPainAreas(
       Array.isArray(localDraft.selectedPainAreas)
         ? localDraft.selectedPainAreas
-        : readValue(selectedTicket, ['intakeDetails', '0', 'painAreas'], []),
+        : readValue(selectedTicket, ["intakeDetails", "0", "painAreas"], []),
     );
 
     const toEditableValue = (value) =>
@@ -1127,7 +1284,7 @@ export default function Dashboard() {
       return null;
     }
 
-    const bloodType = readValue(selectedTicket, ['bloodType', 'Blood_Type']);
+    const bloodType = readValue(selectedTicket, ["bloodType", "Blood_Type"]);
     const allergies = toList(
       readValue(
         selectedTicket,
@@ -1144,27 +1301,27 @@ export default function Dashboard() {
     );
     const addressLine = readValue(
       selectedTicket,
-      ['address', 'patientAddress', 'fullAddress', 'streetAddress'],
-      '',
+      ["address", "patientAddress", "fullAddress", "streetAddress"],
+      "",
     );
-    const city = readValue(selectedTicket, ['city', 'patientCity'], '');
+    const city = readValue(selectedTicket, ["city", "patientCity"], "");
     const province = readValue(
       selectedTicket,
-      ['province', 'state', 'patientProvince'],
-      '',
+      ["province", "state", "patientProvince"],
+      "",
     );
     const country = readValue(
       selectedTicket,
-      ['country', 'patientCountry'],
-      '',
+      ["country", "patientCountry"],
+      "",
     );
     const composedAddress = [addressLine, city, province, country]
-      .map((part) => String(part || '').trim())
+      .map((part) => String(part || "").trim())
       .filter((part, index, array) => part && array.indexOf(part) === index)
-      .join(', ');
+      .join(", ");
 
     return {
-      fullName: readValue(selectedTicket, ['patientName', 'fullName', 'name']),
+      fullName: readValue(selectedTicket, ["patientName", "fullName", "name"]),
       age:
         readValue(selectedTicket, ['age'], null) ||
         calculateAge(
@@ -1184,7 +1341,7 @@ export default function Dashboard() {
       lastVisit: formatDate(
         readValue(
           selectedTicket,
-          ['lastVisit', 'lastVisitDate', 'lastConsultationDate', 'updatedAt'],
+          ["lastVisit", "lastVisitDate", "lastConsultationDate", "updatedAt"],
           null,
         ),
       ),
@@ -1214,9 +1371,9 @@ export default function Dashboard() {
   const painMapReadOnlyMeta = useMemo(() => {
     if (!selectedTicket) {
       return {
-        painScore: '',
-        durationValue: '',
-        durationUnit: '',
+        painScore: "",
+        durationValue: "",
+        durationUnit: "",
       };
     }
 
@@ -1234,10 +1391,10 @@ export default function Dashboard() {
         ),
       ),
       durationValue: normalizeDisplayValue(
-        readValue(selectedTicket, ['durationValue', 'painDurationValue'], ''),
+        readValue(selectedTicket, ["durationValue", "painDurationValue"], ""),
       ),
       durationUnit: normalizeDisplayValue(
-        readValue(selectedTicket, ['durationUnit', 'painDurationUnit'], ''),
+        readValue(selectedTicket, ["durationUnit", "painDurationUnit"], ""),
       ),
     };
   }, [selectedTicket]);
@@ -1248,7 +1405,7 @@ export default function Dashboard() {
   );
 
   const chatEntries = useMemo(() => {
-    const patientName = String(selectedPatient?.fullName || '').trim();
+    const patientName = String(selectedPatient?.fullName || "").trim();
     if (!patientName || !selectedTicket?.id) {
       return quickMessages;
     }
@@ -1257,7 +1414,7 @@ export default function Dashboard() {
     const normalizedStarter = starterText.toLowerCase();
     const hasStarterMessage = quickMessages.some(
       (message) =>
-        String(message?.text || '')
+        String(message?.text || "")
           .trim()
           .toLowerCase() === normalizedStarter,
     );
@@ -1294,7 +1451,7 @@ export default function Dashboard() {
       const statusLabel = getStatusLabel(queueStatus);
       const channelLabel = getChannelLabel(ticket);
       const persistedUrgencyLevel =
-        triageDraftsByTicketId[Number(ticket?.id)]?.selectedUrgencyLevel || '';
+        triageDraftsByTicketId[Number(ticket?.id)]?.selectedUrgencyLevel || "";
       const urgencyLevel =
         persistedUrgencyLevel ||
         urgencyOverridesByTicketId[Number(ticket?.id)] ||
@@ -1315,7 +1472,6 @@ export default function Dashboard() {
       callbackTicket: buildTicketFromCallback(callback),
     }));
 
-    // Combine and sort by created date (most recent first)
     return [...callbackCards, ...ticketCards].sort((a, b) => {
       const dateA = new Date(
         a.type === 'callback'
@@ -1346,19 +1502,22 @@ export default function Dashboard() {
 
   const applyTicketPatch = async (ticketId, patch) => {
     const normalizedTicketId = Number(ticketId);
-    if (!Number.isFinite(normalizedTicketId) || normalizedTicketId <= 0) {
-      return;
-    }
+    const isCallbackOnlyPatch =
+      selectedTicket?.isCallback ||
+      !Number.isFinite(normalizedTicketId) ||
+      normalizedTicketId <= 0;
 
-    try {
-      await updateTicket(normalizedTicketId, patch);
-    } catch (error) {
-      console.error('Failed to update ticket:', error);
+    if (!isCallbackOnlyPatch) {
+      try {
+        await updateTicket(ticketId, patch);
+      } catch (error) {
+        console.error("Failed to update ticket:", error);
+      }
     }
 
     setTickets((previous) =>
       previous.map((ticket) =>
-        Number(ticket.id) === normalizedTicketId
+        Number(ticket.id) === Number(ticketId)
           ? {
               ...ticket,
               ...patch,
@@ -1368,7 +1527,7 @@ export default function Dashboard() {
     );
 
     setSelectedTicket((previous) => {
-      if (!previous || Number(previous.id) !== normalizedTicketId) {
+      if (!previous || Number(previous.id) !== Number(ticketId)) {
         return previous;
       }
       return {
@@ -1377,11 +1536,11 @@ export default function Dashboard() {
       };
     });
 
-    persistTriageDraft(normalizedTicketId, patch);
+    persistTriageDraft(ticketId, patch);
   };
 
   const handleStatusChange = async (nextStatus) => {
-    if (!selectedTicket) {
+    if (!selectedTicket || isSelectedCallbackTicket) {
       return;
     }
 
@@ -1402,7 +1561,7 @@ export default function Dashboard() {
     }
 
     await applyTicketPatch(selectedTicket.id, {
-      status: 'completed',
+      status: "completed",
       isInquiry: markInquiry,
       isIncomplete: markIncomplete,
     });
@@ -1423,7 +1582,7 @@ export default function Dashboard() {
 
     return (availableDoctors || []).filter(
       (doctor) =>
-        String(readValue(doctor, ['specialization', 'department'], ''))
+        String(readValue(doctor, ["specialization", "department"], ""))
           .trim()
           .toLowerCase() === selectedDepartment.toLowerCase(),
     );
@@ -1454,34 +1613,42 @@ export default function Dashboard() {
       return;
     }
 
-    if (transferTarget === 'nurse' && !selectedNurseId) {
+    if (transferTarget === "nurse" && !selectedNurseId) {
       return;
     }
 
     setIsTransferSubmitting(true);
 
-    try {
-      const transferredTicketId = Number(selectedTicket.id);
+      try {
+        const transferredTicketId = Number(selectedTicket.id);
 
-      if (transferTarget === 'doctor') {
-        await triageTicket({
-          ticketId: Number(selectedTicket.id),
-          targetSpecialty: selectedDepartment,
-          specialistId: Number(selectedDoctorId),
-          urgency: 'medium',
-        });
+        if (transferTarget === "doctor") {
+          const clinicalConcern = String(chiefComplaintDraft || '').trim();
+          const patientConcern = String(patientSubmittedConcern || '').trim();
 
-        if (transferReason.trim()) {
-          await applyTicketPatch(selectedTicket.id, {
-            transferReason: transferReason.trim(),
+          await triageTicket({
+            ticketId: Number(selectedTicket.id),
+            targetSpecialty: selectedDepartment,
+            specialistId: Number(selectedDoctorId),
+            urgency: "medium",
+            chiefComplaint: clinicalConcern || null,
+            clinicalChiefComplaint: clinicalConcern || null,
+            patientSubmittedConcern: patientConcern || null,
           });
-        }
-      } else {
+
+          await applyTicketPatch(selectedTicket.id, {
+            transferReason: transferReason.trim() || null,
+            chiefComplaint: clinicalConcern || null,
+            clinicalChiefComplaint: clinicalConcern || null,
+            patientSubmittedConcern: patientConcern || null,
+            submittedConcern: patientConcern || null,
+          });
+        } else {
         await applyTicketPatch(selectedTicket.id, {
           nurse: Number(selectedNurseId),
           assignedNurse: selectedNurse?.name || null,
           transferReason: transferReason.trim() || null,
-          status: 'processing',
+          status: "processing",
         });
       }
 
@@ -1534,13 +1701,13 @@ export default function Dashboard() {
   };
 
   const sanitizeNumericVital = (value, maxDigits = 3) =>
-    String(value || '')
-      .replace(/\D/g, '')
+    String(value || "")
+      .replace(/\D/g, "")
       .slice(0, maxDigits);
 
   const sanitizeTemperatureVital = (value, maxDigits = 3, maxDecimals = 1) => {
-    const cleaned = String(value || '').replace(/[^\d.]/g, '');
-    const firstDotIndex = cleaned.indexOf('.');
+    const cleaned = String(value || "").replace(/[^\d.]/g, "");
+    const firstDotIndex = cleaned.indexOf(".");
 
     if (firstDotIndex === -1) {
       return cleaned.slice(0, maxDigits);
@@ -1552,23 +1719,23 @@ export default function Dashboard() {
       .slice(0, maxDigits);
     const decimalPart = cleaned
       .slice(firstDotIndex + 1)
-      .replace(/\./g, '')
+      .replace(/\./g, "")
       .slice(0, maxDecimals);
 
     return `${integerPart}.${decimalPart}`;
   };
 
   const sanitizeBloodPressureVital = (value, maxDigitsPerSide = 3) => {
-    const cleaned = String(value || '').replace(/[^\d/]/g, '');
-    const [rawSystolic = '', ...rest] = cleaned.split('/');
-    const rawDiastolic = rest.join('');
+    const cleaned = String(value || "").replace(/[^\d/]/g, "");
+    const [rawSystolic = "", ...rest] = cleaned.split("/");
+    const rawDiastolic = rest.join("");
 
     const systolic = rawSystolic.replace(/\//g, '').slice(0, maxDigitsPerSide);
     const diastolic = rawDiastolic
       .replace(/\//g, '')
       .slice(0, maxDigitsPerSide);
 
-    if (cleaned.includes('/')) {
+    if (cleaned.includes("/")) {
       return `${systolic}/${diastolic}`;
     }
 
@@ -1580,7 +1747,7 @@ export default function Dashboard() {
       return;
     }
 
-    const value = String(vitalsDraft[field] || '').trim();
+    const value = String(vitalsDraft[field] || "").trim();
     const patch = {
       [field]: value || null,
     };
@@ -1588,17 +1755,6 @@ export default function Dashboard() {
     await applyTicketPatch(selectedTicket.id, patch);
   };
 
-  const handleMedicalHistoryBlur = async () => {
-    if (!selectedTicket) {
-      return;
-    }
-
-    const value = String(medicalHistoryDraft || '').trim();
-
-    await applyTicketPatch(selectedTicket.id, {
-      triageMedicalHistory: value || null,
-    });
-  };
 
   const handleChiefComplaintChange = (value) => {
     setChiefComplaintDraft(value);
@@ -1607,11 +1763,39 @@ export default function Dashboard() {
     }
   };
 
-  const handleMedicalHistoryChange = (value) => {
-    setMedicalHistoryDraft(value);
-    if (selectedTicket?.id) {
-      persistTriageDraft(selectedTicket.id, { medicalHistoryDraft: value });
+  const handleChiefComplaintBlur = async () => {
+    if (!selectedTicket) {
+      return;
     }
+
+    const clinicalConcern = String(chiefComplaintDraft || '').trim();
+    const patientConcern = String(patientSubmittedConcern || '').trim();
+
+    await applyTicketPatch(selectedTicket.id, {
+      chiefComplaint: clinicalConcern || null,
+      clinicalChiefComplaint: clinicalConcern || null,
+      patientSubmittedConcern: patientConcern || null,
+      submittedConcern: patientConcern || null,
+    });
+  };
+
+  const handleAssociatedSymptomsChange = (value) => {
+    setAssociatedSymptomsDraft(value);
+    if (selectedTicket?.id) {
+      persistTriageDraft(selectedTicket.id, { associatedSymptomsDraft: value });
+    }
+  };
+
+  const handleAssociatedSymptomsBlur = async () => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    const value = String(associatedSymptomsDraft || '').trim();
+    await applyTicketPatch(selectedTicket.id, {
+      otherSymptoms: value || null,
+      associatedSymptoms: value || null,
+    });
   };
 
   const handleAdditionalRemarksChange = (value) => {
@@ -1626,10 +1810,129 @@ export default function Dashboard() {
       return;
     }
 
-    const value = String(additionalRemarksDraft || '').trim();
+    const value = String(additionalRemarksDraft || "").trim();
     await applyTicketPatch(selectedTicket.id, {
       additionalRemarks: value || null,
       nurseRemarks: value || null,
+    });
+  };
+
+  const handlePastDiseasesChange = (value) => {
+    setPastDiseasesDraft(value);
+    if (selectedTicket?.id) {
+      persistTriageDraft(selectedTicket.id, { pastDiseasesDraft: value });
+    }
+  };
+
+  const handleFamilyHistoryChange = (value) => {
+    setFamilyHistoryDraft(value);
+    if (selectedTicket?.id) {
+      persistTriageDraft(selectedTicket.id, { familyHistoryDraft: value });
+    }
+  };
+
+  const handleSmokingChange = (value) => {
+    setSmokingDraft(value);
+    if (selectedTicket?.id) {
+      persistTriageDraft(selectedTicket.id, { smokingDraft: value });
+    }
+  };
+
+  const handleDrinkingChange = (value) => {
+    setDrinkingDraft(value);
+    if (selectedTicket?.id) {
+      persistTriageDraft(selectedTicket.id, { drinkingDraft: value });
+    }
+  };
+
+  const handleLifestyleNotesChange = (value) => {
+    setLifestyleNotesDraft(value);
+    if (selectedTicket?.id) {
+      persistTriageDraft(selectedTicket.id, { lifestyleNotesDraft: value });
+    }
+  };
+
+  const handleSurgeriesChange = (value) => {
+    setSurgeriesDraft(value);
+    if (selectedTicket?.id) {
+      persistTriageDraft(selectedTicket.id, { surgeriesDraft: value });
+    }
+  };
+
+  const handleMedicalHistorySectionBlur = async (fieldName, value) => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    const trimmed = String(value || '').trim();
+    await applyTicketPatch(selectedTicket.id, {
+      [fieldName]: trimmed || null,
+    });
+  };
+
+  const handleMedicationAdd = async (incomingValue) => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    const incoming = String(
+      incomingValue !== undefined ? incomingValue : newMedication,
+    ).trim();
+    if (!incoming) {
+      return;
+    }
+
+    const isDuplicate = currentMedicationsDraft.some(
+      (entry) => entry.toLowerCase() === incoming.toLowerCase(),
+    );
+    if (isDuplicate) {
+      if (incomingValue === undefined) {
+        setNewMedication('');
+      }
+      return;
+    }
+
+    const next = [...currentMedicationsDraft, incoming];
+    setCurrentMedicationsDraft(next);
+    if (incomingValue === undefined) {
+      setNewMedication('');
+    }
+    persistTriageDraft(selectedTicket.id, { currentMedicationsDraft: next });
+    await applyTicketPatch(selectedTicket.id, {
+      currentMedications: next,
+    });
+  };
+
+  const handleMedicationRemove = async (medicationToRemove) => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    const next = currentMedicationsDraft.filter(
+      (entry) => entry.toLowerCase() !== medicationToRemove.toLowerCase(),
+    );
+    setCurrentMedicationsDraft(next);
+    persistTriageDraft(selectedTicket.id, { currentMedicationsDraft: next });
+    await applyTicketPatch(selectedTicket.id, {
+      currentMedications: next,
+    });
+  };
+
+  const handleSaveMedicalHistory = async () => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    await applyTicketPatch(selectedTicket.id, {
+      activeDiseases: activeDiseasesDraft,
+      allergies: (selectedPatient?.allergies || []).join(', ') || null,
+      pastDiseases: String(pastDiseasesDraft || '').trim() || null,
+      familyHistory: String(familyHistoryDraft || '').trim() || null,
+      smoking: String(smokingDraft || '').trim() || null,
+      drinking: String(drinkingDraft || '').trim() || null,
+      lifestyleNotes: String(lifestyleNotesDraft || '').trim() || null,
+      surgeries: String(surgeriesDraft || '').trim() || null,
+      currentMedications: currentMedicationsDraft,
     });
   };
 
@@ -1753,7 +2056,7 @@ export default function Dashboard() {
     }
 
     setIsSendingQuickMessage(true);
-    setQuickMessageError('');
+    setQuickMessageError("");
 
     try {
       if (activeConversation?.id) {
@@ -1781,16 +2084,16 @@ export default function Dashboard() {
           ],
           lastMessage: trimmedMessage,
           unreadCount: 0,
-          otherUserType: 'p',
+          otherUserType: "p",
         });
       } else {
-        setQuickMessageError('Select a patient ticket to send a message.');
+        setQuickMessageError("Select a patient ticket to send a message.");
         return;
       }
-      setQuickMessage('');
+      setQuickMessage("");
     } catch (error) {
-      console.error('Failed to send quick message:', error);
-      setQuickMessageError('Unable to send your message right now.');
+      console.error("Failed to send quick message:", error);
+      setQuickMessageError("Unable to send your message right now.");
     } finally {
       setIsSendingQuickMessage(false);
     }
@@ -1806,27 +2109,27 @@ export default function Dashboard() {
             className='logo-image'
           />
         </div>
-        <h3 className='dashboard-title'>Nurse Dashboard</h3>
+        <h3 className="dashboard-title">Nurse Dashboard</h3>
 
-        <div className='nurse-header-actions'>
+        <div className="nurse-header-actions">
           <NotificationBell />
-          <div className='user-account'>
+          <div className="user-account">
             <Avatar
               profileImageUrl={
                 nurseProfileImage !== '/account.svg' ? nurseProfileImage : null
               }
               firstName={nurseName}
-              lastName={localStorage.getItem('nurse.lastName') || ''}
-              userType='nurse'
+              lastName={localStorage.getItem("nurse.lastName") || ""}
+              userType="nurse"
               size={40}
-              alt='Account'
-              className='account-icon'
+              alt="Account"
+              className="account-icon"
             />
-            <span className='account-name'>{nurseName}</span>
-            <div className='account-dropdown'>
+            <span className="account-name">{nurseName}</span>
+            <div className="account-dropdown">
               <button
-                className='dropdown-item'
-                onClick={() => navigate('/nurse-myaccount')}
+                className="dropdown-item"
+                onClick={() => navigate("/nurse-myaccount")}
               >
                 My Account
               </button>
@@ -1847,8 +2150,8 @@ export default function Dashboard() {
             Dashboard
           </button>
           <button
-            className='nav-tab'
-            onClick={() => navigate('/nurse-manage-appointments')}
+            className="nav-tab"
+            onClick={() => navigate("/nurse-manage-appointments")}
           >
             Manage Appointments
           </button>
@@ -1861,14 +2164,14 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className='triage-shell'>
-        <div className='triage-grid'>
-          <section className='triage-queue-col'>
-            <div className='triage-col-header'>
+      <div className="triage-shell">
+        <div className="triage-grid">
+          <section className="triage-queue-col">
+            <div className="triage-col-header">
               <Users size={16} strokeWidth={2.2} />
               <h3>Patient Queue</h3>
             </div>
-            <div className='triage-queue-list'>
+            <div className="triage-queue-list">
               {queueCards.length > 0 ? (
                 queueCards.map((item) => {
                   if (item.type === 'callback') {
@@ -1892,19 +2195,8 @@ export default function Dashboard() {
                           );
 
                           if (linkedTicket) {
-                            const linkedIsSelected =
-                              Number(selectedTicket?.id) ===
-                              Number(linkedTicket.id);
-
-                            if (linkedIsSelected) {
-                              setSelectedTicket(null);
-                              setHasManualDeselection(true);
-                            } else {
-                              setSelectedTicket(linkedTicket);
-                              setHasManualDeselection(false);
-                            }
-
-                            setQuickMessageError('');
+                            setSelectedTicket(linkedTicket);
+                            setHasManualDeselection(false);
                             return;
                           }
 
@@ -1915,14 +2207,12 @@ export default function Dashboard() {
                             setSelectedTicket(callbackTicket);
                             setHasManualDeselection(false);
                           }
-
-                          setQuickMessageError('');
                         }}
+                        onStatusChange={updateCallbackStatus}
                       />
                     );
                   }
 
-                  // Ticket card
                   const {
                     ticket,
                     queueStatus,
@@ -2026,26 +2316,26 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <section className='triage-snapshot-col'>
-            <div className='triage-col-header'>
+          <section className="triage-snapshot-col">
+            <div className="triage-col-header">
               <Info size={16} strokeWidth={2.2} />
               <h3>Patient Snapshot</h3>
             </div>
-            <div className='triage-snapshot-scroll'>
+            <div className="triage-snapshot-scroll">
               {!selectedPatient ? (
                 <div className='triage-empty-note'>
                   Select a patient from queue.
                 </div>
               ) : (
                 <>
-                  <article className='triage-profile-card'>
-                    <div className='triage-profile-top'>
-                      <div className='triage-avatar'>
-                        {(selectedPatient.fullName || '?')
-                          .split(' ')
+                  <article className="triage-profile-card">
+                    <div className="triage-profile-top">
+                      <div className="triage-avatar">
+                        {(selectedPatient.fullName || "?")
+                          .split(" ")
                           .slice(0, 2)
                           .map((part) => part.charAt(0).toUpperCase())
-                          .join('')
+                          .join("")
                           .slice(0, 2)}
                       </div>
                       <div>
@@ -2057,24 +2347,24 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    <div className='triage-profile-grid'>
+                    <div className="triage-profile-grid">
                       <div>
                         <label>Phone</label>
-                        <p className='triage-value-line'>
+                        <p className="triage-value-line">
                           <Phone size={13} strokeWidth={2.2} />
                           <span>{selectedPatient.phone}</span>
                         </p>
                       </div>
                       <div>
                         <label>Blood Type</label>
-                        <p className='triage-value-line triage-blood'>
+                        <p className="triage-value-line triage-blood">
                           <Droplet size={13} strokeWidth={2.2} />
                           <span>{selectedPatient.bloodType}</span>
                         </p>
                       </div>
-                      <div className='full'>
+                      <div className="full">
                         <label>Email</label>
-                        <p className='triage-value-line'>
+                        <p className="triage-value-line">
                           <Mail size={13} strokeWidth={2.2} />
                           <span>{selectedPatient.email}</span>
                         </p>
@@ -2083,14 +2373,14 @@ export default function Dashboard() {
 
                     {selectedPatient.allergies.length > 0 && (
                       <>
-                        <div className='triage-divider' />
+                        <div className="triage-divider" />
 
-                        <div className='triage-allergy-block'>
+                        <div className="triage-allergy-block">
                           <h5>
                             <AlertCircle size={14} strokeWidth={2.2} />
                             <span>Allergies</span>
                           </h5>
-                          <div className='triage-tag-list'>
+                          <div className="triage-tag-list">
                             {selectedPatient.allergies.map((allergy) => (
                               <span key={allergy}>{allergy}</span>
                             ))}
@@ -2099,10 +2389,10 @@ export default function Dashboard() {
                       </>
                     )}
 
-                    <div className='triage-divider' />
+                    <div className="triage-divider" />
 
-                    <div className='triage-history-block'>
-                      <h5 className='triage-history-title'>Medical History</h5>
+                    <div className="triage-history-block">
+                      <h5 className="triage-history-title">Medical History</h5>
                       {selectedPatient.medicalHistory.length > 0 ? (
                         <ul>
                           {selectedPatient.medicalHistory.map((item) => (
@@ -2114,9 +2404,9 @@ export default function Dashboard() {
                       )}
                     </div>
 
-                    <div className='triage-divider' />
+                    <div className="triage-divider" />
 
-                    <div className='triage-last-visit'>
+                    <div className="triage-last-visit">
                       <Clock3 size={14} strokeWidth={2.2} />
                       <span>Last visit:</span>
                       <strong>{selectedPatient.lastVisit}</strong>
@@ -2145,7 +2435,7 @@ export default function Dashboard() {
                     )}
                   </article>
 
-                  <article className='triage-details-panel'>
+                  <article className="triage-details-panel">
                     <button
                       type='button'
                       className='triage-details-toggle'
@@ -2153,20 +2443,20 @@ export default function Dashboard() {
                         setIsAdditionalDetailsOpen((prev) => !prev)
                       }
                     >
-                      <span className='triage-details-title'>
+                      <span className="triage-details-title">
                         <MapPin size={14} strokeWidth={2.2} />
                         <span>Additional Details</span>
                       </span>
                       <ChevronDown
                         size={16}
                         strokeWidth={2.3}
-                        className={isAdditionalDetailsOpen ? 'open' : ''}
+                        className={isAdditionalDetailsOpen ? "open" : ""}
                       />
                     </button>
 
                     {isAdditionalDetailsOpen && (
-                      <div className='triage-details-content'>
-                        <div className='triage-detail-row'>
+                      <div className="triage-details-content">
+                        <div className="triage-detail-row">
                           <label>Address</label>
                           <p>{selectedPatient.address}</p>
                         </div>
@@ -2177,23 +2467,23 @@ export default function Dashboard() {
               )}
             </div>
 
-            <div className='triage-snapshot-chat-dock'>
-              <article className='triage-chat-panel'>
+            <div className="triage-snapshot-chat-dock">
+              <article className="triage-chat-panel">
                 <header>
                   <h4>Chat Consultation</h4>
                   <p>Context for triage assessment</p>
                 </header>
 
-                <div className='triage-chat-list'>
-                  {!selectedPatient ? (
-                    <div className='triage-empty-note'>
-                      Select a patient to open chat.
-                    </div>
-                  ) : isSelectedCallbackTicket ? (
-                    <div className='triage-empty-note'>
-                      Chat is not available for callback-only requests.
-                    </div>
-                  ) : chatEntries.length > 0 ? (
+                  <div className="triage-chat-list">
+                    {!selectedPatient ? (
+                      <div className='triage-empty-note'>
+                        Select a patient to open chat.
+                      </div>
+                    ) : isSelectedCallbackTicket ? (
+                      <div className='triage-empty-note'>
+                        Chat is not available for callback-only requests.
+                      </div>
+                    ) : chatEntries.length > 0 ? (
                     chatEntries.map((message) =>
                       message.isSystem ? (
                         <div
@@ -2203,7 +2493,7 @@ export default function Dashboard() {
                           <span className='triage-chat-system-avatar'>
                             <UserRound size={14} strokeWidth={2.2} />
                           </span>
-                          <div className='triage-chat-bubble system'>
+                          <div className="triage-chat-bubble system">
                             <p>{message.text}</p>
                             <span>{message.timestamp}</span>
                           </div>
@@ -2211,7 +2501,7 @@ export default function Dashboard() {
                       ) : (
                         <div
                           key={message.id}
-                          className={`triage-chat-bubble ${message.isSent ? 'sent' : 'received'}`}
+                          className={`triage-chat-bubble ${message.isSent ? "sent" : "received"}`}
                         >
                           <p>{message.text}</p>
                           <span>{message.timestamp}</span>
@@ -2230,8 +2520,8 @@ export default function Dashboard() {
                   onSubmit={handleQuickSendMessage}
                 >
                   <input
-                    type='text'
-                    placeholder='Type a message...'
+                    type="text"
+                    placeholder="Type a message..."
                     value={quickMessage}
                     onChange={(event) => setQuickMessage(event.target.value)}
                     disabled={
@@ -2261,32 +2551,32 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <section className='triage-workspace-col'>
-            <div className='triage-col-header'>
+          <section className="triage-workspace-col">
+            <div className="triage-col-header">
               <ClipboardList size={16} strokeWidth={2.2} />
               <h3>Triage Workspace</h3>
             </div>
 
             {selectedPatient && (
-              <div className='triage-workspace-head'>
-                <div className='triage-workspace-head-main'>
-                  <div className='triage-name-badge-row'>
+              <div className="triage-workspace-head">
+                <div className="triage-workspace-head-main">
+                  <div className="triage-name-badge-row">
                     <h2>{selectedPatient.fullName}</h2>
-                    <span className='triage-chat-badge'>
+                    <span className="triage-chat-badge">
                       {getChannelLabel(selectedTicket)}
                     </span>
                   </div>
 
-                  <div className='triage-status-select-wrap'>
+                  <div className="triage-status-select-wrap">
                     <button
-                      type='button'
+                      type="button"
                       className={`triage-status-select ${triageStatus
                         .toLowerCase()
-                        .replace(/\s+/g, '-')}`}
+                        .replace(/\s+/g, "-")}`}
                       onClick={() => setShowStatusMenu((prev) => !prev)}
                       disabled={isUpdatingStatus || isSelectedCallbackTicket}
                     >
-                      <span className='triage-status-current'>
+                      <span className="triage-status-current">
                         {renderTriageStatusIcon(triageStatus)}
                         <span>{triageStatus}</span>
                       </span>
@@ -2294,12 +2584,12 @@ export default function Dashboard() {
                     </button>
 
                     {showStatusMenu && (
-                      <div className='triage-status-menu'>
+                      <div className="triage-status-menu">
                         {TRIAGE_STATUS_OPTIONS.map((option) => (
                           <button
                             key={option}
-                            type='button'
-                            className='triage-status-option'
+                            type="button"
+                            className="triage-status-option"
                             onClick={() => handleStatusChange(option)}
                           >
                             <span className='triage-status-option-main'>
@@ -2325,21 +2615,21 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className='triage-mark-actions'>
+                <div className="triage-mark-actions">
                   <label>
                     <input
-                      type='checkbox'
+                      type="checkbox"
                       checked={markInquiry}
                       disabled={isSelectedCallbackTicket}
                       onChange={(event) =>
-                        handleCloseReasonToggle('inquiry', event.target.checked)
+                        handleCloseReasonToggle("inquiry", event.target.checked)
                       }
                     />
                     <span>Mark as Inquiry</span>
                   </label>
                   <label>
                     <input
-                      type='checkbox'
+                      type="checkbox"
                       checked={markIncomplete}
                       disabled={isSelectedCallbackTicket}
                       onChange={(event) =>
@@ -2355,125 +2645,157 @@ export default function Dashboard() {
               </div>
             )}
 
-            <div className='triage-workspace-scroll'>
+            <div className="triage-workspace-scroll">
               {selectedPatient ? (
                 <>
-                  <article className='triage-vitals-card'>
+                  <article className="triage-vitals-card">
                     <h4>
                       <Activity size={16} strokeWidth={2.2} />
                       <span>Vital Signs</span>
                     </h4>
-                    <div className='triage-vitals-grid'>
+                    <div className="triage-vitals-grid">
                       <div>
                         <label>Blood Pressure</label>
                         <input
-                          type='text'
-                          className='triage-vital-input'
-                          placeholder='120/80'
+                          type="text"
+                          className="triage-vital-input"
+                          placeholder="120/80"
                           maxLength={7}
                           value={vitalsDraft.bloodPressure}
                           onChange={(event) =>
                             handleVitalChange(
-                              'bloodPressure',
+                              "bloodPressure",
                               sanitizeBloodPressureVital(event.target.value),
                             )
                           }
-                          onBlur={() => handleVitalBlur('bloodPressure')}
+                          onBlur={() => handleVitalBlur("bloodPressure")}
                         />
                       </div>
                       <div>
                         <label>Heart Rate</label>
-                        <div className='triage-vital-input-wrap'>
+                        <div className="triage-vital-input-wrap">
                           <input
-                            type='text'
-                            className='triage-vital-input with-unit'
-                            placeholder='72'
-                            inputMode='numeric'
+                            type="text"
+                            className="triage-vital-input with-unit"
+                            placeholder="72"
+                            inputMode="numeric"
                             maxLength={3}
                             value={vitalsDraft.heartRate}
                             onChange={(event) =>
                               handleVitalChange(
-                                'heartRate',
+                                "heartRate",
                                 sanitizeNumericVital(event.target.value),
                               )
                             }
-                            onBlur={() => handleVitalBlur('heartRate')}
+                            onBlur={() => handleVitalBlur("heartRate")}
                           />
-                          <span className='triage-vital-unit'>bpm</span>
+                          <span className="triage-vital-unit">bpm</span>
                         </div>
                       </div>
                       <div>
                         <label>Temperature</label>
-                        <div className='triage-vital-input-wrap'>
+                        <div className="triage-vital-input-wrap">
                           <input
-                            type='text'
-                            className='triage-vital-input with-unit'
-                            placeholder='36.8'
-                            inputMode='decimal'
+                            type="text"
+                            className="triage-vital-input with-unit"
+                            placeholder="36.8"
+                            inputMode="decimal"
                             maxLength={5}
                             value={vitalsDraft.temperature}
                             onChange={(event) =>
                               handleVitalChange(
-                                'temperature',
+                                "temperature",
                                 sanitizeTemperatureVital(event.target.value),
                               )
                             }
-                            onBlur={() => handleVitalBlur('temperature')}
+                            onBlur={() => handleVitalBlur("temperature")}
                           />
-                          <span className='triage-vital-unit'>°C</span>
+                          <span className="triage-vital-unit">°C</span>
                         </div>
                       </div>
                       <div>
                         <label>Oxygen Saturation</label>
-                        <div className='triage-vital-input-wrap'>
+                        <div className="triage-vital-input-wrap">
                           <input
-                            type='text'
-                            className='triage-vital-input with-unit'
-                            placeholder='98'
-                            inputMode='numeric'
+                            type="text"
+                            className="triage-vital-input with-unit"
+                            placeholder="98"
+                            inputMode="numeric"
                             maxLength={3}
                             value={vitalsDraft.oxygenSaturation}
                             onChange={(event) =>
                               handleVitalChange(
-                                'oxygenSaturation',
+                                "oxygenSaturation",
                                 sanitizeNumericVital(event.target.value),
                               )
                             }
-                            onBlur={() => handleVitalBlur('oxygenSaturation')}
+                            onBlur={() => handleVitalBlur("oxygenSaturation")}
                           />
-                          <span className='triage-vital-unit'>%</span>
+                          <span className="triage-vital-unit">%</span>
                         </div>
                       </div>
                     </div>
                   </article>
 
-                  <article className='triage-complaint-card'>
-                    <h4>Chief Complaint & Symptoms</h4>
-                    <textarea
-                      value={chiefComplaintDraft}
-                      onChange={(event) =>
-                        handleChiefComplaintChange(event.target.value)
-                      }
-                      placeholder="Describe the patient's main complaint..."
-                    />
-                    <div className='triage-symptom-pills'>
+                  <article className="triage-submitted-concern-card">
+                      <h4>Patient Submitted Concern</h4>
+                      <div
+                        className={`triage-submitted-concern-quote ${patientSubmittedConcern ? 'filled' : 'empty'}`}
+                      >
+                        {patientSubmittedConcern
+                          ? `"${patientSubmittedConcern}"`
+                          : '"No patient concern submitted"'}
+                      </div>
+                      <p className="triage-complaint-help">
+                        This is the patient's original submitted concern.
+                        Review and create professional chief complaint below.
+                      </p>
+                  </article>
+
+                  <article className="triage-clinical-complaint-card">
+                      <h4>Chief Complaint (Clinical)</h4>
+                      <textarea
+                        value={chiefComplaintDraft}
+                        onChange={(event) =>
+                          handleChiefComplaintChange(event.target.value)
+                        }
+                        onBlur={handleChiefComplaintBlur}
+                        placeholder="Enter professional clinical chief complaint based on triage assessment..."
+                      />
+                      <p className="triage-complaint-help">
+                        This is the professional triage chief complaint that
+                        will be sent to the doctor.
+                      </p>
+                  </article>
+
+                  <article className="triage-complaint-symptoms">
+                      <h4>Associated Symptoms</h4>
+                      <textarea
+                        value={associatedSymptomsDraft}
+                        onChange={(event) =>
+                          handleAssociatedSymptomsChange(event.target.value)
+                        }
+                        onBlur={handleAssociatedSymptomsBlur}
+                        placeholder="Additional symptoms and clinical observations..."
+                      />
+                      <div className="triage-symptom-pills">
                       {SYMPTOM_PILL_OPTIONS.map((pill) => {
                         const isSelected = selectedSymptomPills.includes(pill);
                         return (
                           <button
                             key={pill}
-                            type='button'
-                            className={`triage-symptom-pill ${isSelected ? 'selected' : ''}`}
+                            type="button"
+                            className={`triage-symptom-pill ${isSelected ? "selected" : ""}`}
                             onClick={() => handleSymptomPillToggle(pill)}
                           >
                             {pill}
                           </button>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
                   </article>
 
-                  <article className='triage-pain-map-card'>
+                  <article className="triage-pain-map-card">
                     <h4>Pain Map</h4>
                     <div className='triage-pain-map-controls-row'>
                       <div
@@ -2482,27 +2804,27 @@ export default function Dashboard() {
                         aria-label='Pain map view'
                       >
                         <button
-                          type='button'
-                          role='tab'
-                          aria-selected={painMapView === 'front'}
-                          className={`triage-pain-map-view-btn ${painMapView === 'front' ? 'active' : ''}`}
-                          onClick={() => handlePainMapViewChange('front')}
+                          type="button"
+                          role="tab"
+                          aria-selected={painMapView === "front"}
+                          className={`triage-pain-map-view-btn ${painMapView === "front" ? "active" : ""}`}
+                          onClick={() => handlePainMapViewChange("front")}
                         >
                           Front
                         </button>
                         <button
-                          type='button'
-                          role='tab'
-                          aria-selected={painMapView === 'back'}
-                          className={`triage-pain-map-view-btn ${painMapView === 'back' ? 'active' : ''}`}
-                          onClick={() => handlePainMapViewChange('back')}
+                          type="button"
+                          role="tab"
+                          aria-selected={painMapView === "back"}
+                          className={`triage-pain-map-view-btn ${painMapView === "back" ? "active" : ""}`}
+                          onClick={() => handlePainMapViewChange("back")}
                         >
                           Back
                         </button>
                       </div>
-                      <div className='triage-pain-readonly-meta inline'>
-                        <div className='triage-vitals-grid triage-vitals-grid-readonly inline'>
-                          <div className='triage-pain-meta-item'>
+                      <div className="triage-pain-readonly-meta inline">
+                        <div className="triage-vitals-grid triage-vitals-grid-readonly inline">
+                          <div className="triage-pain-meta-item">
                             <label>Pain Score</label>
                             <div className='triage-vital-input-wrap triage-vital-input-wrap-readonly triage-vital-input-wrap-meta'>
                               <span className='triage-pain-meta-value'>
@@ -2511,14 +2833,14 @@ export default function Dashboard() {
                               <span className='triage-vital-unit'>/10</span>
                             </div>
                           </div>
-                          <div className='triage-pain-meta-item triage-pain-meta-item-duration'>
+                          <div className="triage-pain-meta-item triage-pain-meta-item-duration">
                             <label>Pain Duration</label>
-                            <div className='triage-vital-input-wrap triage-vital-input-wrap-readonly triage-vital-input-wrap-duration triage-vital-input-wrap-meta'>
-                              <span className='triage-pain-meta-value'>
-                                {painMapReadOnlyMeta.durationValue || 'N/A'}
+                            <div className="triage-vital-input-wrap triage-vital-input-wrap-readonly triage-vital-input-wrap-duration triage-vital-input-wrap-meta">
+                              <span className="triage-pain-meta-value">
+                                {painMapReadOnlyMeta.durationValue || "N/A"}
                               </span>
-                              <span className='triage-vital-unit'>
-                                {painMapReadOnlyMeta.durationUnit || '--'}
+                              <span className="triage-vital-unit">
+                                {painMapReadOnlyMeta.durationUnit || "--"}
                               </span>
                             </div>
                           </div>
@@ -2539,8 +2861,8 @@ export default function Dashboard() {
                           return (
                             <button
                               key={areaId}
-                              type='button'
-                              className={`triage-body-part ${area.className} ${isSelected ? 'selected' : ''}`}
+                              type="button"
+                              className={`triage-body-part ${area.className} ${isSelected ? "selected" : ""}`}
                               onClick={() => handlePainAreaToggle(area)}
                               aria-pressed={isSelected}
                               aria-label={`${area.label} (${painMapView})`}
@@ -2558,7 +2880,7 @@ export default function Dashboard() {
                             No areas selected
                           </div>
                         ) : (
-                          <div className='triage-pain-map-chips'>
+                          <div className="triage-pain-map-chips">
                             {selectedPainAreas.map((area) => (
                               <div
                                 key={area.id}
@@ -2566,11 +2888,11 @@ export default function Dashboard() {
                               >
                                 <span>
                                   {area.label}
-                                  {` (${area.view === 'back' ? 'Back' : 'Front'})`}
+                                  {` (${area.view === "back" ? "Back" : "Front"})`}
                                 </span>
                                 <button
-                                  type='button'
-                                  className='triage-pain-map-chip-remove'
+                                  type="button"
+                                  className="triage-pain-map-chip-remove"
                                   onClick={() => handlePainAreaRemove(area.id)}
                                   aria-label={`Remove ${area.label}`}
                                 >
@@ -2583,14 +2905,14 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    <div className='triage-pain-map-instruction'>
+                    <div className="triage-pain-map-instruction">
                       Click on body parts to mark pain locations
                     </div>
                   </article>
 
-                  <article className='triage-ros-card'>
+                  <article className="triage-ros-card">
                     <h4>Review of Systems (ROS)</h4>
-                    <div className='triage-ros-grid'>
+                    <div className="triage-ros-grid">
                       {ROS_GROUPS.map((group) => (
                         <section key={group.title} className='triage-ros-group'>
                           <div className='triage-ros-group-title'>
@@ -2600,9 +2922,9 @@ export default function Dashboard() {
                             {group.items.map((item) => {
                               const isChecked = selectedRosItems.includes(item);
                               return (
-                                <label key={item} className='triage-ros-item'>
+                                <label key={item} className="triage-ros-item">
                                   <input
-                                    type='checkbox'
+                                    type="checkbox"
                                     checked={isChecked}
                                     onChange={() => handleRosItemToggle(item)}
                                   />
@@ -2616,170 +2938,302 @@ export default function Dashboard() {
                     </div>
                   </article>
 
-                  {/* --- NEW ALLERGY INPUT CARD --- */}
-                  <article
-                    className='triage-note-card'
-                    style={{
-                      backgroundColor: '#fff5f5',
-                      borderColor: '#ffcdd2',
-                    }}
-                  >
-                    <h4 style={{ color: '#d32f2f', marginBottom: '12px' }}>
-                      <AlertCircle size={16} strokeWidth={2.2} />
-                      <span>Allergies (Auto-saves to Patient Profile)</span>
-                    </h4>
+                  <article className="triage-medical-history-card">
+                    <header className="triage-medical-history-title">
+                      <Heart size={16} strokeWidth={2.2} />
+                      <span>Medical History</span>
+                    </header>
 
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input
-                        type='text'
-                        value={newAllergy}
-                        onChange={(event) => setNewAllergy(event.target.value)}
-                        onKeyDown={(event) =>
-                          event.key === 'Enter' && handleAddAllergy()
-                        }
-                        placeholder='Add allergy...'
-                        style={{
-                          flex: 1,
-                          padding: '10px',
-                          border: '1px solid #ffcdd2',
-                          borderRadius: '8px',
-                          outline: 'none',
-                        }}
-                      />
-                      <button
-                        type='button'
-                        onClick={handleAddAllergy}
-                        disabled={!newAllergy.trim()}
-                        style={{
-                          backgroundColor: '#ef5350',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          padding: '0 16px',
-                          cursor: newAllergy.trim() ? 'pointer' : 'not-allowed',
-                          fontWeight: 'bold',
-                          fontSize: '18px',
-                          opacity: newAllergy.trim() ? 1 : 0.6,
-                        }}
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    {/* Instantly show the nurse the updated list of allergies */}
-                    {selectedPatient?.allergies?.length > 0 && (
-                      <div
-                        className='triage-tag-list'
-                        style={{
-                          marginTop: '16px',
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '8px',
-                        }}
-                      >
-                        {selectedPatient.allergies.map((allergy) => (
-                          <span
-                            key={allergy}
-                            style={{
-                              backgroundColor: '#ffebee',
-                              color: '#c62828',
-                              padding: '6px 12px',
-                              borderRadius: '20px',
-                              fontSize: '13px',
-                              fontWeight: '600',
-                              display: 'inline-flex',
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            <span style={{ lineHeight: 1 }}>{allergy}</span>
-
-                            {/* ACTION BUTTONS WRAPPER */}
-                            <div
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                borderLeft:
-                                  '1px solid #ffaaab' /* Subtle divider line */,
-                                paddingLeft: '8px',
-                                marginLeft: '8px',
-                              }}
+                    <section className="triage-medical-history-section">
+                      <h5>
+                        <Activity
+                          size={14}
+                          strokeWidth={2.2}
+                          className="triage-active-diseases-icon"
+                        />
+                        <span>Active Diseases</span>
+                      </h5>
+                      <div className="triage-medical-pill-row">
+                        {ACTIVE_DISEASE_OPTIONS.map((disease) => {
+                          const isSelected = activeDiseasesDraft.some(
+                            (entry) =>
+                              entry.toLowerCase() === disease.toLowerCase(),
+                          );
+                          return (
+                            <button
+                              key={disease}
+                              type="button"
+                              className={`triage-medical-choice-pill ${isSelected ? 'selected' : ''}`}
+                              onClick={() => handleActiveDiseaseToggle(disease)}
                             >
-                              {/* THE DELETE BUTTON */}
+                              {disease}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="triage-inline-add-row">
+                        <input
+                          type="text"
+                          className="triage-vital-input"
+                          value={customActiveDiseaseDraft}
+                          onChange={(event) =>
+                            setCustomActiveDiseaseDraft(event.target.value)
+                          }
+                          onKeyDown={(event) =>
+                            event.key === 'Enter' && handleAddActiveDisease()
+                          }
+                          placeholder="Add custom disease..."
+                        />
+                        <button
+                          type="button"
+                          className="triage-inline-add-btn"
+                          onClick={handleAddActiveDisease}
+                          disabled={!customActiveDiseaseDraft.trim()}
+                        >
+                          +
+                        </button>
+                      </div>
+                      {activeDiseasesDraft.length === 0 && (
+                        <p className="triage-empty-medical-history">
+                          No active diseases recorded
+                        </p>
+                      )}
+                      {activeDiseasesDraft.length > 0 && (
+                        <div className="triage-tag-list triage-tag-list-medications">
+                          {activeDiseasesDraft.map((disease) => (
+                            <span key={disease}>
+                              {disease}
                               <button
-                                type='button'
-                                onClick={() => handleRemoveAllergy(allergy)}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: '#c62828',
-                                  cursor: 'pointer',
-                                  padding: '0',
-                                  fontSize: '16px',
-                                  fontWeight: 'bold',
-                                  lineHeight: '1',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                                title='Remove allergy'
+                                type="button"
+                                className="triage-medication-remove-btn"
+                                onClick={() => handleRemoveActiveDisease(disease)}
                               >
                                 &times;
                               </button>
-                            </div>
-                          </span>
-                        ))}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+
+                    <section className="triage-medical-history-section triage-medical-history-alert">
+                      <h5>
+                        <AlertCircle size={14} strokeWidth={2.2} />
+                        <span>Allergies (Auto-saves to Patient Profile)</span>
+                      </h5>
+                      <div className="triage-inline-add-row">
+                        <input
+                          type="text"
+                          className="triage-vital-input"
+                          value={newAllergy}
+                          onChange={(event) => setNewAllergy(event.target.value)}
+                          onKeyDown={(event) =>
+                            event.key === 'Enter' && handleAddAllergy()
+                          }
+                          placeholder="Add allergy..."
+                        />
+                        <button
+                          type="button"
+                          className="triage-inline-add-btn triage-inline-add-btn-alert"
+                          onClick={handleAddAllergy}
+                          disabled={!newAllergy.trim()}
+                        >
+                          +
+                        </button>
                       </div>
-                    )}
+                      {selectedPatient?.allergies?.length > 0 && (
+                        <div className="triage-tag-list triage-medical-allergy-list">
+                          {selectedPatient.allergies.map((allergy) => (
+                            <span key={allergy}>
+                              {allergy}
+                              <button
+                                type="button"
+                                className="triage-medication-remove-btn"
+                                onClick={() => handleRemoveAllergy(allergy)}
+                              >
+                                &times;
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+
+                    <section className="triage-medical-history-section triage-medical-history-section--compact">
+                      <h5>Past Diseases</h5>
+                      <textarea
+                        className="triage-note-textarea triage-note-textarea-compact"
+                        value={pastDiseasesDraft}
+                        onChange={(event) =>
+                          handlePastDiseasesChange(event.target.value)
+                        }
+                        onBlur={() =>
+                          handleMedicalHistorySectionBlur(
+                            'pastDiseases',
+                            pastDiseasesDraft,
+                          )
+                        }
+                        placeholder="List past diseases, conditions, or illnesses..."
+                      />
+                    </section>
+
+                    <section className="triage-medical-history-section triage-medical-history-section--compact">
+                      <h5 className="triage-family-history-title">Family History</h5>
+                      <textarea
+                        className="triage-note-textarea triage-note-textarea-compact"
+                        value={familyHistoryDraft}
+                        onChange={(event) =>
+                          handleFamilyHistoryChange(event.target.value)
+                        }
+                        onBlur={() =>
+                          handleMedicalHistorySectionBlur(
+                            'familyHistory',
+                            familyHistoryDraft,
+                          )
+                        }
+                        placeholder="Family medical history (parents, siblings, etc.)..."
+                      />
+                    </section>
+
+                    <section className="triage-medical-history-section triage-social-history-box">
+                      <h5>Social History</h5>
+                      <div className="triage-social-history-grid">
+                        <div>
+                          <label>Smoking</label>
+                          <input
+                            className="triage-vital-input"
+                            type="text"
+                            value={smokingDraft}
+                            onChange={(event) =>
+                              handleSmokingChange(event.target.value)
+                            }
+                            onBlur={() =>
+                              handleMedicalHistorySectionBlur('smoking', smokingDraft)
+                            }
+                            placeholder="e.g., Non-smoker, 10/day"
+                          />
+                        </div>
+                        <div>
+                          <label>Drinking</label>
+                          <input
+                            className="triage-vital-input"
+                            type="text"
+                            value={drinkingDraft}
+                            onChange={(event) =>
+                              handleDrinkingChange(event.target.value)
+                            }
+                            onBlur={() =>
+                              handleMedicalHistorySectionBlur('drinking', drinkingDraft)
+                            }
+                            placeholder="e.g., Occasional, Daily"
+                          />
+                        </div>
+                      </div>
+                      <label className="triage-lifestyle-label">Lifestyle Notes</label>
+                      <textarea
+                        className="triage-note-textarea triage-note-textarea-compact"
+                        value={lifestyleNotesDraft}
+                        onChange={(event) =>
+                          handleLifestyleNotesChange(event.target.value)
+                        }
+                        onBlur={() =>
+                          handleMedicalHistorySectionBlur(
+                            'lifestyleNotes',
+                            lifestyleNotesDraft,
+                          )
+                        }
+                        placeholder="Diet, exercise, occupation, stress factors..."
+                      />
+                    </section>
+
+                    <section className="triage-medical-history-section triage-medical-history-section--compact">
+                      <h5>Surgeries</h5>
+                      <textarea
+                        className="triage-note-textarea triage-note-textarea-compact"
+                        value={surgeriesDraft}
+                        onChange={(event) =>
+                          handleSurgeriesChange(event.target.value)
+                        }
+                        onBlur={() =>
+                          handleMedicalHistorySectionBlur('surgeries', surgeriesDraft)
+                        }
+                        placeholder="List previous surgeries with dates if available..."
+                      />
+                    </section>
+
+                    <section className="triage-medical-history-section triage-medical-history-section--compact">
+                      <h5 className="triage-medications-title">
+                        <Pill size={14} strokeWidth={2.2} className="triage-medications-icon" />
+                        <span>Current Medications</span>
+                      </h5>
+                      <div className="triage-inline-add-row">
+                        <input
+                          type="text"
+                          className="triage-vital-input"
+                          value={newMedication}
+                          onChange={(event) => setNewMedication(event.target.value)}
+                          onKeyDown={(event) =>
+                            event.key === 'Enter' && handleMedicationAdd()
+                          }
+                          placeholder="Add medication..."
+                        />
+                        <button
+                          type="button"
+                          className="triage-inline-add-btn"
+                          onClick={handleMedicationAdd}
+                          disabled={!newMedication.trim()}
+                        >
+                          +
+                        </button>
+                      </div>
+                      {currentMedicationsDraft.length > 0 && (
+                        <div className="triage-tag-list triage-tag-list-medications">
+                          {currentMedicationsDraft.map((medication) => (
+                            <span key={medication}>
+                              {medication}
+                              <button
+                                type="button"
+                                className="triage-medication-remove-btn"
+                                onClick={() => handleMedicationRemove(medication)}
+                              >
+                                &times;
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </section>
                   </article>
 
-                  <article className='triage-note-card'>
-                    <h4>
-                      <ClipboardList size={16} strokeWidth={2.2} />
-                      <span>Medical History</span>
-                    </h4>
-                    <textarea
-                      className='triage-note-textarea'
-                      value={medicalHistoryDraft}
-                      onChange={(event) =>
-                        handleMedicalHistoryChange(event.target.value)
-                      }
-                      onBlur={handleMedicalHistoryBlur}
-                      placeholder='Relevant medical history, medications, allergies...'
-                    />
-                  </article>
-
-                  <article className='triage-note-card'>
+                  <article className="triage-note-card">
                     <h4>
                       <FileText size={16} strokeWidth={2.2} />
                       <span>Additional Remarks</span>
                     </h4>
                     <textarea
-                      className='triage-note-textarea'
+                      className="triage-note-textarea"
                       value={additionalRemarksDraft}
                       onChange={(event) =>
                         handleAdditionalRemarksChange(event.target.value)
                       }
                       onBlur={handleAdditionalRemarksBlur}
-                      placeholder='Add remarks or important notes...'
+                      placeholder="Add remarks or important notes..."
                     />
                   </article>
 
-                  <article className='triage-urgency-card'>
+                  <article className="triage-urgency-card">
                     <h4>
                       <AlertCircle size={16} strokeWidth={2.2} />
                       <span>Urgency Level</span>
                     </h4>
-                    <div className='triage-urgency-grid'>
+                    <div className="triage-urgency-grid">
                       {URGENCY_LEVEL_OPTIONS.map((level) => {
                         const isSelected = selectedUrgencyLevel === level;
                         return (
                           <button
                             key={level}
-                            type='button'
-                            className={`triage-urgency-option level-${level.toLowerCase()} ${isSelected ? 'selected' : ''}`}
+                            type="button"
+                            className={`triage-urgency-option level-${level.toLowerCase()} ${isSelected ? "selected" : ""}`}
                             onClick={() => handleUrgencyLevelSelect(level)}
                           >
                             {level}
@@ -2802,20 +3256,20 @@ export default function Dashboard() {
               >
                 <div className='triage-bottom-actions'>
                   <button
-                    type='button'
-                    className='triage-transfer-btn'
+                    type="button"
+                    className="triage-transfer-btn"
                     onClick={openTransferModal}
                   >
                     <UserRound size={16} strokeWidth={2.2} />
                     Transfer Patient
                   </button>
                   <button
-                    type='button'
-                    className={`triage-close-btn ${shouldEnableCloseTicket ? 'active' : 'inactive'}`}
+                    type="button"
+                    className={`triage-close-btn ${shouldEnableCloseTicket ? "active" : "inactive"}`}
                     disabled={!shouldEnableCloseTicket}
                     onClick={handleCloseTicket}
                   >
-                    <span className='triage-close-x'>&times;</span>
+                    <span className="triage-close-x">&times;</span>
                     <span>Close Ticket</span>
                     {closeReasonLabel && (
                       <span className='triage-close-tag'>
@@ -2826,7 +3280,7 @@ export default function Dashboard() {
                 </div>
 
                 {!shouldEnableCloseTicket && (
-                  <p className='triage-close-help'>
+                  <p className="triage-close-help">
                     Mark ticket as "Inquiry" or "Incomplete" to enable closing
                   </p>
                 )}
@@ -2838,22 +3292,22 @@ export default function Dashboard() {
 
       {showTransferModal && selectedPatient && (
         <div
-          className='triage-transfer-modal-overlay'
+          className="triage-transfer-modal-overlay"
           onClick={closeTransferModal}
-          role='presentation'
+          role="presentation"
         >
           <div
-            className='triage-transfer-modal'
+            className="triage-transfer-modal"
             onClick={(event) => event.stopPropagation()}
-            role='dialog'
-            aria-modal='true'
-            aria-label='Transfer patient'
+            role="dialog"
+            aria-modal="true"
+            aria-label="Transfer patient"
           >
             <button
-              type='button'
-              className='triage-transfer-modal-close'
+              type="button"
+              className="triage-transfer-modal-close"
               onClick={closeTransferModal}
-              aria-label='Close transfer modal'
+              aria-label="Close transfer modal"
             >
               &times;
             </button>
@@ -2864,12 +3318,12 @@ export default function Dashboard() {
               provider.
             </p>
 
-            <div className='triage-transfer-targets'>
+            <div className="triage-transfer-targets">
               <button
-                type='button'
-                className={`triage-transfer-target ${transferTarget === 'doctor' ? 'active' : ''}`}
+                type="button"
+                className={`triage-transfer-target ${transferTarget === "doctor" ? "active" : ""}`}
                 onClick={() => {
-                  setTransferTarget('doctor');
+                  setTransferTarget("doctor");
                   setIsDepartmentMenuOpen(false);
                   setIsDoctorMenuOpen(false);
                   setIsNurseMenuOpen(false);
@@ -2878,10 +3332,10 @@ export default function Dashboard() {
                 To Doctor
               </button>
               <button
-                type='button'
-                className={`triage-transfer-target ${transferTarget === 'nurse' ? 'active' : ''}`}
+                type="button"
+                className={`triage-transfer-target ${transferTarget === "nurse" ? "active" : ""}`}
                 onClick={() => {
-                  setTransferTarget('nurse');
+                  setTransferTarget("nurse");
                   setIsDepartmentMenuOpen(false);
                   setIsDoctorMenuOpen(false);
                   setIsNurseMenuOpen(false);
@@ -2891,10 +3345,10 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {transferTarget === 'doctor' ? (
-              <div className='triage-transfer-field'>
+            {transferTarget === "doctor" ? (
+              <div className="triage-transfer-field">
                 <label>Select Specialist Department</label>
-                <div className='triage-transfer-select-wrap'>
+                <div className="triage-transfer-select-wrap">
                   <button
                     type='button'
                     className={`triage-transfer-select ${selectedDepartment ? '' : 'placeholder'}`}
@@ -2902,19 +3356,19 @@ export default function Dashboard() {
                       setIsDepartmentMenuOpen((previous) => !previous)
                     }
                   >
-                    <span>{selectedDepartment || 'Choose a department'}</span>
+                    <span>{selectedDepartment || "Choose a department"}</span>
                     <ChevronDown size={17} strokeWidth={2.1} />
                   </button>
                   {isDepartmentMenuOpen && (
-                    <div className='triage-transfer-menu'>
+                    <div className="triage-transfer-menu">
                       {availableDepartments.map((department) => (
                         <button
                           key={department}
-                          type='button'
-                          className={`triage-transfer-option ${selectedDepartment === department ? 'active' : ''}`}
+                          type="button"
+                          className={`triage-transfer-option ${selectedDepartment === department ? "active" : ""}`}
                           onClick={() => {
                             setSelectedDepartment(department);
-                            setSelectedDoctorId('');
+                            setSelectedDoctorId("");
                             setIsDepartmentMenuOpen(false);
                             setIsDoctorMenuOpen(false);
                           }}
@@ -2927,10 +3381,10 @@ export default function Dashboard() {
                 </div>
 
                 <label style={{ marginTop: 14 }}>Select Doctor</label>
-                <div className='triage-transfer-select-wrap'>
+                <div className="triage-transfer-select-wrap">
                   <button
-                    type='button'
-                    className={`triage-transfer-select ${selectedDepartment ? '' : 'disabled'} ${selectedDoctor ? '' : 'placeholder'}`}
+                    type="button"
+                    className={`triage-transfer-select ${selectedDepartment ? "" : "disabled"} ${selectedDoctor ? "" : "placeholder"}`}
                     onClick={() => {
                       if (!selectedDepartment) {
                         return;
@@ -2938,17 +3392,17 @@ export default function Dashboard() {
                       setIsDoctorMenuOpen((previous) => !previous);
                     }}
                   >
-                    <span>{selectedDoctor?.name || 'Choose a doctor'}</span>
+                    <span>{selectedDoctor?.name || "Choose a doctor"}</span>
                     <ChevronDown size={17} strokeWidth={2.1} />
                   </button>
                   {isDoctorMenuOpen && selectedDepartment && (
-                    <div className='triage-transfer-menu'>
+                    <div className="triage-transfer-menu">
                       {filteredDoctorsByDepartment.length > 0 ? (
                         filteredDoctorsByDepartment.map((doctor) => (
                           <button
                             key={doctor.id}
-                            type='button'
-                            className={`triage-transfer-option ${Number(selectedDoctorId) === Number(doctor.id) ? 'active' : ''}`}
+                            type="button"
+                            className={`triage-transfer-option ${Number(selectedDoctorId) === Number(doctor.id) ? "active" : ""}`}
                             onClick={() => {
                               setSelectedDoctorId(String(doctor.id));
                               setIsDoctorMenuOpen(false);
@@ -2968,9 +3422,9 @@ export default function Dashboard() {
               </div>
             ) : (
               <>
-                <div className='triage-transfer-field'>
+                <div className="triage-transfer-field">
                   <label>Select Nurse</label>
-                  <div className='triage-transfer-select-wrap'>
+                  <div className="triage-transfer-select-wrap">
                     <button
                       type='button'
                       className={`triage-transfer-select ${selectedNurse ? '' : 'placeholder'}`}
@@ -2978,17 +3432,17 @@ export default function Dashboard() {
                         setIsNurseMenuOpen((previous) => !previous)
                       }
                     >
-                      <span>{selectedNurse?.name || 'Choose a nurse'}</span>
+                      <span>{selectedNurse?.name || "Choose a nurse"}</span>
                       <ChevronDown size={17} strokeWidth={2.1} />
                     </button>
                     {isNurseMenuOpen && (
-                      <div className='triage-transfer-menu'>
+                      <div className="triage-transfer-menu">
                         {availableNurses.length > 0 ? (
                           availableNurses.map((nurse) => (
                             <button
                               key={nurse.id}
-                              type='button'
-                              className={`triage-transfer-option ${Number(selectedNurseId) === Number(nurse.id) ? 'active' : ''}`}
+                              type="button"
+                              className={`triage-transfer-option ${Number(selectedNurseId) === Number(nurse.id) ? "active" : ""}`}
                               onClick={() => {
                                 setSelectedNurseId(String(nurse.id));
                                 setIsNurseMenuOpen(false);
@@ -3007,11 +3461,11 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className='triage-transfer-field'>
+                <div className="triage-transfer-field">
                   <label>Reason for Transfer (Optional)</label>
                   <textarea
-                    className='triage-transfer-reason'
-                    placeholder='Enter reason or notes for the transfer...'
+                    className="triage-transfer-reason"
+                    placeholder="Enter reason or notes for the transfer..."
                     value={transferReason}
                     onFocus={closeTransferMenus}
                     onClick={closeTransferMenus}
@@ -3021,18 +3475,18 @@ export default function Dashboard() {
               </>
             )}
 
-            <div className='triage-transfer-actions'>
+            <div className="triage-transfer-actions">
               <button
-                type='button'
-                className='triage-transfer-cancel'
+                type="button"
+                className="triage-transfer-cancel"
                 onClick={closeTransferModal}
                 disabled={isTransferSubmitting}
               >
                 Cancel
               </button>
               <button
-                type='button'
-                className='triage-transfer-submit'
+                type="button"
+                className="triage-transfer-submit"
                 disabled={
                   transferTarget === 'doctor'
                     ? !canTransferToDoctor
@@ -3049,13 +3503,61 @@ export default function Dashboard() {
         </div>
       )}
 
-      {showMedicalRecords && selectedPatient && selectedTicket && (
+      {showMedicalRecords &&
+        selectedPatient &&
+        selectedTicket &&
+        !isSelectedCallbackTicket && (
         <PatientMedicalRecordsModal
           onClose={() => setShowMedicalRecords(false)}
           patient={selectedPatient}
           patientId={selectedPatientId}
           ticketId={`T-${String(selectedTicket.id).padStart(3, '0')}`}
           consultationType={getChannelLabel(selectedTicket)}
+          medicalHistoryBindings={{
+            activeDiseases: activeDiseasesDraft,
+            allergies: selectedPatient.allergies,
+            pastDiseases: pastDiseasesDraft,
+            familyHistory: familyHistoryDraft,
+            smoking: smokingDraft,
+            drinking: drinkingDraft,
+            lifestyleNotes: lifestyleNotesDraft,
+            surgeries: surgeriesDraft,
+            currentMedications: currentMedicationsDraft,
+            onActiveDiseasesAdd: handleAddActiveDisease,
+            onActiveDiseasesRemove: handleRemoveActiveDisease,
+            onAllergyAdd: handleAddAllergy,
+            onAllergyRemove: handleRemoveAllergy,
+            onPastDiseasesChange: handlePastDiseasesChange,
+            onPastDiseasesBlur: () =>
+              handleMedicalHistorySectionBlur(
+                'pastDiseases',
+                pastDiseasesDraft,
+              ),
+            onFamilyHistoryChange: handleFamilyHistoryChange,
+            onFamilyHistoryBlur: () =>
+              handleMedicalHistorySectionBlur(
+                'familyHistory',
+                familyHistoryDraft,
+              ),
+            onSmokingChange: handleSmokingChange,
+            onSmokingBlur: () =>
+              handleMedicalHistorySectionBlur('smoking', smokingDraft),
+            onDrinkingChange: handleDrinkingChange,
+            onDrinkingBlur: () =>
+              handleMedicalHistorySectionBlur('drinking', drinkingDraft),
+            onLifestyleNotesChange: handleLifestyleNotesChange,
+            onLifestyleNotesBlur: () =>
+              handleMedicalHistorySectionBlur(
+                'lifestyleNotes',
+                lifestyleNotesDraft,
+              ),
+            onSurgeriesChange: handleSurgeriesChange,
+            onSurgeriesBlur: () =>
+              handleMedicalHistorySectionBlur('surgeries', surgeriesDraft),
+            onMedicationAdd: handleMedicationAdd,
+            onMedicationRemove: handleMedicationRemove,
+            onSave: handleSaveMedicalHistory,
+          }}
         />
       )}
     </div>

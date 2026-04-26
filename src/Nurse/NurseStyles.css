@@ -1781,6 +1781,78 @@ body::-webkit-scrollbar {
   font-weight: 700;
 }
 
+/* Nurse Queue Filtering Scheme */
+.nurse-queue-filter-container {
+  padding: 12px;
+  background: #f4f5f7;
+  border-bottom: 1px solid #d9dde4;
+}
+
+.nurse-queue-filter-pills {
+  display: flex;
+  background: #e9ecf0;
+  border-radius: 100px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.nurse-filter-pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 100px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 0;
+}
+
+.nurse-filter-pill .pill-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #667081;
+  white-space: nowrap;
+}
+
+.nurse-filter-pill .pill-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #667081;
+  background: #d6dfe8;
+  padding: 1px 6px;
+  border-radius: 6px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.nurse-filter-pill.active {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.nurse-filter-pill.active .pill-label {
+  color: #1a1f26;
+}
+
+.nurse-filter-pill.active .pill-count {
+  background: #f0f2f5;
+  color: #1a1f26;
+}
+
+.nurse-filter-pill .pill-count.highlighted {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.nurse-filter-pill.active .pill-count.highlighted {
+  background: #ccfbf1;
+  color: #0d9488;
+}
+
 .triage-queue-list {
   padding: 12px;
   display: flex;

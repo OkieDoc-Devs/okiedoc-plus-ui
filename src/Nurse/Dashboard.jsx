@@ -1,6 +1,7 @@
 import '../App.css';
 import '../index.css';
 import './NurseStyles.css';
+import './CallbackStyles.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
@@ -26,7 +27,7 @@ import CallbackQueueCard from '../components/CallbackQueueCard';
 import PatientMedicalRecordsModal from '../components/MedicalRecords';
 import { disconnectSocket } from '../utils/socketClient';
 import { useChat } from './services/useChat.js';
-import { fetchCallbacks } from '../api/apiClient';
+import { fetchCallbacks, updateCallbackStatus } from '../api/apiClient';
 import {
   Activity,
   AlertCircle,
@@ -404,9 +405,24 @@ const mapCallbackStatusToTicketStatus = (statusValue) => {
     .trim()
     .toLowerCase();
 
-  if (value === 'in_progress') return 'processing';
-  if (value === 'expired') return 'completed';
+  if (value === 'in_progress' || value === 'inquiry' || value === 'escalated') {
+    return 'processing';
+  }
+  if (value === 'expired' || value === 'closed') return 'completed';
   return 'pending';
+};
+
+const getCallbackStatusLabel = (statusValue) => {
+  const value = String(statusValue || '')
+    .trim()
+    .toLowerCase();
+
+  if (value === 'new') return 'Waiting';
+  if (value === 'in_progress') return 'In Progress';
+  if (value === 'inquiry') return 'Inquiry';
+  if (value === 'escalated') return 'Escalated';
+  if (value === 'closed' || value === 'expired') return 'Closed';
+  return value || 'Waiting';
 };
 
 const buildTicketFromCallback = (callback) => {
@@ -510,7 +526,15 @@ export default function Dashboard() {
   const [isDoctorMenuOpen, setIsDoctorMenuOpen] = useState(false);
   const [isNurseMenuOpen, setIsNurseMenuOpen] = useState(false);
   const [callbacks, setCallbacks] = useState([]);
+  const [showCallbackModal, setShowCallbackModal] = useState(false);
+  const [activeCallback, setActiveCallback] = useState(null);
+  const [callbackNurseRemarks, setCallbackNurseRemarks] = useState('');
+  const [callbackInternalNotes, setCallbackInternalNotes] = useState('');
+  const [callbackActionLoadingStatus, setCallbackActionLoadingStatus] =
+    useState('');
   const [showMedicalRecords, setShowMedicalRecords] = useState(false);
+  const [queueFilter, setQueueFilter] = useState('All');
+  const [dashboardTab, setDashboardTab] = useState('Patient Queue');
 
   const selectedPatientId = useMemo(() => {
     if (!selectedTicket || selectedTicket.isCallback) {
@@ -605,6 +629,88 @@ export default function Dashboard() {
     setIsDepartmentMenuOpen(false);
     setIsDoctorMenuOpen(false);
     setIsNurseMenuOpen(false);
+  };
+
+  const closeCallbackModal = () => {
+    setShowCallbackModal(false);
+    setActiveCallback(null);
+    setCallbackNurseRemarks('');
+    setCallbackInternalNotes('');
+    setCallbackActionLoadingStatus('');
+  };
+
+  const applyCallbackStatusChange = async (callbackId, nextStatus) => {
+    const normalizedCallbackId = Number(callbackId);
+    if (!Number.isFinite(normalizedCallbackId) || !nextStatus) {
+      return null;
+    }
+
+    const response = await updateCallbackStatus(normalizedCallbackId, nextStatus);
+    const updatedCallback = response?.callback || {};
+
+    setCallbacks((previous) =>
+      previous.map((entry) =>
+        Number(entry.id) === normalizedCallbackId
+          ? {
+              ...entry,
+              ...updatedCallback,
+              status: updatedCallback.status || nextStatus,
+            }
+          : entry,
+      ),
+    );
+
+    setActiveCallback((previous) => {
+      if (!previous || Number(previous.id) !== normalizedCallbackId) {
+        return previous;
+      }
+      return {
+        ...previous,
+        ...updatedCallback,
+        status: updatedCallback.status || nextStatus,
+      };
+    });
+
+    return updatedCallback;
+  };
+
+  const openCallbackModal = async (callback) => {
+    if (!callback) {
+      return;
+    }
+
+    setActiveCallback(callback);
+    setCallbackNurseRemarks(callback?.nurseRemarks || '');
+    setCallbackInternalNotes(callback?.callbackNotes || '');
+    setShowCallbackModal(true);
+
+    if (String(callback.status || '').toLowerCase() !== 'new') {
+      return;
+    }
+
+    try {
+      await applyCallbackStatusChange(callback.id, 'in_progress');
+    } catch (error) {
+      console.error('Failed to move callback to in-progress:', error);
+    }
+  };
+
+  const handleCallbackModalStatusAction = async (nextStatus) => {
+    if (!activeCallback || !nextStatus) {
+      return;
+    }
+
+    setCallbackActionLoadingStatus(nextStatus);
+    try {
+      await applyCallbackStatusChange(activeCallback.id, nextStatus);
+      if (nextStatus === 'closed') {
+        closeCallbackModal();
+      }
+    } catch (error) {
+      console.error(`Failed to update callback to ${nextStatus}:`, error);
+    } finally {
+      setCallbackActionLoadingStatus('');
+    }
   };
 
   const openTransferModal = () => {
@@ -1316,7 +1422,7 @@ export default function Dashboard() {
     }));
 
     // Combine and sort by created date (most recent first)
-    return [...callbackCards, ...ticketCards].sort((a, b) => {
+    const combined = [...callbackCards, ...ticketCards].sort((a, b) => {
       const dateA = new Date(
         a.type === 'callback'
           ? a.callback.createdAt
@@ -1329,12 +1435,23 @@ export default function Dashboard() {
       ).getTime();
       return dateB - dateA;
     });
+
+    // Apply filtering
+    if (queueFilter === 'Consults') {
+      return combined.filter((card) => card.type === 'ticket');
+    }
+    if (queueFilter === 'Callbacks') {
+      return combined.filter((card) => card.type === 'callback');
+    }
+
+    return combined;
   }, [
     callbacks,
     selectedTicket?.id,
     tickets,
     triageDraftsByTicketId,
     urgencyOverridesByTicketId,
+    queueFilter,
   ]);
 
   const shouldEnableCloseTicket = markInquiry || markIncomplete;
@@ -1861,13 +1978,60 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className='triage-shell'>
-        <div className='triage-grid'>
-          <section className='triage-queue-col'>
+      <div className='nurse-dashboard-main-tabs'>
+        <button
+          className={`nurse-main-tab ${dashboardTab === 'Patient Queue' ? 'active' : ''}`}
+          onClick={() => setDashboardTab('Patient Queue')}
+        >
+          Patient Queue
+        </button>
+        <button
+          className={`nurse-main-tab ${dashboardTab === 'Callback Requests' ? 'active' : ''}`}
+          onClick={() => setDashboardTab('Callback Requests')}
+        >
+          Callback Requests
+        </button>
+      </div>
+
+      {dashboardTab === 'Patient Queue' ? (
+        <div className='triage-shell'>
+          <div className='triage-grid'>
+            <section className='triage-queue-col'>
             <div className='triage-col-header'>
               <Users size={16} strokeWidth={2.2} />
               <h3>Patient Queue</h3>
             </div>
+
+            <div className='nurse-queue-filter-container'>
+              <div className='nurse-queue-filter-pills'>
+                <button
+                  className={`nurse-filter-pill ${queueFilter === 'All' ? 'active' : ''}`}
+                  onClick={() => setQueueFilter('All')}
+                >
+                  <span className='pill-label'>All</span>
+                  <span className='pill-count'>
+                    {[...tickets, ...callbacks].length}
+                  </span>
+                </button>
+                <button
+                  className={`nurse-filter-pill ${queueFilter === 'Consults' ? 'active' : ''}`}
+                  onClick={() => setQueueFilter('Consults')}
+                >
+                  <span className='pill-label'>Consults</span>
+                  <span className='pill-count'>{tickets.length}</span>
+                </button>
+                <button
+                  className={`nurse-filter-pill ${queueFilter === 'Callbacks' ? 'active' : ''}`}
+                  onClick={() => setQueueFilter('Callbacks')}
+                >
+                  <span className='pill-label'>Callbacks</span>
+                  <span className='pill-count highlighted'>
+                    {callbacks.length}
+                  </span>
+                </button>
+              </div>
+            </div>
+
             <div className='triage-queue-list'>
               {queueCards.length > 0 ? (
                 queueCards.map((item) => {
@@ -2835,6 +2999,115 @@ export default function Dashboard() {
           </section>
         </div>
       </div>
+      ) : (
+        <div className='nurse-callback-requests-container'>
+          <div className='nurse-callback-header'>
+            <div className='nurse-callback-header-left'>
+              <div className='nurse-callback-title-row'>
+                <Phone className='nurse-callback-title-icon' />
+                <h2>Callback Requests</h2>
+              </div>
+              <p>Free inquiry and triage assessment</p>
+            </div>
+            <div className='nurse-callback-header-right'>
+              <div className='nurse-callback-status-pill'>
+                {callbacks.filter((c) => c.status === 'new').length} Waiting
+              </div>
+              <div className='nurse-callback-status-pill in-progress'>
+                {
+                  callbacks.filter((c) =>
+                    ['in_progress', 'inquiry', 'escalated'].includes(
+                      String(c.status || '').toLowerCase(),
+                    ),
+                  ).length
+                }{' '}
+                Active
+              </div>
+            </div>
+          </div>
+
+          <div className='nurse-callback-table-container'>
+            <table className='nurse-callback-table'>
+              <thead>
+                <tr>
+                  <th>TICKET ID</th>
+                  <th>PATIENT NAME</th>
+                  <th>CONTACT NUMBER</th>
+                  <th>CONTACT METHOD</th>
+                  <th>REQUEST TIME</th>
+                  <th>CHIEF COMPLAINT</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {callbacks.length > 0 ? (
+                  callbacks.map((callback) => (
+                    <tr key={callback.id}>
+                      <td className='text-xs font-medium text-gray-500'>
+                        {callback.callbackNumber ||
+                          `CB-${String(callback.id).padStart(3, '0')}`}
+                      </td>
+                      <td className='font-bold'>{callback.fullName}</td>
+                      <td>{callback.contactNumber}</td>
+                      <td>
+                        <div className='flex items-center gap-2'>
+                          {getCallbackChannelLabel(callback) === 'Video' ? (
+                            <Video size={16} className='text-blue-500' />
+                          ) : (
+                            <Phone size={16} className='text-blue-500' />
+                          )}
+                          <span>{getCallbackChannelLabel(callback)}</span>
+                        </div>
+                      </td>
+                      <td>
+                        {formatDate(callback.createdAt)}{' '}
+                        {formatTime(callback.createdAt)}
+                      </td>
+                      <td className='nurse-table-complaint'>
+                        {callback.message || 'Callback request'}
+                      </td>
+                      <td>
+                        <span
+                          className={`nurse-status-badge ${callback.status}`}
+                        >
+                          {getCallbackStatusLabel(callback.status)}
+                        </span>
+                      </td>
+                      <td>
+                        <div className='nurse-table-actions text-nowrap'>
+                          <button
+                            className={`nurse-action-btn ${callback.status === 'new' ? 'start' : 'view'}`}
+                            onClick={() => openCallbackModal(callback)}
+                          >
+                            {callback.status === 'new' ? (
+                              <>
+                                <div className='play-icon' />
+                                Start
+                              </>
+                            ) : (
+                              <>
+                                <Info size={16} />
+                                View
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan='8' className='nurse-table-empty'>
+                      No callback requests found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {showTransferModal && selectedPatient && (
         <div
@@ -3043,6 +3316,136 @@ export default function Dashboard() {
                 {transferTarget === 'doctor'
                   ? 'Transfer to Doctor'
                   : 'Transfer to Nurse'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCallbackModal && activeCallback && (
+        <div
+          className='callback-form-modal-overlay'
+          onClick={closeCallbackModal}
+          role='presentation'
+        >
+          <div
+            className='callback-form-modal'
+            onClick={(event) => event.stopPropagation()}
+            role='dialog'
+            aria-modal='true'
+            aria-label='Callback details'
+          >
+            <button
+              type='button'
+              className='callback-form-close'
+              onClick={closeCallbackModal}
+              aria-label='Close callback form'
+            >
+              &times;
+            </button>
+
+            <h3 className='callback-form-title'>
+              Callback Details -{' '}
+              {activeCallback.callbackNumber ||
+                `CB-${String(activeCallback.id).padStart(3, '0')}`}
+            </h3>
+            <p className='callback-form-subtitle'>
+              Patient inquiry and triage assessment
+            </p>
+
+            <div className='callback-form-card'>
+              <div>
+                <label>Patient Name</label>
+                <p>{activeCallback.fullName || DEFAULT_TEXT}</p>
+              </div>
+              <div>
+                <label>Contact Number</label>
+                <p>{activeCallback.contactNumber || DEFAULT_TEXT}</p>
+              </div>
+              <div>
+                <label>Preferred Method</label>
+                <p>{activeCallback.contactMethod || DEFAULT_TEXT}</p>
+              </div>
+              <div>
+                <label>Request Time</label>
+                <p>
+                  {formatDate(activeCallback.createdAt)}{' '}
+                  {formatTime(activeCallback.createdAt)}
+                </p>
+              </div>
+            </div>
+
+            <div className='callback-form-field'>
+              <label>Chief Complaint</label>
+              <div className='callback-form-static-input'>
+                {activeCallback.message || 'No chief complaint provided'}
+              </div>
+            </div>
+
+            <div className='callback-form-field'>
+              <label>Symptoms</label>
+              <div className='callback-form-static-input'>
+                {activeCallback.message || 'No symptoms provided'}
+              </div>
+            </div>
+
+            <div className='callback-form-field'>
+              <label>Nurse Remarks</label>
+              <textarea
+                value={callbackNurseRemarks}
+                onChange={(event) => setCallbackNurseRemarks(event.target.value)}
+                placeholder='Add your assessment and recommendations...'
+              />
+            </div>
+
+            <div className='callback-form-field'>
+              <label>Callback Notes</label>
+              <textarea
+                value={callbackInternalNotes}
+                onChange={(event) => setCallbackInternalNotes(event.target.value)}
+                placeholder='Internal notes about the callback...'
+              />
+            </div>
+
+            <div className='callback-form-actions'>
+              <button
+                type='button'
+                className='callback-form-btn close'
+                onClick={closeCallbackModal}
+                disabled={Boolean(callbackActionLoadingStatus)}
+              >
+                Close
+              </button>
+              <button
+                type='button'
+                className='callback-form-btn inquiry'
+                onClick={() => handleCallbackModalStatusAction('inquiry')}
+                disabled={Boolean(callbackActionLoadingStatus)}
+              >
+                Mark as Inquiry
+              </button>
+              <button
+                type='button'
+                className='callback-form-btn convert'
+                disabled={Boolean(callbackActionLoadingStatus)}
+              >
+                Convert to Ticket
+              </button>
+              <button
+                type='button'
+                className='callback-form-btn escalate'
+                onClick={() => handleCallbackModalStatusAction('escalated')}
+                disabled={Boolean(callbackActionLoadingStatus)}
+              >
+                Escalate to Doctor
+              </button>
+              <button
+                type='button'
+                className='callback-form-btn completed'
+                onClick={() => handleCallbackModalStatusAction('closed')}
+                disabled={Boolean(callbackActionLoadingStatus)}
+              >
+                Mark as Completed
               </button>
             </div>
           </div>

@@ -19,7 +19,6 @@ import Notifications from './Nurse/Notifications.jsx';
 import MyAccount from './Nurse/MyAccount.jsx';
 import ManageAppointments from './Nurse/ManageAppointments.jsx';
 import Messages from './Nurse/Messages.jsx';
-import CreateConsultationTicket from './Nurse/CreateConsultationTicket.jsx';
 import PatientDashboard from './Patient/jsx/Patient_App.jsx';
 import ModalProvider from './Patient/contexts/Modals.jsx';
 import SpecialistDashboard2 from './Specialists/SpecialistDashboard.jsx';
@@ -130,7 +129,6 @@ function AppContent() {
         <Route path='/nurse-myaccount' element={<ProtectedRoute allowedRoles={['nurse']}><MyAccount /></ProtectedRoute>} />
         <Route path='/nurse-manage-appointments' element={<ProtectedRoute allowedRoles={['nurse']}><ManageAppointments /></ProtectedRoute>} />
         <Route path='/nurse-messages' element={<ProtectedRoute allowedRoles={['nurse']}><Messages /></ProtectedRoute>} />
-        <Route path='/nurse-create-ticket' element={<ProtectedRoute allowedRoles={['nurse']}><CreateConsultationTicket /></ProtectedRoute>} />
 
         {/* Admin Routes */}
         <Route

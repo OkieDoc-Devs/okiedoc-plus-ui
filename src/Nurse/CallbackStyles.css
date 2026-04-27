@@ -356,12 +356,17 @@
 
 .callback-form-actions {
   margin-top: 18px;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 10px;
-  flex-wrap: wrap;
 }
 
 .callback-form-btn {
+  width: 100%;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   border-radius: 12px;
   padding: 10px 16px;
@@ -435,7 +440,12 @@
   }
 
   .callback-form-actions {
-    display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .callback-form-actions {
+    grid-template-columns: 1fr;
   }
 }

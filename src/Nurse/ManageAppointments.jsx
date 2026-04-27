@@ -1,8 +1,9 @@
 import '../App.css';
 import './NurseStyles.css';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import Avatar from '../components/Avatar';
+import PostConsultationBillingModal from '../components/PostConsultationBillingModal';
 import {
   getNurseFirstName,
   getNurseProfileImage,
@@ -14,10 +15,7 @@ import {
 } from './services/ticketService.js';
 import { addNotification } from './services/notificationService.js';
 import {
-  createInitialInvoiceData,
-  initializeInvoice,
-  calculateInvoiceTotal,
-  generateInvoicePDF,
+  generatePostConsultationBillingPDF,
 } from './services/invoiceService.js';
 import {
   fetchTicketsFromAPI,
@@ -152,7 +150,6 @@ export default function ManageAppointment() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceTicket, setInvoiceTicket] = useState(null);
-  const [invoiceData, setInvoiceData] = useState(createInitialInvoiceData());
   const [specialistAvailable, setSpecialistAvailable] = useState(null);
   const [hmoVerified, setHmoVerified] = useState(null);
   const [assignedSpecialist, setAssignedSpecialist] = useState('');
@@ -281,46 +278,8 @@ export default function ManageAppointment() {
   };
 
   const openInvoice = (ticket) => {
-    const invoiceInitData = initializeInvoice();
-    setInvoiceData(invoiceInitData);
     setInvoiceTicket(ticket);
     setShowInvoiceModal(true);
-  };
-
-  const addInvoiceItem = () => {
-    setInvoiceData((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        { name: '', description: '', quantity: 1, amount: 0 },
-      ],
-    }));
-  };
-  const removeInvoiceItem = (index) => {
-    setInvoiceData((prev) => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index),
-    }));
-  };
-  const updateInvoiceItem = (index, field, value) => {
-    setInvoiceData((prev) => ({
-      ...prev,
-      items: prev.items.map((it, i) =>
-        i === index ? { ...it, [field]: value } : it,
-      ),
-    }));
-  };
-  const invoiceTotal = useMemo(
-    () => calculateInvoiceTotal(invoiceData),
-    [invoiceData],
-  );
-
-  const sendInvoice = (e) => {
-    e.preventDefault();
-    if (!invoiceTicket) return;
-    updateStatus(invoiceTicket.id, 'Processing');
-    setShowInvoiceModal(false);
-    alert("Invoice sent to patient's email (simulated).");
   };
 
   const simulatePayment = (ticketId) => {
@@ -423,8 +382,20 @@ export default function ManageAppointment() {
     nurseId,
   );
 
-  const handleDownloadInvoice = () => {
-    generateInvoicePDF(invoiceData, invoiceTicket);
+  const handleDownloadInvoice = async (billingPayload) => {
+    await generatePostConsultationBillingPDF(billingPayload);
+  };
+
+  const handleSendToPatient = () => {
+    alert('Send to Patient is interactive but not connected yet.');
+  };
+
+  const handleRedirectPaymentGateway = () => {
+    alert('Redirect to Payment Gateway is interactive but not connected yet.');
+  };
+
+  const handleViewBillingHistory = () => {
+    alert('View History is interactive but not connected yet.');
   };
 
   return (
@@ -573,14 +544,13 @@ export default function ManageAppointment() {
                       className='ticket-actions'
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {ticket.claimedBy ? (
-                        <button
-                          className='ticket-history-btn'
-                          onClick={() => openInvoice(ticket)}
-                        >
-                          Generate Invoice
-                        </button>
-                      ) : (
+                      <button
+                        className='ticket-history-btn'
+                        onClick={() => openInvoice(ticket)}
+                      >
+                        Generate Invoice
+                      </button>
+                      {!ticket.claimedBy && (
                         <button
                           className='ticket-history-btn'
                           onClick={() => setSelectedTicket(ticket)}
@@ -1038,15 +1008,12 @@ export default function ManageAppointment() {
               </div>
 
               <div className='ticket-actions' style={{ marginTop: 12 }}>
-                {!selectedTicket.claimedBy &&
-                  selectedTicket.status !== 'Pending' && (
-                    <button
-                      className='action-btn edit'
-                      onClick={() => openInvoice(selectedTicket)}
-                    >
-                      Generate Invoice
-                    </button>
-                  )}
+                <button
+                  className='action-btn edit'
+                  onClick={() => openInvoice(selectedTicket)}
+                >
+                  Generate Invoice
+                </button>
                 {selectedTicket.status === 'Processing' && (
                   <button
                     className='action-btn edit'
@@ -1070,193 +1037,15 @@ export default function ManageAppointment() {
         </div>
       )}
 
-      {showInvoiceModal && (
-        <div className='modal-overlay'>
-          <div className='invoice-modal'>
-            <div className='modal-header'>
-              <img
-                src='/okie-doc-logo.png'
-                alt='OkieDoc+ Logo'
-                style={{ height: 48, marginBottom: 8, opacity: 1 }}
-              />
-              <h2>Generate Invoice</h2>
-              <button
-                onClick={() => setShowInvoiceModal(false)}
-                className='close-btn'
-              >
-                ×
-              </button>
-            </div>
-            <div className='modal-body' style={{ padding: 20, opacity: 1 }}>
-              <div className='invoice-info'>
-                <p>
-                  <strong>Invoice No.:</strong> {invoiceData.invoiceNumber}
-                </p>
-                <p>
-                  <strong>Date of Consultation:</strong>{' '}
-                  {formatDate(invoiceTicket?.preferredDate)}{' '}
-                  {invoiceTicket?.preferredTime}
-                </p>
-                <p>
-                  <strong>Patient Name:</strong> {invoiceTicket?.patientName}
-                </p>
-                <p>
-                  <strong>Mobile Number:</strong> {invoiceTicket?.mobile}
-                </p>
-                <p>
-                  <strong>Email Address:</strong> {invoiceTicket?.email}
-                </p>
-              </div>
-              <form onSubmit={sendInvoice} className='invoice-form'>
-                <div className='invoice-items'>
-                  <h3>Invoice Items</h3>
-                  {invoiceData.items.map((item, idx) => (
-                    <div key={idx} className='invoice-item'>
-                      <input
-                        type='text'
-                        placeholder='Item name'
-                        value={item.name}
-                        onChange={(e) =>
-                          updateInvoiceItem(idx, 'name', e.target.value)
-                        }
-                        required
-                      />
-                      <input
-                        type='text'
-                        placeholder='Description'
-                        value={item.description}
-                        onChange={(e) =>
-                          updateInvoiceItem(idx, 'description', e.target.value)
-                        }
-                      />
-                      <input
-                        type='number'
-                        placeholder='Qty'
-                        value={item.quantity}
-                        onChange={(e) =>
-                          updateInvoiceItem(
-                            idx,
-                            'quantity',
-                            parseInt(e.target.value) || 0,
-                          )
-                        }
-                        min='1'
-                        required
-                      />
-                      <input
-                        type='number'
-                        placeholder='Amount'
-                        value={item.amount}
-                        onChange={(e) =>
-                          updateInvoiceItem(
-                            idx,
-                            'amount',
-                            parseFloat(e.target.value) || 0,
-                          )
-                        }
-                        min='0'
-                        step='0.01'
-                        required
-                      />
-                      <button
-                        type='button'
-                        onClick={() => removeInvoiceItem(idx)}
-                        className='remove-item-btn'
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type='button'
-                    onClick={addInvoiceItem}
-                    className='add-item-btn'
-                  >
-                    + Add Item
-                  </button>
-                </div>
-                <div className='invoice-fees'>
-                  <div className='fee-item'>
-                    <label>Platform Fee:</label>
-                    <input
-                      type='number'
-                      value={invoiceData.platformFee}
-                      onChange={(e) =>
-                        setInvoiceData((prev) => ({
-                          ...prev,
-                          platformFee: parseFloat(e.target.value) || 0,
-                        }))
-                      }
-                      min='0'
-                      step='0.01'
-                    />
-                  </div>
-                  <div className='fee-item'>
-                    <label>E-Nurse Fee:</label>
-                    <input
-                      type='number'
-                      value={invoiceData.eNurseFee}
-                      onChange={(e) =>
-                        setInvoiceData((prev) => ({
-                          ...prev,
-                          eNurseFee: parseFloat(e.target.value) || 0,
-                        }))
-                      }
-                      min='0'
-                      step='0.01'
-                    />
-                  </div>
-                </div>
-                <div style={{ padding: '0 20px 10px 20px', opacity: 1 }}>
-                  <h3>Items</h3>
-                  {invoiceData.items.map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: 8 }}>
-                      <span>{item.name}</span>
-                      <span>{item.description}</span>
-                      <span>Qty: {item.quantity}</span>
-                      <span>Amount: ₱{item.amount}</span>
-                    </div>
-                  ))}
-                  <p>
-                    <strong>Platform Fee:</strong> ₱{invoiceData.platformFee}
-                  </p>
-                  <p>
-                    <strong>E-Nurse Fee:</strong> ₱{invoiceData.eNurseFee}
-                  </p>
-                  <h3>Total Amount: ₱{invoiceTotal.toFixed(2)}</h3>
-                  <p>
-                    <strong>Payment Link:</strong> {invoiceData.paymentLink}
-                  </p>
-                  <footer style={{ marginTop: 16, fontSize: 12, opacity: 1 }}>
-                    <strong>OkieDoc+ Address:</strong> 123 Health St, Wellness
-                    City, Country
-                  </footer>
-                </div>
-                <div className='modal-actions'>
-                  <button type='submit' className='submit-btn'>
-                    Send Invoice
-                  </button>
-                  <button
-                    type='button'
-                    onClick={handleDownloadInvoice}
-                    className='submit-btn'
-                    style={{ marginLeft: 8 }}
-                  >
-                    Download PDF
-                  </button>
-                  <button
-                    type='button'
-                    onClick={() => setShowInvoiceModal(false)}
-                    className='cancel-btn'
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      <PostConsultationBillingModal
+        isOpen={showInvoiceModal}
+        ticket={invoiceTicket}
+        onClose={() => setShowInvoiceModal(false)}
+        onDownloadPDF={handleDownloadInvoice}
+        onSendToPatient={handleSendToPatient}
+        onRedirectPaymentGateway={handleRedirectPaymentGateway}
+        onViewHistory={handleViewBillingHistory}
+      />
 
       {showTicketDetailModal && selectedTicket && (
         <div className='modal-overlay'>

@@ -2313,6 +2313,7 @@ const SpecialistDashboard = () => {
           </div>
 
           <PainMapSection
+            className='specialist-pain-map-section'
             view={painMapView}
             selectedAreas={painMapAreas}
             readOnly

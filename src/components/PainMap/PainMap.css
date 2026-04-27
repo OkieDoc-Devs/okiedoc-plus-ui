@@ -54,9 +54,14 @@
 .triage-pain-map-content {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: 210px 1fr;
-  gap: 14px;
+  grid-template-columns: minmax(210px, 240px) minmax(320px, 1fr);
+  gap: 18px;
   align-items: start;
+}
+
+.triage-pain-map-picker {
+  width: 210px;
+  max-width: 100%;
 }
 
 .triage-pain-map-figure {
@@ -163,6 +168,28 @@
   font-weight: 700;
 }
 
+.triage-pain-map-selection {
+  grid-column: 1 / -1;
+  min-width: 0;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.triage-pain-reference-card {
+  margin: 0;
+  min-width: 0;
+}
+
+.triage-pain-reference-card img {
+  display: block;
+  width: 100%;
+  max-height: 560px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid #d8dde5;
+  background: #ffffff;
+}
+
 .triage-pain-map-empty {
   margin-top: 10px;
   color: #8a94a5;
@@ -172,8 +199,8 @@
 
 .triage-pain-map-chips {
   margin-top: 10px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 8px;
 }
 
@@ -181,6 +208,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  min-width: 0;
   gap: 8px;
   border: 1px solid #efb6bc;
   border-radius: 8px;
@@ -188,6 +217,11 @@
   color: #9e1f2e;
   font-size: 12px;
   padding: 6px 8px;
+}
+
+.triage-pain-map-chip span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .triage-pain-map-chip-remove {
@@ -205,6 +239,31 @@
   cursor: default;
 }
 
+.specialist-pain-map-section {
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.specialist-pain-map-section .triage-pain-map-content {
+  grid-template-columns: 210px minmax(360px, 480px);
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+}
+
+.specialist-pain-map-section .triage-pain-map-picker {
+  justify-self: center;
+}
+
+.specialist-pain-map-section .triage-pain-reference-card img {
+  max-height: 460px;
+}
+
+.specialist-pain-map-section .triage-pain-map-selection {
+  align-self: start;
+}
+
 @media (max-width: 1200px) {
   .triage-pain-map-content {
     grid-template-columns: 1fr;
@@ -213,5 +272,9 @@
   .triage-pain-map-figure {
     width: 100%;
     max-width: 210px;
+  }
+
+  .triage-pain-reference-card img {
+    max-height: 420px;
   }
 }

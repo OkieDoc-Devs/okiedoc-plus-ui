@@ -28,6 +28,7 @@ import PatientMedicalRecordsModal from '../components/MedicalRecords';
 import { disconnectSocket } from '../utils/socketClient';
 import { useChat } from './services/useChat.js';
 import { fetchCallbacks, updateCallbackStatus } from '../api/apiClient';
+import referredPainChart from '../assets/1506_Referred_Pain_Chart.jpg';
 import {
   Activity,
   AlertCircle,
@@ -3301,27 +3302,33 @@ export default function Dashboard() {
                     </div>
 
                     <div className='triage-pain-map-content'>
-                      <div
-                        className={`triage-pain-map-figure ${painMapView === 'back' ? 'back' : 'front'}`}
-                      >
-                        {PAIN_MAP_AREAS[painMapView].map((area) => {
-                          const areaId = `${painMapView}:${area.key}`;
-                          const isSelected = selectedPainAreas.some(
-                            (entry) => entry.id === areaId,
-                          );
+                      <div className='triage-pain-map-picker'>
+                        <div
+                          className={`triage-pain-map-figure ${painMapView === 'back' ? 'back' : 'front'}`}
+                        >
+                          {PAIN_MAP_AREAS[painMapView].map((area) => {
+                            const areaId = `${painMapView}:${area.key}`;
+                            const isSelected = selectedPainAreas.some(
+                              (entry) => entry.id === areaId,
+                            );
 
-                          return (
-                            <button
-                              key={areaId}
-                              type="button"
-                              className={`triage-body-part ${area.className} ${isSelected ? "selected" : ""}`}
-                              onClick={() => handlePainAreaToggle(area)}
-                              aria-pressed={isSelected}
-                              aria-label={`${area.label} (${painMapView})`}
-                            />
-                          );
-                        })}
+                            return (
+                              <button
+                                key={areaId}
+                                type="button"
+                                className={`triage-body-part ${area.className} ${isSelected ? "selected" : ""}`}
+                                onClick={() => handlePainAreaToggle(area)}
+                                aria-pressed={isSelected}
+                                aria-label={`${area.label} (${painMapView})`}
+                              />
+                            );
+                          })}
+                        </div>
                       </div>
+
+                      <figure className="triage-pain-reference-card">
+                        <img src={referredPainChart} alt="Referred pain reference chart" />
+                      </figure>
 
                       <div className='triage-pain-map-selection'>
                         <div className='triage-pain-map-selection-title'>

@@ -3573,9 +3573,14 @@ body::-webkit-scrollbar {
 .triage-pain-map-content {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: 210px 1fr;
-  gap: 14px;
+  grid-template-columns: minmax(210px, 240px) minmax(320px, 1fr);
+  gap: 18px;
   align-items: start;
+}
+
+.triage-pain-map-picker {
+  width: 210px;
+  max-width: 100%;
 }
 
 .triage-pain-map-figure {
@@ -3677,6 +3682,28 @@ body::-webkit-scrollbar {
   font-weight: 700;
 }
 
+.triage-pain-map-selection {
+  grid-column: 1 / -1;
+  min-width: 0;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.triage-pain-reference-card {
+  margin: 0;
+  min-width: 0;
+}
+
+.triage-pain-reference-card img {
+  display: block;
+  width: 100%;
+  max-height: 560px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid #d8dde5;
+  background: #ffffff;
+}
+
 .triage-pain-map-empty {
   margin-top: 10px;
   color: #8a94a5;
@@ -3686,8 +3713,8 @@ body::-webkit-scrollbar {
 
 .triage-pain-map-chips {
   margin-top: 10px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 8px;
 }
 
@@ -3695,6 +3722,8 @@ body::-webkit-scrollbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  min-width: 0;
   gap: 8px;
   border: 1px solid #efb6bc;
   border-radius: 8px;
@@ -3702,6 +3731,11 @@ body::-webkit-scrollbar {
   color: #9e1f2e;
   font-size: 12px;
   padding: 6px 8px;
+}
+
+.triage-pain-map-chip span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .triage-pain-map-chip-remove {
@@ -3722,6 +3756,10 @@ body::-webkit-scrollbar {
   .triage-pain-map-figure {
     width: 100%;
     max-width: 210px;
+  }
+
+  .triage-pain-reference-card img {
+    max-height: 420px;
   }
 }
 
@@ -7084,6 +7122,29 @@ body::-webkit-scrollbar {
 
 .create-ticket-pain-shell {
   margin-bottom: 30px;
+}
+
+.create-ticket-pain-shell .triage-pain-map-card {
+  max-width: 1040px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.create-ticket-pain-shell .triage-pain-map-content {
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+  grid-template-columns: minmax(180px, 210px) minmax(280px, 1fr);
+  gap: 14px;
+}
+
+.create-ticket-pain-shell .triage-pain-map-picker,
+.create-ticket-pain-shell .triage-pain-map-figure {
+  justify-self: center;
+}
+
+.create-ticket-pain-shell .triage-pain-reference-card img {
+  max-height: 390px;
 }
 
 .create-ticket-duration-unit {

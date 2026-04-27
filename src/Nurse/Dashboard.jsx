@@ -1795,6 +1795,62 @@ export default function Dashboard() {
     persistTriageDraft(ticketId, patch);
   };
 
+  const handleCallbackPatch = async (callbackId, patch = {}) => {
+    const normalizedCallbackId = Number(callbackId);
+    if (!Number.isFinite(normalizedCallbackId)) {
+      throw new Error('Invalid callback id.');
+    }
+
+    const payload = {};
+
+    if (typeof patch.status === 'string') {
+      payload.status = patch.status;
+    }
+
+    if (typeof patch.notes === 'string') {
+      payload.notes = patch.notes;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      return;
+    }
+
+    try {
+      const response = await updateCallbackStatus(
+        normalizedCallbackId,
+        payload,
+      );
+      const existingCallback =
+        callbacks.find((entry) => Number(entry?.id) === normalizedCallbackId) ||
+        {};
+      const updatedCallback = {
+        ...existingCallback,
+        ...payload,
+        ...(response?.callback || {}),
+      };
+
+      setCallbacks((previous) =>
+        previous.map((entry) =>
+          Number(entry?.id) === normalizedCallbackId ? updatedCallback : entry,
+        ),
+      );
+
+      setSelectedTicket((previous) => {
+        if (
+          !previous?.isCallback ||
+          Number(previous?.callbackId) !== normalizedCallbackId
+        ) {
+          return previous;
+        }
+
+        return buildTicketFromCallback(updatedCallback);
+      });
+    } catch (error) {
+      console.error('Failed to update callback:', error);
+      throw error;
+    }
+  };
+
   const handleStatusChange = async (nextStatus) => {
     if (!selectedTicket || isSelectedCallbackTicket) {
       return;
@@ -2575,6 +2631,7 @@ export default function Dashboard() {
                         key={`callback-${callback.id}`}
                         callback={callback}
                         isSelected={isSelectedCallback}
+                        onSave={handleCallbackPatch}
                         onSelect={() => {
                           const linkedTicket = (tickets || []).find(
                             (ticket) =>

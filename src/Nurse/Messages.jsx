@@ -35,6 +35,7 @@ const Messages = () => {
   const nurseName = getNurseFirstName();
   const nurseProfileImage = getNurseProfileImage();
   const [newMessage, setNewMessage] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showVideoCall, setShowVideoCall] = useState(false);
@@ -175,11 +176,13 @@ const Messages = () => {
 
     if (
       !activeConversation ||
-      (!newMessage.trim() && uploadedFiles.length === 0)
+      (!newMessage.trim() && uploadedFiles.length === 0) ||
+      isSendingMessage
     ) {
       return;
     }
 
+    setIsSendingMessage(true);
     try {
       const trimmedMessage = newMessage.trim();
 
@@ -210,6 +213,8 @@ const Messages = () => {
     } catch (error) {
       console.error('Error sending message or uploading file:', error);
       alert('Failed to send message. Please try again.');
+    } finally {
+      setIsSendingMessage(false);
     }
   };
 
@@ -762,7 +767,10 @@ const Messages = () => {
                   <button
                     type='submit'
                     className='nurse-chat-send-btn'
-                    disabled={!newMessage.trim() && uploadedFiles.length === 0}
+                    disabled={
+                      isSendingMessage ||
+                      (!newMessage.trim() && uploadedFiles.length === 0)
+                    }
                     title='Send message'
                   >
                     Send

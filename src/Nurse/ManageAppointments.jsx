@@ -23,19 +23,803 @@ import {
   triageTicket,
   assignSpecialist,
   fetchDoctorsFromAPI,
+  createTicket,
+  searchPatientsFromAPI,
 } from './services/apiService.js';
 import NotificationBell from '../components/Notifications/NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
+import { PAIN_MAP_AREAS, PAIN_MAP_VIEWS } from '../components/PainMap/painMapConstants.js';
+import { usePSGC } from '../hooks/usePSGC.js';
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  ClipboardPlus,
+  FileText,
+  Search,
+  UserPlus,
+} from 'lucide-react';
 
 const USE_API = true;
 const TRIAGE_DRAFTS_STORAGE_KEY = 'nurse.triageDraftsByTicket';
+const CREATE_TICKET_DRAFT_KEY = 'nurse.createTicketDraft';
+const COMMON_SYMPTOMS = [
+  'Fever',
+  'Headache',
+  'Cough',
+  'Body Pain',
+  'Dizziness',
+  'Chest Pain',
+  'Sore Throat',
+  'Nausea',
+  'Fatigue',
+  'Shortness of Breath',
+  'Stomach Pain',
+  'Loss of Appetite',
+];
+const SUBSCRIPTION_TYPES = ['YAKAP', 'Private', 'HMO', 'PhilHealth'];
+const CONSULTATION_TYPES = [
+  { label: 'Chat Consultation', value: 'chat' },
+  { label: 'Mobile Call', value: 'mobile_call' },
+  { label: 'Platform Video Call', value: 'platform_call' },
+  { label: 'Viber Audio', value: 'viber_audio' },
+  { label: 'Viber Video', value: 'viber_video' },
+];
+const DURATION_UNITS = ['Hours', 'Days', 'Weeks', 'Months', 'Years'];
 const getTicketDraftFingerprint = (ticket) =>
   String(ticket?.createdAt || ticket?.updatedAt || '').trim();
+
+const createEmptyTicketForm = () => ({
+  patientId: '',
+  fullName: '',
+  mobileNumber: '',
+  email: '',
+  birthday: '',
+  gender: '',
+  addressLine1: '',
+  region: 'Bicol Region',
+  province: 'Camarines Sur',
+  city: 'City of Naga',
+  barangay: 'Santa Cruz',
+  isUsingHmo: '',
+  hmoProvider: '',
+  hmoMemberId: '',
+  subscriptionType: '',
+  consultationChannel: '',
+  chiefComplaint: '',
+  symptoms: [],
+  otherSymptoms: '',
+  painAreas: [],
+  painMapView: 'front',
+  durationValue: '',
+  durationUnit: 'Days',
+  severity: 5,
+});
+
+function CreateTicketSelect({
+  value,
+  placeholder,
+  options = [],
+  onChange,
+  disabled = false,
+  className = '',
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = options.find((option) => option.value === value);
+  const displayValue = selectedOption?.label || value || placeholder;
+
+  return (
+    <div
+      className={`create-ticket-select-wrap ${className}`.trim()}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setIsOpen(false);
+        }
+      }}
+    >
+      <button
+        type="button"
+        className={`create-ticket-select ${!value ? 'placeholder' : ''}`}
+        disabled={disabled}
+        onClick={() => setIsOpen((previous) => !previous)}
+      >
+        <span>{displayValue}</span>
+        <ChevronDown size={18} />
+      </button>
+      {isOpen && !disabled && (
+        <div className="create-ticket-select-menu">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={`create-ticket-select-option ${option.value === value ? 'active' : ''}`}
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NurseCreateTicketWorkspace({ onBack, onTicketCreated }) {
+  const {
+    regions,
+    provinces,
+    cities,
+    barangays,
+    loading: psgcLoading,
+    fetchProvinces,
+    fetchCities,
+    fetchBarangays,
+  } = usePSGC();
+  const [formData, setFormData] = useState(() => {
+    try {
+      const savedDraft = localStorage.getItem(CREATE_TICKET_DRAFT_KEY);
+      return savedDraft ? { ...createEmptyTicketForm(), ...JSON.parse(savedDraft) } : createEmptyTicketForm();
+    } catch {
+      return createEmptyTicketForm();
+    }
+  });
+  const [patientResults, setPatientResults] = useState([]);
+  const [showPatientResults, setShowPatientResults] = useState(false);
+  const [isSearchingPatients, setIsSearchingPatients] = useState(false);
+  const [isCreatingTicket, setIsCreatingTicket] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  useEffect(() => {
+    const searchTerm = formData.fullName.trim();
+    if (!searchTerm || formData.patientId) {
+      setPatientResults([]);
+      return;
+    }
+
+    let isActive = true;
+    setIsSearchingPatients(true);
+    const timeoutId = setTimeout(async () => {
+      try {
+        const results = await searchPatientsFromAPI(searchTerm);
+        if (isActive) {
+          setPatientResults(results || []);
+          setShowPatientResults(true);
+        }
+      } catch {
+        if (isActive) {
+          setPatientResults([]);
+        }
+      } finally {
+        if (isActive) {
+          setIsSearchingPatients(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+    };
+  }, [formData.fullName, formData.patientId]);
+
+  useEffect(() => {
+    if (!formData.region || regions.length === 0) return;
+    const selectedRegion = regions.find((region) => region.name === formData.region);
+    if (selectedRegion) {
+      fetchProvinces(selectedRegion.code);
+    }
+  }, [formData.region, regions, fetchProvinces]);
+
+  useEffect(() => {
+    if (!formData.province || provinces.length === 0) return;
+    const selectedProvince = provinces.find((province) => province.name === formData.province);
+    if (selectedProvince) {
+      fetchCities(selectedProvince.code);
+    }
+  }, [formData.province, provinces, fetchCities]);
+
+  useEffect(() => {
+    if (!formData.city || cities.length === 0) return;
+    const selectedCity = cities.find((city) => city.name === formData.city);
+    if (selectedCity) {
+      fetchBarangays(selectedCity.code);
+    }
+  }, [formData.city, cities, fetchBarangays]);
+
+  const updateField = (field, value) => {
+    setFormData((previous) => ({
+      ...previous,
+      [field]: value,
+      ...(field === 'fullName' ? { patientId: '' } : {}),
+    }));
+    setFormError('');
+  };
+
+  const handlePatientSelect = (patient) => {
+    setFormData((previous) => ({
+      ...previous,
+      patientId: patient.id,
+      fullName: patient.fullName || `${patient.firstName || ''} ${patient.lastName || ''}`.trim(),
+      mobileNumber: patient.mobileNumber || '',
+      email: patient.email || '',
+      birthday: patient.birthday ? String(patient.birthday).slice(0, 10) : '',
+      gender: patient.gender || '',
+      addressLine1: patient.addressLine1 || '',
+      region: patient.region || '',
+      province: patient.province || '',
+      city: patient.city || '',
+      barangay: patient.barangay || '',
+      hmoProvider: patient.hmoCompany || previous.hmoProvider,
+      hmoMemberId: patient.hmoMemberId || previous.hmoMemberId,
+      isUsingHmo: patient.hmoCompany || patient.hmoMemberId ? 'yes' : previous.isUsingHmo,
+    }));
+    setPatientResults([]);
+    setShowPatientResults(false);
+    setFormError('');
+  };
+
+  const handleRegionChange = (event) => {
+    const selectedRegion = regions.find((region) => region.name === event.target.value);
+    setFormData((previous) => ({
+      ...previous,
+      region: event.target.value,
+      province: '',
+      city: '',
+      barangay: '',
+    }));
+    if (selectedRegion) {
+      fetchProvinces(selectedRegion.code);
+    }
+    setFormError('');
+  };
+
+  const handleProvinceChange = (event) => {
+    const selectedProvince = provinces.find((province) => province.name === event.target.value);
+    setFormData((previous) => ({
+      ...previous,
+      province: event.target.value,
+      city: '',
+      barangay: '',
+    }));
+    if (selectedProvince) {
+      fetchCities(selectedProvince.code);
+    }
+    setFormError('');
+  };
+
+  const handleCityChange = (event) => {
+    const selectedCity = cities.find((city) => city.name === event.target.value);
+    setFormData((previous) => ({
+      ...previous,
+      city: event.target.value,
+      barangay: '',
+    }));
+    if (selectedCity) {
+      fetchBarangays(selectedCity.code);
+    }
+    setFormError('');
+  };
+
+  const toggleSymptom = (symptom) => {
+    setFormData((previous) => ({
+      ...previous,
+      symptoms: previous.symptoms.includes(symptom)
+        ? previous.symptoms.filter((entry) => entry !== symptom)
+        : [...previous.symptoms, symptom],
+    }));
+    setFormError('');
+  };
+
+  const handlePainMapViewChange = (view) => {
+    if (!PAIN_MAP_VIEWS.includes(view)) return;
+    updateField('painMapView', view);
+  };
+
+  const handlePainAreaToggle = (area) => {
+    if (!area?.key || !area?.label) return;
+    const areaId = `${formData.painMapView}:${area.key}`;
+
+    setFormData((previous) => {
+      const isSelected = previous.painAreas.some((entry) => entry.id === areaId);
+      return {
+        ...previous,
+        painAreas: isSelected
+          ? previous.painAreas.filter((entry) => entry.id !== areaId)
+          : [
+              ...previous.painAreas,
+              {
+                id: areaId,
+                view: previous.painMapView,
+                key: area.key,
+                label: area.label,
+              },
+            ],
+      };
+    });
+  };
+
+  const handlePainAreaRemove = (areaId) => {
+    setFormData((previous) => ({
+      ...previous,
+      painAreas: previous.painAreas.filter((entry) => entry.id !== areaId),
+    }));
+  };
+
+  const adjustNumericField = (field, amount, min = 0, max = null) => {
+    setFormData((previous) => {
+      const current = Number(previous[field]) || 0;
+      let next = current + amount;
+      if (next < min) next = min;
+      if (max !== null && next > max) next = max;
+      return {
+        ...previous,
+        [field]: String(next),
+      };
+    });
+  };
+
+  const validateForm = () => {
+    if (!formData.fullName.trim()) return 'Full Name is required.';
+    if (!formData.chiefComplaint.trim()) return 'Chief Complaint is required.';
+    if (formData.symptoms.length === 0 && !formData.otherSymptoms.trim()) {
+      return 'Select at least one symptom or enter other symptoms.';
+    }
+    if (!formData.consultationChannel) return 'Consultation Type is required.';
+    return '';
+  };
+
+  const handleCreateTicket = async () => {
+    const validationError = validateForm();
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
+    setIsCreatingTicket(true);
+    setFormError('');
+
+    try {
+      const payload = {
+        patientId: formData.patientId ? Number(formData.patientId) : undefined,
+        patientName: formData.fullName.trim(),
+        mobileNumber: formData.mobileNumber.trim(),
+        email: formData.email.trim(),
+        birthday: formData.birthday,
+        gender: formData.gender,
+        addressLine1: formData.addressLine1.trim(),
+        region: formData.region.trim(),
+        province: formData.province.trim(),
+        city: formData.city.trim(),
+        barangay: formData.barangay.trim(),
+        chiefComplaint: formData.chiefComplaint.trim(),
+        symptoms: formData.symptoms.join(', '),
+        otherSymptoms: formData.otherSymptoms.trim(),
+        preferredDate: new Date().toISOString().slice(0, 10),
+        preferredTime: new Date().toTimeString().slice(0, 5),
+        consultationChannel: formData.consultationChannel,
+        isUsingHmo: formData.isUsingHmo === 'yes',
+        hmoProvider: formData.hmoProvider.trim(),
+        hmoMemberId: formData.hmoMemberId.trim(),
+        painAreas: formData.painAreas,
+        selectedPainAreas: formData.painAreas,
+        painMapView: formData.painMapView,
+        durationValue: formData.durationValue ? Number(formData.durationValue) : null,
+        durationUnit: formData.durationUnit,
+        severity: Number(formData.severity) || null,
+      };
+
+      const createdTicket = await createTicket(payload);
+      localStorage.removeItem(CREATE_TICKET_DRAFT_KEY);
+      setFormData(createEmptyTicketForm());
+      onTicketCreated(createdTicket);
+    } catch (error) {
+      setFormError(error.message || 'Failed to create ticket. Please try again.');
+    } finally {
+      setIsCreatingTicket(false);
+    }
+  };
+
+  const genderOptions = ['Male', 'Female', 'Other'].map((value) => ({
+    label: value,
+    value,
+  }));
+  const subscriptionOptions = SUBSCRIPTION_TYPES.map((value) => ({
+    label: value,
+    value,
+  }));
+  const regionOptions = regions.map((region) => ({
+    label: region.name,
+    value: region.name,
+  }));
+  const provinceOptions = provinces.map((province) => ({
+    label: province.name,
+    value: province.name,
+  }));
+  const cityOptions = cities.map((city) => ({
+    label: city.name,
+    value: city.name,
+  }));
+  const barangayOptions = barangays.map((barangay) => ({
+    label: barangay.name,
+    value: barangay.name,
+  }));
+
+  return (
+    <div className="create-ticket-page">
+      <div className="create-ticket-topbar">
+        <div className="create-ticket-title-row">
+          <button type="button" className="create-ticket-back" onClick={onBack} aria-label="Back">
+            <ArrowLeft size={22} />
+          </button>
+          <UserPlus size={30} className="create-ticket-title-icon" />
+          <div>
+            <h1>Create Consultation Ticket</h1>
+            <p>Nurse-assisted patient registration</p>
+          </div>
+        </div>
+        <div className="create-ticket-actions">
+          <button
+            type="button"
+            className="create-ticket-primary-btn"
+            onClick={handleCreateTicket}
+            disabled={isCreatingTicket}
+          >
+            <FileText size={18} />
+            {isCreatingTicket ? 'Creating...' : 'Create Ticket'}
+          </button>
+        </div>
+      </div>
+
+      <main className="create-ticket-scroll">
+        {formError && <div className="create-ticket-alert">{formError}</div>}
+
+        <section className="create-ticket-card">
+          <h2>Patient Information</h2>
+          <div className="create-ticket-field full create-ticket-search-field">
+            <label>Full Name *</label>
+            <div
+              className="create-ticket-search-wrap"
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setShowPatientResults(false);
+                }
+              }}
+            >
+              <Search size={17} />
+              <input
+                type="text"
+                value={formData.fullName}
+                placeholder="Enter full name"
+                onChange={(event) => updateField('fullName', event.target.value)}
+                onFocus={() => setShowPatientResults(patientResults.length > 0)}
+              />
+              {showPatientResults && (
+                <div className="create-ticket-patient-menu">
+                  {isSearchingPatients ? (
+                    <div className="create-ticket-patient-empty">Searching patients...</div>
+                  ) : patientResults.length > 0 ? (
+                    patientResults.map((patient) => (
+                      <button
+                        key={patient.id}
+                        type="button"
+                        className="create-ticket-patient-option"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          handlePatientSelect(patient);
+                        }}
+                      >
+                        <strong>{patient.fullName}</strong>
+                        <span>{patient.mobileNumber || patient.email || 'Existing patient'}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="create-ticket-patient-empty">No patients found</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="create-ticket-grid two">
+            <div className="create-ticket-field">
+              <label>Mobile Number *</label>
+              <input
+                type="text"
+                value={formData.mobileNumber}
+                placeholder="+63 XXX XXX XXXX"
+                readOnly={Boolean(formData.patientId)}
+                onChange={(event) => updateField('mobileNumber', event.target.value)}
+              />
+            </div>
+            <div className="create-ticket-field">
+              <label>Email</label>
+              <input
+                type="email"
+                value={formData.email}
+                placeholder="email@example.com"
+                readOnly={Boolean(formData.patientId)}
+                onChange={(event) => updateField('email', event.target.value)}
+              />
+            </div>
+            <div className="create-ticket-field">
+              <label>Date of Birth</label>
+              <input
+                type="date"
+                value={formData.birthday}
+                readOnly={Boolean(formData.patientId)}
+                onChange={(event) => updateField('birthday', event.target.value)}
+              />
+            </div>
+            <div className="create-ticket-field">
+              <label>Gender</label>
+              <CreateTicketSelect
+                value={formData.gender}
+                disabled={Boolean(formData.patientId)}
+                placeholder="Select gender"
+                options={genderOptions}
+                onChange={(value) => updateField('gender', value)}
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="create-ticket-card">
+          <h2>Address</h2>
+          <div className="create-ticket-field full">
+            <label>Street Address</label>
+            <input
+              value={formData.addressLine1}
+              placeholder="House/Unit/Building No., Street Name"
+              readOnly={Boolean(formData.patientId)}
+              onChange={(event) => updateField('addressLine1', event.target.value)}
+            />
+          </div>
+          <div className="create-ticket-grid two">
+            <div className="create-ticket-field">
+              <label>Region</label>
+              <CreateTicketSelect
+                value={formData.region}
+                disabled={Boolean(formData.patientId) || psgcLoading.regions}
+                placeholder={psgcLoading.regions ? 'Loading regions...' : 'Select region'}
+                options={regionOptions}
+                onChange={(value) => handleRegionChange({ target: { value } })}
+              />
+            </div>
+            <div className="create-ticket-field">
+              <label>Province</label>
+              <CreateTicketSelect
+                value={formData.province}
+                disabled={Boolean(formData.patientId) || !formData.region || psgcLoading.provinces}
+                placeholder={psgcLoading.provinces ? 'Loading provinces...' : 'Select province'}
+                options={provinceOptions}
+                onChange={(value) => handleProvinceChange({ target: { value } })}
+              />
+            </div>
+            <div className="create-ticket-field">
+              <label>City / Municipality</label>
+              <CreateTicketSelect
+                value={formData.city}
+                disabled={Boolean(formData.patientId) || !formData.province || psgcLoading.cities}
+                placeholder={psgcLoading.cities ? 'Loading cities...' : 'Select city / municipality'}
+                options={cityOptions}
+                onChange={(value) => handleCityChange({ target: { value } })}
+              />
+            </div>
+            <div className="create-ticket-field">
+              <label>Barangay</label>
+              <CreateTicketSelect
+                value={formData.barangay}
+                disabled={Boolean(formData.patientId) || !formData.city || psgcLoading.barangays}
+                placeholder={psgcLoading.barangays ? 'Loading barangays...' : 'Select barangay'}
+                options={barangayOptions}
+                onChange={(value) => updateField('barangay', value)}
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="create-ticket-card">
+          <h2>Healthcare Information</h2>
+          <div className="create-ticket-radio-row">
+            <label>PhilHealth Member?</label>
+            <label><input type="radio" name="hmo" checked={formData.isUsingHmo === 'yes'} onChange={() => updateField('isUsingHmo', 'yes')} /> Yes</label>
+            <label><input type="radio" name="hmo" checked={formData.isUsingHmo === 'no'} onChange={() => updateField('isUsingHmo', 'no')} /> No</label>
+          </div>
+          <div className="create-ticket-field full">
+            <label>HMO Provider (Optional)</label>
+            <input value={formData.hmoProvider} placeholder="e.g., Maxicare, Medicard" onChange={(event) => updateField('hmoProvider', event.target.value)} />
+          </div>
+          <div className="create-ticket-field full">
+            <label>Subscription Type</label>
+            <CreateTicketSelect
+              value={formData.subscriptionType}
+              placeholder="Select subscription type"
+              options={subscriptionOptions}
+              onChange={(value) => updateField('subscriptionType', value)}
+            />
+          </div>
+        </section>
+
+        <section className="create-ticket-card">
+          <h2>Consultation Type *</h2>
+          <div className="create-ticket-field full">
+            <CreateTicketSelect
+              value={formData.consultationChannel}
+              placeholder="Select consultation type"
+              options={CONSULTATION_TYPES}
+              onChange={(value) => updateField('consultationChannel', value)}
+            />
+          </div>
+        </section>
+
+        <section className="create-ticket-card">
+          <h2>Initial Intake</h2>
+          <div className="create-ticket-field full">
+            <label>Chief Complaint</label>
+            <textarea
+              value={formData.chiefComplaint}
+              placeholder="Describe the main complaint..."
+              onChange={(event) => updateField('chiefComplaint', event.target.value)}
+            />
+          </div>
+          <label className="create-ticket-mini-label">Common Symptoms</label>
+          <div className="triage-symptom-pills create-ticket-symptom-pills">
+            {COMMON_SYMPTOMS.map((symptom) => (
+              <button
+                key={symptom}
+                type="button"
+                className={`triage-symptom-pill ${formData.symptoms.includes(symptom) ? 'selected' : ''}`}
+                onClick={() => toggleSymptom(symptom)}
+              >
+                {symptom}
+              </button>
+            ))}
+          </div>
+          <div className="create-ticket-field full">
+            <label>Other Symptoms</label>
+            <input
+              value={formData.otherSymptoms}
+              placeholder="Additional symptoms not listed above..."
+              onChange={(event) => updateField('otherSymptoms', event.target.value)}
+            />
+          </div>
+        </section>
+
+        <section className="create-ticket-pain-shell">
+          <article className="triage-pain-map-card">
+            <h4>Pain Map</h4>
+            <div className="triage-pain-map-controls-row">
+              <div className="triage-pain-map-view-toggle" role="tablist" aria-label="Pain map view">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={formData.painMapView === 'front'}
+                  className={`triage-pain-map-view-btn ${formData.painMapView === 'front' ? 'active' : ''}`}
+                  onClick={() => handlePainMapViewChange('front')}
+                >
+                  Front
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={formData.painMapView === 'back'}
+                  className={`triage-pain-map-view-btn ${formData.painMapView === 'back' ? 'active' : ''}`}
+                  onClick={() => handlePainMapViewChange('back')}
+                >
+                  Back
+                </button>
+              </div>
+              <div className="triage-pain-readonly-meta inline">
+                <div className="triage-vitals-grid triage-vitals-grid-readonly inline">
+                  <div className="triage-pain-meta-item">
+                    <label>Pain Score</label>
+                    <div className="triage-vital-input-wrap triage-vital-input-wrap-meta">
+                      <input
+                        className="triage-vital-input with-unit create-ticket-number-field"
+                        type="text"
+                        min="0"
+                        max="10"
+                        value={formData.severity}
+                        onChange={(event) => updateField('severity', event.target.value.replace(/\D/g, '').slice(0, 2))}
+                      />
+                      <div className="create-ticket-number-stepper" aria-label="Pain score controls">
+                        <button type="button" onClick={() => adjustNumericField('severity', 1, 0, 10)} aria-label="Increase pain score">
+                          <ChevronUp size={12} strokeWidth={2.5} />
+                        </button>
+                        <button type="button" onClick={() => adjustNumericField('severity', -1, 0, 10)} aria-label="Decrease pain score">
+                          <ChevronDown size={12} strokeWidth={2.5} />
+                        </button>
+                      </div>
+                      <span className="triage-vital-unit">/10</span>
+                    </div>
+                  </div>
+                  <div className="triage-pain-meta-item triage-pain-meta-item-duration">
+                    <label>Pain Duration</label>
+                    <div className="triage-vital-input-wrap triage-vital-input-wrap-duration triage-vital-input-wrap-meta">
+                      <input
+                        className="triage-vital-input with-unit create-ticket-number-field"
+                        type="text"
+                        min="0"
+                        value={formData.durationValue}
+                        onChange={(event) => updateField('durationValue', event.target.value.replace(/\D/g, '').slice(0, 3))}
+                      />
+                      <div className="create-ticket-number-stepper" aria-label="Pain duration controls">
+                        <button type="button" onClick={() => adjustNumericField('durationValue', 1, 0)} aria-label="Increase pain duration">
+                          <ChevronUp size={12} strokeWidth={2.5} />
+                        </button>
+                        <button type="button" onClick={() => adjustNumericField('durationValue', -1, 0)} aria-label="Decrease pain duration">
+                          <ChevronDown size={12} strokeWidth={2.5} />
+                        </button>
+                      </div>
+                      <select
+                        className="create-ticket-duration-unit"
+                        value={formData.durationUnit}
+                        onChange={(event) => updateField('durationUnit', event.target.value)}
+                      >
+                        {DURATION_UNITS.map((unit) => (
+                          <option key={unit} value={unit}>
+                            {unit}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="triage-pain-map-content">
+              <div className={`triage-pain-map-figure ${formData.painMapView === 'back' ? 'back' : 'front'}`}>
+                {PAIN_MAP_AREAS[formData.painMapView].map((area) => {
+                  const areaId = `${formData.painMapView}:${area.key}`;
+                  const isSelected = formData.painAreas.some((entry) => entry.id === areaId);
+                  return (
+                    <button
+                      key={areaId}
+                      type="button"
+                      className={`triage-body-part ${area.className} ${isSelected ? 'selected' : ''}`}
+                      onClick={() => handlePainAreaToggle(area)}
+                      aria-pressed={isSelected}
+                      aria-label={`${area.label} (${formData.painMapView})`}
+                    />
+                  );
+                })}
+              </div>
+
+              <div className="triage-pain-map-selection">
+                <div className="triage-pain-map-selection-title">Selected pain areas:</div>
+                {formData.painAreas.length === 0 ? (
+                  <div className="triage-pain-map-empty">No areas selected</div>
+                ) : (
+                  <div className="triage-pain-map-chips">
+                    {formData.painAreas.map((area) => (
+                      <div key={area.id} className="triage-pain-map-chip">
+                        <span>{area.label}{` (${area.view === 'back' ? 'Back' : 'Front'})`}</span>
+                        <button type="button" className="triage-pain-map-chip-remove" onClick={() => handlePainAreaRemove(area.id)} aria-label={`Remove ${area.label}`}>
+                          x
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="triage-pain-map-instruction">Click on body parts to mark pain locations</div>
+          </article>
+        </section>
+      </main>
+    </div>
+  );
+}
 
 export default function ManageAppointment() {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const [tickets, setTickets] = useState([]);
+  const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false);
 
   useEffect(() => {
     if (!USE_API) {
@@ -220,6 +1004,15 @@ export default function ManageAppointment() {
     navigate('/');
   };
 
+  const handleNurseTicketCreated = (createdTicket) => {
+    const nextTicket = createdTicket?.data || createdTicket;
+    if (nextTicket) {
+      setTickets((previous) => [nextTicket, ...previous]);
+    }
+    setIsCreateTicketOpen(false);
+    addNotification('Ticket Created', 'The consultation ticket was added to the patient queue.');
+  };
+
   const updateStatus = async (ticketId, newStatus) => {
     /* console.log(
       'ManageAppointments: Updating ticket status:',
@@ -362,6 +1155,7 @@ export default function ManageAppointment() {
         await assignSpecialist(
           parseInt(ticketId, 10),
           parseInt(assignedSpecialist, 10),
+          triageData,
         );
       }
 
@@ -397,6 +1191,15 @@ export default function ManageAppointment() {
   const handleViewBillingHistory = () => {
     alert('View History is interactive but not connected yet.');
   };
+
+  if (isCreateTicketOpen) {
+    return (
+      <NurseCreateTicketWorkspace
+        onBack={() => setIsCreateTicketOpen(false)}
+        onTicketCreated={handleNurseTicketCreated}
+      />
+    );
+  }
 
   return (
     <div className='dashboard nurse-manage-dashboard'>
@@ -464,7 +1267,19 @@ export default function ManageAppointment() {
                 <h2>Processing Tickets</h2>
                 <p>Patients currently being handled by triage.</p>
               </div>
-              <span>{processingTickets.length}</span>
+              <div className="processing-ticket-header-actions">
+                <span className="processing-ticket-count">
+                  {processingTickets.length}
+                </span>
+                <button
+                  type="button"
+                  className="create-ticket-entry-btn"
+                  onClick={() => setIsCreateTicketOpen(true)}
+                >
+                  <ClipboardPlus size={18} />
+                  Create Ticket
+                </button>
+              </div>
             </div>
             {processingTickets.map((ticket) => (
               <div

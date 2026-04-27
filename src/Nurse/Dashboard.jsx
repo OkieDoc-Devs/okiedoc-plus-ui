@@ -55,7 +55,6 @@ import {
 const DEFAULT_TEXT = "N/A";
 const DASHBOARD_REFRESH_MS = 30000;
 const QUICK_MESSAGE_LIMIT = 60;
-const DASHBOARD_TICKETS_CACHE_KEY = 'nurse.dashboardTicketsCache';
 const TRIAGE_STATUS_OPTIONS = [
   "Waiting",
   "In Triage",
@@ -314,6 +313,21 @@ const formatTime = (dateString) => {
   });
 };
 
+const formatTicketTime = (ticket) => {
+  const preferredTime = String(ticket?.preferredTime || '').trim();
+  if (/^\d{2}:\d{2}/.test(preferredTime)) {
+    const [hours, minutes] = preferredTime.split(':');
+    const date = new Date();
+    date.setHours(Number(hours), Number(minutes), 0, 0);
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  return formatTime(readValue(ticket, ['createdAt', 'preferredDate'], null));
+};
+
 const calculateAge = (birthdate) => {
   if (!birthdate) return DEFAULT_TEXT;
   const today = new Date();
@@ -567,16 +581,6 @@ const getUrgencyLevelFromTicket = (ticket) => {
 const getTicketDraftFingerprint = (ticket) =>
   String(readValue(ticket, ["createdAt", "updatedAt"], "") || "").trim();
 
-const loadCachedDashboardTickets = () => {
-  try {
-    const raw = localStorage.getItem(DASHBOARD_TICKETS_CACHE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -585,7 +589,7 @@ export default function Dashboard() {
   const [nurseProfileImage, setNurseProfileImage] = useState(
     getNurseProfileImage(),
   );
-  const [tickets, setTickets] = useState(() => loadCachedDashboardTickets());
+  const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [hasManualDeselection, setHasManualDeselection] = useState(false);
   const [quickMessage, setQuickMessage] = useState("");
@@ -676,13 +680,16 @@ export default function Dashboard() {
     conversations,
     activeConversation,
     messages,
+    loadConversations,
     openConversation,
+    closeConversation,
     startConversation,
     sendMessage: sendChatMessage,
   } = useChat({ currentUserId: user?.id || null, currentUserType: "n" });
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('nurse.dashboardTicketsCache');
       disconnectSocket();
       await logout();
     } catch (error) {
@@ -931,15 +938,6 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        DASHBOARD_TICKETS_CACHE_KEY,
-        JSON.stringify(Array.isArray(tickets) ? tickets : []),
-      );
-    } catch {}
-  }, [tickets]);
-
-  useEffect(() => {
     setTriageDraftsByTicketId((previous) => {
       const validTicketIds = new Set(
         (tickets || [])
@@ -971,6 +969,8 @@ export default function Dashboard() {
   }, [tickets]);
 
   useEffect(() => {
+    localStorage.removeItem('nurse.dashboardTicketsCache');
+
     let isMounted = true;
 
     const loadDashboardData = async () => {
@@ -1017,15 +1017,13 @@ export default function Dashboard() {
       try {
         const apiTickets = await fetchTicketsFromAPI();
         if (isMounted) {
-          setTickets((previous) => {
-            if (Array.isArray(apiTickets) && apiTickets.length > 0) {
-              return apiTickets;
-            }
-            return previous;
-          });
+          setTickets(Array.isArray(apiTickets) ? apiTickets : []);
         }
       } catch (ticketError) {
         console.error("Tickets API error:", ticketError.message);
+        if (isMounted) {
+          setTickets([]);
+        }
       }
     };
 
@@ -1128,7 +1126,7 @@ export default function Dashboard() {
   }, [showTransferModal, user?.id]);
 
   useEffect(() => {
-    if (!selectedTicket || !selectedPatientId || selectedTicket.isCallback) {
+    if (!selectedTicket || selectedTicket.isCallback) {
       return;
     }
 
@@ -1183,6 +1181,9 @@ export default function Dashboard() {
     openConversation(fallbackConversation)
       .catch(async (error) => {
         console.error("Failed to open quick conversation by ticket id:", error);
+        if (!selectedPatientId) {
+          return;
+        }
         try {
           await startConversation("direct", selectedPatientId);
         } catch (createError) {
@@ -1617,11 +1618,23 @@ export default function Dashboard() {
   const quickMessages = useMemo(() => {
     const selectedTicketId = Number(selectedTicket?.id);
     const activeConversationId = Number(activeConversation?.id);
+    const selectedTicketCreatedAt = selectedTicket?.createdAt
+      ? new Date(selectedTicket.createdAt).getTime()
+      : null;
     const activeTicketMessages =
       Number.isFinite(selectedTicketId) &&
       Number.isFinite(activeConversationId) &&
       selectedTicketId === activeConversationId
-        ? messages
+        ? messages.filter((message) => {
+            if (!selectedTicketCreatedAt || !message?.rawTimestamp) {
+              return true;
+            }
+            const messageTime = new Date(message.rawTimestamp).getTime();
+            return (
+              Number.isNaN(messageTime) ||
+              messageTime >= selectedTicketCreatedAt
+            );
+          })
         : [];
     const optimisticMessages =
       optimisticQuickMessagesByTicketId[selectedTicketId] || [];
@@ -2006,6 +2019,10 @@ export default function Dashboard() {
       setSelectedTicket((previous) =>
         Number(previous?.id) === transferredTicketId ? null : previous,
       );
+      if (Number(activeConversation?.id) === transferredTicketId) {
+        closeConversation();
+      }
+      loadConversations();
       setHasManualDeselection(false);
 
       closeTransferModal();
@@ -2462,23 +2479,21 @@ export default function Dashboard() {
         return;
       }
       setQuickMessage("");
-      window.setTimeout(() => {
-        setOptimisticQuickMessagesByTicketId((previous) => {
-          const currentMessages = previous[selectedTicketId] || [];
-          const nextMessages = currentMessages.filter(
-            (message) => message.id !== optimisticMessage.id,
-          );
+      setOptimisticQuickMessagesByTicketId((previous) => {
+        const currentMessages = previous[selectedTicketId] || [];
+        const nextMessages = currentMessages.filter(
+          (message) => message.id !== optimisticMessage.id,
+        );
 
-          if (nextMessages.length === currentMessages.length) {
-            return previous;
-          }
+        if (nextMessages.length === currentMessages.length) {
+          return previous;
+        }
 
-          return {
-            ...previous,
-            [selectedTicketId]: nextMessages,
-          };
-        });
-      }, 8000);
+        return {
+          ...previous,
+          [selectedTicketId]: nextMessages,
+        };
+      });
     } catch (error) {
       console.error("Failed to send quick message:", error);
       setQuickMessageError("Unable to send your message right now.");
@@ -2724,15 +2739,7 @@ export default function Dashboard() {
                       <div className='triage-queue-footer'>
                         <div className='triage-ticket-time'>
                           <Clock3 size={14} strokeWidth={2.2} />
-                          <span>
-                            {formatTime(
-                              readValue(
-                                ticket,
-                                ['preferredDate', 'createdAt'],
-                                null,
-                              ),
-                            )}
-                          </span>
+                          <span>{formatTicketTime(ticket)}</span>
                         </div>
 
                         {urgencyLevel ? (

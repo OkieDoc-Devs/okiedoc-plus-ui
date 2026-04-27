@@ -1628,11 +1628,14 @@ body::-webkit-scrollbar {
   border-top: 1px solid #d9dde4;
   background: #f3f4f6;
   height: calc(100vh - 146px);
+  padding-bottom: 24px;
+  box-sizing: content-box;
 }
 
 .triage-dashboard {
   height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .triage-dashboard .dashboard-header {
@@ -1927,9 +1930,11 @@ body::-webkit-scrollbar {
   text-align: left;
   padding: 12px;
   cursor: pointer;
-  min-height: 138px;
+  min-height: 156px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
   appearance: none;
   -webkit-appearance: none;
 }
@@ -1942,9 +1947,10 @@ body::-webkit-scrollbar {
 
 .triage-queue-main {
   display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: flex-start;
   gap: 10px;
+  width: 100%;
 }
 
 .triage-queue-avatar {
@@ -1965,10 +1971,8 @@ body::-webkit-scrollbar {
 }
 
 .triage-queue-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  display: block;
+  width: 100%;
 }
 
 .triage-ticket-code {
@@ -1983,9 +1987,13 @@ body::-webkit-scrollbar {
   font-size: 12px;
   color: #3c495d;
   line-height: 1.15;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .triage-status-badge {
+  flex: 0 0 auto;
+  justify-self: end;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 700;
@@ -2015,7 +2023,7 @@ body::-webkit-scrollbar {
   align-items: center;
   align-self: flex-start;
   gap: 6px;
-  margin-top: 16px;
+  margin-top: 0;
   border: 1px solid #ccd2dd;
   background: #f7f8fb;
   color: #121722;
@@ -2030,7 +2038,7 @@ body::-webkit-scrollbar {
 
 .triage-queue-footer {
   margin-top: auto;
-  padding-top: 12px;
+  padding-top: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6599,4 +6607,576 @@ body::-webkit-scrollbar {
 
 .nurse-message-type-nurse .nurse-message-sender-name {
   color: #0b5388;
+}
+
+.processing-ticket-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.processing-ticket-count {
+  min-width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #d8dde5;
+  background: #eef5ff;
+  color: #1d4ed8;
+  font-size: 16px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+}
+
+.create-ticket-entry-btn {
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff;
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.create-ticket-entry-btn:hover {
+  background: #1d4ed8;
+}
+
+.create-ticket-page {
+  min-height: 100vh;
+  background: #f6f7f9;
+  color: #020817;
+}
+
+.create-ticket-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  min-height: 104px;
+  background: #ffffff;
+  border-bottom: 1px solid #dedede;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 20px 22px 32px;
+}
+
+.create-ticket-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.create-ticket-back {
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: #111827;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-top: 2px;
+}
+
+.create-ticket-title-icon {
+  color: #2563eb;
+  flex: 0 0 auto;
+}
+
+.create-ticket-title-row h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.create-ticket-title-row p {
+  margin: 6px 0 0;
+  color: #344054;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.create-ticket-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.create-ticket-outline-btn,
+.create-ticket-primary-btn {
+  min-height: 42px;
+  border-radius: 10px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.create-ticket-outline-btn {
+  border: 1px solid #e1e4ea;
+  background: #ffffff;
+  color: #111827;
+}
+
+.create-ticket-primary-btn {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.create-ticket-primary-btn:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.create-ticket-scroll {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 22px 0 48px;
+}
+
+.create-ticket-alert {
+  margin: 0 0 18px;
+  border: 1px solid #bfd8ff;
+  border-radius: 10px;
+  background: #eef5ff;
+  color: #1e3a8a;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.create-ticket-card {
+  background: #ffffff;
+  border: 1px solid #dedede;
+  border-radius: 16px;
+  padding: 22px 30px;
+  margin-bottom: 30px;
+}
+
+.create-ticket-card h2 {
+  margin: 0 0 34px;
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 800;
+  color: #020817;
+  letter-spacing: 0;
+}
+
+.create-ticket-grid {
+  display: grid;
+  gap: 18px 20px;
+}
+
+.create-ticket-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.create-ticket-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.create-ticket-field.full {
+  grid-column: 1 / -1;
+  margin-bottom: 18px;
+}
+
+.create-ticket-field label,
+.create-ticket-mini-label {
+  display: block;
+  margin-bottom: 2px;
+  color: #020817;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.create-ticket-field input,
+.create-ticket-field select,
+.create-ticket-field textarea {
+  width: 100%;
+  border: none;
+  border-radius: 9px;
+  background: #f0f0f2;
+  color: #111827;
+  min-height: 42px;
+  padding: 0 16px;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.create-ticket-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 46px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #667085 50%),
+    linear-gradient(135deg, #667085 50%, transparent 50%);
+  background-position:
+    calc(100% - 24px) 50%,
+    calc(100% - 17px) 50%;
+  background-size:
+    7px 7px,
+    7px 7px;
+  background-repeat: no-repeat;
+}
+
+.create-ticket-field select:disabled {
+  background-image:
+    linear-gradient(45deg, transparent 50%, #98a2b3 50%),
+    linear-gradient(135deg, #98a2b3 50%, transparent 50%);
+}
+
+.create-ticket-select-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.create-ticket-select {
+  width: 100%;
+  border: none;
+  border-radius: 9px;
+  background: #f0f0f2;
+  color: #111827;
+  min-height: 42px;
+  padding: 0 16px;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.create-ticket-select.placeholder {
+  color: #667085;
+}
+
+.create-ticket-select:disabled {
+  cursor: default;
+  opacity: 1;
+  color: #667085;
+}
+
+.create-ticket-select svg {
+  flex: 0 0 auto;
+  color: #667085;
+}
+
+.create-ticket-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid #d8dde5;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14);
+  z-index: 60;
+  padding: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: #c4c9d2 transparent;
+}
+
+.create-ticket-select-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.create-ticket-select-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.create-ticket-select-menu::-webkit-scrollbar-thumb {
+  background: #c4c9d2;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+}
+
+.create-ticket-select-menu::-webkit-scrollbar-thumb:hover {
+  background: #aeb5c0;
+}
+
+.create-ticket-select-option {
+  width: 100%;
+  min-height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #111827;
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+
+.create-ticket-select-option:hover,
+.create-ticket-select-option.active {
+  background: #eef5ff;
+  color: #1d4ed8;
+}
+
+.create-ticket-field textarea {
+  min-height: 99px;
+  padding: 14px 16px;
+  resize: vertical;
+}
+
+.create-ticket-field input::placeholder,
+.create-ticket-field textarea::placeholder {
+  color: #667085;
+}
+
+.create-ticket-field input:focus,
+.create-ticket-field select:focus,
+.create-ticket-field textarea:focus {
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.22);
+}
+
+.create-ticket-field input:read-only {
+  color: #667085;
+}
+
+.create-ticket-field input[type='date'] {
+  color-scheme: light;
+}
+
+.create-ticket-field input[type='date']::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  cursor: pointer;
+  filter: invert(35%) sepia(12%) saturate(708%) hue-rotate(181deg) brightness(91%) contrast(86%);
+}
+
+.create-ticket-field select:disabled,
+.create-ticket-field input:read-only {
+  opacity: 1;
+}
+
+.create-ticket-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.create-ticket-search-wrap svg {
+  position: absolute;
+  left: 14px;
+  color: #667085;
+  pointer-events: none;
+}
+
+.create-ticket-search-wrap input {
+  padding-left: 42px;
+}
+
+.create-ticket-patient-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #d8dde5;
+  border-radius: 12px;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 25;
+  scrollbar-width: thin;
+  scrollbar-color: #c4c9d2 transparent;
+}
+
+.create-ticket-patient-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.create-ticket-patient-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.create-ticket-patient-menu::-webkit-scrollbar-thumb {
+  background: #c4c9d2;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+}
+
+.create-ticket-patient-menu::-webkit-scrollbar-thumb:hover {
+  background: #aeb5c0;
+}
+
+.create-ticket-patient-option {
+  width: 100%;
+  border: none;
+  background: #ffffff;
+  padding: 12px 16px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.create-ticket-patient-option:hover {
+  background: #f3f6fb;
+}
+
+.create-ticket-patient-option strong {
+  color: #111827;
+  font-size: 14px;
+}
+
+.create-ticket-patient-option span,
+.create-ticket-patient-empty {
+  color: #667085;
+  font-size: 13px;
+}
+
+.create-ticket-patient-empty {
+  padding: 14px 16px;
+}
+
+.create-ticket-radio-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.create-ticket-radio-row > label:first-child {
+  font-weight: 700;
+}
+
+.create-ticket-radio-row input {
+  margin-right: 8px;
+}
+
+.create-ticket-symptom-pills {
+  margin: 8px 0 18px;
+}
+
+.create-ticket-pain-shell {
+  margin-bottom: 30px;
+}
+
+.create-ticket-duration-unit {
+  flex: 0 0 82px;
+  width: 82px;
+  min-width: 82px;
+  border: none;
+  background: transparent;
+  color: #263247;
+  font-size: 12px;
+  font-weight: 700;
+  outline: none;
+  padding: 0 20px 0 2px;
+  appearance: auto;
+  -webkit-appearance: auto;
+}
+
+.create-ticket-number-field {
+  flex: 0 0 24px !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  max-width: 24px !important;
+}
+
+.create-ticket-number-stepper {
+  width: 14px;
+  height: 20px;
+  margin: 0 2px 0 -18px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 0 0 14px;
+  box-sizing: border-box;
+}
+
+.triage-vitals-grid div > div.create-ticket-number-stepper {
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.create-ticket-number-stepper button {
+  flex: 1 1 0;
+  min-height: 0;
+  border: none;
+  border-bottom: none;
+  background: transparent;
+  color: #5f6f86;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  width: 100%;
+}
+
+.create-ticket-number-stepper button svg {
+  width: 10px;
+  height: 10px;
+}
+
+.create-ticket-number-stepper button:last-child {
+  border-bottom: none;
+}
+
+.create-ticket-number-stepper button:hover {
+  background: transparent;
+  color: #263247;
+}
+
+
+@media (max-width: 900px) {
+  .create-ticket-topbar {
+    position: static;
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 18px;
+  }
+
+  .create-ticket-actions {
+    justify-content: flex-start;
+  }
+
+  .create-ticket-scroll {
+    padding: 18px;
+  }
+
+  .create-ticket-grid.two {
+    grid-template-columns: 1fr;
+  }
 }

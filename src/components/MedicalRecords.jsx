@@ -20,6 +20,7 @@ import {
   fetchPatientProfile,
   updatePatientProfile,
 } from '../api/apiClient';
+import { openPrintWindow } from '../Specialists/utils/exportUtils';
 const TABS = [
   { id: 'history', label: 'Medical History', icon: Activity },
   { id: 'consultations', label: 'Past Consultations', icon: FileText },
@@ -76,6 +77,20 @@ const toPillList = (value) => {
     .split(/\n|,|;/)
     .map((entry) => entry.trim())
     .filter(Boolean);
+};
+
+const toSafeText = (value) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+const formatListForPdf = (value) => {
+  const entries = Array.isArray(value) ? value.filter(Boolean) : [];
+  if (!entries.length) {
+    return '<li>None</li>';
+  }
+  return entries.map((item) => `<li>${toSafeText(item)}</li>`).join('');
 };
 
 export default function PatientMedicalRecordsModal({
@@ -254,6 +269,45 @@ export default function PatientMedicalRecordsModal({
     age: patient?.age || 0,
     gender: patient?.gender || 'Unknown',
     consultationType: toConsultTypeLabel(consultationType),
+  };
+  const handleDownloadPdf = () => {
+    const html = `
+      <h1>Patient Medical History</h1>
+      <div class="meta">
+        <div><strong>Patient Name:</strong> ${toSafeText(info.name)}</div>
+        <div><strong>Ticket ID:</strong> ${toSafeText(info.ticketId)}</div>
+        <div><strong>Age / Gender:</strong> ${toSafeText(`${info.age} / ${info.gender}`)}</div>
+        <div><strong>Consultation Type:</strong> ${toSafeText(info.consultationType)}</div>
+        <div><strong>Generated:</strong> ${toSafeText(new Date().toLocaleString())}</div>
+      </div>
+
+      <h2>Active Diseases</h2>
+      <ul>${formatListForPdf(activeDiseasesValue)}</ul>
+
+      <h2>Allergies</h2>
+      <ul>${formatListForPdf(allergiesValue)}</ul>
+
+      <h2>Past Diseases</h2>
+      <p>${toSafeText(pastDiseasesValue || 'None')}</p>
+
+      <h2>Family History</h2>
+      <p>${toSafeText(familyHistoryValue || 'None')}</p>
+
+      <h2>Social History</h2>
+      <div class="box">
+        <div><strong>Smoking:</strong> ${toSafeText(smokingValue || 'None')}</div>
+        <div><strong>Drinking:</strong> ${toSafeText(drinkingValue || 'None')}</div>
+        <div><strong>Lifestyle Notes:</strong> ${toSafeText(lifestyleNotesValue || 'None')}</div>
+      </div>
+
+      <h2>Surgeries</h2>
+      <p>${toSafeText(surgeriesValue || 'None')}</p>
+
+      <h2>Current Medications</h2>
+      <ul>${formatListForPdf(medicationsValue)}</ul>
+    `;
+
+    openPrintWindow(html, 'Patient Medical History');
   };
   useEffect(() => {
     if (!patientId && !patient?.id) return;
@@ -702,7 +756,10 @@ export default function PatientMedicalRecordsModal({
               <Mail size={14} strokeWidth={2.2} />
               Resend to Patient Email
             </button>
-            <button className='flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold transition-colors shadow-sm shadow-blue-200'>
+            <button
+              onClick={handleDownloadPdf}
+              className='flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold transition-colors shadow-sm shadow-blue-200'
+            >
               <Download size={14} strokeWidth={2.5} />
               Download PDF
             </button>

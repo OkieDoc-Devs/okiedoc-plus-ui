@@ -63,6 +63,7 @@ const TRIAGE_STATUS_OPTIONS = [
   'Urgent',
   'Completed',
 ];
+const CALLBACK_STATUS_OPTIONS = ['new', 'in_progress', 'pending', 'expired'];
 const SYMPTOM_PILL_OPTIONS = [
   'Fever',
   'Headache',
@@ -519,6 +520,18 @@ const mapCallbackStatusToTicketStatus = (statusValue) => {
   return 'pending';
 };
 
+const getCallbackStatusOptionFromDisplay = (displayValue) => {
+  const value = String(displayValue || '')
+    .trim()
+    .toLowerCase();
+
+  if (value === 'in progress') return 'in_progress';
+  if (value === 'new') return 'new';
+  if (value === 'pending') return 'pending';
+  if (value === 'expired') return 'expired';
+  return 'new';
+};
+
 const getCallbackStatusLabel = (statusValue) => {
   const value = String(statusValue || '')
     .trim()
@@ -561,6 +574,7 @@ const buildTicketFromCallback = (callback) => {
     symptoms: callback?.message || '',
     consultationChannel: getCallbackChannelLabel(callback),
     status: mapCallbackStatusToTicketStatus(callback?.status),
+    callbackStatus: callback?.status || 'new',
     preferredDate: callback?.createdAt || null,
     createdAt: callback?.createdAt || null,
     linkedTicketId: callback?.linkedTicketId || null,
@@ -1264,9 +1278,24 @@ export default function Dashboard() {
       rawLocalDraft.__ticketFingerprint === selectedTicketFingerprint;
     const localDraft = shouldUseLocalDraft ? rawLocalDraft : {};
 
-    const hydratedStatus =
-      localDraft.status || localDraft.triageStatus || selectedTicket.status;
-    setTriageStatus(mapTicketStatusToTriageStatus(hydratedStatus));
+    if (isSelectedCallbackTicket) {
+      const callbackStatus = selectedTicket.callbackStatus || 'new';
+      setTriageStatus(
+        callbackStatus === 'new'
+          ? 'New'
+          : callbackStatus === 'in_progress'
+            ? 'In Progress'
+            : callbackStatus === 'pending'
+              ? 'Pending'
+              : callbackStatus === 'expired'
+                ? 'Expired'
+                : 'New',
+      );
+    } else {
+      const hydratedStatus =
+        localDraft.status || localDraft.triageStatus || selectedTicket.status;
+      setTriageStatus(mapTicketStatusToTriageStatus(hydratedStatus));
+    }
     const inquiryFlag = toBooleanFlag(
       readValue(selectedTicket, ['isInquiry', 'is_inquiry', 'inquiry'], false),
     );
@@ -1871,17 +1900,38 @@ export default function Dashboard() {
   };
 
   const handleStatusChange = async (nextStatus) => {
-    if (!selectedTicket || isSelectedCallbackTicket) {
+    if (!selectedTicket) {
       return;
     }
 
-    setTriageStatus(nextStatus);
+    if (isSelectedCallbackTicket) {
+      const displayStatus =
+        nextStatus === 'new'
+          ? 'New'
+          : nextStatus === 'in_progress'
+            ? 'In Progress'
+            : nextStatus === 'pending'
+              ? 'Pending'
+              : nextStatus === 'expired'
+                ? 'Expired'
+                : 'New';
+      setTriageStatus(displayStatus);
+    } else {
+      setTriageStatus(nextStatus);
+    }
+
     setShowStatusMenu(false);
     setIsUpdatingStatus(true);
 
-    await applyTicketPatch(selectedTicket.id, {
-      status: mapTriageStatusToTicketStatus(nextStatus),
-    });
+    if (isSelectedCallbackTicket) {
+      await handleCallbackPatch(selectedTicket.callbackId, {
+        status: nextStatus,
+      });
+    } else {
+      await applyTicketPatch(selectedTicket.id, {
+        status: mapTriageStatusToTicketStatus(nextStatus),
+      });
+    }
 
     setIsUpdatingStatus(false);
   };
@@ -3036,14 +3086,17 @@ export default function Dashboard() {
                     <div className='triage-status-select-wrap'>
                       <button
                         type='button'
-                        className={`triage-status-select ${triageStatus
-                          .toLowerCase()
-                          .replace(/\s+/g, '-')}`}
+                        className={`triage-status-select ${
+                          isSelectedCallbackTicket
+                            ? `callback-status-${getCallbackStatusOptionFromDisplay(triageStatus)}`
+                            : triageStatus.toLowerCase().replace(/\s+/g, '-')
+                        }`}
                         onClick={() => setShowStatusMenu((prev) => !prev)}
-                        disabled={isUpdatingStatus || isSelectedCallbackTicket}
+                        disabled={isUpdatingStatus}
                       >
                         <span className='triage-status-current'>
-                          {renderTriageStatusIcon(triageStatus)}
+                          {!isSelectedCallbackTicket &&
+                            renderTriageStatusIcon(triageStatus)}
                           <span>{triageStatus}</span>
                         </span>
                         <ChevronDown size={16} strokeWidth={2.2} />
@@ -3051,7 +3104,10 @@ export default function Dashboard() {
 
                       {showStatusMenu && (
                         <div className='triage-status-menu'>
-                          {TRIAGE_STATUS_OPTIONS.map((option) => (
+                          {(isSelectedCallbackTicket
+                            ? CALLBACK_STATUS_OPTIONS
+                            : TRIAGE_STATUS_OPTIONS
+                          ).map((option) => (
                             <button
                               key={option}
                               type='button'
@@ -3059,13 +3115,45 @@ export default function Dashboard() {
                               onClick={() => handleStatusChange(option)}
                             >
                               <span className='triage-status-option-main'>
-                                <span
-                                  className={`dot ${option.toLowerCase().replace(/\s+/g, '-')}`}
-                                />
-                                {renderTriageStatusIcon(option)}
-                                <span>{option}</span>
+                                {!isSelectedCallbackTicket ? (
+                                  <>
+                                    <span
+                                      className={`dot ${option.toLowerCase().replace(/\s+/g, '-')}`}
+                                    />
+                                    {renderTriageStatusIcon(option)}
+                                  </>
+                                ) : (
+                                  <span
+                                    className={`dot callback-status-${option}`}
+                                  />
+                                )}
+                                <span>
+                                  {isSelectedCallbackTicket
+                                    ? option === 'new'
+                                      ? 'New'
+                                      : option === 'in_progress'
+                                        ? 'In Progress'
+                                        : option === 'pending'
+                                          ? 'Pending'
+                                          : option === 'expired'
+                                            ? 'Expired'
+                                            : option
+                                    : option}
+                                </span>
                               </span>
-                              {triageStatus === option ? (
+                              {isSelectedCallbackTicket ? (
+                                getCallbackStatusOptionFromDisplay(
+                                  triageStatus,
+                                ) === option ? (
+                                  <Check
+                                    size={16}
+                                    strokeWidth={2.4}
+                                    className='triage-status-selected-check'
+                                  />
+                                ) : (
+                                  <span />
+                                )
+                              ) : triageStatus === option ? (
                                 <Check
                                   size={16}
                                   strokeWidth={2.4}

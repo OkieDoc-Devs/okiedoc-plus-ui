@@ -1127,7 +1127,9 @@ body::-webkit-scrollbar {
   background: #ffffff;
   padding: 14px;
   cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .nurse-queue-card:hover {
@@ -2748,6 +2750,62 @@ body::-webkit-scrollbar {
   background: #f4f7fb;
 }
 
+/* Callback Status Styles */
+.callback-status-new,
+.triage-status-select.callback-status-new {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.callback-status-in_progress,
+.triage-status-select.callback-status-in_progress {
+  border-color: #f472b6;
+  background: #fdf2f8;
+  color: #be185d;
+}
+
+.callback-status-in-progress,
+.triage-status-select.callback-status-in-progress {
+  border-color: #f472b6;
+  background: #fdf2f8;
+  color: #be185d;
+}
+
+.callback-status-pending,
+.triage-status-select.callback-status-pending {
+  border-color: #fbbf24;
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.callback-status-expired,
+.triage-status-select.callback-status-expired {
+  border-color: #d1d5db;
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.dot.callback-status-new {
+  background: #16a34a;
+}
+
+.dot.callback-status-in_progress {
+  background: #be185d;
+}
+
+.dot.callback-status-in-progress {
+  background: #be185d;
+}
+
+.dot.callback-status-pending {
+  background: #b45309;
+}
+
+.dot.callback-status-expired {
+  background: #6b7280;
+}
+
 .triage-status-option .dot {
   width: 10px;
   height: 10px;
@@ -2956,7 +3014,8 @@ body::-webkit-scrollbar {
 }
 
 .triage-medical-history-section--compact .triage-tag-list:not(:empty),
-.triage-medical-history-section--compact .triage-tag-list-medications:not(:empty) {
+.triage-medical-history-section--compact
+  .triage-tag-list-medications:not(:empty) {
   padding-bottom: 6px;
 }
 
@@ -7008,7 +7067,8 @@ body::-webkit-scrollbar {
 .create-ticket-field input[type='date']::-webkit-calendar-picker-indicator {
   opacity: 1;
   cursor: pointer;
-  filter: invert(35%) sepia(12%) saturate(708%) hue-rotate(181deg) brightness(91%) contrast(86%);
+  filter: invert(35%) sepia(12%) saturate(708%) hue-rotate(181deg)
+    brightness(91%) contrast(86%);
 }
 
 .create-ticket-field select:disabled,
@@ -7219,7 +7279,6 @@ body::-webkit-scrollbar {
   background: transparent;
   color: #263247;
 }
-
 
 @media (max-width: 900px) {
   .create-ticket-topbar {

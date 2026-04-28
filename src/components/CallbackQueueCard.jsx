@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Phone, Clock3, Video, Save } from 'lucide-react';
+import { Phone, Clock3, Video } from 'lucide-react';
 
 const statusConfig = {
   new: {
@@ -21,7 +21,6 @@ const statusConfig = {
 };
 
 const statusOptions = ['new', 'in_progress', 'pending', 'expired'];
-const NOTES_MAX_LENGTH = 200;
 
 const formatTime = (dateString) => {
   if (!dateString) return '--:--';
@@ -47,18 +46,8 @@ export default function CallbackQueueCard({
   const incomingStatus = statusConfig[callback.status]
     ? callback.status
     : 'new';
-  const incomingNotes = String(callback.notes || '');
 
-  const [draftStatus, setDraftStatus] = useState(incomingStatus);
-  const [draftNotes, setDraftNotes] = useState(incomingNotes);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
-
-  useEffect(() => {
-    setDraftStatus(incomingStatus);
-    setDraftNotes(incomingNotes);
-    setSaveError('');
-  }, [callback.id, incomingStatus, incomingNotes]);
+  useEffect(() => {}, [callback.id]);
 
   const statusInfo = statusConfig[incomingStatus] || statusConfig.new;
   const channel = String(callback.callType || callback.contactMethod || '')
@@ -66,35 +55,8 @@ export default function CallbackQueueCard({
     .toLowerCase();
   const isVideo = channel.includes('video');
 
-  const hasChanges =
-    draftStatus !== incomingStatus || draftNotes !== incomingNotes;
-
-  const notesLength = draftNotes.length;
-
   const stopPropagation = (event) => {
     event.stopPropagation();
-  };
-
-  const handleSave = async (event) => {
-    event.stopPropagation();
-
-    if (!onSave || !hasChanges || isSaving) {
-      return;
-    }
-
-    setIsSaving(true);
-    setSaveError('');
-
-    try {
-      await onSave(callback.id, {
-        status: draftStatus,
-        notes: draftNotes,
-      });
-    } catch (error) {
-      setSaveError(error?.message || 'Failed to update callback.');
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   return (
@@ -150,57 +112,12 @@ export default function CallbackQueueCard({
       </button>
 
       <div
-        className='px-4 pb-3 pt-2 border-t border-gray-100 space-y-2'
+        className='px-4 pb-3 pt-2 border-t border-gray-100'
         onClick={stopPropagation}
       >
-        <div className='flex items-center gap-2'>
-          <span className='text-[11px] font-semibold text-gray-500 uppercase tracking-wide'>
-            Status
-          </span>
-          <select
-            value={draftStatus}
-            onChange={(event) => setDraftStatus(event.target.value)}
-            onClick={stopPropagation}
-            className='ml-auto text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-700 bg-white'
-          >
-            {statusOptions.map((option) => (
-              <option key={option} value={option}>
-                {statusConfig[option].label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <textarea
-          value={draftNotes}
-          rows={2}
-          maxLength={NOTES_MAX_LENGTH}
-          onClick={stopPropagation}
-          onChange={(event) =>
-            setDraftNotes(event.target.value.slice(0, NOTES_MAX_LENGTH))
-          }
-          placeholder='Add nurse notes for this callback...'
-          className='w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2 text-gray-700 placeholder-gray-400 resize-none focus:outline-none focus:border-blue-400'
-        />
-
-        <div className='flex items-center justify-between gap-2'>
-          <span className='text-[10px] text-gray-400'>
-            {notesLength}/{NOTES_MAX_LENGTH} characters
-          </span>
-          <button
-            type='button'
-            onClick={handleSave}
-            disabled={!onSave || !hasChanges || isSaving}
-            className='inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-2.5 py-1.5 bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed'
-          >
-            <Save size={12} strokeWidth={2.2} />
-            {isSaving ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-
-        {saveError ? (
-          <p className='text-[11px] text-red-600'>{saveError}</p>
-        ) : null}
+        <p className='text-[10px] text-gray-500 font-semibold'>
+          Manage status in Triage Workspace
+        </p>
       </div>
     </div>
   );

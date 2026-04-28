@@ -29,7 +29,6 @@ import NurseAdminDashboard from './Admin/NurseAdminDashboard.jsx';
 import BarangayAdminDashboard from './Admin/BarangayAdminDashboard.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import VideoCallPage from './components/VideoCall/VideoCallPage.jsx';
-import AboutUs from './AboutUs.tsx';
 
 import { NotificationProvider } from './contexts/NotificationContext.jsx';
 import { AuthProvider } from './contexts/AuthContext.jsx';
@@ -54,9 +53,7 @@ const loadSailsSocket = () => {
     }
   };
   script.onerror = () => {
-    console.warn(
-      '[Socket] Failed to load sails.io.js - real-time features will be unavailable',
-    );
+    console.warn('[Socket] Failed to load sails.io.js - real-time features will be unavailable');
   };
   script.async = true;
   document.head.appendChild(script);
@@ -95,16 +92,7 @@ function AppContent() {
         <NavBar activeView={activeView} setActiveView={setActiveView} />
       )}
       <Routes>
-        <Route
-          path='/'
-          element={
-            <LandingPage
-              activeView={activeView}
-              setActiveView={setActiveView}
-            />
-          }
-        />
-        <Route path='/aboutUs' element={<AboutUs />} />
+        <Route path='/' element={<LandingPage activeView={activeView} setActiveView={setActiveView} />} />
         <Route path='/search' element={<SearchPage />} />
         <Route path='/specialist' element={<SpecialistProfile />} />
         <Route path='/login' element={<Login />} />
@@ -133,56 +121,18 @@ function AppContent() {
           }
         />
 
-        <Route
-          path='/specialist-registration'
-          element={<SpecialistRegistration />}
-        />
+        <Route path='/specialist-registration' element={<SpecialistRegistration />} />
 
         {/* Nurse Routes */}
-        <Route
-          path='/nurse-dashboard'
-          element={
-            <ProtectedRoute allowedRoles={['nurse']}>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path='/nurse-notifications'
-          element={
-            <ProtectedRoute allowedRoles={['nurse']}>
-              <Notifications />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path='/nurse-myaccount'
-          element={
-            <ProtectedRoute allowedRoles={['nurse']}>
-              <MyAccount />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path='/nurse-manage-appointments'
-          element={
-            <ProtectedRoute allowedRoles={['nurse']}>
-              <ManageAppointments />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path='/nurse-messages'
-          element={
-            <ProtectedRoute allowedRoles={['nurse']}>
-              <Messages />
-            </ProtectedRoute>
-          }
-        />
+        <Route path='/nurse-dashboard' element={<ProtectedRoute allowedRoles={['nurse']}><Dashboard /></ProtectedRoute>} />
+        <Route path='/nurse-notifications' element={<ProtectedRoute allowedRoles={['nurse']}><Notifications /></ProtectedRoute>} />
+        <Route path='/nurse-myaccount' element={<ProtectedRoute allowedRoles={['nurse']}><MyAccount /></ProtectedRoute>} />
+        <Route path='/nurse-manage-appointments' element={<ProtectedRoute allowedRoles={['nurse']}></ProtectedRoute>} />
+        <Route path='/nurse-messages' element={<ProtectedRoute allowedRoles={['nurse']}><Messages /></ProtectedRoute>} />
 
         {/* Admin Routes */}
         <Route
-          path='/admin/specialist-dashboard'
+          path="/admin/specialist-dashboard"
           element={
             <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
               <SuperAdminDashboard />
@@ -190,7 +140,7 @@ function AppContent() {
           }
         />
         <Route
-          path='/admin/nurse-dashboard'
+          path="/admin/nurse-dashboard"
           element={
             <ProtectedRoute allowedRoles={['nurse_admin', 'nurseadmin']}>
               <NurseAdminDashboard />
@@ -198,7 +148,7 @@ function AppContent() {
           }
         />
         <Route
-          path='/admin/barangay-dashboard'
+          path="/admin/barangay-dashboard"
           element={
             <ProtectedRoute allowedRoles={['barangay_admin', 'barangayadmin']}>
               <BarangayAdminDashboard />
@@ -219,30 +169,9 @@ function AppContent() {
         />
 
         {/* Specialist Routes */}
-        <Route
-          path='/specialist-dashboard'
-          element={
-            <ProtectedRoute allowedRoles={['specialist']}>
-              <SpecialistDashboard2 />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path='/specialist-pending'
-          element={
-            <ProtectedRoute allowedRoles={['specialist']}>
-              <PendingVerification />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path='/specialist-denied'
-          element={
-            <ProtectedRoute allowedRoles={['specialist']}>
-              <DeniedVerification />
-            </ProtectedRoute>
-          }
-        />
+        <Route path='/specialist-dashboard' element={<ProtectedRoute allowedRoles={['specialist']}><SpecialistDashboard2 /></ProtectedRoute>} />
+        <Route path='/specialist-pending' element={<ProtectedRoute allowedRoles={['specialist']}><PendingVerification /></ProtectedRoute>} />
+        <Route path='/specialist-denied' element={<ProtectedRoute allowedRoles={['specialist']}><DeniedVerification /></ProtectedRoute>} />
       </Routes>
       {!shouldHideNavFooter && <Footer />}
     </>

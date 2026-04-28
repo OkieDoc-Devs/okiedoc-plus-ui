@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   FaComments,
   FaTimes,
@@ -35,7 +35,6 @@ const Messages = () => {
   const nurseName = getNurseFirstName();
   const nurseProfileImage = getNurseProfileImage();
   const [newMessage, setNewMessage] = useState('');
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showVideoCall, setShowVideoCall] = useState(false);
@@ -45,7 +44,6 @@ const Messages = () => {
   const [userSearchResults, setUserSearchResults] = useState([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const chatMessagesRef = useRef(null);
-  const chatBottomRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const currentUserId = user?.id || null;
@@ -149,22 +147,6 @@ const Messages = () => {
     setUploadedFiles([]);
   };
 
-  const scrollChatToBottom = useCallback((behavior = 'auto') => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        chatBottomRef.current?.scrollIntoView({
-          behavior,
-          block: 'end',
-        });
-
-        if (chatMessagesRef.current) {
-          chatMessagesRef.current.scrollTop =
-            chatMessagesRef.current.scrollHeight;
-        }
-      });
-    });
-  }, []);
-
   const closeChat = () => {
     closeConversation();
     setNewMessage('');
@@ -176,13 +158,11 @@ const Messages = () => {
 
     if (
       !activeConversation ||
-      (!newMessage.trim() && uploadedFiles.length === 0) ||
-      isSendingMessage
+      (!newMessage.trim() && uploadedFiles.length === 0)
     ) {
       return;
     }
 
-    setIsSendingMessage(true);
     try {
       const trimmedMessage = newMessage.trim();
 
@@ -209,12 +189,14 @@ const Messages = () => {
 
       setNewMessage('');
       setUploadedFiles([]);
-      scrollChatToBottom('smooth');
+
+      if (chatMessagesRef.current) {
+        chatMessagesRef.current.scrollTop =
+          chatMessagesRef.current.scrollHeight;
+      }
     } catch (error) {
       console.error('Error sending message or uploading file:', error);
       alert('Failed to send message. Please try again.');
-    } finally {
-      setIsSendingMessage(false);
     }
   };
 
@@ -307,9 +289,11 @@ const Messages = () => {
     }
   };
 
-  useLayoutEffect(() => {
-    scrollChatToBottom('auto');
-  }, [activeConversation?.id, messages.length, scrollChatToBottom]);
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const remainingChars = CHARACTER_LIMIT - newMessage.length;
 
@@ -699,7 +683,6 @@ const Messages = () => {
                     </div>
                   </div>
                 )}
-                <div ref={chatBottomRef} className='nurse-chat-bottom-anchor' />
               </div>
 
               <input
@@ -767,10 +750,7 @@ const Messages = () => {
                   <button
                     type='submit'
                     className='nurse-chat-send-btn'
-                    disabled={
-                      isSendingMessage ||
-                      (!newMessage.trim() && uploadedFiles.length === 0)
-                    }
+                    disabled={!newMessage.trim() && uploadedFiles.length === 0}
                     title='Send message'
                   >
                     Send

@@ -186,8 +186,8 @@
 .triage-pain-map-content {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: minmax(210px, 240px) minmax(320px, 1fr);
-  gap: 24px;
+  grid-template-columns: 210px 1fr;
+  gap: 32px;
   align-items: start;
   padding: 16px;
   background-color: #f8fafc;
@@ -304,34 +304,6 @@
   margin-bottom: 12px;
 }
 
-.triage-pain-map-picker {
-  width: 210px;
-  max-width: 100%;
-  margin: 0 auto;
-}
-
-.triage-pain-map-selection {
-  grid-column: 1 / -1;
-  min-width: 0;
-  width: 100%;
-  margin-top: 6px;
-}
-
-.triage-pain-reference-card {
-  margin: 0;
-  min-width: 0;
-}
-
-.triage-pain-reference-card img {
-  display: block;
-  width: 100%;
-  max-height: 560px;
-  object-fit: contain;
-  border-radius: 12px;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-}
-
 .triage-pain-map-empty {
   color: #94a3b8;
   font-style: italic;
@@ -339,15 +311,13 @@
 }
 
 .triage-pain-map-chips {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .triage-pain-map-chip {
   padding: 6px 10px;
-  width: 100%;
-  min-width: 0;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
@@ -356,11 +326,6 @@
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.triage-pain-map-chip span {
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
 .triage-pain-map-chip-remove {
@@ -774,14 +739,6 @@
 @media (max-width: 1024px) {
   .intake-sticky-footer {
     left: 0;
-  }
-
-  .triage-pain-map-content {
-    grid-template-columns: 1fr;
-  }
-
-  .triage-pain-reference-card img {
-    max-height: 420px;
   }
 }
 

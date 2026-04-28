@@ -229,22 +229,6 @@ export async function fetchNursesFromAPI() {
   }
 }
 
-export async function searchPatientsFromAPI(search = "") {
-  try {
-    const query = search ? `?search=${encodeURIComponent(search)}` : "";
-    const data = await apiRequest(`/api/v1/nurse/patients${query}`);
-
-    if (data.success) {
-      return data.data || [];
-    }
-
-    throw new Error(data.message || "Failed to search patients");
-  } catch (error) {
-    console.error("Error searching patients from API:", error);
-    throw error;
-  }
-}
-
 /**
  * Create a new ticket via API
  * @param {Object} ticketData - Ticket data to create
@@ -253,7 +237,7 @@ export async function searchPatientsFromAPI(search = "") {
  */
 export async function createTicket(ticketData) {
   try {
-    const data = await apiRequest("/api/v1/tickets/create", {
+    const data = await apiRequest("/api/v1/nurse/tickets", {
       method: "POST",
       body: JSON.stringify(ticketData),
     });
@@ -309,14 +293,13 @@ export async function triageTicket(triageData) {
  * @param {number} specialistId - Specialist user ID
  * @returns {Promise<Object>} Assignment response
  */
-export async function assignSpecialist(ticketId, specialistId, details = {}) {
+export async function assignSpecialist(ticketId, specialistId) {
   try {
     return await apiRequest("/api/v1/tickets/assign-specialist", {
       method: "PATCH",
       body: JSON.stringify({
         ticketId: parseInt(ticketId, 10),
         specialistId: parseInt(specialistId, 10),
-        ...details,
       }),
     });
   } catch (error) {

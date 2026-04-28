@@ -149,19 +149,16 @@ export default function Patient_Appointments({ setActive }) {
             Manage your upcoming and pending consultations
           </p>
         </div>
-
-        {/* --- EXACT TICKET FIX: Routed to Intake Form --- */}
         <button
           className="appt-btn appt-btn-primary"
-          onClick={() => {
-            window.location.hash = "#/IntakeForm/Video%20Consultation";
-          }}
+          onClick={() => setActive("Services")}
         >
-          <IconCalendarEvent size={18} /> Book Appointment
+          <IconCalendarEvent size={18} /> Book New
         </button>
       </div>
 
       <div className="appt-controls-bar">
+        {/* ... Search and Filters remain the same ... */}
         <div className="appt-search-wrapper">
           <IconSearch size={18} className="appt-search-icon" />
           <input
@@ -250,15 +247,12 @@ export default function Patient_Appointments({ setActive }) {
               : "No appointments match your current search or filter."}
           </p>
           {appointments.length === 0 && (
-            /* --- EXACT TICKET FIX: Routed to Intake Form --- */
             <button
               className="appt-btn appt-btn-primary"
               style={{ marginTop: "16px", display: "inline-flex" }}
-              onClick={() => {
-                window.location.hash = "#/IntakeForm/Video%20Consultation";
-              }}
+              onClick={() => setActive("Services")}
             >
-              Book Appointment
+              Browse Services
             </button>
           )}
         </div>
@@ -269,7 +263,7 @@ export default function Patient_Appointments({ setActive }) {
             // CHECKLIST FALLBACK LOGIC
             // -------------------------------------------------------------
             const displaySpecialist = appt.specialistName || "TBA";
-            const displaySpecialization = appt.specialization || "TBA";
+            const displaySpecialization = appt.specialization || "TBA"; // Adjust if backend sends primarySpecialty
             const displayDate = appt.preferredDate
               ? formatDate(appt.preferredDate)
               : "--/--/----";
@@ -320,6 +314,7 @@ export default function Patient_Appointments({ setActive }) {
                 </div>
 
                 <div className="appt-details-stack">
+                  {/* CSS FIX APPLIED HERE: Prevents long text from crushing the icon */}
                   <div
                     className="appt-detail-row"
                     style={{ width: "100%", alignItems: "flex-start" }}
@@ -339,7 +334,7 @@ export default function Patient_Appointments({ setActive }) {
                         textOverflow: "ellipsis",
                         overflowWrap: "break-word",
                         wordBreak: "break-word",
-                        minWidth: 0,
+                        minWidth: 0, // Crucial flexbox fix
                       }}
                     >
                       {appt.chiefComplaint || "General Consultation"}
@@ -364,6 +359,7 @@ export default function Patient_Appointments({ setActive }) {
                     <span>{displayTime}</span>
                   </div>
 
+                  {/* Added Location Requirement */}
                   <div className="appt-detail-row">
                     <IconMapPin
                       size={16}

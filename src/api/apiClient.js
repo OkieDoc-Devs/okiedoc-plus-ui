@@ -175,15 +175,10 @@ export async function fetchCallbacks(status = null) {
   });
 }
 
-export async function updateCallbackStatus(callbackId, statusOrPatch) {
-  const payload =
-    typeof statusOrPatch === 'string'
-      ? { status: statusOrPatch }
-      : statusOrPatch || {};
-
+export async function updateCallbackStatus(callbackId, status) {
   return apiRequest(`/api/v1/nurse/callbacks/${callbackId}`, {
     method: 'PATCH',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ status }),
   });
 }
 

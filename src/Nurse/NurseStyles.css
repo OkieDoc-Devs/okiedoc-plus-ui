@@ -3,7 +3,6 @@
   overflow: hidden;
   border-radius: 8px;
   margin-bottom: 5px;
-  margin: 0 0 4px;
 }
 
 .nurse-message-image {
@@ -1127,9 +1126,7 @@ body::-webkit-scrollbar {
   background: #ffffff;
   padding: 14px;
   cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .nurse-queue-card:hover {
@@ -1630,14 +1627,11 @@ body::-webkit-scrollbar {
   border-top: 1px solid #d9dde4;
   background: #f3f4f6;
   height: calc(100vh - 146px);
-  padding-bottom: 24px;
-  box-sizing: content-box;
 }
 
 .triage-dashboard {
   height: 100vh;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .triage-dashboard .dashboard-header {
@@ -1722,53 +1716,19 @@ body::-webkit-scrollbar {
   max-width: none;
   margin-left: 0;
   margin-right: 0;
-  padding: 22px 28px 28px;
+  padding: 14px 20px 20px;
   border-top: 1px solid #d6dbe3;
-  background: #f4f6f8;
-  min-height: calc(100vh - 174px);
 }
 
-.nurse-manage-dashboard .processing-tickets {
-  max-width: 1180px;
-  margin-left: auto;
-  margin-right: auto;
-  margin-bottom: 100px;
-}
-
-.processing-tickets-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
+.nurse-manage-dashboard .processing-tickets h2 {
+  margin-top: 0;
   margin-bottom: 16px;
 }
 
-.processing-tickets-header h2 {
-  margin: 0;
-  color: #123047;
-  font-size: 1.35rem;
-  line-height: 1.2;
-  font-weight: 700;
-}
-
-.processing-tickets-header p {
-  margin: 4px 0 0;
-  color: #637083;
-  font-size: 0.9rem;
-}
-
-.processing-tickets-header > span {
-  min-width: 42px;
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #e7f1ff;
-  color: #145ea8;
-  font-size: 0.95rem;
-  font-weight: 800;
+.nurse-manage-dashboard .processing-tickets {
+  margin-left: 8px;
+  margin-right: 8px;
+  margin-bottom: 100px;
 }
 
 .triage-grid {
@@ -1821,78 +1781,6 @@ body::-webkit-scrollbar {
   font-weight: 700;
 }
 
-/* Nurse Queue Filtering Scheme */
-.nurse-queue-filter-container {
-  padding: 12px;
-  background: #f4f5f7;
-  border-bottom: 1px solid #d9dde4;
-}
-
-.nurse-queue-filter-pills {
-  display: flex;
-  background: #e9ecf0;
-  border-radius: 100px;
-  padding: 3px;
-  gap: 2px;
-}
-
-.nurse-filter-pill {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 100px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  min-width: 0;
-}
-
-.nurse-filter-pill .pill-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #667081;
-  white-space: nowrap;
-}
-
-.nurse-filter-pill .pill-count {
-  font-size: 12px;
-  font-weight: 700;
-  color: #667081;
-  background: #d6dfe8;
-  padding: 1px 6px;
-  border-radius: 6px;
-  min-width: 18px;
-  text-align: center;
-}
-
-.nurse-filter-pill.active {
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.nurse-filter-pill.active .pill-label {
-  color: #1a1f26;
-}
-
-.nurse-filter-pill.active .pill-count {
-  background: #f0f2f5;
-  color: #1a1f26;
-}
-
-.nurse-filter-pill .pill-count.highlighted {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.nurse-filter-pill.active .pill-count.highlighted {
-  background: #ccfbf1;
-  color: #0d9488;
-}
-
 .triage-queue-list {
   padding: 12px;
   display: flex;
@@ -1932,11 +1820,9 @@ body::-webkit-scrollbar {
   text-align: left;
   padding: 12px;
   cursor: pointer;
-  min-height: 156px;
+  min-height: 138px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-sizing: border-box;
   appearance: none;
   -webkit-appearance: none;
 }
@@ -1949,10 +1835,9 @@ body::-webkit-scrollbar {
 
 .triage-queue-main {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: flex-start;
+  grid-template-columns: auto 1fr;
+  align-items: center;
   gap: 10px;
-  width: 100%;
 }
 
 .triage-queue-avatar {
@@ -1973,8 +1858,10 @@ body::-webkit-scrollbar {
 }
 
 .triage-queue-card-top {
-  display: block;
-  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .triage-ticket-code {
@@ -1989,13 +1876,9 @@ body::-webkit-scrollbar {
   font-size: 12px;
   color: #3c495d;
   line-height: 1.15;
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
 .triage-status-badge {
-  flex: 0 0 auto;
-  justify-self: end;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 700;
@@ -2025,7 +1908,7 @@ body::-webkit-scrollbar {
   align-items: center;
   align-self: flex-start;
   gap: 6px;
-  margin-top: 0;
+  margin-top: 16px;
   border: 1px solid #ccd2dd;
   background: #f7f8fb;
   color: #121722;
@@ -2040,7 +1923,7 @@ body::-webkit-scrollbar {
 
 .triage-queue-footer {
   margin-top: auto;
-  padding-top: 0;
+  padding-top: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2118,6 +2001,7 @@ body::-webkit-scrollbar {
   flex: 1 1 auto;
   width: 100%;
   box-sizing: border-box;
+  /* Keep width constant, but visually align with snapshot column */
   transform: translate(-1px, 3px);
 }
 
@@ -2750,62 +2634,6 @@ body::-webkit-scrollbar {
   background: #f4f7fb;
 }
 
-/* Callback Status Styles */
-.callback-status-new,
-.triage-status-select.callback-status-new {
-  border-color: #86efac;
-  background: #f0fdf4;
-  color: #16a34a;
-}
-
-.callback-status-in_progress,
-.triage-status-select.callback-status-in_progress {
-  border-color: #f472b6;
-  background: #fdf2f8;
-  color: #be185d;
-}
-
-.callback-status-in-progress,
-.triage-status-select.callback-status-in-progress {
-  border-color: #f472b6;
-  background: #fdf2f8;
-  color: #be185d;
-}
-
-.callback-status-pending,
-.triage-status-select.callback-status-pending {
-  border-color: #fbbf24;
-  background: #fffbeb;
-  color: #b45309;
-}
-
-.callback-status-expired,
-.triage-status-select.callback-status-expired {
-  border-color: #d1d5db;
-  background: #f9fafb;
-  color: #6b7280;
-}
-
-.dot.callback-status-new {
-  background: #16a34a;
-}
-
-.dot.callback-status-in_progress {
-  background: #be185d;
-}
-
-.dot.callback-status-in-progress {
-  background: #be185d;
-}
-
-.dot.callback-status-pending {
-  background: #b45309;
-}
-
-.dot.callback-status-expired {
-  background: #6b7280;
-}
-
 .triage-status-option .dot {
   width: 10px;
   height: 10px;
@@ -2932,255 +2760,6 @@ body::-webkit-scrollbar {
   outline: none;
 }
 
-.triage-note-textarea-compact {
-  min-height: 72px;
-}
-
-.triage-note-textarea.triage-note-textarea-compact {
-  margin-top: 0;
-  padding-top: 14px;
-}
-
-.triage-medical-history-card {
-  margin: 10px;
-  background: #ffffff;
-  border: 1px solid #d8dde5;
-  border-radius: 14px;
-  overflow: hidden;
-}
-
-.triage-medical-history-title {
-  padding: 12px 16px;
-  border-bottom: 1px solid #e6eaf1;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.triage-medical-history-title svg,
-.triage-medical-history-section h5 svg {
-  color: #60a5fa;
-}
-
-.triage-medications-title svg {
-  color: #10b981;
-  stroke: currentColor;
-  fill: none !important;
-  stroke-width: 2.2 !important;
-}
-
-.triage-medications-title svg * {
-  stroke: #10b981 !important;
-  fill: none !important;
-}
-
-.triage-medical-history-section h5 svg.triage-active-diseases-icon {
-  color: #f97316;
-}
-
-.triage-medical-history-section {
-  padding: 12px 16px;
-  border-top: none;
-}
-
-.triage-medical-history-section:first-of-type {
-  border-top: none;
-}
-
-.triage-medical-history-section h5 {
-  margin: 0 0 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #283548;
-}
-
-.triage-medical-history-section--compact {
-  padding-top: 12px;
-}
-
-.triage-medical-history-section--compact h5 {
-  margin-bottom: 8px;
-}
-
-.triage-medical-history-section--compact:has(.triage-family-history-title),
-.triage-medical-history-section--compact:has(.triage-medications-title) {
-  padding-top: 6px;
-}
-
-.triage-medical-history-section--compact .triage-tag-list:not(:empty),
-.triage-medical-history-section--compact
-  .triage-tag-list-medications:not(:empty) {
-  padding-bottom: 6px;
-}
-
-.triage-medical-pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.triage-medical-choice-pill {
-  border: 1px solid #d4dbe6;
-  background: #f8fafc;
-  color: #273244;
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  line-height: 1.25;
-}
-
-.triage-medical-choice-pill.selected {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  color: #1d4ed8;
-}
-
-.triage-medical-history-alert {
-  background: #fff5f6;
-  border: 1px solid #f7d9df;
-  border-radius: 12px;
-  margin: 6px 16px;
-  padding: 10px 14px;
-  width: auto;
-  box-sizing: border-box;
-}
-
-.triage-medical-history-alert h5 {
-  color: #c62828;
-}
-
-.triage-medical-history-alert h5 svg {
-  color: #ef4444;
-}
-
-.triage-medical-history-alert .triage-vital-input {
-  border-color: #f4c8d1;
-  background: #ffffff;
-}
-
-.triage-medical-history-alert .triage-vital-input::placeholder {
-  color: #d08a98;
-}
-
-.triage-social-history-grid {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.triage-social-history-grid label {
-  display: block;
-  color: #2f6bd9;
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.triage-social-history-box {
-  background: #f8fafc;
-  border-radius: 12px;
-  border: 1px solid #e6ebf4;
-  padding: 10px 14px;
-  margin: 6px 16px;
-  width: auto;
-  box-sizing: border-box;
-}
-
-.triage-lifestyle-label {
-  display: block;
-  color: #2f6bd9;
-  font-size: 12px;
-  font-weight: 600;
-  margin: 10px 0 4px;
-}
-
-.triage-inline-add-row {
-  margin-top: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.triage-inline-add-row .triage-vital-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  width: auto;
-  max-width: 100%;
-}
-
-.triage-empty-medical-history {
-  margin: 10px 0 0;
-  font-size: 12px;
-  font-weight: 500;
-  color: #94a3b8;
-}
-
-.triage-inline-add-btn {
-  min-width: 38px;
-  height: 36px;
-  border-radius: 12px;
-  border: none;
-  background: #334155;
-  color: #ffffff;
-  font-size: 22px;
-  font-weight: 700;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-}
-
-.triage-inline-add-btn-alert {
-  background: #ef5d75;
-}
-
-.triage-inline-add-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.triage-tag-list-medications {
-  margin-top: 10px;
-}
-
-.triage-tag-list-medications span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  border-color: #bfdbfe;
-  font-size: 11px;
-  padding: 4px 10px;
-}
-
-.triage-medical-allergy-list span {
-  background: #ffebee;
-  border-color: #f5b7c2;
-  color: #c62828;
-}
-
-.triage-medication-remove-btn {
-  background: transparent;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  padding: 0;
-}
-
 .triage-urgency-card {
   margin: 10px;
   background: #ffffff;
@@ -3251,9 +2830,7 @@ body::-webkit-scrollbar {
 }
 
 .triage-vitals-card h4,
-.triage-submitted-concern-card h4,
-.triage-clinical-complaint-card h4,
-.triage-complaint-symptoms h4 {
+.triage-complaint-card h4 {
   margin: 0;
   color: #0f141d;
   font-size: 14px;
@@ -3362,56 +2939,15 @@ body::-webkit-scrollbar {
   background: #f3f6fb;
 }
 
-.triage-submitted-concern-card {
-  margin: 10px;
-  padding: 18px 20px;
-  border: 1px solid #bfd8ff;
-  border-radius: 18px;
-  background: #eef5ff;
-  box-sizing: border-box;
+.triage-complaint-card {
+  padding: 12px;
+  margin-top: 10px;
+  height: auto;
+  min-height: 0;
+  display: block;
 }
 
-.triage-clinical-complaint-card,
-.triage-complaint-symptoms {
-  margin: 10px;
-  padding: 20px;
-  border: 1px solid #d8dde5;
-  border-radius: 18px;
-  background: #ffffff;
-  box-sizing: border-box;
-}
-
-.triage-submitted-concern-quote {
-  margin-top: 14px;
-  padding: 16px 18px;
-  border: 1px solid #d8dde5;
-  border-radius: 12px;
-  background: #ffffff;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.triage-submitted-concern-quote.filled {
-  color: #334155;
-  font-style: italic;
-  font-weight: 400;
-}
-
-.triage-submitted-concern-quote.empty {
-  color: #64748b;
-  font-style: italic;
-}
-
-.triage-complaint-help {
-  margin: 14px 0 0;
-  color: #46607d;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.triage-clinical-complaint-card textarea,
-.triage-complaint-symptoms textarea,
-.triage-complaint-card > textarea {
+.triage-complaint-card textarea {
   margin-top: 12px;
   width: 100%;
   min-height: 104px;
@@ -3426,12 +2962,8 @@ body::-webkit-scrollbar {
   outline: none;
 }
 
-.triage-clinical-complaint-card textarea:focus,
-.triage-clinical-complaint-card textarea:focus-visible,
-.triage-complaint-symptoms textarea:focus,
-.triage-complaint-symptoms textarea:focus-visible,
-.triage-complaint-card > textarea:focus,
-.triage-complaint-card > textarea:focus-visible {
+.triage-complaint-card textarea:focus,
+.triage-complaint-card textarea:focus-visible {
   border-color: #9db1d6;
   background: #f3f6fb;
   outline: none;
@@ -3445,22 +2977,16 @@ body::-webkit-scrollbar {
 }
 
 .triage-symptom-pill {
-  border: 1px solid #b7c3d6;
+  border: 1px solid #c9cfda;
   border-radius: 12px;
   background: #f4f6fa;
   color: #0f141d;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.05;
-  min-height: 34px;
-  padding: 3px 10px;
+  line-height: 1;
+  padding: 9px 12px;
   cursor: pointer;
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
 }
 
 .triage-symptom-pill.selected {
@@ -3632,14 +3158,9 @@ body::-webkit-scrollbar {
 .triage-pain-map-content {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: minmax(210px, 240px) minmax(320px, 1fr);
-  gap: 18px;
+  grid-template-columns: 210px 1fr;
+  gap: 14px;
   align-items: start;
-}
-
-.triage-pain-map-picker {
-  width: 210px;
-  max-width: 100%;
 }
 
 .triage-pain-map-figure {
@@ -3741,28 +3262,6 @@ body::-webkit-scrollbar {
   font-weight: 700;
 }
 
-.triage-pain-map-selection {
-  grid-column: 1 / -1;
-  min-width: 0;
-  width: 100%;
-  margin-top: 6px;
-}
-
-.triage-pain-reference-card {
-  margin: 0;
-  min-width: 0;
-}
-
-.triage-pain-reference-card img {
-  display: block;
-  width: 100%;
-  max-height: 560px;
-  object-fit: contain;
-  border-radius: 12px;
-  border: 1px solid #d8dde5;
-  background: #ffffff;
-}
-
 .triage-pain-map-empty {
   margin-top: 10px;
   color: #8a94a5;
@@ -3772,8 +3271,8 @@ body::-webkit-scrollbar {
 
 .triage-pain-map-chips {
   margin-top: 10px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
@@ -3781,8 +3280,6 @@ body::-webkit-scrollbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  min-width: 0;
   gap: 8px;
   border: 1px solid #efb6bc;
   border-radius: 8px;
@@ -3790,11 +3287,6 @@ body::-webkit-scrollbar {
   color: #9e1f2e;
   font-size: 12px;
   padding: 6px 8px;
-}
-
-.triage-pain-map-chip span {
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
 .triage-pain-map-chip-remove {
@@ -3815,10 +3307,6 @@ body::-webkit-scrollbar {
   .triage-pain-map-figure {
     width: 100%;
     max-width: 210px;
-  }
-
-  .triage-pain-reference-card img {
-    max-height: 420px;
   }
 }
 
@@ -4265,13 +3753,10 @@ body::-webkit-scrollbar {
   .triage-chat-badge,
   .triage-status-select,
   .triage-vitals-card h4,
-  .triage-submitted-concern-card h4,
-  .triage-clinical-complaint-card h4,
-  .triage-complaint-symptoms h4,
+  .triage-complaint-card h4,
   .triage-vitals-grid label,
   .triage-vitals-grid div > div,
-  .triage-clinical-complaint-card textarea,
-  .triage-complaint-symptoms textarea {
+  .triage-complaint-card textarea {
     font-size: 14px;
   }
 }
@@ -4374,148 +3859,98 @@ body::-webkit-scrollbar {
   border-left: 3px solid #4aa7ed;
 }
 
-.processing-ticket-card {
-  cursor: pointer;
-  border-left-color: #2196f3;
-  box-shadow: 0 8px 24px rgba(15, 39, 68, 0.08);
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-}
-
-.processing-ticket-card:hover {
-  border-color: #c8d8e8;
-  border-left-color: #1769c2;
-  box-shadow: 0 12px 30px rgba(15, 39, 68, 0.12);
-  transform: translateY(-1px);
-}
-
 .ticket-card-header {
-  background: #f8fafc;
-  padding: 10px 16px;
+  background: #f8f9fa;
+  padding: 9px 14px;
   border-bottom: 1px solid #e4e6ea;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
 }
 
 .ticket-number {
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   font-weight: 700;
-  color: #23445f;
-  letter-spacing: 0.04em;
+  color: #0b5388;
+  letter-spacing: 0.35px;
 }
 
 .ticket-card-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  display: flex;
   justify-content: space-between;
-  padding: 16px;
-  gap: 18px;
+  padding: 14px;
+  gap: 14px;
 }
 
 .ticket-left-section {
-  min-width: 0;
+  flex: 1;
 }
 
 .ticket-patient-details {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .ticket-section-title {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  color: #557089;
-  margin: 0 0 8px 0;
-  letter-spacing: 0.05em;
+  color: #0b5388;
+  margin: 0 0 7px 0;
+  letter-spacing: 0.3px;
 }
 
 .ticket-details-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 24px;
+  display: flex;
+  gap: 24px;
 }
 
 .ticket-details-col p {
-  margin: 4px 0;
-  font-size: 0.86rem;
-  line-height: 1.35;
-  color: #26384a;
-  overflow-wrap: anywhere;
+  margin: 2px 0;
+  font-size: 0.82rem;
+  color: #333;
 }
 
 .ticket-details-col p strong {
-  color: #48627a;
+  color: #0b5388;
   font-weight: 700;
 }
 
 .ticket-assignments {
-  padding-top: 10px;
-  border-top: 1px solid #edf1f5;
+  padding-top: 6px;
 }
 
 .ticket-assignments p {
-  margin: 5px 0;
-  font-size: 0.86rem;
-  line-height: 1.35;
-  color: #26384a;
-  overflow-wrap: anywhere;
+  margin: 4px 0;
+  font-size: 0.82rem;
+  color: #333;
 }
 
 .ticket-assignments p strong {
-  color: #48627a;
+  color: #0b5388;
   font-weight: 700;
 }
 
 .ticket-right-section {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: flex-end;
   justify-content: space-between;
-  min-width: 0;
-  gap: 16px;
+  min-width: 168px;
 }
 
 .ticket-meta {
-  text-align: left;
-  background: #f8fafc;
-  border: 1px solid #e7edf3;
-  border-radius: 8px;
-  padding: 10px 12px;
+  text-align: right;
 }
 
 .ticket-meta p {
-  margin: 0;
+  margin: 3px 0;
   font-size: 0.82rem;
-  line-height: 1.35;
-  color: #26384a;
+  color: #333;
 }
 
 .ticket-meta p strong {
-  display: block;
-  color: #60758a;
+  color: #0b5388;
   font-weight: 700;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  margin-bottom: 3px;
 }
 
 .ticket-status-text {
-  font-weight: 700;
-}
-
-.ticket-status-text.processing {
-  color: #1769c2;
-  background: #e7f1ff;
-  border: 1px solid #b9d8ff;
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 0.76rem;
-  line-height: 1;
-  white-space: nowrap;
+  font-weight: 600;
 }
 
 .ticket-status-text.completed {
@@ -4538,55 +3973,19 @@ body::-webkit-scrollbar {
   background: #0b5388;
   color: #ffffff;
   border: none;
-  padding: 9px 14px;
-  border-radius: 8px;
-  font-size: 0.82rem;
+  padding: 8px 14px;
+  border-radius: 16px;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-top: 0;
+  margin-top: 8px;
 }
 
 .ticket-history-btn:hover {
   background: #094a77;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(11, 83, 136, 0.3);
-}
-
-.ticket-actions {
-  display: grid;
-  gap: 8px;
-}
-
-.ticket-history-btn-success {
-  background: #15803d;
-}
-
-.ticket-history-btn-success:hover {
-  background: #166534;
-  box-shadow: 0 4px 12px rgba(21, 128, 61, 0.24);
-}
-
-@media (max-width: 800px) {
-  .nurse-manage-dashboard .appointments-section {
-    padding: 18px 14px 24px;
-  }
-
-  .processing-tickets-header {
-    align-items: flex-start;
-  }
-
-  .ticket-card-body {
-    grid-template-columns: 1fr;
-  }
-
-  .ticket-details-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .ticket-right-section {
-    gap: 10px;
-  }
 }
 
 .appointment-card {
@@ -5797,12 +5196,6 @@ body::-webkit-scrollbar {
   background: #a8a8a8;
 }
 
-.nurse-chat-bottom-anchor {
-  width: 100%;
-  min-height: 1px;
-  flex: 0 0 1px;
-}
-
 .nurse-message {
   display: flex;
   margin-bottom: 0.5rem;
@@ -6401,6 +5794,10 @@ body::-webkit-scrollbar {
   }
 }
 
+/* ============================================
+   NEW CHAT MODAL STYLES
+   ============================================ */
+
 .nurse-modal-overlay {
   position: fixed;
   top: 0;
@@ -6704,599 +6101,4 @@ body::-webkit-scrollbar {
 
 .nurse-message-type-nurse .nurse-message-sender-name {
   color: #0b5388;
-}
-
-.processing-ticket-header-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.processing-ticket-count {
-  min-width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  border: 1px solid #d8dde5;
-  background: #eef5ff;
-  color: #1d4ed8;
-  font-size: 16px;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-}
-
-.create-ticket-entry-btn {
-  border: none;
-  border-radius: 10px;
-  background: #2563eb;
-  color: #ffffff;
-  min-height: 40px;
-  padding: 0 16px;
-  font-size: 14px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.create-ticket-entry-btn:hover {
-  background: #1d4ed8;
-}
-
-.create-ticket-page {
-  min-height: 100vh;
-  background: #f6f7f9;
-  color: #020817;
-}
-
-.create-ticket-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  min-height: 104px;
-  background: #ffffff;
-  border-bottom: 1px solid #dedede;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 22px 20px 22px 32px;
-}
-
-.create-ticket-title-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.create-ticket-back {
-  width: 34px;
-  height: 34px;
-  border: none;
-  background: transparent;
-  color: #111827;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  margin-top: 2px;
-}
-
-.create-ticket-title-icon {
-  color: #2563eb;
-  flex: 0 0 auto;
-}
-
-.create-ticket-title-row h1 {
-  margin: 0;
-  font-size: 26px;
-  line-height: 1.05;
-  font-weight: 800;
-  letter-spacing: 0;
-}
-
-.create-ticket-title-row p {
-  margin: 6px 0 0;
-  color: #344054;
-  font-size: 16px;
-  line-height: 1.25;
-}
-
-.create-ticket-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.create-ticket-outline-btn,
-.create-ticket-primary-btn {
-  min-height: 42px;
-  border-radius: 10px;
-  padding: 0 16px;
-  font-size: 14px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  cursor: pointer;
-}
-
-.create-ticket-outline-btn {
-  border: 1px solid #e1e4ea;
-  background: #ffffff;
-  color: #111827;
-}
-
-.create-ticket-primary-btn {
-  border: 1px solid #2563eb;
-  background: #2563eb;
-  color: #ffffff;
-}
-
-.create-ticket-primary-btn:disabled {
-  opacity: 0.72;
-  cursor: not-allowed;
-}
-
-.create-ticket-scroll {
-  max-width: 1220px;
-  margin: 0 auto;
-  padding: 22px 0 48px;
-}
-
-.create-ticket-alert {
-  margin: 0 0 18px;
-  border: 1px solid #bfd8ff;
-  border-radius: 10px;
-  background: #eef5ff;
-  color: #1e3a8a;
-  padding: 12px 16px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.create-ticket-card {
-  background: #ffffff;
-  border: 1px solid #dedede;
-  border-radius: 16px;
-  padding: 22px 30px;
-  margin-bottom: 30px;
-}
-
-.create-ticket-card h2 {
-  margin: 0 0 34px;
-  font-size: 20px;
-  line-height: 1.1;
-  font-weight: 800;
-  color: #020817;
-  letter-spacing: 0;
-}
-
-.create-ticket-grid {
-  display: grid;
-  gap: 18px 20px;
-}
-
-.create-ticket-grid.two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.create-ticket-field {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-.create-ticket-field.full {
-  grid-column: 1 / -1;
-  margin-bottom: 18px;
-}
-
-.create-ticket-field label,
-.create-ticket-mini-label {
-  display: block;
-  margin-bottom: 2px;
-  color: #020817;
-  font-size: 14px;
-  line-height: 1.2;
-  font-weight: 700;
-}
-
-.create-ticket-field input,
-.create-ticket-field select,
-.create-ticket-field textarea {
-  width: 100%;
-  border: none;
-  border-radius: 9px;
-  background: #f0f0f2;
-  color: #111827;
-  min-height: 42px;
-  padding: 0 16px;
-  font-size: 14px;
-  outline: none;
-  box-sizing: border-box;
-}
-
-.create-ticket-field select {
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: 46px;
-  background-image:
-    linear-gradient(45deg, transparent 50%, #667085 50%),
-    linear-gradient(135deg, #667085 50%, transparent 50%);
-  background-position:
-    calc(100% - 24px) 50%,
-    calc(100% - 17px) 50%;
-  background-size:
-    7px 7px,
-    7px 7px;
-  background-repeat: no-repeat;
-}
-
-.create-ticket-field select:disabled {
-  background-image:
-    linear-gradient(45deg, transparent 50%, #98a2b3 50%),
-    linear-gradient(135deg, #98a2b3 50%, transparent 50%);
-}
-
-.create-ticket-select-wrap {
-  position: relative;
-  width: 100%;
-}
-
-.create-ticket-select {
-  width: 100%;
-  border: none;
-  border-radius: 9px;
-  background: #f0f0f2;
-  color: #111827;
-  min-height: 42px;
-  padding: 0 16px;
-  font-size: 14px;
-  outline: none;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.create-ticket-select.placeholder {
-  color: #667085;
-}
-
-.create-ticket-select:disabled {
-  cursor: default;
-  opacity: 1;
-  color: #667085;
-}
-
-.create-ticket-select svg {
-  flex: 0 0 auto;
-  color: #667085;
-}
-
-.create-ticket-select-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  max-height: 260px;
-  overflow-y: auto;
-  border: 1px solid #d8dde5;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14);
-  z-index: 60;
-  padding: 6px;
-  scrollbar-width: thin;
-  scrollbar-color: #c4c9d2 transparent;
-}
-
-.create-ticket-select-menu::-webkit-scrollbar {
-  width: 8px;
-}
-
-.create-ticket-select-menu::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.create-ticket-select-menu::-webkit-scrollbar-thumb {
-  background: #c4c9d2;
-  border-radius: 999px;
-  border: 2px solid #ffffff;
-}
-
-.create-ticket-select-menu::-webkit-scrollbar-thumb:hover {
-  background: #aeb5c0;
-}
-
-.create-ticket-select-option {
-  width: 100%;
-  min-height: 34px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: #111827;
-  padding: 8px 12px;
-  font-size: 14px;
-  line-height: 1.25;
-  text-align: left;
-  cursor: pointer;
-}
-
-.create-ticket-select-option:hover,
-.create-ticket-select-option.active {
-  background: #eef5ff;
-  color: #1d4ed8;
-}
-
-.create-ticket-field textarea {
-  min-height: 99px;
-  padding: 14px 16px;
-  resize: vertical;
-}
-
-.create-ticket-field input::placeholder,
-.create-ticket-field textarea::placeholder {
-  color: #667085;
-}
-
-.create-ticket-field input:focus,
-.create-ticket-field select:focus,
-.create-ticket-field textarea:focus {
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.22);
-}
-
-.create-ticket-field input:read-only {
-  color: #667085;
-}
-
-.create-ticket-field input[type='date'] {
-  color-scheme: light;
-}
-
-.create-ticket-field input[type='date']::-webkit-calendar-picker-indicator {
-  opacity: 1;
-  cursor: pointer;
-  filter: invert(35%) sepia(12%) saturate(708%) hue-rotate(181deg)
-    brightness(91%) contrast(86%);
-}
-
-.create-ticket-field select:disabled,
-.create-ticket-field input:read-only {
-  opacity: 1;
-}
-
-.create-ticket-search-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.create-ticket-search-wrap svg {
-  position: absolute;
-  left: 14px;
-  color: #667085;
-  pointer-events: none;
-}
-
-.create-ticket-search-wrap input {
-  padding-left: 42px;
-}
-
-.create-ticket-patient-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  background: #ffffff;
-  border: 1px solid #d8dde5;
-  border-radius: 12px;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14);
-  overflow: hidden;
-  max-height: 260px;
-  overflow-y: auto;
-  z-index: 25;
-  scrollbar-width: thin;
-  scrollbar-color: #c4c9d2 transparent;
-}
-
-.create-ticket-patient-menu::-webkit-scrollbar {
-  width: 8px;
-}
-
-.create-ticket-patient-menu::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.create-ticket-patient-menu::-webkit-scrollbar-thumb {
-  background: #c4c9d2;
-  border-radius: 999px;
-  border: 2px solid #ffffff;
-}
-
-.create-ticket-patient-menu::-webkit-scrollbar-thumb:hover {
-  background: #aeb5c0;
-}
-
-.create-ticket-patient-option {
-  width: 100%;
-  border: none;
-  background: #ffffff;
-  padding: 12px 16px;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  cursor: pointer;
-}
-
-.create-ticket-patient-option:hover {
-  background: #f3f6fb;
-}
-
-.create-ticket-patient-option strong {
-  color: #111827;
-  font-size: 14px;
-}
-
-.create-ticket-patient-option span,
-.create-ticket-patient-empty {
-  color: #667085;
-  font-size: 13px;
-}
-
-.create-ticket-patient-empty {
-  padding: 14px 16px;
-}
-
-.create-ticket-radio-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 16px;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.create-ticket-radio-row > label:first-child {
-  font-weight: 700;
-}
-
-.create-ticket-radio-row input {
-  margin-right: 8px;
-}
-
-.create-ticket-symptom-pills {
-  margin: 8px 0 18px;
-}
-
-.create-ticket-pain-shell {
-  margin-bottom: 30px;
-}
-
-.create-ticket-pain-shell .triage-pain-map-card {
-  max-width: 1040px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.create-ticket-pain-shell .triage-pain-map-content {
-  max-width: 960px;
-  margin-left: auto;
-  margin-right: auto;
-  grid-template-columns: minmax(180px, 210px) minmax(280px, 1fr);
-  gap: 14px;
-}
-
-.create-ticket-pain-shell .triage-pain-map-picker,
-.create-ticket-pain-shell .triage-pain-map-figure {
-  justify-self: center;
-}
-
-.create-ticket-pain-shell .triage-pain-reference-card img {
-  max-height: 390px;
-}
-
-.create-ticket-duration-unit {
-  flex: 0 0 82px;
-  width: 82px;
-  min-width: 82px;
-  border: none;
-  background: transparent;
-  color: #263247;
-  font-size: 12px;
-  font-weight: 700;
-  outline: none;
-  padding: 0 20px 0 2px;
-  appearance: auto;
-  -webkit-appearance: auto;
-}
-
-.create-ticket-number-field {
-  flex: 0 0 24px !important;
-  width: 24px !important;
-  min-width: 24px !important;
-  max-width: 24px !important;
-}
-
-.create-ticket-number-stepper {
-  width: 14px;
-  height: 20px;
-  margin: 0 2px 0 -18px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  flex: 0 0 14px;
-  box-sizing: border-box;
-}
-
-.triage-vitals-grid div > div.create-ticket-number-stepper {
-  min-height: 0;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-}
-
-.create-ticket-number-stepper button {
-  flex: 1 1 0;
-  min-height: 0;
-  border: none;
-  border-bottom: none;
-  background: transparent;
-  color: #5f6f86;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  width: 100%;
-}
-
-.create-ticket-number-stepper button svg {
-  width: 10px;
-  height: 10px;
-}
-
-.create-ticket-number-stepper button:last-child {
-  border-bottom: none;
-}
-
-.create-ticket-number-stepper button:hover {
-  background: transparent;
-  color: #263247;
-}
-
-@media (max-width: 900px) {
-  .create-ticket-topbar {
-    position: static;
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 18px;
-  }
-
-  .create-ticket-actions {
-    justify-content: flex-start;
-  }
-
-  .create-ticket-scroll {
-    padding: 18px;
-  }
-
-  .create-ticket-grid.two {
-    grid-template-columns: 1fr;
-  }
 }

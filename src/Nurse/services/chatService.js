@@ -193,7 +193,8 @@ export async function getMessages(conversationId, options = {}) {
     const url = `/api/v1/chat/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ""
       }`;
 
-    return await apiRequest(url);
+    const data = await apiRequest(url);
+    return data.messages || data || [];
   } catch (error) {
     console.error("Error fetching messages:", error);
     throw error;
@@ -434,7 +435,6 @@ export function setupChatSocketListeners(handlers) {
     // console.log("[Chat] Listening for ticket:claimed events");
   }
   if (onSpecialistJoined) {
-    socket.on("ticket:specialist_joined", onSpecialistJoined);
     // console.log("[Chat] Listening for ticket:specialist_joined events");
   }
   if (onCallStarted) {
@@ -493,12 +493,6 @@ export function setupChatSocketListeners(handlers) {
     }
     if (onCallEnded) {
       socket.off("call:ended", onCallEnded);
-    }
-    if (onMessageUpdated) {
-      socket.off("chat:message_updated", onMessageUpdated);
-    }
-    if (onHistoryShared) {
-      socket.off("chat:history_shared", onHistoryShared);
     }
   };
 }
@@ -789,19 +783,8 @@ export function transformMessageForUI(message, currentUserId) {
     message.senderName ||
     "Unknown";
 
-  const messageId =
-    message.Message_ID ||
-    message.Id ||
-    message.id ||
-    [
-      message.ticket || message.Ticket_ID || message.ticketId || "ticket",
-      message.Created_At || message.createdAt || Date.now(),
-      senderId || "system",
-      message.Message_Content || message.content || "",
-    ].join("-");
-
   return {
-    id: messageId,
+    id: message.Message_ID || message.Id || message.id,
     text: message.Message_Content || message.content || "",
     timestamp: formatExactTime(message.Created_At || message.createdAt),
     rawTimestamp: message.Created_At || message.createdAt,

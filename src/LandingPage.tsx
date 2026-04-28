@@ -428,6 +428,44 @@ function DoctorView() {
 
   const infiniteSlides = [slides[slides.length - 1], ...slides, slides[0]];
 
+  const partners = [
+    {
+      label: 'LGU Naga',
+      icon: Building2Icon,
+      bgColor: 'bg-blue-50',
+      textColor: 'text-blue-600',
+    },
+    {
+      label: 'Bicol Medical Center',
+      icon: Hospital,
+      bgColor: 'bg-green-50',
+      textColor: 'text-green-600',
+    },
+    {
+      label: 'PhilHeath',
+      icon: Heart,
+      bgColor: 'bg-red-50',
+      textColor: 'text-red-600',
+    },
+    {
+      label: 'Maxicare',
+      icon: Shield,
+      bgColor: 'bg-purple-50',
+      textColor: 'text-purple-600',
+    },
+    {
+      label: 'Medicard',
+      icon: Shield,
+      bgColor: 'bg-orange-50',
+      textColor: 'text-orange-600',
+    },
+    {
+      label: 'Intellicare',
+      icon: Shield,
+      bgColor: 'bg-cyan-50',
+      textColor: 'text-cyan-600',
+    },
+  ];
   const specialtiesExtended = [
     {
       label: 'Opthalmology',
@@ -797,16 +835,15 @@ function DoctorView() {
               <button
                 key={i}
                 onClick={() => goTo(i + 1)}
-                className={`rounded-full hover:bg-gray-800 hover:cursor-pointer transition-all duration-300 ${
-                  (current === 0
-                    ? slides.length
-                    : current === infiniteSlides.length - 1
-                      ? 1
-                      : current) ===
+                className={`rounded-full hover:bg-gray-800 hover:cursor-pointer transition-all duration-300 ${(current === 0
+                  ? slides.length
+                  : current === infiniteSlides.length - 1
+                    ? 1
+                    : current) ===
                   i + 1
-                    ? 'bg-gray-800 w-1.75 h-1.75'
-                    : 'bg-gray-300 w-1.75 h-1.75'
-                }`}
+                  ? 'bg-gray-800 w-1.75 h-1.75'
+                  : 'bg-gray-300 w-1.75 h-1.75'
+                  }`}
               />
             ))}
           </div>
@@ -942,8 +979,8 @@ function PatientView({
       textColor: 'text-blue-600',
     },
     {
-      label: 'Naga City Hospital',
-      href: 'https://www.facebook.com/nagacitygeneralhospital/',
+      label: 'Bicol Medical Center',
+      href: 'https://bmc.doh.gov.ph/',
       icon: Hospital,
       bgColor: 'bg-green-50',
       hoverColor: 'hover:bg-green-50',
@@ -952,6 +989,7 @@ function PatientView({
     {
       label: 'PhilHealth',
       href: 'https://www.philhealth.gov.ph/',
+      label: 'PhilHeath',
       icon: Heart,
       bgColor: 'bg-red-50',
       hoverColor: 'hover:bg-red-50',
@@ -1207,17 +1245,15 @@ function PatientView({
                     >
                       <span>{searchType}</span>
                       <ChevronDown
-                        className={`size-4 text-gray-400 transition-transform ${
-                          isSearchTypeOpen ? 'rotate-180' : ''
-                        }`}
+                        className={`size-4 text-gray-400 transition-transform ${isSearchTypeOpen ? 'rotate-180' : ''
+                          }`}
                       />
                     </button>
                     <ul
-                      className={`absolute w-full z-20 mt-1 top-full origin-top-left rounded-lg border border-gray-200 bg-gray-50 shadow-md transition-all duration-200 p-4 ${
-                        isSearchTypeOpen
-                          ? 'visible opacity-100 scale-100'
-                          : 'invisible opacity-0 scale-95 pointer-events-none'
-                      }`}
+                      className={`absolute w-full z-20 mt-1 top-full origin-top-left rounded-lg border border-gray-200 bg-gray-50 shadow-md transition-all duration-200 p-4 ${isSearchTypeOpen
+                        ? 'visible opacity-100 scale-100'
+                        : 'invisible opacity-0 scale-95 pointer-events-none'
+                        }`}
                     >
                       <li
                         onClick={() => {

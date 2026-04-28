@@ -74,7 +74,7 @@ export function NavBar({ activeView, setActiveView }: NavBarProps) {
               <a>For Doctors</a>
             </li>
             <li className='hover:cursor-pointer hover:text-blue-700 transition-all'>
-              <a>About</a>
+              <Link to='/aboutUs'>About Us</Link>
             </li>
           </ul>
         )}
@@ -121,12 +121,20 @@ export function NavBar({ activeView, setActiveView }: NavBarProps) {
                 'Services',
                 'Community',
                 'For Doctors',
-                'About',
+                'About Us',
               ].map((item) => (
                 <li key={item} className='hover:cursor-pointer transition-all'>
                   {item === 'Find a Doctor' ? (
                     <Link
                       to='/search'
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className='block w-full rounded px-3 py-3 hover:bg-gray-50'
+                    >
+                      {item}
+                    </Link>
+                  ) : item === 'About Us' ? ( // Added this check
+                    <Link
+                      to='/aboutUs'
                       onClick={() => setIsMobileMenuOpen(false)}
                       className='block w-full rounded px-3 py-3 hover:bg-gray-50'
                     >

@@ -1,5 +1,5 @@
-import React, { createContext, useState, useContext } from "react";
-import { DiyModal } from "../components/DiyModal";
+import React, { createContext, useState, useContext } from 'react';
+import { DiyModal } from '../components/DIYModal';
 
 // 1. Create the Context
 const ModalContext = createContext();

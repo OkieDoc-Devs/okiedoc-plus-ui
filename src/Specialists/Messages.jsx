@@ -23,6 +23,7 @@ import "./SpecialistDashboard.css";
 const Messages = ({ currentUser, onNavigateToDashboard }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [isVideoCall, setIsVideoCall] = useState(true);
@@ -159,11 +160,13 @@ const Messages = ({ currentUser, onNavigateToDashboard }) => {
 
     if (
       !activeConversation ||
-      (!newMessage.trim() && uploadedFiles.length === 0)
+      (!newMessage.trim() && uploadedFiles.length === 0) ||
+      isSendingMessage
     ) {
       return;
     }
 
+    setIsSendingMessage(true);
     try {
       const trimmedMessage = newMessage.trim();
 
@@ -198,6 +201,8 @@ const Messages = ({ currentUser, onNavigateToDashboard }) => {
     } catch (error) {
       console.error("Error sending message or uploading file:", error);
       alert("Failed to send message. Please try again.");
+    } finally {
+      setIsSendingMessage(false);
     }
   };
 
@@ -603,7 +608,14 @@ const Messages = ({ currentUser, onNavigateToDashboard }) => {
                     maxLength={CHARACTER_LIMIT}
                     className="message-input"
                   />
-                  <button type="submit" className="send-btn">
+                  <button
+                    type="submit"
+                    className="send-btn"
+                    disabled={
+                      isSendingMessage ||
+                      (!newMessage.trim() && uploadedFiles.length === 0)
+                    }
+                  >
                     Send
                   </button>
                 </form>

@@ -146,6 +146,96 @@ export async function generateInvoicePDF(invoiceData, invoiceTicket) {
 }
 
 /**
+ * Generate post-consultation billing PDF
+ * @param {Object} billingData - Billing pane data
+ * @returns {Promise<void>}
+ */
+export async function generatePostConsultationBillingPDF(billingData) {
+  if (!billingData) return;
+
+  const { default: jsPDF } = await import("jspdf");
+  const pdf = new jsPDF();
+
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(16);
+  pdf.text("Post-Consultation Billing", 20, 20);
+
+  pdf.setFontSize(11);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(`Patient Name: ${billingData.patientName || "N/A"}`, 20, 32);
+  pdf.text(`Ticket ID: ${billingData.ticketId || "N/A"}`, 20, 39);
+  pdf.text(`Consultation Type: ${billingData.consultationType || "N/A"}`, 20, 46);
+  pdf.text(`Assigned Doctor: ${billingData.assignedDoctor || "N/A"}`, 20, 53);
+  pdf.text(`Payment Type: ${billingData.paymentType || "Private"}`, 20, 60);
+  pdf.text(`Payment Status: ${billingData.paymentStatus || "Pending"}`, 20, 67);
+
+  let yPosition = 80;
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(13);
+  pdf.text("Final Billing Summary", 20, yPosition);
+
+  yPosition += 8;
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(11);
+  pdf.line(20, yPosition, 190, yPosition);
+
+  yPosition += 10;
+  pdf.text("Base Consultation Fee", 20, yPosition);
+  pdf.text(`PHP ${Number(billingData.baseConsultationFee || 0).toFixed(2)}`, 180, yPosition, {
+    align: "right",
+  });
+
+  const selectedAdditionalServices = billingData.selectedAdditionalServices || [];
+  const customServices = billingData.customServices || [];
+
+  if (selectedAdditionalServices.length > 0 || customServices.length > 0) {
+    yPosition += 10;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Additional Services", 20, yPosition);
+    pdf.setFont("helvetica", "normal");
+
+    selectedAdditionalServices.forEach((service) => {
+      yPosition += 7;
+      pdf.text(service.label, 24, yPosition);
+      pdf.text(`PHP ${Number(service.amount || 0).toFixed(2)}`, 180, yPosition, {
+        align: "right",
+      });
+    });
+
+    customServices.forEach((service) => {
+      yPosition += 7;
+      pdf.text(service.label, 24, yPosition);
+      pdf.text(`PHP ${Number(service.amount || 0).toFixed(2)}`, 180, yPosition, {
+        align: "right",
+      });
+    });
+  }
+
+  yPosition += 10;
+  pdf.line(20, yPosition, 190, yPosition);
+  yPosition += 8;
+
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Subtotal", 20, yPosition);
+  pdf.text(`PHP ${Number(billingData.subtotal || 0).toFixed(2)}`, 180, yPosition, {
+    align: "right",
+  });
+
+  yPosition += 8;
+  pdf.text("Final Total", 20, yPosition);
+  pdf.text(`PHP ${Number(billingData.finalTotal || 0).toFixed(2)}`, 180, yPosition, {
+    align: "right",
+  });
+
+  yPosition += 15;
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
+  pdf.text("This document is system-generated.", 20, yPosition);
+
+  pdf.save(`Post_Consultation_Billing_${billingData.ticketId || "Ticket"}.pdf`);
+}
+
+/**
  * Generate PDF content (internal helper)
  * @param {Object} pdf - jsPDF instance
  * @param {Object} invoiceData - Invoice data

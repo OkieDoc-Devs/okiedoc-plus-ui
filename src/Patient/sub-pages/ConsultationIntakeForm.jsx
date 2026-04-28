@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { submitConsultationIntake } from "../services/apiService";
+import referredPainChart from "../../assets/1506_Referred_Pain_Chart.jpg";
 import {
   IconArrowLeft,
   IconFileText,
@@ -493,26 +494,32 @@ export default function ConsultationIntakeForm({
           </div>
 
           <div className="triage-pain-map-content">
-            <div
-              className={`triage-pain-map-figure ${painMapView === "back" ? "back" : "front"}`}
-            >
-              <div className="body-map-visual"></div>
-              {PAIN_MAP_AREAS[painMapView].map((area) => {
-                const areaId = `${painMapView}:${area.key}`;
-                const isSelected = formData.painAreas.some(
-                  (a) => a.id === areaId,
-                );
+            <div className="triage-pain-map-picker">
+              <div
+                className={`triage-pain-map-figure ${painMapView === "back" ? "back" : "front"}`}
+              >
+                <div className="body-map-visual"></div>
+                {PAIN_MAP_AREAS[painMapView].map((area) => {
+                  const areaId = `${painMapView}:${area.key}`;
+                  const isSelected = formData.painAreas.some(
+                    (a) => a.id === areaId,
+                  );
 
-                return (
-                  <button
-                    key={areaId}
-                    type="button"
-                    className={`triage-body-part ${area.className} ${isSelected ? "selected" : ""}`}
-                    onClick={() => handlePainAreaToggle(area)}
-                  />
-                );
-              })}
+                  return (
+                    <button
+                      key={areaId}
+                      type="button"
+                      className={`triage-body-part ${area.className} ${isSelected ? "selected" : ""}`}
+                      onClick={() => handlePainAreaToggle(area)}
+                    />
+                  );
+                })}
+              </div>
             </div>
+
+            <figure className="triage-pain-reference-card">
+              <img src={referredPainChart} alt="Referred pain reference chart" />
+            </figure>
 
             <div className="triage-pain-map-selection">
               <div className="triage-pain-map-selection-title">

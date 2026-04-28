@@ -14,6 +14,7 @@ import './SpecialistDashboard.css';
 import authService from './authService';
 import * as specialistApi from './services/apiService';
 import { API_BASE_URL } from '../api/apiClient';
+import { getConversations as fetchChatConversations } from '../Nurse/services/chatService.js';
 import SpecialistCall from './SpecialistCall';
 import Messages from './Messages';
 import ImageCropperModal from '../components/ImageCropperModal';
@@ -412,6 +413,77 @@ const SpecialistDashboard = () => {
         return `${fName}${lastInitial}`;
       };
 
+      const mapDbTicketToDashboard = (ticket) => ({
+        ...ticket,
+        id: ticket.id,
+        patient: ticket.patientName
+          ? ticket.patientName
+          : ticket.patient
+            ? formatPatientName(ticket.patient)
+            : 'Walk-in Patient',
+        patientFullName:
+          ticket.patientName ||
+          (ticket.patient
+            ? `${ticket.patient.firstName || ''} ${ticket.patient.lastName || ''}`.trim()
+            : '') ||
+          'Walk-in Patient',
+        service: ticket.clinicalChiefComplaint || ticket.chiefComplaint || 'Consultation',
+        chiefComplaint: ticket.chiefComplaint || '',
+        clinicalChiefComplaint: ticket.clinicalChiefComplaint || '',
+        patientSubmittedConcern: ticket.patientSubmittedConcern || ticket.submittedConcern || '',
+        submittedConcern: ticket.submittedConcern || ticket.patientSubmittedConcern || '',
+        symptoms: ticket.symptoms || '',
+        medicalHistory: buildMedicalHistoryForSpecialist(ticket),
+        triageMedicalHistory: ticket.triageMedicalHistory || '',
+        additionalRemarks: ticket.additionalRemarks || '',
+        triageNotes: buildTriageNotes(ticket) || ticket.nurseRemarks || '',
+        bloodPressure: ticket.bloodPressure || '',
+        heartRate: ticket.heartRate || '',
+        temperature: ticket.temperature || '',
+        oxygenSaturation: ticket.oxygenSaturation || '',
+        selectedPainAreas: ticket.selectedPainAreas || ticket.painAreas || [],
+        painMapView: ticket.painMapView || 'front',
+        selectedSymptomPills: ticket.selectedSymptomPills || [],
+        selectedRosItems: ticket.selectedRosItems || [],
+        durationValue: ticket.durationValue || '',
+        durationUnit: ticket.durationUnit || '',
+        severity: ticket.severity || '',
+        urgencyLevel: ticket.urgencyLevel || ticket.urgency || '',
+        transferReason: ticket.transferReason || '',
+        preferredDate: ticket.preferredDate,
+        preferredTime: ticket.preferredTime,
+        consultationChannel: ticket.consultationChannel,
+        barangay: ticket.barangay,
+        patientBirthdate: ticket.patientBirthdate || '',
+        gender: ticket.patientGender || '',
+        mobile: ticket.mobile || ticket.patientMobile || '',
+        email: ticket.email || ticket.patientEmail || '',
+        when:
+          ticket.preferredDate && ticket.preferredTime
+            ? `${new Date(ticket.preferredDate).toLocaleDateString()} ${ticket.preferredTime}`
+            : ticket.createdAt
+              ? new Date(ticket.createdAt).toLocaleString('en-US', {
+                  month: 'numeric',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                })
+              : 'TBD',
+        status:
+          ticket.status === 'confirmed'
+            ? 'Awaiting'
+            : ticket.status === 'active'
+              ? 'In Consultation'
+              : ticket.status === 'completed'
+                ? 'Completed'
+                : ticket.status === 'processing'
+                  ? 'Triage Complete'
+                  : ticket.status || 'Awaiting',
+        rawTicket: ticket,
+      });
+
       if (activeResponse.success && activeResponse.activeTickets) {
         console.log(
           `[SpecialistDashboard] Loaded ${activeResponse.activeTickets.length} active tickets from API`,
@@ -420,13 +492,17 @@ const SpecialistDashboard = () => {
           ...t,
           id: t.id,
           patient: formatPatientName(t.rawTicket?.patient || t),
-          patientFullName: t.patientName || 'Unknown',
-          service: t.chiefComplaint || 'Consultation',
+          patientFullName: t.patientName || t.rawTicket?.patientName || 'Walk-in Patient',
+          service: t.clinicalChiefComplaint || t.chiefComplaint || 'Consultation',
+          chiefComplaint: t.chiefComplaint || '',
+          clinicalChiefComplaint: t.clinicalChiefComplaint || '',
+          patientSubmittedConcern: t.patientSubmittedConcern || t.submittedConcern || '',
+          submittedConcern: t.submittedConcern || t.patientSubmittedConcern || '',
           symptoms: t.symptoms || '',
           medicalHistory: buildMedicalHistoryForSpecialist(t.rawTicket || t),
           triageMedicalHistory: t.triageMedicalHistory || t.rawTicket?.triageMedicalHistory || '',
           additionalRemarks: t.additionalRemarks || t.rawTicket?.additionalRemarks || '',
-          triageNotes: buildTriageNotes(t.rawTicket || t),
+          triageNotes: buildTriageNotes(t.rawTicket || t) || t.nurseRemarks || '',
           bloodPressure: t.rawTicket?.bloodPressure || '',
           heartRate: t.rawTicket?.heartRate || '',
           temperature: t.rawTicket?.temperature || '',
@@ -440,10 +516,15 @@ const SpecialistDashboard = () => {
           durationUnit: t.durationUnit || t.rawTicket?.durationUnit || '',
           severity: t.severity || t.rawTicket?.severity || '',
           urgencyLevel: t.urgencyLevel || t.rawTicket?.urgencyLevel || t.urgency || '',
+          transferReason: t.transferReason || t.rawTicket?.transferReason || '',
           preferredDate: t.preferredDate,
           preferredTime: t.preferredTime,
           consultationChannel: t.consultationChannel,
           barangay: t.barangay,
+          patientBirthdate: t.patientBirthdate || t.rawTicket?.patientBirthdate || '',
+          gender: t.patientGender || t.rawTicket?.patientGender || '',
+          mobile: t.mobile || t.patientMobile || t.rawTicket?.patientMobile || '',
+          email: t.email || t.patientEmail || t.rawTicket?.patientEmail || '',
           when:
             t.preferredDate && t.preferredTime
               ? `${new Date(t.preferredDate).toLocaleDateString()} ${t.preferredTime}`
@@ -479,16 +560,23 @@ const SpecialistDashboard = () => {
         const mappedAvailable = availableResponse.data.map((t) => ({
           ...t,
           id: t.id,
-          patient: formatPatientName(t.patient),
-          patientFullName: t.patient
-            ? `${t.patient.firstName || ''} ${t.patient.lastName || ''}`.trim()
-            : 'Unknown',
-          service: t.chiefComplaint || 'Consultation',
+          patient: t.patientName || formatPatientName(t.patient || t),
+          patientFullName:
+            t.patientName ||
+            (t.patient
+              ? `${t.patient.firstName || ''} ${t.patient.lastName || ''}`.trim()
+              : '') ||
+            'Walk-in Patient',
+          service: t.clinicalChiefComplaint || t.chiefComplaint || 'Consultation',
+          chiefComplaint: t.chiefComplaint || '',
+          clinicalChiefComplaint: t.clinicalChiefComplaint || '',
+          patientSubmittedConcern: t.patientSubmittedConcern || t.submittedConcern || '',
+          submittedConcern: t.submittedConcern || t.patientSubmittedConcern || '',
           symptoms: t.symptoms || '',
           medicalHistory: buildMedicalHistoryForSpecialist(t),
           triageMedicalHistory: t.triageMedicalHistory || '',
           additionalRemarks: t.additionalRemarks || '',
-          triageNotes: buildTriageNotes(t),
+          triageNotes: buildTriageNotes(t) || t.nurseRemarks || '',
           bloodPressure: t.bloodPressure || '',
           heartRate: t.heartRate || '',
           temperature: t.temperature || '',
@@ -501,10 +589,15 @@ const SpecialistDashboard = () => {
           durationUnit: t.durationUnit || '',
           severity: t.severity || '',
           urgencyLevel: t.urgencyLevel || t.urgency || '',
+          transferReason: t.transferReason || '',
           preferredDate: t.preferredDate,
           preferredTime: t.preferredTime,
           consultationChannel: t.consultationChannel,
           barangay: t.barangay,
+          patientBirthdate: t.patientBirthdate || t.rawTicket?.patientBirthdate || '',
+          gender: t.patientGender || t.rawTicket?.patientGender || '',
+          mobile: t.mobile || t.patientMobile || t.rawTicket?.patientMobile || '',
+          email: t.email || t.patientEmail || t.rawTicket?.patientEmail || '',
           when:
             t.preferredDate && t.preferredTime
               ? `${new Date(t.preferredDate).toLocaleDateString()} ${t.preferredTime}`
@@ -522,6 +615,61 @@ const SpecialistDashboard = () => {
           rawTicket: t,
         }));
         allMappedTickets = [...allMappedTickets, ...mappedAvailable];
+      }
+
+      try {
+        const conversations = await fetchChatConversations();
+        const conversationTickets = Array.isArray(conversations)
+          ? conversations
+              .filter((conversation) => conversation?.id)
+              .filter(
+                (conversation) =>
+                  !allMappedTickets.some(
+                    (ticket) => String(ticket.id) === String(conversation.id),
+                  ),
+              )
+          : [];
+
+        if (conversationTickets.length > 0) {
+          const mappedConversationTickets = await Promise.all(
+            conversationTickets.map(async (conversation) => {
+              try {
+                const fullTicket = await specialistApi.fetchTicket(conversation.id);
+                if (fullTicket) {
+                  return mapDbTicketToDashboard(fullTicket);
+                }
+              } catch (error) {
+                console.warn(
+                  '[SpecialistDashboard] Could not fetch ticket from conversation:',
+                  conversation.id,
+                  error,
+                );
+              }
+
+              const fallbackTicket = {
+                ...(conversation.ticket || {}),
+                id: conversation.id,
+                ticketNumber: conversation.ticketNumber,
+                patientName:
+                  conversation.ticket?.patientName ||
+                  (conversation.name || '').split(' - ').slice(1).join(' - ') ||
+                  'Walk-in Patient',
+                status: conversation.ticket?.status || 'confirmed',
+              };
+              return mapDbTicketToDashboard(fallbackTicket);
+            }),
+          );
+
+          allMappedTickets = [
+            ...allMappedTickets,
+            ...mappedConversationTickets.filter(Boolean),
+          ];
+        }
+      } catch (conversationError) {
+        console.warn(
+          '[SpecialistDashboard] Failed to load tickets from chat conversations:',
+          conversationError,
+        );
       }
 
       if (
@@ -1021,19 +1169,26 @@ const SpecialistDashboard = () => {
       if (ticket) {
         const mapped = {
           id: ticket.id,
-          patient: ticket.patient
+          patient: ticket.patientName
+            ? ticket.patientName
+            : ticket.patient
             ? `${ticket.patient.firstName || ''} ${ticket.patient.lastName ? ticket.patient.lastName.charAt(0) + '.' : ''}`
-            : 'Unknown',
-          patientFullName: ticket.patient
+            : 'Walk-in Patient',
+          patientFullName: ticket.patientName
+            ? ticket.patientName
+            : ticket.patient
             ? `${ticket.patient.firstName || ''} ${ticket.patient.lastName || ''}`.trim()
-            : 'Unknown',
-          service: ticket.chiefComplaint || 'Consultation',
+            : 'Walk-in Patient',
+          service: ticket.clinicalChiefComplaint || ticket.chiefComplaint || 'Consultation',
           chiefComplaint: ticket.chiefComplaint,
+          clinicalChiefComplaint: ticket.clinicalChiefComplaint || '',
+          patientSubmittedConcern: ticket.patientSubmittedConcern || ticket.submittedConcern || '',
+          submittedConcern: ticket.submittedConcern || ticket.patientSubmittedConcern || '',
           symptoms: ticket.symptoms || '',
           medicalHistory: buildMedicalHistoryForSpecialist(ticket),
           triageMedicalHistory: ticket.triageMedicalHistory || '',
           additionalRemarks: ticket.additionalRemarks || '',
-          triageNotes: buildTriageNotes(ticket),
+          triageNotes: buildTriageNotes(ticket) || ticket.nurseRemarks || '',
           bloodPressure: ticket.bloodPressure || '',
           heartRate: ticket.heartRate || '',
           temperature: ticket.temperature || '',
@@ -1046,10 +1201,15 @@ const SpecialistDashboard = () => {
           durationUnit: ticket.durationUnit || '',
           severity: ticket.severity || '',
           urgencyLevel: ticket.urgencyLevel || ticket.urgency || '',
+          transferReason: ticket.transferReason || '',
           preferredDate: ticket.preferredDate,
           preferredTime: ticket.preferredTime,
           consultationChannel: ticket.consultationChannel,
           barangay: ticket.barangay,
+          patientBirthdate: ticket.patientBirthdate || '',
+          gender: ticket.patientGender || '',
+          mobile: ticket.mobile || ticket.patientMobile || '',
+          email: ticket.email || ticket.patientEmail || '',
           when:
             ticket.preferredDate && ticket.preferredTime
               ? `${new Date(ticket.preferredDate).toLocaleDateString()} ${ticket.preferredTime}`
@@ -2153,6 +2313,7 @@ const SpecialistDashboard = () => {
           </div>
 
           <PainMapSection
+            className='specialist-pain-map-section'
             view={painMapView}
             selectedAreas={painMapAreas}
             readOnly

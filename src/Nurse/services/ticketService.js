@@ -135,29 +135,25 @@ export function createInitialTickets() {
  * @returns {Array} Filtered tickets
  */
 export function filterTicketsByStatus(tickets, status, nurseId = null) {
-  const normalizeStatus = (value) => String(value || "").trim().toLowerCase();
-  const isUnclaimed = (value) => value === null || value === undefined || value === "";
+  const normalizeStatus = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[_-]+/g, " ");
+  const getTicketStatus = (ticket) =>
+    ticket?.status ||
+    ticket?.triageStatus ||
+    ticket?.ticketStatus ||
+    ticket?.currentStatus;
+  const isProcessingStatus = (value) =>
+    ["processing", "in triage"].includes(normalizeStatus(value));
 
   if (status === "Pending") {
     // Do not surface waiting/pending tickets in Manage Appointments.
     return [];
   }
   if (status === "Processing") {
-    if (nurseId) {
-      // Show tickets that are Processing and:
-      // - Claimed by this nurse, OR
-      // - Passed back to nurse (passedBackToNurse = true), OR
-      // - Not claimed yet (for triage pickup)
-      return tickets.filter(
-        (t) =>
-          (normalizeStatus(t.status) === "processing" && t.claimedBy === nurseId) ||
-          (normalizeStatus(t.status) === "processing" && t.passedBackToNurse === true) ||
-          (normalizeStatus(t.status) === "processing" && isUnclaimed(t.claimedBy))
-      );
-    } else {
-      // If no nurseId, show all Processing tickets (including those assigned to specialists)
-      return tickets.filter((t) => normalizeStatus(t.status) === "processing");
-    }
+    return tickets.filter((t) => isProcessingStatus(getTicketStatus(t)));
   }
   if (status === "Confirmed" && nurseId) {
     return tickets.filter(

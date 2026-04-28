@@ -1543,23 +1543,14 @@ export default function Dashboard() {
         '',
       ),
     );
-    const addressLine = readValue(
-      selectedTicket,
-      ['address', 'patientAddress', 'fullAddress', 'streetAddress'],
-      '',
-    );
+    const barangay = readValue(selectedTicket, ['barangay', 'patientBarangay'], '');
     const city = readValue(selectedTicket, ['city', 'patientCity'], '');
     const province = readValue(
       selectedTicket,
       ['province', 'state', 'patientProvince'],
       '',
     );
-    const country = readValue(
-      selectedTicket,
-      ['country', 'patientCountry'],
-      '',
-    );
-    const composedAddress = [addressLine, city, province, country]
+    const composedAddress = [barangay, city, province]
       .map((part) => String(part || '').trim())
       .filter((part, index, array) => part && array.indexOf(part) === index)
       .join(', ');
@@ -2759,7 +2750,7 @@ export default function Dashboard() {
 
                             <div>
                               <div className='triage-ticket-code'>
-                                T-{String(ticket.id).padStart(3, '0')}
+                                {ticket.ticketNumber || `T-${String(ticket.id).padStart(3, '0')}`}
                               </div>
                               <div className='triage-ticket-name'>
                                 {readValue(ticket, [
@@ -4345,7 +4336,7 @@ export default function Dashboard() {
             onClose={() => setShowMedicalRecords(false)}
             patient={selectedPatient}
             patientId={selectedPatientId}
-            ticketId={`T-${String(selectedTicket.id).padStart(3, '0')}`}
+            ticketId={selectedTicket.ticketNumber || `T-${String(selectedTicket.id).padStart(3, '0')}`}
             consultationType={getChannelLabel(selectedTicket)}
           />
         )}

@@ -11,18 +11,22 @@ import {
   IconLoader2,
   IconCalendarOff,
   IconMapPin,
+  IconX,
+  IconUser,
+  IconActivity,
 } from "@tabler/icons-react";
 import { fetchPatientActiveTickets } from "../services/apiService";
 import "../css/Patient_Appointments.css";
 import { useModal } from "../contexts/Modals";
 
-export default function Patient_Appointments({ setActive }) {
+export default function Patient_Appointments({ setActive, ticketIdParam }) {
   const { openDiyModal } = useModal();
   const [appointments, setAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("All");
+  const [viewingAppt, setViewingAppt] = useState(null);
 
   const popoverRef = useRef(null);
 
@@ -60,12 +64,39 @@ export default function Patient_Appointments({ setActive }) {
     loadAppointments();
 
     const pollingInterval = setInterval(() => {
-      // Pass 'true' so we don't trigger the loading spinner and interrupt the user
       loadAppointments(true);
-    }, 10000); // 10000 milliseconds = 10 seconds
+    }, 10000);
 
     return () => clearInterval(pollingInterval);
   }, []);
+
+  // Linking Effect
+  useEffect(() => {
+    const syncModalWithURL = () => {
+      const hashParts = window.location.hash.split("/");
+      const urlTicketId =
+        hashParts.length === 3 && hashParts[1] === "Appointments"
+          ? hashParts[2]
+          : null;
+
+      if (urlTicketId && appointments.length > 0) {
+        const foundAppt = appointments.find(
+          (a) => a.ticketNumber === urlTicketId,
+        );
+        if (foundAppt) {
+          setViewingAppt(foundAppt);
+        }
+      } else if (!urlTicketId) {
+        setViewingAppt(null);
+      }
+    };
+
+    syncModalWithURL();
+
+    window.addEventListener("hashchange", syncModalWithURL);
+
+    return () => window.removeEventListener("hashchange", syncModalWithURL);
+  }, [appointments]);
 
   // Filter logic
   const filteredAppointments = appointments.filter((appt) => {
@@ -112,16 +143,25 @@ export default function Patient_Appointments({ setActive }) {
         </span>
       );
     }
-    // Updated to exactly "Pending" to match the checklist
     return <span className="appt-badge badge-pending">Pending</span>;
   };
 
   const getChannelIcon = (channel) => {
     if (channel === "chat")
       return <IconMessageCircle size={16} className="detail-icon" />;
-    if (channel === "mobile_call" || channel.includes("audio"))
+    if (channel === "mobile_call" || channel?.includes("audio"))
       return <IconPhone size={16} className="detail-icon" />;
+    if (channel === "in_person")
+      return <IconMapPin size={16} className="detail-icon" />;
     return <IconVideo size={16} className="detail-icon" />;
+  };
+
+  const getChannelTypeLabel = (channel) => {
+    if (channel === "chat") return "Text Chat";
+    if (channel === "mobile_call" || channel?.includes("audio"))
+      return "Voice Call";
+    if (channel === "in_person") return "Clinic Visit";
+    return "Video Call";
   };
 
   const getInitials = (name) => {
@@ -140,6 +180,12 @@ export default function Patient_Appointments({ setActive }) {
     });
   };
 
+  // Master Close
+  const handleCloseModal = () => {
+    setViewingAppt(null);
+    window.location.hash = "#/Appointments";
+  };
+
   return (
     <div className="appt-page-container">
       <div className="appt-page-header">
@@ -150,7 +196,6 @@ export default function Patient_Appointments({ setActive }) {
           </p>
         </div>
 
-        {/* --- EXACT TICKET FIX: Routed to Intake Form --- */}
         <button
           className="appt-btn appt-btn-primary"
           onClick={() => {
@@ -250,7 +295,6 @@ export default function Patient_Appointments({ setActive }) {
               : "No appointments match your current search or filter."}
           </p>
           {appointments.length === 0 && (
-            /* --- EXACT TICKET FIX: Routed to Intake Form --- */
             <button
               className="appt-btn appt-btn-primary"
               style={{ marginTop: "16px", display: "inline-flex" }}
@@ -265,9 +309,6 @@ export default function Patient_Appointments({ setActive }) {
       ) : (
         <div className="appt-grid">
           {filteredAppointments.map((appt) => {
-            // -------------------------------------------------------------
-            // CHECKLIST FALLBACK LOGIC
-            // -------------------------------------------------------------
             const displaySpecialist = appt.specialistName || "TBA";
             const displaySpecialization = appt.specialization || "TBA";
             const displayDate = appt.preferredDate
@@ -278,7 +319,6 @@ export default function Patient_Appointments({ setActive }) {
               appt.consultationChannel === "in_person" && appt.city
                 ? appt.city
                 : "TBA";
-            // -------------------------------------------------------------
 
             return (
               <div key={appt.id} className="appt-card">
@@ -337,7 +377,6 @@ export default function Patient_Appointments({ setActive }) {
                         WebkitBoxOrient: "vertical",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
-                        overflowWrap: "break-word",
                         wordBreak: "break-word",
                         minWidth: 0,
                       }}
@@ -364,14 +403,16 @@ export default function Patient_Appointments({ setActive }) {
                     <span>{displayTime}</span>
                   </div>
 
-                  <div className="appt-detail-row">
-                    <IconMapPin
-                      size={16}
-                      className="detail-icon"
-                      style={{ flexShrink: 0 }}
-                    />
-                    <span>{displayLocation}</span>
-                  </div>
+                  {appt.consultationChannel === "in_person" && (
+                    <div className="appt-detail-row">
+                      <IconMapPin
+                        size={16}
+                        className="detail-icon"
+                        style={{ flexShrink: 0 }}
+                      />
+                      <span>{displayLocation}</span>
+                    </div>
+                  )}
 
                   <div className="appt-detail-row">
                     {getChannelIcon(appt.consultationChannel)}
@@ -387,9 +428,9 @@ export default function Patient_Appointments({ setActive }) {
                 <div className="appt-card-actions">
                   <button
                     className="appt-btn appt-btn-outline full-width"
-                    onClick={() =>
-                      openDiyModal(`Viewing Ticket #${appt.ticketNumber}`)
-                    }
+                    onClick={() => {
+                      window.location.hash = `#/Appointments/${appt.ticketNumber}`;
+                    }}
                   >
                     View Details
                   </button>
@@ -397,7 +438,7 @@ export default function Patient_Appointments({ setActive }) {
                     <button
                       className="appt-btn appt-btn-primary full-width"
                       onClick={() =>
-                        openDiyModal(`Viewing Ticket #${appt.ticketNumber}`)
+                        openDiyModal(`Paying Ticket #${appt.ticketNumber}`)
                       }
                     >
                       Pay Now
@@ -406,9 +447,12 @@ export default function Patient_Appointments({ setActive }) {
                   {["confirmed", "active"].includes(appt.status) && (
                     <button
                       className="appt-btn appt-btn-primary full-width"
-                      onClick={() =>
-                        openDiyModal(`Viewing Ticket #${appt.ticketNumber}`)
-                      }
+                      onClick={() => {
+                        handleCloseModal();
+                        openDiyModal(
+                          `Joining Room for Ticket #${appt.ticketNumber}`,
+                        );
+                      }}
                     >
                       Join Room
                     </button>
@@ -417,6 +461,131 @@ export default function Patient_Appointments({ setActive }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* --- VIEW DETAILS MODAL --- */}
+      {viewingAppt && (
+        <div className="appt-modal-overlay" onClick={handleCloseModal}>
+          <div
+            className="appt-modal-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="appt-modal-header">
+              <div>
+                <h3 className="appt-modal-title">Appointment Details</h3>
+                <span className="appt-modal-ticket">
+                  Ticket #{viewingAppt.ticketNumber}
+                </span>
+              </div>
+              <button className="appt-modal-close" onClick={handleCloseModal}>
+                <IconX size={24} />
+              </button>
+            </div>
+
+            <div className="appt-modal-body">
+              <div className="appt-modal-banner">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: "8px",
+                  }}
+                >
+                  <span className="appt-modal-label">Chief Complaint</span>
+                  {getStatusBadge(viewingAppt.status)}
+                </div>
+                <h2 className="appt-modal-complaint">
+                  {viewingAppt.chiefComplaint || "General Consultation"}
+                </h2>
+              </div>
+
+              <div className="appt-modal-doctor">
+                <div className="appt-avatar large">
+                  {getInitials(viewingAppt.specialistName)}
+                </div>
+                <div>
+                  <p className="appt-modal-label">Assigned Provider</p>
+                  <h4 className="appt-modal-doctor-name">
+                    {viewingAppt.specialistName || "TBA"}
+                  </h4>
+                  <p className="appt-modal-doctor-spec">
+                    {viewingAppt.specialization || "Pending Triage Assignment"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="appt-modal-grid">
+                <div className="appt-modal-grid-item">
+                  <IconCalendarEvent size={18} className="detail-icon" />
+                  <div>
+                    <span className="appt-modal-label">Date</span>
+                    <p className="appt-modal-value">
+                      {viewingAppt.preferredDate
+                        ? formatDate(viewingAppt.preferredDate)
+                        : "TBA"}
+                    </p>
+                  </div>
+                </div>
+                <div className="appt-modal-grid-item">
+                  <IconClock size={18} className="detail-icon" />
+                  <div>
+                    <span className="appt-modal-label">Time</span>
+                    <p className="appt-modal-value">
+                      {viewingAppt.preferredTime || "TBA"}
+                    </p>
+                  </div>
+                </div>
+                <div className="appt-modal-grid-item">
+                  <IconActivity size={18} className="detail-icon" />
+                  <div>
+                    <span className="appt-modal-label">Consultation Type</span>
+                    <p
+                      className="appt-modal-value"
+                      style={{ textTransform: "capitalize" }}
+                    >
+                      {(
+                        viewingAppt.consultationChannel || "platform_call"
+                      ).replace("_", " ")}
+                    </p>
+                  </div>
+                </div>
+                <div className="appt-modal-grid-item">
+                  {getChannelIcon(viewingAppt.consultationChannel)}
+                  <div>
+                    <span className="appt-modal-label">Channel Type</span>
+                    <p className="appt-modal-value">
+                      {getChannelTypeLabel(viewingAppt.consultationChannel)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="appt-modal-footer">
+              <button
+                className="appt-btn appt-btn-outline"
+                onClick={handleCloseModal}
+              >
+                Close
+              </button>
+              {["confirmed", "active"].includes(viewingAppt.status) && (
+                <button
+                  className="appt-btn appt-btn-primary"
+                  onClick={() => {
+                    handleCloseModal();
+                    openDiyModal(
+                      `Joining Room for Ticket #${viewingAppt.ticketNumber}`,
+                    );
+                  }}
+                >
+                  Join Consultation Room
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

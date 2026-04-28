@@ -14,35 +14,45 @@ export function NavBar({ activeView, setActiveView }: NavBarProps) {
   const secondaryBtn =
     activeView === 'patient'
       ? {
-        label: 'Register as Patient',
-        onClick: () => navigate('/registration'),
-      }
-      : {
-        label: 'Find a Doctor',
-        onClick: () => {
-          setActiveView('patient');
-          navigate('/');
+          label: 'Register as Patient',
+          onClick: () => navigate('/registration'),
         }
-      };
+      : {
+          label: 'Find a Doctor',
+          onClick: () => {
+            setActiveView('patient');
+            navigate('/');
+          },
+        };
 
   const primaryBtn =
     activeView === 'patient'
       ? {
-        label: 'Join as a Specialist',
-        onClick: () => {
-          setActiveView('specialist');
-          navigate('/');
-        },
-      }
+          label: 'Join as a Specialist',
+          onClick: () => {
+            setActiveView('specialist');
+            navigate('/');
+          },
+        }
       : {
-        label: 'Register as Specialist',
-        onClick: () => navigate('/specialist-registration'),
-      };
+          label: 'Register as Specialist',
+          onClick: () => navigate('/specialist-registration'),
+        };
 
   return (
     <>
       <nav className='fixed top-0 left-0 right-0 z-40 bg-white flex items-center justify-between shadow 2xl:border-b border-gray-100 h-20 px-4 text-base'>
-        <Link to='/'>
+        <Link
+          to='/'
+          onClick={(e) => {
+            if (activeView === 'specialist') {
+              e.preventDefault();
+              setActiveView('patient');
+              navigate('/');
+            }
+          }}
+          className='inline-block'
+        >
           <img
             src={OkieDocLogo}
             alt='OkieDoc Logo'
@@ -72,7 +82,9 @@ export function NavBar({ activeView, setActiveView }: NavBarProps) {
         <div className='hidden lg:flex justify-between text-sm xl:text-base gap-1 xl:gap-2 xl:pr-4 2xl:pr-48'>
           <button
             onClick={() =>
-              navigate(activeView === 'patient' ? '/login' : '/specialist-login')
+              navigate(
+                activeView === 'patient' ? '/login' : '/specialist-login',
+              )
             }
             className='hover:cursor-pointer rounded hover:bg-gray-300 px-4 py-2 transition-all'
           >
@@ -132,7 +144,9 @@ export function NavBar({ activeView, setActiveView }: NavBarProps) {
           <div className='flex flex-col w-full gap-2 mt-2'>
             <button
               onClick={() => {
-                navigate(activeView === 'patient' ? '/login' : '/specialist-login');
+                navigate(
+                  activeView === 'patient' ? '/login' : '/specialist-login',
+                );
                 setIsMobileMenuOpen(false);
               }}
               className='hover:cursor-pointer rounded-lg border border-gray-200 hover:bg-gray-200 px-4 py-2 transition-all'

@@ -1,5 +1,6 @@
 import { PAIN_MAP_AREAS, PAIN_MAP_VIEWS } from './painMapConstants.js';
 import { useEffect, useState } from 'react';
+import referredPainChart from '../../assets/1506_Referred_Pain_Chart.jpg';
 import './PainMap.css';
 
 const normalizeSelectedAreas = (selectedAreas) =>
@@ -111,24 +112,30 @@ const PainMap = ({
       </div>
 
       <div className='triage-pain-map-content'>
-        <div className={`triage-pain-map-figure ${currentView === 'back' ? 'back' : 'front'}`}>
-          {PAIN_MAP_AREAS[currentView].map((area) => {
-            const areaId = `${currentView}:${area.key}`;
-            const isSelected = selectedAreaIds.has(areaId);
+        <div className='triage-pain-map-picker'>
+          <div className={`triage-pain-map-figure ${currentView === 'back' ? 'back' : 'front'}`}>
+            {PAIN_MAP_AREAS[currentView].map((area) => {
+              const areaId = `${currentView}:${area.key}`;
+              const isSelected = selectedAreaIds.has(areaId);
 
-            return (
-              <button
-                key={areaId}
-                type='button'
-                className={`triage-body-part ${area.className} ${isSelected ? 'selected' : ''}`}
-                onClick={() => onAreaToggle?.(area)}
-                aria-pressed={isSelected}
-                aria-label={`${area.label} (${currentView})`}
-                disabled={!canToggleAreas}
-              />
-            );
-          })}
+              return (
+                <button
+                  key={areaId}
+                  type='button'
+                  className={`triage-body-part ${area.className} ${isSelected ? 'selected' : ''}`}
+                  onClick={() => onAreaToggle?.(area)}
+                  aria-pressed={isSelected}
+                  aria-label={`${area.label} (${currentView})`}
+                  disabled={!canToggleAreas}
+                />
+              );
+            })}
+          </div>
         </div>
+
+        <figure className='triage-pain-reference-card'>
+          <img src={referredPainChart} alt='Referred pain reference chart' />
+        </figure>
 
         <div className='triage-pain-map-selection'>
           <div className='triage-pain-map-selection-title'>Selected pain areas:</div>

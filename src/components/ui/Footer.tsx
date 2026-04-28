@@ -8,6 +8,7 @@ import {
   InstagramIcon,
   LinkedinIcon,
 } from 'lucide-react';
+import { Link } from 'react-router';
 
 export function Footer() {
   return (
@@ -37,7 +38,7 @@ export function Footer() {
         <div className='flex flex-col w-full gap-2 '>
           <p className='font-bold text-white text-lg mb-1'>General</p>
           <p className='text-gray-300 text-[14px] hover:text-blue-600 transition-colors cursor-pointer'>
-            About Us
+            <Link to='/aboutUs'>About Us</Link>
           </p>
           <p className='text-gray-300 text-[14px] hover:text-blue-600 transition-colors cursor-pointer'>
             How It Works

@@ -2874,40 +2874,6 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {selectedPatient.allergies.length > 0 && (
-                        <>
-                          <div className='triage-divider' />
-
-                          <div className='triage-allergy-block'>
-                            <h5>
-                              <AlertCircle size={14} strokeWidth={2.2} />
-                              <span>Allergies</span>
-                            </h5>
-                            <div className='triage-tag-list'>
-                              {selectedPatient.allergies.map((allergy) => (
-                                <span key={allergy}>{allergy}</span>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                      <div className='triage-divider' />
-
-                      <div className='triage-history-block'>
-                        <h5 className='triage-history-title'>
-                          Medical History
-                        </h5>
-                        {selectedPatient.medicalHistory.length > 0 ? (
-                          <ul>
-                            {selectedPatient.medicalHistory.map((item) => (
-                              <li key={item}>{item}</li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p>{DEFAULT_TEXT}</p>
-                        )}
-                      </div>
 
                       <div className='triage-divider' />
 

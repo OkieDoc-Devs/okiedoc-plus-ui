@@ -2457,7 +2457,7 @@ const SpecialistDashboard = () => {
 
           </div>
 
-          {selectedPatient?.email && (
+          {selectedPatient?.rawTicket?.patient && selectedPatient?.email && (
             <div className='patient-chat-panel'>
               <div className='patient-chat-header'>
                 <div className='patient-chat-title-row'>

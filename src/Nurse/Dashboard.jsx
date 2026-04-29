@@ -2974,11 +2974,10 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {!selectedTicket?.isCallback &&
-                !selectedPatient?.isCallback &&
-                (!selectedPatient ||
-                  (selectedPatient.email &&
-                    selectedPatient.email !== 'N/A')) && (
+              {(!selectedPatient ||
+                (selectedPatientId &&
+                  selectedPatient.email &&
+                  selectedPatient.email !== 'N/A')) && (
                 <div className='triage-snapshot-chat-dock'>
                   <article className='triage-chat-panel'>
                     <header>
@@ -2990,10 +2989,6 @@ export default function Dashboard() {
                       {!selectedPatient ? (
                         <div className='triage-empty-note'>
                           Select a patient to open chat.
-                        </div>
-                      ) : isSelectedCallbackTicket ? (
-                        <div className='triage-empty-note'>
-                          Chat is not available for callback-only requests.
                         </div>
                       ) : chatEntries.length > 0 ? (
                         chatEntries.map((message) =>
@@ -3040,8 +3035,7 @@ export default function Dashboard() {
                         }
                         disabled={
                           !selectedPatient ||
-                          isSendingQuickMessage ||
-                          isSelectedCallbackTicket
+                          isSendingQuickMessage
                         }
                       />
                       <button
@@ -3049,7 +3043,6 @@ export default function Dashboard() {
                         type='submit'
                         disabled={
                           !selectedPatient ||
-                          isSelectedCallbackTicket ||
                           !quickMessage.trim() ||
                           isSendingQuickMessage
                         }

@@ -183,7 +183,7 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
   // Master Close
   const handleCloseModal = () => {
     setViewingAppt(null);
-    window.location.hash = "#/Appointments";
+    window.history.pushState(null, "", "#/Appointments");
   };
 
   return (
@@ -429,7 +429,12 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                   <button
                     className="appt-btn appt-btn-outline full-width"
                     onClick={() => {
-                      window.location.hash = `#/Appointments/${appt.ticketNumber}`;
+                      window.history.pushState(
+                        null,
+                        "",
+                        `#/Appointments/${appt.ticketNumber}`,
+                      );
+                      setViewingAppt(appt);
                     }}
                   >
                     View Details

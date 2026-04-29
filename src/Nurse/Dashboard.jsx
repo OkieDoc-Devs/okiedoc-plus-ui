@@ -545,12 +545,30 @@ const getCallbackStatusLabel = (statusValue) => {
   return value || 'Waiting';
 };
 
+const getCallbackFullName = (callback) => {
+  const directFullName = String(callback?.fullName || '').trim();
+  if (directFullName) {
+    return directFullName;
+  }
+
+  const fallbackName = String(callback?.patientName || callback?.name || '').trim();
+  if (fallbackName) {
+    return fallbackName;
+  }
+
+  const firstName = String(callback?.firstName || '').trim();
+  const lastName = String(callback?.lastName || '').trim();
+  const combinedName = `${firstName} ${lastName}`.trim();
+  return combinedName || 'Callback Request';
+};
+
 const buildTicketFromCallback = (callback) => {
   const callbackId = Number(callback?.id);
   const callbackTicketId = Number.isFinite(callbackId)
     ? -Math.abs(callbackId)
     : null;
   const activeDiseases = toList(callback?.activeDiseases);
+  const callbackFullName = getCallbackFullName(callback);
 
   return {
     id: callbackTicketId,
@@ -559,8 +577,8 @@ const buildTicketFromCallback = (callback) => {
     ticketNumber: callback?.callbackNumber || null,
     callbackNumber: callback?.callbackNumber || null,
     patientId: callback?.patientId || null,
-    patientName: callback?.fullName || 'Callback Request',
-    fullName: callback?.fullName || 'Callback Request',
+    patientName: callbackFullName,
+    fullName: callbackFullName,
     patientBirthdate: callback?.patientBirthdate || null,
     gender: callback?.gender || DEFAULT_TEXT,
     mobile: callback?.contactNumber || DEFAULT_TEXT,
@@ -917,6 +935,25 @@ export default function Dashboard() {
     } finally {
       setCallbackActionLoadingStatus('');
     }
+  };
+
+  const handleConvertCallbackToTicket = () => {
+    if (!activeCallback) {
+      return;
+    }
+
+    navigate('/nurse-manage-appointments', {
+      state: {
+        openCreateTicket: true,
+        createTicketPrefill: {
+          fullName: getCallbackFullName(activeCallback),
+          mobileNumber: String(activeCallback?.contactNumber || '').trim(),
+          email: String(activeCallback?.email || '').trim(),
+          chiefComplaint: String(activeCallback?.message || '').trim(),
+        },
+      },
+    });
+    closeCallbackModal();
   };
 
   const openTransferModal = () => {
@@ -3887,7 +3924,9 @@ export default function Dashboard() {
                         {callback.callbackNumber ||
                           `CB-${String(callback.id).padStart(3, '0')}`}
                       </td>
-                      <td className='font-bold'>{callback.fullName}</td>
+                      <td className='font-bold'>
+                        {getCallbackFullName(callback)}
+                      </td>
                       <td>{callback.contactNumber}</td>
                       <td>
                         <div className='flex items-center gap-2'>
@@ -4195,7 +4234,7 @@ export default function Dashboard() {
             <div className='callback-form-card'>
               <div>
                 <label>Patient Name</label>
-                <p>{activeCallback.fullName || DEFAULT_TEXT}</p>
+                <p>{getCallbackFullName(activeCallback)}</p>
               </div>
               <div>
                 <label>Contact Number</label>
@@ -4270,6 +4309,7 @@ export default function Dashboard() {
               <button
                 type='button'
                 className='callback-form-btn convert'
+                onClick={handleConvertCallbackToTicket}
                 disabled={Boolean(callbackActionLoadingStatus)}
               >
                 Convert to Ticket

@@ -37,6 +37,18 @@ const formatTime = (dateString) => {
   }
 };
 
+const getCallbackFullName = (callback) => {
+  const directFullName = String(callback?.fullName || '').trim();
+  if (directFullName) return directFullName;
+
+  const firstName = String(callback?.firstName || '').trim();
+  const lastName = String(callback?.lastName || '').trim();
+  const combinedName = `${firstName} ${lastName}`.trim();
+  if (combinedName) return combinedName;
+
+  return String(callback?.patientName || callback?.name || '').trim() || 'Callback Request';
+};
+
 export default function CallbackQueueCard({
   callback,
   onSelect,
@@ -87,7 +99,7 @@ export default function CallbackQueueCard({
 
         <div className='flex flex-col gap-2 mt-1'>
           <div className='text-sm font-bold text-gray-800 mt-0.5'>
-            {callback.fullName}
+            {getCallbackFullName(callback)}
           </div>
 
           <div className='flex items-center gap-2 text-gray-500 text-xs'>

@@ -2457,61 +2457,72 @@ const SpecialistDashboard = () => {
 
           </div>
 
-          <div className='patient-chat-panel'>
-            <div className='patient-chat-header'>
-              <div className='patient-chat-title-row'>
-                <FaRegComment className='patient-chat-title-icon' />
-                <div className='patient-chat-title'>Patient Communication</div>
-              </div>
-            </div>
-
-            <div
-              className={`patient-chat-messages ${
-                isStarterThread ? 'patient-chat-messages--centered' : ''
-              }`}
-              ref={patientChatMessagesRef}
-            >
-              {patientChatMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`patient-chat-message ${
-                    message.sender === 'system'
-                      ? 'patient-chat-message--system'
-                      : message.sender === 'specialist'
-                      ? 'patient-chat-message--own'
-                      : 'patient-chat-message--patient'
-                  }`}
-                >
-                  <div className='patient-chat-bubble'>
-                    {message.sender === 'system' ? (
-                      <>
-                        <p>{message.text}</p>
-                        <span>{message.subtext || message.timestamp}</span>
-                      </>
-                    ) : (
-                      <>
-                        <p>{message.message}</p>
-                        <span>{message.timestamp}</span>
-                      </>
-                    )}
+          {selectedPatient?.email && (
+            <div className='patient-chat-panel'>
+              <div className='patient-chat-header'>
+                <div className='patient-chat-title-row'>
+                  <FaRegComment className='patient-chat-title-icon' />
+                  <div className='patient-chat-title'>
+                    Patient Communication
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <form className='patient-chat-form' onSubmit={handlePatientChatSend}>
-              <input
-                type='text'
-                value={patientChatDraft}
-                onChange={(e) => setPatientChatDraft(e.target.value)}
-                placeholder='Type a message...'
-                className='patient-chat-input'
-              />
-              <button type='submit' className='patient-chat-send-btn' aria-label='Send message'>
-                <FaPaperPlane />
-              </button>
-            </form>
-          </div>
+              <div
+                className={`patient-chat-messages ${
+                  isStarterThread ? 'patient-chat-messages--centered' : ''
+                }`}
+                ref={patientChatMessagesRef}
+              >
+                {patientChatMessages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`patient-chat-message ${
+                      message.sender === 'system'
+                        ? 'patient-chat-message--system'
+                        : message.sender === 'specialist'
+                          ? 'patient-chat-message--own'
+                          : 'patient-chat-message--patient'
+                    }`}
+                  >
+                    <div className='patient-chat-bubble'>
+                      {message.sender === 'system' ? (
+                        <>
+                          <p>{message.text}</p>
+                          <span>{message.subtext || message.timestamp}</span>
+                        </>
+                      ) : (
+                        <>
+                          <p>{message.message}</p>
+                          <span>{message.timestamp}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <form
+                className='patient-chat-form'
+                onSubmit={handlePatientChatSend}
+              >
+                <input
+                  type='text'
+                  value={patientChatDraft}
+                  onChange={(e) => setPatientChatDraft(e.target.value)}
+                  placeholder='Type a message...'
+                  className='patient-chat-input'
+                />
+                <button
+                  type='submit'
+                  className='patient-chat-send-btn'
+                  aria-label='Send message'
+                >
+                  <FaPaperPlane />
+                </button>
+              </form>
+            </div>
+          )}
         </div>
 
         <div className='soap-panel' ref={soapPanelRef}>

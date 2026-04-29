@@ -2974,88 +2974,96 @@ export default function Dashboard() {
                 )}
               </div>
 
-              <div className='triage-snapshot-chat-dock'>
-                <article className='triage-chat-panel'>
-                  <header>
-                    <h4>Chat Consultation</h4>
-                    <p>Context for triage assessment</p>
-                  </header>
+              {!selectedTicket?.isCallback &&
+                !selectedPatient?.isCallback &&
+                (!selectedPatient ||
+                  (selectedPatient.email &&
+                    selectedPatient.email !== 'N/A')) && (
+                <div className='triage-snapshot-chat-dock'>
+                  <article className='triage-chat-panel'>
+                    <header>
+                      <h4>Chat Consultation</h4>
+                      <p>Context for triage assessment</p>
+                    </header>
 
-                  <div className='triage-chat-list' ref={quickChatListRef}>
-                    {!selectedPatient ? (
-                      <div className='triage-empty-note'>
-                        Select a patient to open chat.
-                      </div>
-                    ) : isSelectedCallbackTicket ? (
-                      <div className='triage-empty-note'>
-                        Chat is not available for callback-only requests.
-                      </div>
-                    ) : chatEntries.length > 0 ? (
-                      chatEntries.map((message) =>
-                        message.isSystem ? (
-                          <div
-                            key={message.id}
-                            className='triage-chat-system-row'
-                          >
-                            <span className='triage-chat-system-avatar'>
-                              <UserRound size={14} strokeWidth={2.2} />
-                            </span>
-                            <div className='triage-chat-bubble system'>
+                    <div className='triage-chat-list' ref={quickChatListRef}>
+                      {!selectedPatient ? (
+                        <div className='triage-empty-note'>
+                          Select a patient to open chat.
+                        </div>
+                      ) : isSelectedCallbackTicket ? (
+                        <div className='triage-empty-note'>
+                          Chat is not available for callback-only requests.
+                        </div>
+                      ) : chatEntries.length > 0 ? (
+                        chatEntries.map((message) =>
+                          message.isSystem ? (
+                            <div
+                              key={message.id}
+                              className='triage-chat-system-row'
+                            >
+                              <span className='triage-chat-system-avatar'>
+                                <UserRound size={14} strokeWidth={2.2} />
+                              </span>
+                              <div className='triage-chat-bubble system'>
+                                <p>{message.text}</p>
+                                <span>{message.timestamp}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              key={message.id}
+                              className={`triage-chat-bubble ${message.isSent ? 'sent' : 'received'}`}
+                            >
                               <p>{message.text}</p>
                               <span>{message.timestamp}</span>
                             </div>
-                          </div>
-                        ) : (
-                          <div
-                            key={message.id}
-                            className={`triage-chat-bubble ${message.isSent ? 'sent' : 'received'}`}
-                          >
-                            <p>{message.text}</p>
-                            <span>{message.timestamp}</span>
-                          </div>
-                        ),
-                      )
-                    ) : (
-                      <div className='triage-empty-note'>
-                        No messages yet for this patient.
-                      </div>
-                    )}
-                  </div>
+                          ),
+                        )
+                      ) : (
+                        <div className='triage-empty-note'>
+                          No messages yet for this patient.
+                        </div>
+                      )}
+                    </div>
 
-                  <form
-                    className='triage-chat-input-row'
-                    onSubmit={handleQuickSendMessage}
-                  >
-                    <input
-                      type='text'
-                      placeholder='Type a message...'
-                      value={quickMessage}
-                      onChange={(event) => setQuickMessage(event.target.value)}
-                      disabled={
-                        !selectedPatient ||
-                        isSendingQuickMessage ||
-                        isSelectedCallbackTicket
-                      }
-                    />
-                    <button
-                      className='triage-chat-send-btn'
-                      type='submit'
-                      disabled={
-                        !selectedPatient ||
-                        isSelectedCallbackTicket ||
-                        !quickMessage.trim() ||
-                        isSendingQuickMessage
-                      }
+                    <form
+                      className='triage-chat-input-row'
+                      onSubmit={handleQuickSendMessage}
                     >
-                      <SendHorizontal size={14} strokeWidth={2.3} />
-                    </button>
-                  </form>
+                      <input
+                        type='text'
+                        placeholder='Type a message...'
+                        value={quickMessage}
+                        onChange={(event) =>
+                          setQuickMessage(event.target.value)
+                        }
+                        disabled={
+                          !selectedPatient ||
+                          isSendingQuickMessage ||
+                          isSelectedCallbackTicket
+                        }
+                      />
+                      <button
+                        className='triage-chat-send-btn'
+                        type='submit'
+                        disabled={
+                          !selectedPatient ||
+                          isSelectedCallbackTicket ||
+                          !quickMessage.trim() ||
+                          isSendingQuickMessage
+                        }
+                      >
+                        <SendHorizontal size={14} strokeWidth={2.3} />
+                      </button>
+                    </form>
 
-                  {quickMessageError && (
-                    <p className='nurse-quick-error'>{quickMessageError}</p>
-                  )}
-                </article>
-              </div>
+                    {quickMessageError && (
+                      <p className='nurse-quick-error'>{quickMessageError}</p>
+                    )}
+                  </article>
+                </div>
+              )}
             </section>
 
             <section className='triage-workspace-col'>

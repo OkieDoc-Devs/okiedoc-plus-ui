@@ -39,7 +39,9 @@ export const AuthProvider = ({ children }) => {
       setUser(normalizedUser);
       return normalizedUser;
     } catch {
-      setUser(null);
+      if (!localStorage.getItem('jwt_token')) {
+        setUser(null);
+      }
       return null;
     } finally {
       setLoading(false);

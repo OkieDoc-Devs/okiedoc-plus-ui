@@ -14,6 +14,7 @@ import {
   IconX,
   IconUser,
   IconActivity,
+  IconAlertCircle,
 } from "@tabler/icons-react";
 import { fetchPatientActiveTickets } from "../services/apiService";
 import "../css/Patient_Appointments.css";
@@ -27,8 +28,31 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("All");
   const [viewingAppt, setViewingAppt] = useState(null);
-
+  const [painMapView, setPainMapView] = useState("front");
   const popoverRef = useRef(null);
+
+  const PAIN_MAP_AREAS = {
+    front: [
+      { key: "head", label: "Head", className: "part-head" },
+      { key: "neck", label: "Neck", className: "part-neck" },
+      { key: "chest", label: "Chest", className: "part-chest" },
+      { key: "abdomen", label: "Abdomen", className: "part-abdomen" },
+      { key: "left-arm", label: "Left Arm", className: "part-left-arm" },
+      { key: "right-arm", label: "Right Arm", className: "part-right-arm" },
+      { key: "left-leg", label: "Left Leg", className: "part-left-leg" },
+      { key: "right-leg", label: "Right Leg", className: "part-right-leg" },
+    ],
+    back: [
+      { key: "head", label: "Head", className: "part-head" },
+      { key: "neck", label: "Neck", className: "part-neck" },
+      { key: "upper-back", label: "Upper Back", className: "part-chest" },
+      { key: "lower-back", label: "Lower Back", className: "part-abdomen" },
+      { key: "left-arm", label: "Left Arm", className: "part-left-arm" },
+      { key: "right-arm", label: "Right Arm", className: "part-right-arm" },
+      { key: "left-leg", label: "Left Leg", className: "part-left-leg" },
+      { key: "right-leg", label: "Right Leg", className: "part-right-leg" },
+    ],
+  };
 
   // Close popover when clicking outside
   useEffect(() => {
@@ -490,6 +514,7 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
             </div>
 
             <div className="appt-modal-body">
+              {/* Main Banner */}
               <div className="appt-modal-banner">
                 <div
                   style={{
@@ -503,10 +528,13 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                   {getStatusBadge(viewingAppt.status)}
                 </div>
                 <h2 className="appt-modal-complaint">
-                  {viewingAppt.chiefComplaint || "General Consultation"}
+                  {viewingAppt.chiefComplaint ||
+                    viewingAppt.mainConcern ||
+                    "General Consultation"}
                 </h2>
               </div>
 
+              {/* Provider Info */}
               <div className="appt-modal-doctor">
                 <div className="appt-avatar large">
                   {getInitials(viewingAppt.specialistName)}
@@ -522,7 +550,8 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                 </div>
               </div>
 
-              <div className="appt-modal-grid">
+              {/* Basic Logistics Grid */}
+              <div className="appt-modal-grid" style={{ marginBottom: "24px" }}>
                 <div className="appt-modal-grid-item">
                   <IconCalendarEvent size={18} className="detail-icon" />
                   <div>
@@ -546,7 +575,7 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                 <div className="appt-modal-grid-item">
                   <IconActivity size={18} className="detail-icon" />
                   <div>
-                    <span className="appt-modal-label">Consultation Type</span>
+                    <span className="appt-modal-label">Channel</span>
                     <p
                       className="appt-modal-value"
                       style={{ textTransform: "capitalize" }}
@@ -557,15 +586,261 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                     </p>
                   </div>
                 </div>
-                <div className="appt-modal-grid-item">
-                  {getChannelIcon(viewingAppt.consultationChannel)}
-                  <div>
-                    <span className="appt-modal-label">Channel Type</span>
+              </div>
+
+              {/* CONSULTATION INTAKE DETAILS */}
+              <div className="appt-clinical-details">
+                <h3 className="clinical-section-title">
+                  Clinical Intake Summary
+                </h3>
+
+                {/* Timeline & Severity */}
+                <div className="clinical-row">
+                  <div className="clinical-stat-box">
+                    <span className="appt-modal-label">Duration</span>
                     <p className="appt-modal-value">
-                      {getChannelTypeLabel(viewingAppt.consultationChannel)}
+                      {viewingAppt.durationValue
+                        ? `${viewingAppt.durationValue} ${viewingAppt.durationUnit}`
+                        : "Not specified"}
+                    </p>
+                  </div>
+                  <div className="clinical-stat-box">
+                    <span className="appt-modal-label">Pain/Severity</span>
+                    <p className="appt-modal-value">
+                      {viewingAppt.severity
+                        ? `${viewingAppt.severity} / 10`
+                        : "Not specified"}
                     </p>
                   </div>
                 </div>
+
+                {/* Symptoms */}
+                <div className="clinical-section-block">
+                  <span className="appt-modal-label">Reported Symptoms</span>
+                  <div className="clinical-chip-group">
+                    {(() => {
+                      let safeSymptoms = [];
+                      if (viewingAppt.symptoms) {
+                        try {
+                          safeSymptoms =
+                            typeof viewingAppt.symptoms === "string"
+                              ? JSON.parse(viewingAppt.symptoms)
+                              : viewingAppt.symptoms;
+                        } catch (e) {
+                          safeSymptoms = [viewingAppt.symptoms];
+                        }
+                      }
+                      if (
+                        Array.isArray(safeSymptoms) &&
+                        safeSymptoms.length > 0
+                      ) {
+                        return safeSymptoms.map((symp, i) => (
+                          <span
+                            key={`symp-${i}`}
+                            className="clinical-chip symp-chip"
+                          >
+                            {symp}
+                          </span>
+                        ));
+                      }
+
+                      return (
+                        !viewingAppt.otherSymptoms && (
+                          <span className="text-muted">None reported</span>
+                        )
+                      );
+                    })()}
+
+                    {/* Show other symptoms if present */}
+                    {viewingAppt.otherSymptoms && (
+                      <span className="clinical-chip symp-chip other-symp">
+                        {viewingAppt.otherSymptoms}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pain Locations */}
+                <div className="clinical-section-block">
+                  <span className="appt-modal-label">
+                    Highlighted Pain Areas
+                  </span>
+                  <div className="clinical-chip-group">
+                    {(() => {
+                      let safePainAreas = [];
+                      if (viewingAppt.painAreas) {
+                        try {
+                          safePainAreas =
+                            typeof viewingAppt.painAreas === "string"
+                              ? JSON.parse(viewingAppt.painAreas)
+                              : viewingAppt.painAreas;
+                        } catch (e) {
+                          safePainAreas = [viewingAppt.painAreas];
+                        }
+                      }
+
+                      const textChips =
+                        Array.isArray(safePainAreas) &&
+                        safePainAreas.length > 0 ? (
+                          safePainAreas.map((area, i) => {
+                            let labelText = area;
+                            if (typeof area === "object" && area !== null) {
+                              const partName =
+                                area.label || area.key || "Unknown";
+                              const viewName =
+                                area.view === "back" ? "Back" : "Front";
+                              labelText = `${partName} (${viewName})`;
+                            }
+                            return (
+                              <span
+                                key={`pain-${i}`}
+                                className="clinical-chip pain-chip"
+                              >
+                                {labelText}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          <span
+                            className="text-muted"
+                            style={{ fontSize: "14px" }}
+                          >
+                            No specific areas mapped
+                          </span>
+                        );
+
+                      return (
+                        <div style={{ width: "100%" }}>
+                          <div
+                            className="clinical-chip-group"
+                            style={{ marginBottom: "20px" }}
+                          >
+                            {textChips}
+                          </div>
+                          {Array.isArray(safePainAreas) &&
+                            safePainAreas.length > 0 && (
+                              <div className="readonly-pain-map-container">
+                                <div className="triage-pain-map-view-toggle centered-toggle">
+                                  <button
+                                    className={`triage-pain-map-view-btn ${painMapView === "front" ? "active" : ""}`}
+                                    onClick={() => setPainMapView("front")}
+                                  >
+                                    Front View
+                                  </button>
+                                  <button
+                                    className={`triage-pain-map-view-btn ${painMapView === "back" ? "active" : ""}`}
+                                    onClick={() => setPainMapView("back")}
+                                  >
+                                    Back View
+                                  </button>
+                                </div>
+
+                                <div className="triage-pain-map-picker centered-picker">
+                                  <div
+                                    className={`triage-pain-map-figure ${painMapView === "back" ? "back" : "front"}`}
+                                  >
+                                    <div className="body-map-visual"></div>
+                                    {PAIN_MAP_AREAS[painMapView].map((area) => {
+                                      const isSelected = safePainAreas.some(
+                                        (a) =>
+                                          (a.key === area.key &&
+                                            a.view === painMapView) ||
+                                          a.id === `${painMapView}:${area.key}`,
+                                      );
+
+                                      return (
+                                        <div
+                                          key={`${painMapView}-${area.key}`}
+                                          className={`triage-body-part ${area.className} ${isSelected ? "selected" : ""}`}
+                                          style={{
+                                            cursor: "default",
+                                            pointerEvents: "none",
+                                          }}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Additional Details */}
+                <div className="clinical-section-block">
+                  <span className="appt-modal-label">Known Allergies</span>
+                  <div className="clinical-chip-group">
+                    {(() => {
+                      let patientAllergies =
+                        viewingAppt.allergies ||
+                        viewingAppt.patient?.allergies ||
+                        [];
+                      if (typeof patientAllergies === "string") {
+                        try {
+                          patientAllergies = JSON.parse(patientAllergies);
+                        } catch (e) {
+                          patientAllergies = patientAllergies.split(",");
+                        }
+                      }
+                      if (
+                        Array.isArray(patientAllergies) &&
+                        patientAllergies.length > 0
+                      ) {
+                        return patientAllergies.map((allergy, i) => {
+                          let allergyText = allergy;
+                          if (typeof allergy === "object" && allergy !== null) {
+                            allergyText =
+                              allergy.label ||
+                              allergy.value ||
+                              allergy.name ||
+                              allergy.text ||
+                              "";
+                          }
+                          const cleanText = String(allergyText).trim();
+                          if (!cleanText || cleanText === "[object Object]")
+                            return null;
+
+                          return (
+                            <span
+                              key={`allergy-${i}`}
+                              className="clinical-chip allergy-chip"
+                            >
+                              <IconAlertCircle
+                                size={14}
+                                style={{
+                                  marginRight: "4px",
+                                  marginBottom: "-2px",
+                                }}
+                              />
+                              {cleanText}
+                            </span>
+                          );
+                        });
+                      }
+
+                      return (
+                        <span
+                          className="text-muted"
+                          style={{ fontSize: "14px" }}
+                        >
+                          No known allergies reported
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {viewingAppt.additionalDetails && (
+                  <div className="clinical-section-block">
+                    <span className="appt-modal-label">Additional Notes</span>
+                    <div className="clinical-notes-box">
+                      {viewingAppt.additionalDetails}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

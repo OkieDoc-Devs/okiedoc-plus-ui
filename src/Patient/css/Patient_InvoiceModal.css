@@ -1,0 +1,492 @@
+/* Base Modal Layout */
+.patient-invoice-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.patient-invoice-modal-content {
+  background-color: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  padding: 24px;
+  position: relative;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.invoice-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #64748b;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.invoice-close-btn:hover {
+  color: #0f172a;
+}
+
+/* --- INVOICE VIEW --- */
+.invoice-header-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.invoice-header-left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.invoice-icon-wrap {
+  width: 48px;
+  height: 48px;
+  background-color: #ccfbf1;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.invoice-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.invoice-title-text {
+  margin: 0;
+  color: #134e4a;
+  font-size: 20px;
+}
+
+.invoice-badge-unpaid {
+  background-color: #fef3c7;
+  color: #d97706;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.invoice-ref-text {
+  margin: 4px 0 0;
+  color: #0f766e;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.invoice-header-right {
+  text-align: right;
+  margin-top: 8px;
+  padding-right: 24px;
+}
+
+.invoice-total-label {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.invoice-total-value {
+  margin: 0;
+  font-size: 24px;
+  color: #0f172a;
+}
+
+.invoice-meta-info {
+  background-color: #f8fafc;
+  padding: 16px;
+  margin: 20px 0;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.invoice-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 14px;
+}
+
+.invoice-breakdown-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.invoice-fee-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.invoice-fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.invoice-fee-label {
+  margin: 0 0 4px;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.invoice-fee-sublabel {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.invoice-fee-value {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.invoice-discount-label {
+  margin: 0 0 4px;
+  font-weight: 500;
+  color: #16a34a;
+}
+
+.invoice-discount-value {
+  font-weight: 500;
+  color: #16a34a;
+}
+
+.invoice-total-container {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.invoice-grand-total-row {
+  display: flex;
+  justify-content: space-between;
+  color: #ea580c;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 8px 0;
+}
+
+.invoice-button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.invoice-btn-primary {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  background-color: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.invoice-btn-primary:hover {
+  background-color: #d97706;
+}
+
+.invoice-btn-outline {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  background-color: transparent;
+  color: #0ea5e9;
+  border: 1px solid #0ea5e9;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.invoice-btn-outline:hover {
+  background-color: #f0f9ff;
+}
+
+/* --- REDIRECTING VIEW --- */
+.redirect-container {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.redirect-title {
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.redirect-desc {
+  color: #64748b;
+  margin-bottom: 32px;
+}
+
+.redirect-loader-bg {
+  width: 100%;
+  height: 6px;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 0 auto 32px;
+}
+
+.redirect-loader-bar {
+  width: 40%;
+  height: 100%;
+  background-color: #0ea5e9;
+  animation: slide-infinite 1s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes slide-infinite {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.redirect-summary-box {
+  background-color: #f0fdfa;
+  border: 1px solid #ccfbf1;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 32px;
+}
+
+.redirect-summary-label {
+  margin: 0 0 8px;
+  color: #0f766e;
+  font-size: 14px;
+}
+
+.redirect-summary-value {
+  margin: 0 0 8px;
+  color: #115e59;
+  font-size: 32px;
+}
+
+.redirect-summary-ref {
+  margin: 0;
+  color: #0d9488;
+  font-size: 12px;
+}
+
+.redirect-secure-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  color: #10b981;
+  font-size: 14px;
+  margin-bottom: 32px;
+}
+
+.redirect-secure-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.redirect-warning {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* --- SUCCESS VIEW --- */
+.success-container {
+  padding: 20px 0;
+}
+
+.success-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.success-icon-box {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: #10b981;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.success-title {
+  color: #0f172a;
+  margin: 0 0 8px;
+}
+
+.success-desc {
+  color: #64748b;
+  margin: 0;
+}
+
+.success-receipt-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.success-receipt-row-total {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+
+.success-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.success-receipt-row:last-child {
+  margin-bottom: 0;
+}
+
+.success-receipt-label {
+  color: #64748b;
+}
+
+.success-receipt-value {
+  color: #334155;
+}
+
+.success-receipt-row-total .success-receipt-value {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.success-docs-section {
+  margin-bottom: 24px;
+}
+
+.success-docs-title {
+  margin: 0 0 16px;
+  color: #0f172a;
+}
+
+.success-docs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.success-doc-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.success-doc-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.success-doc-name {
+  margin: 0 0 2px;
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.success-doc-type {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.success-btn-download {
+  background-color: #0ea5e9;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.success-btn-download:hover {
+  background-color: #0284c7;
+}
+
+.success-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.success-btn-return {
+  width: 100%;
+  padding: 12px;
+  background-color: #0ea5e9;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.success-btn-return:hover {
+  background-color: #0284c7;
+}

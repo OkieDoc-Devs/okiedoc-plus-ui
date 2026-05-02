@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from "react";
 import {
   IconVideo,
   IconPhone,
@@ -15,15 +16,41 @@ import {
 } from "@tabler/icons-react";
 import "../css/Patient_Dashboard.css";
 import { useModal } from "../contexts/Modals";
+import Patient_InvoiceModal from "../components/Patient_InvoiceModal";
+import { fetchPatientActiveTickets } from "../services/apiService";
 
 export default function Dashboard_Patient({ setActive }) {
   const { openDiyModal } = useModal();
+  const [invoiceTicket, setInvoiceTicket] = useState(null);
+
+  // State to hold the REAL tickets from your MySQL database
+  const [unpaidTickets, setUnpaidTickets] = useState([]);
+
+  const loadTickets = async () => {
+    try {
+      const response = await fetchPatientActiveTickets();
+      const tickets = Array.isArray(response)
+        ? response
+        : response?.data || response?.activeTickets || response?.tickets || [];
+
+      const pendingPayment = tickets.filter(
+        (t) => t.paymentStatus === "unpaid" || t.status === "for_payment",
+      );
+      setUnpaidTickets(pendingPayment);
+    } catch (error) {
+      console.error("Error fetching tickets:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadTickets();
+  }, []);
 
   return (
     <div className="pd-container">
       {/* --- HERO SECTION --- */}
       <section className="pd-hero">
-        <h2 className="pd-hero-title">Good afternoon, Sarah!</h2>
+        <h2 className="pd-hero-title">Good evening, Sarah!</h2>
         <p className="pd-hero-subtitle">How can we help you today?</p>
 
         <div className="pd-hero-grid">
@@ -112,7 +139,7 @@ export default function Dashboard_Patient({ setActive }) {
       </div>
 
       <div className="pd-action-list">
-        {/* 1. Specialist Referral Card */}
+        {/* 1. Static Specialist Referral Card */}
         <div className="pd-card pd-warning-card">
           <div className="pd-warning-content">
             <div className="pd-warning-info">
@@ -120,21 +147,13 @@ export default function Dashboard_Patient({ setActive }) {
               <p className="pd-text-light pd-text-sm pd-mb-8">
                 Referred by Dr. Sofia Lim (Cardiologist)
               </p>
-
               <div className="pd-info-row">
                 <IconUser size={16} className="pd-text-light" />
                 <span className="pd-text-sm">
                   <strong>Reason:</strong> Knee pain after exercise
                 </span>
               </div>
-              <div className="pd-info-row">
-                <IconCalendarEvent size={16} className="pd-text-light" />
-                <span className="pd-text-sm">
-                  Referral Date: February 10, 2026
-                </span>
-              </div>
             </div>
-
             <div className="pd-warning-actions">
               <div className="pd-warning-actions-top">
                 <span className="pd-badge pd-badge-warning">Pending</span>
@@ -155,48 +174,47 @@ export default function Dashboard_Patient({ setActive }) {
           </div>
         </div>
 
-        {/* 2. Pending Payment Card */}
-        <div className="pd-card pd-warning-card">
-          <div className="pd-warning-content">
-            <div className="pd-warning-info">
-              <h5>Consultation with Dr. Maria Santos</h5>
-              <p className="pd-text-light pd-text-sm pd-mb-8">
-                Consultation Date: March 28, 2026
-              </p>
+        {/* --- PAYMENT CARDS --- */}
+        {unpaidTickets.map((ticket) => (
+          <div className="pd-card pd-warning-card" key={ticket.id}>
+            <div className="pd-warning-content">
+              <div className="pd-warning-info">
+                <h5>
+                  Consultation with {ticket.targetSpecialty || "Specialist"}
+                </h5>
+                <p className="pd-text-light pd-text-sm pd-mb-8">
+                  Ticket Reference: {ticket.ticketNumber}
+                </p>
 
-              <div className="pd-info-row">
-                <IconLink size={16} className="pd-text-light" />
-                <span className="pd-text-sm">
-                  <strong>Medical Certificate:</strong> $350 (unpaid)
-                </span>
+                <div className="pd-info-row">
+                  <IconLink size={16} className="pd-text-light" />
+                  <span className="pd-text-sm">
+                    <strong>Payment Required:</strong> ₱
+                    {ticket.totalAmount || 850}
+                  </span>
+                </div>
               </div>
-              <div className="pd-info-row">
-                <IconLink size={16} className="pd-text-light" />
-                <span className="pd-text-sm">
-                  <strong>Medical Clearance:</strong> $450 (unpaid)
-                </span>
-              </div>
-            </div>
 
-            <div className="pd-warning-actions">
-              <div className="pd-warning-actions-top">
-                <span className="pd-badge pd-badge-warning">Pending</span>
+              <div className="pd-warning-actions">
+                <div className="pd-warning-actions-top">
+                  <span className="pd-badge pd-badge-warning">Pending</span>
+                  <button
+                    className="pd-btn pd-btn-warning"
+                    onClick={() => setInvoiceTicket(ticket)} // Passes the REAL ticket to the modal!
+                  >
+                    <IconCreditCard size={16} /> Pay Now
+                  </button>
+                </div>
                 <button
-                  className="pd-btn pd-btn-warning"
-                  onClick={() => openDiyModal("Billing")}
+                  className="pd-btn pd-btn-outline pd-w-full pd-mt-8"
+                  onClick={() => setInvoiceTicket(ticket)}
                 >
-                  <IconCreditCard size={16} /> Pay Now
+                  View Invoice
                 </button>
               </div>
-              <button
-                className="pd-btn pd-btn-outline pd-w-full pd-mt-8"
-                onClick={() => openDiyModal("View Invoice")}
-              >
-                View Invoice
-              </button>
             </div>
           </div>
-        </div>
+        ))}
       </div>
 
       {/* --- HEALTH OVERVIEW --- */}
@@ -209,7 +227,6 @@ export default function Dashboard_Patient({ setActive }) {
           <h2>3</h2>
           <p className="pd-text-light pd-text-sm">Active Medications</p>
         </div>
-
         <div className="pd-card pd-overview-item">
           <div className="pd-overview-icon pd-bg-light-primary pd-text-primary">
             <IconCalendarEvent size={24} />
@@ -217,7 +234,6 @@ export default function Dashboard_Patient({ setActive }) {
           <h2>2</h2>
           <p className="pd-text-light pd-text-sm">Upcoming Appointments</p>
         </div>
-
         <div className="pd-card pd-overview-item pd-relative">
           <span className="pd-badge pd-badge-warning pd-badge-new">New</span>
           <div className="pd-overview-icon pd-bg-light-primary pd-text-primary">
@@ -228,57 +244,14 @@ export default function Dashboard_Patient({ setActive }) {
         </div>
       </div>
 
-      {/* --- BOTTOM GRID --- */}
-      <div className="pd-bottom-grid">
-        {/* Prescriptions */}
-        <div className="pd-column">
-          <div className="pd-section-header">
-            <h4>Prescriptions</h4>
-            <button
-              className="pd-btn-view-all"
-              onClick={() => openDiyModal("Presciptions")}
-            >
-              View All <IconArrowRight size={14} />
-            </button>
-          </div>
-
-          <div className="pd-column-list">
-            {/* APPLIED THE WARNING CARD CLASS HERE SO IT GETS THE GRADIENT AND BORDER */}
-            <div className="pd-card pd-warning-card pd-rx-card">
-              <div className="pd-rx-header">
-                <h5>Lisinopril</h5>
-                <span className="pd-badge pd-badge-warning">DUE SOON</span>
-              </div>
-              <p className="pd-text-light pd-text-sm pd-mb-16">10mg</p>
-              <div className="pd-rx-footer">
-                <p className="pd-text-light pd-text-sm">Refill in 5 days</p>
-                <button
-                  className="pd-btn pd-btn-warning"
-                  onClick={() => openDiyModal("Prescriptions")}
-                >
-                  Refill Now
-                </button>
-              </div>
-            </div>
-
-            <div className="pd-card pd-rx-card">
-              <div className="pd-rx-header">
-                <h5>Metformin</h5>
-              </div>
-              <p className="pd-text-light pd-text-sm pd-mb-16">500mg</p>
-              <div className="pd-rx-footer">
-                <p className="pd-text-light pd-text-sm">Refill in 30 days</p>
-                <button
-                  className="pd-btn pd-btn-outline-primary"
-                  onClick={() => openDiyModal("Prescriptions")}
-                >
-                  Refill Now
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Patient_InvoiceModal
+        isOpen={!!invoiceTicket}
+        ticketData={invoiceTicket}
+        onClose={() => {
+          setInvoiceTicket(null);
+          loadTickets();
+        }}
+      />
     </div>
   );
 }

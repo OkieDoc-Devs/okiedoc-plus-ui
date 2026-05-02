@@ -19,6 +19,7 @@ import {
 import { fetchPatientActiveTickets } from "../services/apiService";
 import "../css/Patient_Appointments.css";
 import { useModal } from "../contexts/Modals";
+import Patient_InvoiceModal from "../components/Patient_InvoiceModal";
 
 export default function Patient_Appointments({ setActive, ticketIdParam }) {
   const { openDiyModal } = useModal();
@@ -29,6 +30,7 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
   const [statusFilter, setStatusFilter] = useState("All");
   const [viewingAppt, setViewingAppt] = useState(null);
   const [painMapView, setPainMapView] = useState("front");
+  const [invoiceTicket, setInvoiceTicket] = useState(null);
   const popoverRef = useRef(null);
 
   const PAIN_MAP_AREAS = {
@@ -150,6 +152,20 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
 
   // Helper functions for UI mapping
   const getStatusBadge = (status) => {
+    if (status === "completed") {
+      return (
+        <span
+          className="appt-badge badge-confirmed"
+          style={{
+            backgroundColor: "#e2fadb",
+            color: "#2b8a3e",
+            border: "1px solid #b2f2bb",
+          }}
+        >
+          Completed
+        </span>
+      );
+    }
     if (["confirmed", "active"].includes(status)) {
       return <span className="appt-badge badge-confirmed">Confirmed</span>;
     }
@@ -466,9 +482,7 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                   {appt.status === "for_payment" && (
                     <button
                       className="appt-btn appt-btn-primary full-width"
-                      onClick={() =>
-                        openDiyModal(`Paying Ticket #${appt.ticketNumber}`)
-                      }
+                      onClick={() => setInvoiceTicket(appt)}
                     >
                       Pay Now
                     </button>
@@ -868,6 +882,14 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
           </div>
         </div>
       )}
+      <Patient_InvoiceModal
+        isOpen={!!invoiceTicket}
+        ticketData={invoiceTicket}
+        onClose={() => {
+          setInvoiceTicket(null);
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

@@ -11,20 +11,50 @@ import {
   IconLoader2,
   IconCalendarOff,
   IconMapPin,
+  IconX,
+  IconUser,
+  IconActivity,
+  IconAlertCircle,
 } from "@tabler/icons-react";
 import { fetchPatientActiveTickets } from "../services/apiService";
 import "../css/Patient_Appointments.css";
 import { useModal } from "../contexts/Modals";
+import Patient_InvoiceModal from "../components/Patient_InvoiceModal";
 
-export default function Patient_Appointments({ setActive }) {
+export default function Patient_Appointments({ setActive, ticketIdParam }) {
   const { openDiyModal } = useModal();
   const [appointments, setAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("All");
-
+  const [viewingAppt, setViewingAppt] = useState(null);
+  const [painMapView, setPainMapView] = useState("front");
+  const [invoiceTicket, setInvoiceTicket] = useState(null);
   const popoverRef = useRef(null);
+
+  const PAIN_MAP_AREAS = {
+    front: [
+      { key: "head", label: "Head", className: "part-head" },
+      { key: "neck", label: "Neck", className: "part-neck" },
+      { key: "chest", label: "Chest", className: "part-chest" },
+      { key: "abdomen", label: "Abdomen", className: "part-abdomen" },
+      { key: "left-arm", label: "Left Arm", className: "part-left-arm" },
+      { key: "right-arm", label: "Right Arm", className: "part-right-arm" },
+      { key: "left-leg", label: "Left Leg", className: "part-left-leg" },
+      { key: "right-leg", label: "Right Leg", className: "part-right-leg" },
+    ],
+    back: [
+      { key: "head", label: "Head", className: "part-head" },
+      { key: "neck", label: "Neck", className: "part-neck" },
+      { key: "upper-back", label: "Upper Back", className: "part-chest" },
+      { key: "lower-back", label: "Lower Back", className: "part-abdomen" },
+      { key: "left-arm", label: "Left Arm", className: "part-left-arm" },
+      { key: "right-arm", label: "Right Arm", className: "part-right-arm" },
+      { key: "left-leg", label: "Left Leg", className: "part-left-leg" },
+      { key: "right-leg", label: "Right Leg", className: "part-right-leg" },
+    ],
+  };
 
   // Close popover when clicking outside
   useEffect(() => {
@@ -60,12 +90,39 @@ export default function Patient_Appointments({ setActive }) {
     loadAppointments();
 
     const pollingInterval = setInterval(() => {
-      // Pass 'true' so we don't trigger the loading spinner and interrupt the user
       loadAppointments(true);
-    }, 10000); // 10000 milliseconds = 10 seconds
+    }, 10000);
 
     return () => clearInterval(pollingInterval);
   }, []);
+
+  // Linking Effect
+  useEffect(() => {
+    const syncModalWithURL = () => {
+      const hashParts = window.location.hash.split("/");
+      const urlTicketId =
+        hashParts.length === 3 && hashParts[1] === "Appointments"
+          ? hashParts[2]
+          : null;
+
+      if (urlTicketId && appointments.length > 0) {
+        const foundAppt = appointments.find(
+          (a) => a.ticketNumber === urlTicketId,
+        );
+        if (foundAppt) {
+          setViewingAppt(foundAppt);
+        }
+      } else if (!urlTicketId) {
+        setViewingAppt(null);
+      }
+    };
+
+    syncModalWithURL();
+
+    window.addEventListener("hashchange", syncModalWithURL);
+
+    return () => window.removeEventListener("hashchange", syncModalWithURL);
+  }, [appointments]);
 
   // Filter logic
   const filteredAppointments = appointments.filter((appt) => {
@@ -95,6 +152,20 @@ export default function Patient_Appointments({ setActive }) {
 
   // Helper functions for UI mapping
   const getStatusBadge = (status) => {
+    if (status === "completed") {
+      return (
+        <span
+          className="appt-badge badge-confirmed"
+          style={{
+            backgroundColor: "#e2fadb",
+            color: "#2b8a3e",
+            border: "1px solid #b2f2bb",
+          }}
+        >
+          Completed
+        </span>
+      );
+    }
     if (["confirmed", "active"].includes(status)) {
       return <span className="appt-badge badge-confirmed">Confirmed</span>;
     }
@@ -112,16 +183,25 @@ export default function Patient_Appointments({ setActive }) {
         </span>
       );
     }
-    // Updated to exactly "Pending" to match the checklist
     return <span className="appt-badge badge-pending">Pending</span>;
   };
 
   const getChannelIcon = (channel) => {
     if (channel === "chat")
       return <IconMessageCircle size={16} className="detail-icon" />;
-    if (channel === "mobile_call" || channel.includes("audio"))
+    if (channel === "mobile_call" || channel?.includes("audio"))
       return <IconPhone size={16} className="detail-icon" />;
+    if (channel === "in_person")
+      return <IconMapPin size={16} className="detail-icon" />;
     return <IconVideo size={16} className="detail-icon" />;
+  };
+
+  const getChannelTypeLabel = (channel) => {
+    if (channel === "chat") return "Text Chat";
+    if (channel === "mobile_call" || channel?.includes("audio"))
+      return "Voice Call";
+    if (channel === "in_person") return "Clinic Visit";
+    return "Video Call";
   };
 
   const getInitials = (name) => {
@@ -140,6 +220,12 @@ export default function Patient_Appointments({ setActive }) {
     });
   };
 
+  // Master Close
+  const handleCloseModal = () => {
+    setViewingAppt(null);
+    window.history.pushState(null, "", "#/Appointments");
+  };
+
   return (
     <div className="appt-page-container">
       <div className="appt-page-header">
@@ -150,7 +236,6 @@ export default function Patient_Appointments({ setActive }) {
           </p>
         </div>
 
-        {/* --- EXACT TICKET FIX: Routed to Intake Form --- */}
         <button
           className="appt-btn appt-btn-primary"
           onClick={() => {
@@ -250,7 +335,6 @@ export default function Patient_Appointments({ setActive }) {
               : "No appointments match your current search or filter."}
           </p>
           {appointments.length === 0 && (
-            /* --- EXACT TICKET FIX: Routed to Intake Form --- */
             <button
               className="appt-btn appt-btn-primary"
               style={{ marginTop: "16px", display: "inline-flex" }}
@@ -265,9 +349,6 @@ export default function Patient_Appointments({ setActive }) {
       ) : (
         <div className="appt-grid">
           {filteredAppointments.map((appt) => {
-            // -------------------------------------------------------------
-            // CHECKLIST FALLBACK LOGIC
-            // -------------------------------------------------------------
             const displaySpecialist = appt.specialistName || "TBA";
             const displaySpecialization = appt.specialization || "TBA";
             const displayDate = appt.preferredDate
@@ -278,7 +359,6 @@ export default function Patient_Appointments({ setActive }) {
               appt.consultationChannel === "in_person" && appt.city
                 ? appt.city
                 : "TBA";
-            // -------------------------------------------------------------
 
             return (
               <div key={appt.id} className="appt-card">
@@ -337,7 +417,6 @@ export default function Patient_Appointments({ setActive }) {
                         WebkitBoxOrient: "vertical",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
-                        overflowWrap: "break-word",
                         wordBreak: "break-word",
                         minWidth: 0,
                       }}
@@ -364,14 +443,16 @@ export default function Patient_Appointments({ setActive }) {
                     <span>{displayTime}</span>
                   </div>
 
-                  <div className="appt-detail-row">
-                    <IconMapPin
-                      size={16}
-                      className="detail-icon"
-                      style={{ flexShrink: 0 }}
-                    />
-                    <span>{displayLocation}</span>
-                  </div>
+                  {appt.consultationChannel === "in_person" && (
+                    <div className="appt-detail-row">
+                      <IconMapPin
+                        size={16}
+                        className="detail-icon"
+                        style={{ flexShrink: 0 }}
+                      />
+                      <span>{displayLocation}</span>
+                    </div>
+                  )}
 
                   <div className="appt-detail-row">
                     {getChannelIcon(appt.consultationChannel)}
@@ -387,18 +468,21 @@ export default function Patient_Appointments({ setActive }) {
                 <div className="appt-card-actions">
                   <button
                     className="appt-btn appt-btn-outline full-width"
-                    onClick={() =>
-                      openDiyModal(`Viewing Ticket #${appt.ticketNumber}`)
-                    }
+                    onClick={() => {
+                      window.history.pushState(
+                        null,
+                        "",
+                        `#/Appointments/${appt.ticketNumber}`,
+                      );
+                      setViewingAppt(appt);
+                    }}
                   >
                     View Details
                   </button>
                   {appt.status === "for_payment" && (
                     <button
                       className="appt-btn appt-btn-primary full-width"
-                      onClick={() =>
-                        openDiyModal(`Viewing Ticket #${appt.ticketNumber}`)
-                      }
+                      onClick={() => setInvoiceTicket(appt)}
                     >
                       Pay Now
                     </button>
@@ -406,9 +490,12 @@ export default function Patient_Appointments({ setActive }) {
                   {["confirmed", "active"].includes(appt.status) && (
                     <button
                       className="appt-btn appt-btn-primary full-width"
-                      onClick={() =>
-                        openDiyModal(`Viewing Ticket #${appt.ticketNumber}`)
-                      }
+                      onClick={() => {
+                        handleCloseModal();
+                        openDiyModal(
+                          `Joining Room for Ticket #${appt.ticketNumber}`,
+                        );
+                      }}
                     >
                       Join Room
                     </button>
@@ -419,6 +506,390 @@ export default function Patient_Appointments({ setActive }) {
           })}
         </div>
       )}
+
+      {/* --- VIEW DETAILS MODAL --- */}
+      {viewingAppt && (
+        <div className="appt-modal-overlay" onClick={handleCloseModal}>
+          <div
+            className="appt-modal-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="appt-modal-header">
+              <div>
+                <h3 className="appt-modal-title">Appointment Details</h3>
+                <span className="appt-modal-ticket">
+                  Ticket #{viewingAppt.ticketNumber}
+                </span>
+              </div>
+              <button className="appt-modal-close" onClick={handleCloseModal}>
+                <IconX size={24} />
+              </button>
+            </div>
+
+            <div className="appt-modal-body">
+              {/* Main Banner */}
+              <div className="appt-modal-banner">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: "8px",
+                  }}
+                >
+                  <span className="appt-modal-label">Chief Complaint</span>
+                  {getStatusBadge(viewingAppt.status)}
+                </div>
+                <h2 className="appt-modal-complaint">
+                  {viewingAppt.chiefComplaint ||
+                    viewingAppt.mainConcern ||
+                    "General Consultation"}
+                </h2>
+              </div>
+
+              {/* Provider Info */}
+              <div className="appt-modal-doctor">
+                <div className="appt-avatar large">
+                  {getInitials(viewingAppt.specialistName)}
+                </div>
+                <div>
+                  <p className="appt-modal-label">Assigned Provider</p>
+                  <h4 className="appt-modal-doctor-name">
+                    {viewingAppt.specialistName || "TBA"}
+                  </h4>
+                  <p className="appt-modal-doctor-spec">
+                    {viewingAppt.specialization || "Pending Triage Assignment"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Basic Logistics Grid */}
+              <div className="appt-modal-grid" style={{ marginBottom: "24px" }}>
+                <div className="appt-modal-grid-item">
+                  <IconCalendarEvent size={18} className="detail-icon" />
+                  <div>
+                    <span className="appt-modal-label">Date</span>
+                    <p className="appt-modal-value">
+                      {viewingAppt.preferredDate
+                        ? formatDate(viewingAppt.preferredDate)
+                        : "TBA"}
+                    </p>
+                  </div>
+                </div>
+                <div className="appt-modal-grid-item">
+                  <IconClock size={18} className="detail-icon" />
+                  <div>
+                    <span className="appt-modal-label">Time</span>
+                    <p className="appt-modal-value">
+                      {viewingAppt.preferredTime || "TBA"}
+                    </p>
+                  </div>
+                </div>
+                <div className="appt-modal-grid-item">
+                  <IconActivity size={18} className="detail-icon" />
+                  <div>
+                    <span className="appt-modal-label">Channel</span>
+                    <p
+                      className="appt-modal-value"
+                      style={{ textTransform: "capitalize" }}
+                    >
+                      {(
+                        viewingAppt.consultationChannel || "platform_call"
+                      ).replace("_", " ")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CONSULTATION INTAKE DETAILS */}
+              <div className="appt-clinical-details">
+                <h3 className="clinical-section-title">
+                  Clinical Intake Summary
+                </h3>
+
+                {/* Timeline & Severity */}
+                <div className="clinical-row">
+                  <div className="clinical-stat-box">
+                    <span className="appt-modal-label">Duration</span>
+                    <p className="appt-modal-value">
+                      {viewingAppt.durationValue
+                        ? `${viewingAppt.durationValue} ${viewingAppt.durationUnit}`
+                        : "Not specified"}
+                    </p>
+                  </div>
+                  <div className="clinical-stat-box">
+                    <span className="appt-modal-label">Pain/Severity</span>
+                    <p className="appt-modal-value">
+                      {viewingAppt.severity
+                        ? `${viewingAppt.severity} / 10`
+                        : "Not specified"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Symptoms */}
+                <div className="clinical-section-block">
+                  <span className="appt-modal-label">Reported Symptoms</span>
+                  <div className="clinical-chip-group">
+                    {(() => {
+                      let safeSymptoms = [];
+                      if (viewingAppt.symptoms) {
+                        try {
+                          safeSymptoms =
+                            typeof viewingAppt.symptoms === "string"
+                              ? JSON.parse(viewingAppt.symptoms)
+                              : viewingAppt.symptoms;
+                        } catch (e) {
+                          safeSymptoms = [viewingAppt.symptoms];
+                        }
+                      }
+                      if (
+                        Array.isArray(safeSymptoms) &&
+                        safeSymptoms.length > 0
+                      ) {
+                        return safeSymptoms.map((symp, i) => (
+                          <span
+                            key={`symp-${i}`}
+                            className="clinical-chip symp-chip"
+                          >
+                            {symp}
+                          </span>
+                        ));
+                      }
+
+                      return (
+                        !viewingAppt.otherSymptoms && (
+                          <span className="text-muted">None reported</span>
+                        )
+                      );
+                    })()}
+
+                    {/* Show other symptoms if present */}
+                    {viewingAppt.otherSymptoms && (
+                      <span className="clinical-chip symp-chip other-symp">
+                        {viewingAppt.otherSymptoms}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pain Locations */}
+                <div className="clinical-section-block">
+                  <span className="appt-modal-label">
+                    Highlighted Pain Areas
+                  </span>
+                  <div className="clinical-chip-group">
+                    {(() => {
+                      let safePainAreas = [];
+                      if (viewingAppt.painAreas) {
+                        try {
+                          safePainAreas =
+                            typeof viewingAppt.painAreas === "string"
+                              ? JSON.parse(viewingAppt.painAreas)
+                              : viewingAppt.painAreas;
+                        } catch (e) {
+                          safePainAreas = [viewingAppt.painAreas];
+                        }
+                      }
+
+                      const textChips =
+                        Array.isArray(safePainAreas) &&
+                        safePainAreas.length > 0 ? (
+                          safePainAreas.map((area, i) => {
+                            let labelText = area;
+                            if (typeof area === "object" && area !== null) {
+                              const partName =
+                                area.label || area.key || "Unknown";
+                              const viewName =
+                                area.view === "back" ? "Back" : "Front";
+                              labelText = `${partName} (${viewName})`;
+                            }
+                            return (
+                              <span
+                                key={`pain-${i}`}
+                                className="clinical-chip pain-chip"
+                              >
+                                {labelText}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          <span
+                            className="text-muted"
+                            style={{ fontSize: "14px" }}
+                          >
+                            No specific areas mapped
+                          </span>
+                        );
+
+                      return (
+                        <div style={{ width: "100%" }}>
+                          <div
+                            className="clinical-chip-group"
+                            style={{ marginBottom: "20px" }}
+                          >
+                            {textChips}
+                          </div>
+                          {Array.isArray(safePainAreas) &&
+                            safePainAreas.length > 0 && (
+                              <div className="readonly-pain-map-container">
+                                <div className="triage-pain-map-view-toggle centered-toggle">
+                                  <button
+                                    className={`triage-pain-map-view-btn ${painMapView === "front" ? "active" : ""}`}
+                                    onClick={() => setPainMapView("front")}
+                                  >
+                                    Front View
+                                  </button>
+                                  <button
+                                    className={`triage-pain-map-view-btn ${painMapView === "back" ? "active" : ""}`}
+                                    onClick={() => setPainMapView("back")}
+                                  >
+                                    Back View
+                                  </button>
+                                </div>
+
+                                <div className="triage-pain-map-picker centered-picker">
+                                  <div
+                                    className={`triage-pain-map-figure ${painMapView === "back" ? "back" : "front"}`}
+                                  >
+                                    <div className="body-map-visual"></div>
+                                    {PAIN_MAP_AREAS[painMapView].map((area) => {
+                                      const isSelected = safePainAreas.some(
+                                        (a) =>
+                                          (a.key === area.key &&
+                                            a.view === painMapView) ||
+                                          a.id === `${painMapView}:${area.key}`,
+                                      );
+
+                                      return (
+                                        <div
+                                          key={`${painMapView}-${area.key}`}
+                                          className={`triage-body-part ${area.className} ${isSelected ? "selected" : ""}`}
+                                          style={{
+                                            cursor: "default",
+                                            pointerEvents: "none",
+                                          }}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Additional Details */}
+                <div className="clinical-section-block">
+                  <span className="appt-modal-label">Known Allergies</span>
+                  <div className="clinical-chip-group">
+                    {(() => {
+                      let patientAllergies =
+                        viewingAppt.allergies ||
+                        viewingAppt.patient?.allergies ||
+                        [];
+                      if (typeof patientAllergies === "string") {
+                        try {
+                          patientAllergies = JSON.parse(patientAllergies);
+                        } catch (e) {
+                          patientAllergies = patientAllergies.split(",");
+                        }
+                      }
+                      if (
+                        Array.isArray(patientAllergies) &&
+                        patientAllergies.length > 0
+                      ) {
+                        return patientAllergies.map((allergy, i) => {
+                          let allergyText = allergy;
+                          if (typeof allergy === "object" && allergy !== null) {
+                            allergyText =
+                              allergy.label ||
+                              allergy.value ||
+                              allergy.name ||
+                              allergy.text ||
+                              "";
+                          }
+                          const cleanText = String(allergyText).trim();
+                          if (!cleanText || cleanText === "[object Object]")
+                            return null;
+
+                          return (
+                            <span
+                              key={`allergy-${i}`}
+                              className="clinical-chip allergy-chip"
+                            >
+                              <IconAlertCircle
+                                size={14}
+                                style={{
+                                  marginRight: "4px",
+                                  marginBottom: "-2px",
+                                }}
+                              />
+                              {cleanText}
+                            </span>
+                          );
+                        });
+                      }
+
+                      return (
+                        <span
+                          className="text-muted"
+                          style={{ fontSize: "14px" }}
+                        >
+                          No known allergies reported
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {viewingAppt.additionalDetails && (
+                  <div className="clinical-section-block">
+                    <span className="appt-modal-label">Additional Notes</span>
+                    <div className="clinical-notes-box">
+                      {viewingAppt.additionalDetails}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="appt-modal-footer">
+              <button
+                className="appt-btn appt-btn-outline"
+                onClick={handleCloseModal}
+              >
+                Close
+              </button>
+              {["confirmed", "active"].includes(viewingAppt.status) && (
+                <button
+                  className="appt-btn appt-btn-primary"
+                  onClick={() => {
+                    handleCloseModal();
+                    openDiyModal(
+                      `Joining Room for Ticket #${viewingAppt.ticketNumber}`,
+                    );
+                  }}
+                >
+                  Join Consultation Room
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      <Patient_InvoiceModal
+        isOpen={!!invoiceTicket}
+        ticketData={invoiceTicket}
+        onClose={() => {
+          setInvoiceTicket(null);
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

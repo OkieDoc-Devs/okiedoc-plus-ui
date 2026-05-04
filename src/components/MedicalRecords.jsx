@@ -12,6 +12,11 @@ import {
   ChevronDown,
   User,
   Loader,
+  Eye,
+  Stethoscope,
+  ClipboardList,
+  Pill,
+  FlaskConical,
 } from 'lucide-react';
 import {
   fetchPatientMedicalHistory,
@@ -24,14 +29,7 @@ const TABS = [
   { id: 'audit', label: 'Audit Trail', icon: ClockIcon },
 ];
 
-const AUDIT_ENTRIES = [
-  {
-    action: 'Consultation created',
-    actor: 'Nurse Maria Santos',
-    role: 'Nurse',
-    time: '2026-04-19 09:30 AM',
-  },
-];
+const AUDIT_ENTRIES = [];
 
 const toConsultTypeLabel = (value) => {
   const normalized = String(value || '')
@@ -106,6 +104,7 @@ export default function PatientMedicalRecordsModal({
   const [pastConsultations, setPastConsultations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedConsultation, setSelectedConsultation] = useState(null);
 
   const info = {
     name: patient?.fullName || 'Patient',
@@ -132,18 +131,28 @@ export default function PatientMedicalRecordsModal({
       const historyResponse = await fetchPatientMedicalHistory(pId);
       if (historyResponse) {
         const consultations = historyResponse.history || [];
-        setPastConsultations(
-          consultations.map((consultation) => ({
-            ticketId: consultation.ticketNumber || 'T-000',
-            date: consultation.visitDate
-              ? new Date(consultation.visitDate).toISOString().split('T')[0]
-              : 'N/A',
-            type: toConsultTypeLabel(consultation.consultationType),
-            doctor: consultation.specialistName || 'Unassigned',
-            chiefComplaint: consultation.chiefComplaint || 'N/A',
-            diagnosis: consultation.icd10Code || 'N/A',
-          })),
-        );
+                setPastConsultations(
+                  consultations.map((consultation) => ({
+                    ticketId: consultation.ticketNumber || 'T-000',
+                    date: consultation.visitDate
+                      ? new Date(consultation.visitDate).toISOString().split('T')[0]
+                      : 'N/A',
+                    type: toConsultTypeLabel(consultation.consultationType),
+                    doctor: consultation.specialistName || 'Unassigned',
+                    chiefComplaint: consultation.chiefComplaint || 'N/A',
+                    diagnosis:
+                      consultation.medicalCertificates &&
+                      consultation.medicalCertificates.length > 0
+                        ? consultation.medicalCertificates[0].diagnosisReason
+                        : consultation.icd10Code || 'N/A',
+                    assessment: consultation.assessment || 'N/A',
+                    plan: consultation.plan || 'N/A',
+                    prescriptions: consultation.prescriptions || [],
+                    labRequests: consultation.labRequests || [],
+                    medicalCertificates: consultation.medicalCertificates || [],
+                    treatmentPlans: consultation.treatmentPlans || [],
+                  })),
+                );
       }
 
       const profileResponse = await fetchPatientProfile(pId);
@@ -443,61 +452,194 @@ export default function PatientMedicalRecordsModal({
                 Past Consultations
               </p>
 
-              <div className='border border-gray-200 rounded-2xl overflow-hidden'>
-                <div className='grid grid-cols-6 gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200'>
-                  {[
-                    'Ticket ID',
-                    'Date',
-                    'Type',
-                    'Doctor',
-                    'Chief Complaint',
-                    'Diagnosis',
-                  ].map((header) => (
-                    <span
-                      key={header}
-                      className='text-[10px] font-bold text-blue-500 uppercase tracking-wide truncate'
-                    >
-                      {header}
-                    </span>
-                  ))}
-                </div>
-
-                {pastConsultations.length === 0 ? (
-                  <div className='px-4 py-6 text-center text-gray-500 text-sm'>
-                    No past consultations found
-                  </div>
-                ) : (
-                  pastConsultations.map((consultation, index) => (
-                    <div
-                      key={consultation.ticketId + index}
-                      className={`grid grid-cols-6 gap-2 px-4 py-3 items-center ${
-                        index !== pastConsultations.length - 1
-                          ? 'border-b border-gray-100'
-                          : ''
-                      } hover:bg-blue-50/40 transition-colors`}
-                    >
-                      <span className='text-xs font-semibold text-blue-500'>
-                        {consultation.ticketId}
-                      </span>
-                      <span className='text-xs text-gray-600'>
-                        {consultation.date}
-                      </span>
-                      <span className='text-xs text-gray-600'>
-                        {consultation.type}
-                      </span>
-                      <span className='text-xs text-gray-600 truncate'>
-                        {consultation.doctor}
-                      </span>
-                      <span className='text-xs text-gray-600 truncate'>
-                        {consultation.chiefComplaint}
-                      </span>
-                      <span className='text-xs text-gray-600 truncate'>
-                        {consultation.diagnosis}
-                      </span>
+              {selectedConsultation ? (
+                <div className='border border-gray-200 rounded-2xl p-6 bg-white space-y-6'>
+                  <div className='flex items-center justify-between border-b pb-4'>
+                    <div className='flex items-center gap-3'>
+                      <div className='w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center'>
+                        <FileText size={18} className='text-blue-500' />
+                      </div>
+                      <div>
+                        <h3 className='text-base font-bold text-gray-900'>
+                          Consultation Details
+                        </h3>
+                        <p className='text-xs text-blue-500 font-semibold'>
+                          {selectedConsultation.ticketId}
+                        </p>
+                      </div>
                     </div>
-                  ))
-                )}
-              </div>
+                    <button
+                      onClick={() => setSelectedConsultation(null)}
+                      className='text-xs font-bold text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-lg border border-gray-100 hover:bg-gray-50'
+                    >
+                      Back to list
+                    </button>
+                  </div>
+
+                  <div className='grid grid-cols-2 gap-4'>
+                    <div>
+                      <span className='text-[10px] text-gray-400 font-bold uppercase tracking-wider'>
+                        Date
+                      </span>
+                      <p className='text-sm font-semibold text-gray-700'>
+                        {selectedConsultation.date}
+                      </p>
+                    </div>
+                    <div>
+                      <span className='text-[10px] text-gray-400 font-bold uppercase tracking-wider'>
+                        Specialist
+                      </span>
+                      <p className='text-sm font-semibold text-gray-700'>
+                        {selectedConsultation.doctor}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className='space-y-4 pt-2'>
+                    <div className='bg-blue-50/50 p-4 rounded-xl border border-blue-100'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <Stethoscope size={14} className='text-blue-500' />
+                        <span className='text-xs font-bold text-blue-900 uppercase tracking-wide'>
+                          Assessment
+                        </span>
+                      </div>
+                      <p className='text-sm text-gray-700 leading-relaxed'>
+                        {selectedConsultation.assessment}
+                      </p>
+                    </div>
+
+                    <div className='bg-green-50/50 p-4 rounded-xl border border-green-100'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <Activity size={14} className='text-green-500' />
+                        <span className='text-xs font-bold text-green-900 uppercase tracking-wide'>
+                          Diagnosis
+                        </span>
+                      </div>
+                      <p className='text-sm text-gray-700 leading-relaxed'>
+                        {selectedConsultation.diagnosis}
+                      </p>
+                    </div>
+
+                    <div className='bg-purple-50/50 p-4 rounded-xl border border-purple-100'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <ClipboardList size={14} className='text-purple-500' />
+                        <span className='text-xs font-bold text-purple-900 uppercase tracking-wide'>
+                          Treatment Plan
+                        </span>
+                      </div>
+                      <p className='text-sm text-gray-700 leading-relaxed'>
+                        {selectedConsultation.plan}
+                      </p>
+                    </div>
+
+                    {selectedConsultation.prescriptions?.length > 0 && (
+                      <div className='bg-orange-50/50 p-4 rounded-xl border border-orange-100'>
+                        <div className='flex items-center gap-2 mb-2'>
+                          <Pill size={14} className='text-orange-500' />
+                          <span className='text-xs font-bold text-orange-900 uppercase tracking-wide'>
+                            Prescriptions
+                          </span>
+                        </div>
+                        <ul className='list-disc list-inside text-sm text-gray-700 space-y-1'>
+                          {selectedConsultation.prescriptions.map((p, idx) => (
+                            <li key={idx}>
+                              <span className='font-semibold'>
+                                {p.generic} {p.brand ? `(${p.brand})` : ''}
+                              </span>{' '}
+                              - {p.dosage} {p.form}, {p.quantity} units (
+                              {p.instructions})
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {selectedConsultation.labRequests?.length > 0 && (
+                      <div className='bg-amber-50/50 p-4 rounded-xl border border-amber-100'>
+                        <div className='flex items-center gap-2 mb-2'>
+                          <FlaskConical size={14} className='text-amber-500' />
+                          <span className='text-xs font-bold text-amber-900 uppercase tracking-wide'>
+                            Laboratory Requests
+                          </span>
+                        </div>
+                        <ul className='list-disc list-inside text-sm text-gray-700 space-y-1'>
+                          {selectedConsultation.labRequests.map((l, idx) => (
+                            <li key={idx}>
+                              <span className='font-semibold'>{l.test}</span>{' '}
+                              {l.customTestName ? `(${l.customTestName})` : ''}
+                              {l.remarks ? ` - ${l.remarks}` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className='border border-gray-200 rounded-2xl overflow-hidden'>
+                  <div className='grid grid-cols-7 gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200'>
+                    {[
+                      'Ticket ID',
+                      'Date',
+                      'Type',
+                      'Doctor',
+                      'Chief Complaint',
+                      'Diagnosis',
+                      'Action',
+                    ].map((header) => (
+                      <span
+                        key={header}
+                        className='text-[10px] font-bold text-blue-500 uppercase tracking-wide truncate'
+                      >
+                        {header}
+                      </span>
+                    ))}
+                  </div>
+
+                  {pastConsultations.length === 0 ? (
+                    <div className='px-4 py-6 text-center text-gray-500 text-sm'>
+                      No past consultations found
+                    </div>
+                  ) : (
+                    pastConsultations.map((consultation, index) => (
+                      <div
+                        key={consultation.ticketId + index}
+                        className={`grid grid-cols-7 gap-2 px-4 py-3 items-center ${
+                          index !== pastConsultations.length - 1
+                            ? 'border-b border-gray-100'
+                            : ''
+                        } hover:bg-blue-50/40 transition-colors`}
+                      >
+                        <span className='text-xs font-semibold text-blue-500'>
+                          {consultation.ticketId}
+                        </span>
+                        <span className='text-xs text-gray-600'>
+                          {consultation.date}
+                        </span>
+                        <span className='text-xs text-gray-600'>
+                          {consultation.type}
+                        </span>
+                        <span className='text-xs text-gray-600 truncate'>
+                          {consultation.doctor}
+                        </span>
+                        <span className='text-xs text-gray-600 truncate'>
+                          {consultation.chiefComplaint}
+                        </span>
+                        <span className='text-xs text-gray-600 truncate'>
+                          {consultation.diagnosis}
+                        </span>
+                        <button
+                          onClick={() => setSelectedConsultation(consultation)}
+                          className='flex items-center gap-1 text-[10px] font-bold text-blue-500 hover:text-blue-700 transition-colors'
+                        >
+                          <Eye size={12} />
+                          VIEW DETAILS
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           )}
 

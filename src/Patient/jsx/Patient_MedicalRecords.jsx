@@ -22,157 +22,57 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import "../css/Patient_MedicalRecords.css";
+import { fetchPatientMedicalHistory } from "../../api/apiClient";
 
 // --- MOCK DATA ---
-const mockHistory = Array.from({ length: 7 }).map((_, i) => ({
-  id: i,
-  dr: `Dr. ${["Maria Santos", "Carlos Torres", "Sofia Lim", "Anna Cruz", "Miguel Garcia", "Elena Rostova", "James Lee"][i]}`,
-  spec: [
-    "General Physician",
-    "Cardiologist",
-    "Dermatologist",
-    "Psychiatrist",
-    "Orthopedic",
-    "Pediatrician",
-    "Neurologist",
-  ][i],
-  date: `Sat, Mar ${28 - i}, 2026`,
-  time: "10:30 AM",
-  complaint: "Persistent cough and mild fever",
-  dur: "25 minutes",
-  status: "Completed",
-}));
+const mockHistory = [];
 
-const mockPrescriptions = Array.from({ length: 7 }).map((_, i) => ({
-  id: i,
-  dr: `Dr. ${["Maria Santos", "Carlos Torres", "Sofia Lim", "Anna Cruz", "Miguel Garcia", "Elena Rostova", "James Lee"][i]}`,
-  date: `March ${28 - i}, 2026`,
-  meds: [
-    ["Amoxicillin 500mg", "Cetirizine 10mg", "Paracetamol 500mg"],
-    ["Hydrocortisone Cream 1%", "Cetirizine 10mg"],
-    ["Lisinopril 10mg"],
-    ["Sertraline 50mg"],
-    ["Ibuprofen 400mg"],
-    ["Salbutamol Inhaler"],
-    ["Gabapentin 300mg"],
-  ][i],
-  status: "Active",
-}));
+const mockPrescriptions = [];
 
-const mockLabs = Array.from({ length: 7 }).map((_, i) => ({
-  id: i,
-  dr: `Dr. Maria Santos`,
-  date: `March ${28 - i}, 2026`,
-  test: [
-    "Complete Blood Count (CBC)",
-    "Lipid Profile, ECG, Chest X-Ray",
-    "Knee X-Ray, MRI Scan",
-    "Urinalysis",
-    "Fasting Blood Sugar",
-    "Thyroid Panel",
-    "Liver Function Test",
-  ][i],
-  clinic: [
-    "OkieDoc+ Lab Center - BGC",
-    "OkieDoc+ Diagnostic - Makati",
-    "OkieDoc+ Imaging - Ortigas",
-    "Partner Clinic - QC",
-    "OkieDoc+ Lab Center - BGC",
-    "Partner Clinic - Alabang",
-    "OkieDoc+ Diagnostic - Makati",
-  ][i],
-  status: i === 0 ? "Pending" : "Completed",
-}));
+const mockLabs = [];
 
-const mockCerts = Array.from({ length: 7 }).map((_, i) => ({
-  id: i,
-  dr: `Dr. Carlos Torres`,
-  date: `March ${28 - i}, 2026`,
-  type: [
-    "Sick Leave - Flu",
-    "Fit to Work Certificate",
-    "Medical Clearance - Travel",
-    "Sick Leave - Migraine",
-    "Fit to Play - Sports",
-    "Clearance - Gym",
-    "Sick Leave - Viral Infection",
-  ][i],
-  status: "Completed",
-}));
+const mockCerts = [];
 
-const mockPlans = Array.from({ length: 7 }).map((_, i) => ({
-  id: i,
-  dr: `Dr. Sofia Lim`,
-  start: `Feb ${10 + i}, 2026`,
-  next: `May ${10 + i}, 2026`,
-  condition: [
-    "Hypertension Management",
-    "Anxiety Disorder Treatment",
-    "Type 2 Diabetes Control",
-    "Asthma Management Plan",
-    "Physical Therapy Routine",
-    "Weight Management Plan",
-    "Migraine Prevention",
-  ][i],
-  spec: "Internal Medicine",
-  status: "Active",
-}));
+const mockPlans = [];
 
-const mockReferrals = Array.from({ length: 7 }).map((_, i) => ({
-  id: i,
-  refTo: `Dr. ${["Carlos Torres", "Miguel Garcia", "Elena Rostova", "James Lee", "Sofia Lim", "Anna Cruz", "Maria Santos"][i]}`,
-  spec: [
-    "Dermatologist",
-    "Orthopedic Surgeon",
-    "Pediatrician",
-    "Neurologist",
-    "Cardiologist",
-    "Psychiatrist",
-    "General Physician",
-  ][i],
-  reason: [
-    "Skin rash on arms",
-    "Knee pain after exercise",
-    "Childhood vaccination",
-    "Chronic headaches",
-    "Palpitations",
-    "Therapy session",
-    "Routine Checkup",
-  ][i],
-  status: i % 2 === 0 ? "Booked" : "Pending",
-}));
+const mockReferrals = [];
 
-const TABS = [
+const TABS = (backendData) => [
   {
     id: "history",
     label: "Consultation History",
     icon: IconFileDescription,
-    data: mockHistory,
+    data: backendData.history,
   },
   {
     id: "prescriptions",
     label: "Prescriptions",
     icon: IconPill,
-    data: mockPrescriptions,
+    data: backendData.prescriptions,
   },
-  { id: "labs", label: "Lab Requests", icon: IconFlask, data: mockLabs },
+  {
+    id: "labs",
+    label: "Lab Requests",
+    icon: IconFlask,
+    data: backendData.labs,
+  },
   {
     id: "certs",
     label: "Medical Certificates",
     icon: IconCertificate,
-    data: mockCerts,
+    data: backendData.certs,
   },
   {
     id: "plans",
     label: "Treatment Plans",
     icon: IconClipboardHeart,
-    data: mockPlans,
+    data: backendData.plans,
   },
   {
     id: "referrals",
     label: "Referrals",
     icon: IconMessageCircle,
-    data: mockReferrals,
+    data: [],
   },
 ];
 
@@ -186,11 +86,85 @@ export default function Patient_MedicalRecords() {
     "Active",
     "Booked",
   ]);
+  const [backendHistory, setBackendHistory] = useState([]);
+  const [backendPrescriptions, setBackendPrescriptions] = useState([]);
+  const [backendLabs, setBackendLabs] = useState([]);
+  const [backendCerts, setBackendCerts] = useState([]);
+  const [backendPlans, setBackendPlans] = useState([]);
   const popoverRef = useRef(null);
 
   const handleDIY = (action) => alert(`DIY: ${action}`);
 
   useEffect(() => {
+    const loadData = async () => {
+      try {
+        const response = await fetchPatientMedicalHistory();
+        if (response && response.history) {
+          const history = response.history.map((h, i) => ({
+            id: `h-${i}`,
+            dr: `Dr. ${h.specialistName}`,
+            spec: h.specialistTitle || "Specialist",
+            date: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
+            time: h.preferredTime || "N/A",
+            complaint: h.chiefComplaint || "N/A",
+            dur: "N/A", // or calculate from timestamps if available
+            status: "Completed",
+          }));
+          setBackendHistory(history);
+
+          const prescriptions = response.history.flatMap((h) =>
+            (h.prescriptions || []).map((p, idx) => ({
+              id: `p-${h.ticketNumber}-${idx}`,
+              dr: `Dr. ${h.specialistName}`,
+              date: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
+              meds: [`${p.generic} ${p.brand ? `(${p.brand})` : ""} - ${p.dosage}`],
+              status: "Active",
+            })),
+          );
+          setBackendPrescriptions(prescriptions);
+
+          const labs = response.history.flatMap((h) =>
+            (h.labRequests || []).map((l, idx) => ({
+              id: `l-${h.ticketNumber}-${idx}`,
+              dr: `Dr. ${h.specialistName}`,
+              date: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
+              test: l.test,
+              clinic: l.customTestName || "N/A",
+              status: "Completed",
+            })),
+          );
+          setBackendLabs(labs);
+
+          const certs = response.history.flatMap((h) =>
+            (h.medicalCertificates || []).map((c, idx) => ({
+              id: `c-${h.ticketNumber}-${idx}`,
+              dr: `Dr. ${h.specialistName}`,
+              date: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
+              type: c.diagnosisReason,
+              status: "Completed",
+            })),
+          );
+          setBackendCerts(certs);
+
+          const plans = response.history.flatMap((h) =>
+            (h.treatmentPlans || []).map((tp, idx) => ({
+              id: `tp-${h.ticketNumber}-${idx}`,
+              dr: `Dr. ${h.specialistName}`,
+              start: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
+              next: "TBD",
+              condition: tp.plan,
+              spec: h.specialistTitle || "Specialist",
+              status: "Active",
+            })),
+          );
+          setBackendPlans(plans);
+        }
+      } catch (err) {
+        console.error("Failed to load backend medical history:", err);
+      }
+    };
+    loadData();
+
     const handleClickOutside = (event) => {
       if (popoverRef.current && !popoverRef.current.contains(event.target))
         setFilterOpen(false);
@@ -207,7 +181,15 @@ export default function Patient_MedicalRecords() {
     }
   };
 
-  const currentTabData = TABS.find((t) => t.id === activeTab)?.data || [];
+  const tabs = TABS({
+    history: backendHistory,
+    prescriptions: backendPrescriptions,
+    labs: backendLabs,
+    certs: backendCerts,
+    plans: backendPlans,
+  });
+
+  const currentTabData = tabs.find((t) => t.id === activeTab)?.data || [];
 
   const filteredData = useMemo(() => {
     return currentTabData.filter((item) => {
@@ -591,7 +573,7 @@ export default function Patient_MedicalRecords() {
         {/* Tabs Navigation */}
         <div className="mr-tabs-container">
           <div className="mr-tabs-scroll">
-            {TABS.map((tab) => (
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
                 className={`mr-custom-tab ${activeTab === tab.id ? "mr-tab-active" : ""}`}
@@ -621,7 +603,7 @@ export default function Patient_MedicalRecords() {
             <input
               type="text"
               className="mr-search-input"
-              placeholder={`Search ${TABS.find((t) => t.id === activeTab).label.toLowerCase()}...`}
+              placeholder={`Search ${tabs.find((t) => t.id === activeTab).label.toLowerCase()}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

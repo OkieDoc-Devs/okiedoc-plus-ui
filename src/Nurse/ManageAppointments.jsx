@@ -1,7 +1,7 @@
 import '../App.css';
 import './NurseStyles.css';
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import Avatar from '../components/Avatar';
 import PostConsultationBillingModal from '../components/PostConsultationBillingModal';
 import {
@@ -148,7 +148,7 @@ function CreateTicketSelect({
   );
 }
 
-function NurseCreateTicketWorkspace({ onBack, onTicketCreated }) {
+function NurseCreateTicketWorkspace({ onBack, onTicketCreated, initialFormData = null }) {
   const {
     regions,
     provinces,
@@ -172,6 +172,20 @@ function NurseCreateTicketWorkspace({ onBack, onTicketCreated }) {
   const [isSearchingPatients, setIsSearchingPatients] = useState(false);
   const [isCreatingTicket, setIsCreatingTicket] = useState(false);
   const [formError, setFormError] = useState('');
+  const hasAppliedInitialData = useRef(false);
+
+  useEffect(() => {
+    if (!initialFormData || hasAppliedInitialData.current) {
+      return;
+    }
+
+    hasAppliedInitialData.current = true;
+    setFormData((previous) => ({
+      ...previous,
+      ...initialFormData,
+      patientId: '',
+    }));
+  }, [initialFormData]);
 
   useEffect(() => {
     const searchTerm = formData.fullName.trim();
@@ -824,9 +838,21 @@ function NurseCreateTicketWorkspace({ onBack, onTicketCreated }) {
 
 export default function ManageAppointment() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout, user } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false);
+  const [createTicketPrefill, setCreateTicketPrefill] = useState(null);
+
+  useEffect(() => {
+    if (!location.state?.openCreateTicket) {
+      return;
+    }
+
+    setIsCreateTicketOpen(true);
+    setCreateTicketPrefill(location.state?.createTicketPrefill || null);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
     if (!USE_API) {
@@ -1204,6 +1230,7 @@ export default function ManageAppointment() {
       <NurseCreateTicketWorkspace
         onBack={() => setIsCreateTicketOpen(false)}
         onTicketCreated={handleNurseTicketCreated}
+        initialFormData={createTicketPrefill}
       />
     );
   }

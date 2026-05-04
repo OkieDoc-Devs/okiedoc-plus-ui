@@ -304,6 +304,347 @@ input[type="checkbox"] {
   gap: 12px;
 }
 
+/* --- VIEW DETAILS MODAL --- */
+.appt-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  z-index: 99998;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.appt-modal-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.2),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 99999;
+  animation: slideUpCenter 0.3s ease-out forwards;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUpCenter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -45%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.appt-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ffffff;
+}
+
+.appt-modal-title {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.appt-modal-ticket {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.appt-modal-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.appt-modal-close:hover {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.appt-modal-body {
+  padding: 24px;
+  background-color: #ffffff;
+  overflow-y: auto;
+  flex: 1;
+  padding-bottom: 24px;
+}
+
+.appt-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.appt-modal-body::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
+}
+
+.appt-modal-banner {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.appt-modal-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.appt-modal-complaint {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0369a1;
+  line-height: 1.3;
+}
+
+.appt-modal-doctor {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 0 8px;
+}
+
+.appt-avatar.large {
+  width: 56px;
+  height: 56px;
+  font-size: 20px;
+}
+
+.appt-modal-doctor-name {
+  margin: 0 0 2px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.appt-modal-doctor-spec {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.appt-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 20px;
+  background-color: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.appt-modal-grid-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.appt-modal-value {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.appt-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background-color: #ffffff;
+}
+
+/* --- CLINICAL INTAKE DETAILS --- */
+.appt-clinical-details {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.clinical-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 16px 0;
+}
+
+.clinical-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.clinical-stat-box {
+  flex: 1;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.clinical-section-block {
+  margin-bottom: 20px;
+}
+
+.clinical-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.clinical-chip {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.symp-chip {
+  background-color: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+}
+
+.symp-chip.other-symp {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px dashed #cbd5e1;
+}
+
+.pain-chip {
+  background-color: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  text-transform: capitalize;
+}
+
+.readonly-pain-map-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 16px;
+}
+
+.centered-toggle {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.centered-picker {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.triage-pain-map-view-toggle button {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.triage-pain-map-view-toggle button:first-child {
+  border-radius: 8px 0 0 8px;
+}
+
+.triage-pain-map-view-toggle button:last-child {
+  border-radius: 0 8px 8px 0;
+  border-left: none;
+}
+
+.triage-pain-map-view-toggle button.active {
+  background-color: #f0fdf4;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.triage-pain-map-figure .triage-body-part.selected {
+  background-color: rgba(239, 68, 68, 0.6) !important;
+  border: 2px solid #ef4444;
+}
+
+.clinical-notes-box {
+  background-color: #fffbeb;
+  border-left: 4px solid #f59e0b;
+  padding: 12px 16px;
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+  color: #451a03;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.text-muted {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.allergy-chip {
+  background-color: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+}
+
 /* Mobile Adjustments */
 @media (max-width: 600px) {
   .appt-controls-bar {
@@ -315,5 +656,16 @@ input[type="checkbox"] {
   }
   .appt-card-actions {
     flex-direction: column;
+  }
+  .appt-modal-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .appt-modal-footer {
+    flex-direction: column-reverse;
+  }
+  .appt-modal-footer .appt-btn {
+    width: 100%;
+    justify-content: center;
   }
 }

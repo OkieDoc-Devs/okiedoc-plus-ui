@@ -545,12 +545,30 @@ const getCallbackStatusLabel = (statusValue) => {
   return value || 'Waiting';
 };
 
+const getCallbackFullName = (callback) => {
+  const directFullName = String(callback?.fullName || '').trim();
+  if (directFullName) {
+    return directFullName;
+  }
+
+  const fallbackName = String(callback?.patientName || callback?.name || '').trim();
+  if (fallbackName) {
+    return fallbackName;
+  }
+
+  const firstName = String(callback?.firstName || '').trim();
+  const lastName = String(callback?.lastName || '').trim();
+  const combinedName = `${firstName} ${lastName}`.trim();
+  return combinedName || 'Callback Request';
+};
+
 const buildTicketFromCallback = (callback) => {
   const callbackId = Number(callback?.id);
   const callbackTicketId = Number.isFinite(callbackId)
     ? -Math.abs(callbackId)
     : null;
   const activeDiseases = toList(callback?.activeDiseases);
+  const callbackFullName = getCallbackFullName(callback);
 
   return {
     id: callbackTicketId,
@@ -559,8 +577,8 @@ const buildTicketFromCallback = (callback) => {
     ticketNumber: callback?.callbackNumber || null,
     callbackNumber: callback?.callbackNumber || null,
     patientId: callback?.patientId || null,
-    patientName: callback?.fullName || 'Callback Request',
-    fullName: callback?.fullName || 'Callback Request',
+    patientName: callbackFullName,
+    fullName: callbackFullName,
     patientBirthdate: callback?.patientBirthdate || null,
     gender: callback?.gender || DEFAULT_TEXT,
     mobile: callback?.contactNumber || DEFAULT_TEXT,
@@ -917,6 +935,25 @@ export default function Dashboard() {
     } finally {
       setCallbackActionLoadingStatus('');
     }
+  };
+
+  const handleConvertCallbackToTicket = () => {
+    if (!activeCallback) {
+      return;
+    }
+
+    navigate('/nurse-manage-appointments', {
+      state: {
+        openCreateTicket: true,
+        createTicketPrefill: {
+          fullName: getCallbackFullName(activeCallback),
+          mobileNumber: String(activeCallback?.contactNumber || '').trim(),
+          email: String(activeCallback?.email || '').trim(),
+          chiefComplaint: String(activeCallback?.message || '').trim(),
+        },
+      },
+    });
+    closeCallbackModal();
   };
 
   const openTransferModal = () => {
@@ -1543,23 +1580,14 @@ export default function Dashboard() {
         '',
       ),
     );
-    const addressLine = readValue(
-      selectedTicket,
-      ['address', 'patientAddress', 'fullAddress', 'streetAddress'],
-      '',
-    );
+    const barangay = readValue(selectedTicket, ['barangay', 'patientBarangay'], '');
     const city = readValue(selectedTicket, ['city', 'patientCity'], '');
     const province = readValue(
       selectedTicket,
       ['province', 'state', 'patientProvince'],
       '',
     );
-    const country = readValue(
-      selectedTicket,
-      ['country', 'patientCountry'],
-      '',
-    );
-    const composedAddress = [addressLine, city, province, country]
+    const composedAddress = [barangay, city, province]
       .map((part) => String(part || '').trim())
       .filter((part, index, array) => part && array.indexOf(part) === index)
       .join(', ');
@@ -2063,7 +2091,6 @@ export default function Dashboard() {
       } else {
         await applyTicketPatch(selectedTicket.id, {
           nurse: Number(selectedNurseId),
-          assignedNurse: selectedNurse?.name || null,
           transferReason: transferReason.trim() || null,
           status: 'processing',
         });
@@ -2759,7 +2786,7 @@ export default function Dashboard() {
 
                             <div>
                               <div className='triage-ticket-code'>
-                                T-{String(ticket.id).padStart(3, '0')}
+                                {ticket.ticketNumber || `T-${String(ticket.id).padStart(3, '0')}`}
                               </div>
                               <div className='triage-ticket-name'>
                                 {readValue(ticket, [
@@ -2883,40 +2910,6 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {selectedPatient.allergies.length > 0 && (
-                        <>
-                          <div className='triage-divider' />
-
-                          <div className='triage-allergy-block'>
-                            <h5>
-                              <AlertCircle size={14} strokeWidth={2.2} />
-                              <span>Allergies</span>
-                            </h5>
-                            <div className='triage-tag-list'>
-                              {selectedPatient.allergies.map((allergy) => (
-                                <span key={allergy}>{allergy}</span>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                      <div className='triage-divider' />
-
-                      <div className='triage-history-block'>
-                        <h5 className='triage-history-title'>
-                          Medical History
-                        </h5>
-                        {selectedPatient.medicalHistory.length > 0 ? (
-                          <ul>
-                            {selectedPatient.medicalHistory.map((item) => (
-                              <li key={item}>{item}</li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p>{DEFAULT_TEXT}</p>
-                        )}
-                      </div>
 
                       <div className='triage-divider' />
 
@@ -2983,88 +2976,89 @@ export default function Dashboard() {
                 )}
               </div>
 
-              <div className='triage-snapshot-chat-dock'>
-                <article className='triage-chat-panel'>
-                  <header>
-                    <h4>Chat Consultation</h4>
-                    <p>Context for triage assessment</p>
-                  </header>
+              {(!selectedPatient ||
+                (selectedPatientId &&
+                  selectedPatient.email &&
+                  selectedPatient.email !== 'N/A')) && (
+                <div className='triage-snapshot-chat-dock'>
+                  <article className='triage-chat-panel'>
+                    <header>
+                      <h4>Chat Consultation</h4>
+                      <p>Context for triage assessment</p>
+                    </header>
 
-                  <div className='triage-chat-list' ref={quickChatListRef}>
-                    {!selectedPatient ? (
-                      <div className='triage-empty-note'>
-                        Select a patient to open chat.
-                      </div>
-                    ) : isSelectedCallbackTicket ? (
-                      <div className='triage-empty-note'>
-                        Chat is not available for callback-only requests.
-                      </div>
-                    ) : chatEntries.length > 0 ? (
-                      chatEntries.map((message) =>
-                        message.isSystem ? (
-                          <div
-                            key={message.id}
-                            className='triage-chat-system-row'
-                          >
-                            <span className='triage-chat-system-avatar'>
-                              <UserRound size={14} strokeWidth={2.2} />
-                            </span>
-                            <div className='triage-chat-bubble system'>
+                    <div className='triage-chat-list' ref={quickChatListRef}>
+                      {!selectedPatient ? (
+                        <div className='triage-empty-note'>
+                          Select a patient to open chat.
+                        </div>
+                      ) : chatEntries.length > 0 ? (
+                        chatEntries.map((message) =>
+                          message.isSystem ? (
+                            <div
+                              key={message.id}
+                              className='triage-chat-system-row'
+                            >
+                              <span className='triage-chat-system-avatar'>
+                                <UserRound size={14} strokeWidth={2.2} />
+                              </span>
+                              <div className='triage-chat-bubble system'>
+                                <p>{message.text}</p>
+                                <span>{message.timestamp}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              key={message.id}
+                              className={`triage-chat-bubble ${message.isSent ? 'sent' : 'received'}`}
+                            >
                               <p>{message.text}</p>
                               <span>{message.timestamp}</span>
                             </div>
-                          </div>
-                        ) : (
-                          <div
-                            key={message.id}
-                            className={`triage-chat-bubble ${message.isSent ? 'sent' : 'received'}`}
-                          >
-                            <p>{message.text}</p>
-                            <span>{message.timestamp}</span>
-                          </div>
-                        ),
-                      )
-                    ) : (
-                      <div className='triage-empty-note'>
-                        No messages yet for this patient.
-                      </div>
-                    )}
-                  </div>
+                          ),
+                        )
+                      ) : (
+                        <div className='triage-empty-note'>
+                          No messages yet for this patient.
+                        </div>
+                      )}
+                    </div>
 
-                  <form
-                    className='triage-chat-input-row'
-                    onSubmit={handleQuickSendMessage}
-                  >
-                    <input
-                      type='text'
-                      placeholder='Type a message...'
-                      value={quickMessage}
-                      onChange={(event) => setQuickMessage(event.target.value)}
-                      disabled={
-                        !selectedPatient ||
-                        isSendingQuickMessage ||
-                        isSelectedCallbackTicket
-                      }
-                    />
-                    <button
-                      className='triage-chat-send-btn'
-                      type='submit'
-                      disabled={
-                        !selectedPatient ||
-                        isSelectedCallbackTicket ||
-                        !quickMessage.trim() ||
-                        isSendingQuickMessage
-                      }
+                    <form
+                      className='triage-chat-input-row'
+                      onSubmit={handleQuickSendMessage}
                     >
-                      <SendHorizontal size={14} strokeWidth={2.3} />
-                    </button>
-                  </form>
+                      <input
+                        type='text'
+                        placeholder='Type a message...'
+                        value={quickMessage}
+                        onChange={(event) =>
+                          setQuickMessage(event.target.value)
+                        }
+                        disabled={
+                          !selectedPatient ||
+                          isSendingQuickMessage
+                        }
+                      />
+                      <button
+                        className='triage-chat-send-btn'
+                        type='submit'
+                        disabled={
+                          !selectedPatient ||
+                          !quickMessage.trim() ||
+                          isSendingQuickMessage
+                        }
+                      >
+                        <SendHorizontal size={14} strokeWidth={2.3} />
+                      </button>
+                    </form>
 
-                  {quickMessageError && (
-                    <p className='nurse-quick-error'>{quickMessageError}</p>
-                  )}
-                </article>
-              </div>
+                    {quickMessageError && (
+                      <p className='nurse-quick-error'>{quickMessageError}</p>
+                    )}
+                  </article>
+                </div>
+              )}
             </section>
 
             <section className='triage-workspace-col'>
@@ -3929,7 +3923,9 @@ export default function Dashboard() {
                         {callback.callbackNumber ||
                           `CB-${String(callback.id).padStart(3, '0')}`}
                       </td>
-                      <td className='font-bold'>{callback.fullName}</td>
+                      <td className='font-bold'>
+                        {getCallbackFullName(callback)}
+                      </td>
                       <td>{callback.contactNumber}</td>
                       <td>
                         <div className='flex items-center gap-2'>
@@ -4237,7 +4233,7 @@ export default function Dashboard() {
             <div className='callback-form-card'>
               <div>
                 <label>Patient Name</label>
-                <p>{activeCallback.fullName || DEFAULT_TEXT}</p>
+                <p>{getCallbackFullName(activeCallback)}</p>
               </div>
               <div>
                 <label>Contact Number</label>
@@ -4312,6 +4308,7 @@ export default function Dashboard() {
               <button
                 type='button'
                 className='callback-form-btn convert'
+                onClick={handleConvertCallbackToTicket}
                 disabled={Boolean(callbackActionLoadingStatus)}
               >
                 Convert to Ticket
@@ -4345,7 +4342,7 @@ export default function Dashboard() {
             onClose={() => setShowMedicalRecords(false)}
             patient={selectedPatient}
             patientId={selectedPatientId}
-            ticketId={`T-${String(selectedTicket.id).padStart(3, '0')}`}
+            ticketId={selectedTicket.ticketNumber || `T-${String(selectedTicket.id).padStart(3, '0')}`}
             consultationType={getChannelLabel(selectedTicket)}
           />
         )}

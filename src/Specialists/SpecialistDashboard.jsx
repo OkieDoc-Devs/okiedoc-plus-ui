@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   FaUpload,
@@ -18,6 +25,7 @@ import { getConversations as fetchChatConversations } from '../Nurse/services/ch
 import SpecialistCall from './SpecialistCall';
 import Messages from './Messages';
 import ImageCropperModal from '../components/ImageCropperModal';
+import PatientMedicalRecordsModal from '../components/MedicalRecords';
 import PainMapSection from '../components/PainMap/PainMap.jsx';
 import { PAIN_MAP_VIEWS } from '../components/PainMap/painMapConstants.js';
 import ICDCodeSelector from './components/ICDCodeSelector';
@@ -230,6 +238,58 @@ const formatShortDisplayDate = (dateValue) => {
   });
 };
 
+const calculateAgeFromBirthdate = (birthdate) => {
+  if (!birthdate) return 'N/A';
+
+  const birth = new Date(birthdate);
+  if (Number.isNaN(birth.getTime())) return 'N/A';
+
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+
+  return age >= 0 ? age : 'N/A';
+};
+
+const buildMedicalRecordPatient = (ticket) => {
+  const rawPatient =
+    ticket?.rawTicket?.patient && typeof ticket.rawTicket.patient === 'object'
+      ? ticket.rawTicket.patient
+      : null;
+
+  const patientId =
+    rawPatient?.id ||
+    rawPatient?.patientId ||
+    rawPatient?.userId ||
+    rawPatient?.user?.id ||
+    ticket?.rawTicket?.patientId ||
+    ticket?.patientId ||
+    null;
+
+  const fullName =
+    rawPatient?.fullName ||
+    [rawPatient?.firstName, rawPatient?.lastName].filter(Boolean).join(' ').trim() ||
+    ticket?.patientFullName ||
+    ticket?.patient ||
+    'Patient';
+
+  return {
+    ...(rawPatient || {}),
+    id: patientId,
+    fullName,
+    age:
+      rawPatient?.age ||
+      ticket?.age ||
+      ticket?.patientAge ||
+      calculateAgeFromBirthdate(ticket?.patientBirthdate || rawPatient?.birthdate),
+    gender: rawPatient?.gender || ticket?.gender || 'Unknown',
+  };
+};
+
 const SpecialistDashboard = () => {
   const buildMedicalHistoryForSpecialist = (ticket) => {
     const triageHistory = toStringList(ticket?.triageMedicalHistory);
@@ -312,6 +372,8 @@ const SpecialistDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showMedicalRecords, setShowMedicalRecords] = useState(false);
+  const selectedPatientMedicalRecord = buildMedicalRecordPatient(selectedTicket);
 
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceForm, setInvoiceForm] = useState({
@@ -2280,6 +2342,27 @@ const SpecialistDashboard = () => {
             <div className='info-card-body'>
               {selectedPatient?.triageNotes || 'Vital signs not yet provided.'}
             </div>
+          </div>
+
+          <div className='info-card specialist-medical-history-card'>
+            <button
+              type='button'
+              className='specialist-medical-history-btn'
+              onClick={() => setShowMedicalRecords(true)}
+              disabled={!selectedTicket}
+            >
+              <span className='specialist-medical-history-icon'>
+                <FaFileMedical size={17} />
+              </span>
+              <span className='specialist-medical-history-copy'>
+                <span className='specialist-medical-history-title'>
+                  View Complete Medical History
+                </span>
+                <span className='specialist-medical-history-subtitle'>
+                  Past consultations, treatments & records
+                </span>
+              </span>
+            </button>
           </div>
 
           <div className='info-card'>
@@ -4559,6 +4642,20 @@ const SpecialistDashboard = () => {
           </div>
         </div>
       )}
+
+      {showMedicalRecords &&
+        createPortal(
+          <PatientMedicalRecordsModal
+            onClose={() => setShowMedicalRecords(false)}
+            patient={selectedPatientMedicalRecord}
+            patientId={selectedPatientMedicalRecord.id}
+            ticketId={`T-${String(selectedTicket?.id || '').padStart(3, '0')}`}
+            consultationType={selectedTicket?.consultationChannel || selectedTicket?.service}
+            overlayClassName='modal'
+            overlayStyle={{ zIndex: 999999 }}
+          />,
+          document.body,
+        )}
 
       <ImageCropperModal
         isOpen={cropperModalOpen}

@@ -34,6 +34,7 @@ export default function ConsultationIntakeForm({
   type = "Video Consultation",
 }) {
   const fileInputRef = useRef(null);
+  const MAX_ATTACHMENT_TOTAL_SIZE = 15 * 1024 * 1024;
 
   const [formData, setFormData] = useState({
     mainConcern: "",
@@ -192,9 +193,20 @@ export default function ConsultationIntakeForm({
       return true;
     });
 
+    const nextAttachments = [...formData.attachments, ...validFiles];
+    const totalAttachmentSize = nextAttachments.reduce(
+      (sum, file) => sum + (file.size || 0),
+      0,
+    );
+
+    if (totalAttachmentSize > MAX_ATTACHMENT_TOTAL_SIZE) {
+      setUploadError("Total attachment size must be 15MB or less.");
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
-      attachments: [...prev.attachments, ...validFiles],
+      attachments: nextAttachments,
     }));
 
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -273,24 +285,18 @@ export default function ConsultationIntakeForm({
     setSubmitError("");
     setFormErrors({});
 
-    try {
-      const convertedAttachments = await Promise.all(
-        formData.attachments.map(async (file) => {
-          return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () =>
-              resolve({
-                name: file.name,
-                size: file.size,
-                type: file.type,
-                data: reader.result,
-              });
-            reader.onerror = (error) => reject(error);
-          });
-        }),
-      );
+    const totalAttachmentSize = formData.attachments.reduce(
+      (sum, file) => sum + (file.size || 0),
+      0,
+    );
 
+    if (totalAttachmentSize > MAX_ATTACHMENT_TOTAL_SIZE) {
+      setIsSubmitting(false);
+      setSubmitError("Total attachment size must be 15MB or less.");
+      return;
+    }
+
+    try {
       const channelMap = {
         "Chat Consultation": "chat",
         "Voice Consultation": "mobile_call",
@@ -307,7 +313,7 @@ export default function ConsultationIntakeForm({
         severity: formData.severity,
         additionalDetails: formData.additionalDetails.trim(),
         painAreas: formData.painAreas,
-        attachments: convertedAttachments,
+        attachments: [],
       };
 
       await submitConsultationIntake(payload);

@@ -15,7 +15,10 @@ import {
   FaPrescriptionBottleAlt,
   FaFlask,
   FaFileMedical,
-  FaCheckCircle,
+  FaRegUser,
+  FaStethoscope,
+  FaClock,
+  FaVideo,
 } from 'react-icons/fa';
 import jsPDF from 'jspdf';
 import './SpecialistDashboard.css';
@@ -217,16 +220,241 @@ const COMMON_LAB_TESTS = [
   'Stool Examination',
 ];
 
-const QUEUE_STATUS_OPTIONS = [
-  'All Tickets',
-  'Available',
-  'Awaiting',
-  'In Consultation',
-  'Completed',
-];
-
 const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
 const isCompletedStatus = (status) => normalizeStatus(status) === 'completed';
+
+const formatEmrTicketId = (t) => {
+  if (!t || t.id == null) return 'T-—';
+  const id = t.id;
+  if (typeof id === 'number' || (typeof id === 'string' && /^\d+$/.test(String(id)))) {
+    return `T-${String(Number(id)).padStart(3, '0')}`;
+  }
+  return `T-${String(id)}`;
+};
+
+const getEmrTicketComplaint = (t) =>
+  t?.chiefComplaint ||
+  t?.clinicalChiefComplaint ||
+  t?.patientSubmittedConcern ||
+  t?.symptoms ||
+  t?.service ||
+  'No complaint recorded';
+
+const getEmrTriagedTime = (t) => {
+  const raw = t?.rawTicket?.createdAt || t?.createdAt;
+  if (!raw) return '';
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+};
+
+/** YYYY-MM-DD in local timezone (for date input min/max) */
+const getLocalDateString = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const getPatientAvatarNames = (t) => {
+  const p = t?.rawTicket?.patient;
+  const full = t?.patientFullName || t?.patient || '';
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  if (p?.firstName || p?.lastName) {
+    return { firstName: p.firstName || parts[0] || '', lastName: p.lastName || parts.slice(1).join(' ') || '' };
+  }
+  if (parts.length >= 2) {
+    return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+  }
+  return { firstName: parts[0] || 'Patient', lastName: '' };
+};
+
+const formatPatientNameFromPatientObj = (p) => {
+  if (!p) return 'Unknown';
+  const fName = p.firstName || '';
+  const lName = p.lastName || '';
+  if (!fName && !lName) return p.patientName || 'Unknown';
+  const lastInitial = lName ? ` ${lName.charAt(0)}.` : '';
+  return `${fName}${lastInitial}`;
+};
+
+const mapApiTicketToDashboardShape = (ticket) => {
+  if (!ticket) return null;
+  return {
+    ...ticket,
+    id: ticket.id,
+    patient: ticket.patientName
+      ? ticket.patientName
+      : ticket.patient
+        ? formatPatientNameFromPatientObj(ticket.patient)
+        : 'Walk-in Patient',
+    patientFullName:
+      ticket.patientName ||
+      (ticket.patient
+        ? `${ticket.patient.firstName || ''} ${ticket.patient.lastName || ''}`.trim()
+        : '') ||
+      'Walk-in Patient',
+    service: ticket.clinicalChiefComplaint || ticket.chiefComplaint || 'Consultation',
+    chiefComplaint: ticket.chiefComplaint || '',
+    clinicalChiefComplaint: ticket.clinicalChiefComplaint || '',
+    patientSubmittedConcern: ticket.patientSubmittedConcern || ticket.submittedConcern || '',
+    submittedConcern: ticket.submittedConcern || ticket.patientSubmittedConcern || '',
+    symptoms: ticket.symptoms || '',
+    bloodPressure: ticket.bloodPressure || '',
+    heartRate: ticket.heartRate || '',
+    temperature: ticket.temperature || '',
+    oxygenSaturation: ticket.oxygenSaturation || '',
+    selectedPainAreas: ticket.selectedPainAreas || ticket.painAreas || [],
+    painMapView: ticket.painMapView || 'front',
+    selectedSymptomPills: ticket.selectedSymptomPills || [],
+    selectedRosItems: ticket.selectedRosItems || [],
+    durationValue: ticket.durationValue || '',
+    durationUnit: ticket.durationUnit || '',
+    severity: ticket.severity || '',
+    urgencyLevel: ticket.urgencyLevel || ticket.urgency || '',
+    transferReason: ticket.transferReason || '',
+    preferredDate: ticket.preferredDate,
+    preferredTime: ticket.preferredTime,
+    consultationChannel: ticket.consultationChannel,
+    barangay: ticket.barangay,
+    patientBirthdate: ticket.patientBirthdate || '',
+    gender: ticket.patientGender || '',
+    mobile: ticket.mobile || ticket.patientMobile || '',
+    email: ticket.email || ticket.patientEmail || '',
+    when:
+      ticket.preferredDate && ticket.preferredTime
+        ? `${new Date(ticket.preferredDate).toLocaleDateString()} ${ticket.preferredTime}`
+        : ticket.createdAt
+          ? new Date(ticket.createdAt).toLocaleString('en-US', {
+              month: 'numeric',
+              day: 'numeric',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+            })
+          : 'TBD',
+    status:
+      ticket.status === 'confirmed'
+        ? 'Awaiting'
+        : ticket.status === 'active'
+          ? 'In Consultation'
+          : ticket.status === 'completed'
+            ? 'Completed'
+            : ticket.status === 'processing'
+              ? 'Triage Complete'
+              : ticket.status || 'Awaiting',
+    rawTicket: ticket,
+  };
+};
+
+const parseConsultJsonArray = (raw) => {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const encounterSnapshotFromRawTicket = (rt) => {
+  if (!rt) {
+    return { medicines: [], labRequests: [], labInstructions: '' };
+  }
+  const medicines = Array.isArray(rt.medicines)
+    ? rt.medicines
+    : parseConsultJsonArray(
+        rt.prescription ?? rt.Prescription ?? rt.consultationPrescription,
+      );
+  const labRequests = Array.isArray(rt.labRequests)
+    ? rt.labRequests
+    : parseConsultJsonArray(
+        rt.laboratoryRequest ?? rt.laboratoryRequests ?? rt.labRequest,
+      );
+  return {
+    medicines,
+    labRequests,
+    labInstructions:
+      typeof rt.labInstructions === 'string'
+        ? rt.labInstructions
+        : typeof rt.labInstructionsText === 'string'
+          ? rt.labInstructionsText
+          : '',
+  };
+};
+
+const MEDCERT_STORAGE_KEY = (ticketId) =>
+  ticketId != null && ticketId !== ''
+    ? `specialist-medcert:${ticketId}`
+    : null;
+
+const mergeEncounterSnapshotsForModal = (rt, ticketId) => {
+  const api = encounterSnapshotFromRawTicket(rt);
+  let local = null;
+  if (ticketId != null && ticketId !== '') {
+    try {
+      local = loadEncounterData(ticketId);
+    } catch {
+      local = null;
+    }
+  }
+  const localMeds = Array.isArray(local?.medicines) ? local.medicines : [];
+  const localLabs = Array.isArray(local?.labRequests) ? local.labRequests : [];
+  return {
+    medicines: api.medicines.length > 0 ? api.medicines : localMeds,
+    labRequests: api.labRequests.length > 0 ? api.labRequests : localLabs,
+    labInstructions: api.labInstructions || local?.labInstructions || '',
+  };
+};
+
+const certificateSnapshotFromRawTicket = (rt, serviceLabel) => {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    diagnosisReason:
+      rt?.diagnosisReason ||
+      rt?.certificateDiagnosis ||
+      rt?.chiefComplaint ||
+      rt?.clinicalChiefComplaint ||
+      serviceLabel ||
+      '',
+    dateIssued:
+      String(rt?.certificateDateIssued || rt?.dateIssued || rt?.medCertDateIssued || '').slice(
+        0,
+        10,
+      ) || today,
+    restStartDate:
+      String(rt?.restStartDate || rt?.certificateRestStart || rt?.medCertRestStart || '').slice(
+        0,
+        10,
+      ) || today,
+    restEndDate: String(
+      rt?.restEndDate || rt?.certificateRestEnd || rt?.medCertRestEnd || '',
+    ).slice(0, 10),
+    additionalRemarks:
+      rt?.certificateRemarks || rt?.medCertRemarks || rt?.additionalRemarks || '',
+  };
+};
+
+const mergeCertificateSnapshotForModal = (rt, serviceLabel, ticketId) => {
+  const base = certificateSnapshotFromRawTicket(rt, serviceLabel);
+  const key = MEDCERT_STORAGE_KEY(ticketId);
+  if (!key) return base;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return base;
+    const local = JSON.parse(raw);
+    if (!local || typeof local !== 'object') return base;
+    return {
+      diagnosisReason: local.diagnosisReason || base.diagnosisReason,
+      dateIssued: local.dateIssued || base.dateIssued,
+      restStartDate: local.restStartDate || base.restStartDate,
+      restEndDate: local.restEndDate || base.restEndDate,
+      additionalRemarks: local.additionalRemarks || base.additionalRemarks,
+    };
+  } catch {
+    return base;
+  }
+};
 
 const formatDisplayDate = (dateValue) => {
   if (!dateValue) return '';
@@ -430,6 +658,11 @@ const SpecialistDashboard = () => {
   const [completedConsultations, setCompletedConsultations] = useState([]);
   const [completedConsultationsLoading, setCompletedConsultationsLoading] = useState(false);
   const [completedConsultationsError, setCompletedConsultationsError] = useState('');
+
+  const [completedDetailOpen, setCompletedDetailOpen] = useState(false);
+  const [completedDetailLoading, setCompletedDetailLoading] = useState(false);
+  const [completedDetailTicket, setCompletedDetailTicket] = useState(null);
+  const [completedDetailTab, setCompletedDetailTab] = useState('patient');
 
   const [dashboardStats, setDashboardStats] = useState({
     totalPatients: 0,
@@ -936,6 +1169,47 @@ const SpecialistDashboard = () => {
     }
   }, []);
 
+  const openCompletedConsultDetailModal = async (consultation) => {
+    const id = consultation?.id;
+    if (!id) return;
+    setCompletedDetailOpen(true);
+    setCompletedDetailLoading(true);
+    setCompletedDetailTab('patient');
+    setCompletedDetailTicket(null);
+    try {
+      const ticket = await specialistApi.fetchTicket(id);
+      if (!ticket) return;
+      const mapped = mapApiTicketToDashboardShape(ticket);
+      const enriched = {
+        ...mapped,
+        medicalHistory: buildMedicalHistoryForSpecialist(ticket),
+        triageMedicalHistory: ticket.triageMedicalHistory || '',
+        additionalRemarks: ticket.additionalRemarks || '',
+        triageNotes: buildTriageNotes(ticket) || ticket.nurseRemarks || '',
+        allergies: ticket.allergies ?? ticket.patient?.allergies,
+        bloodType: ticket.bloodType ?? ticket.patient?.bloodType,
+      };
+      setCompletedDetailTicket(enriched);
+    } catch (error) {
+      console.warn('Failed to load consultation detail:', error);
+      setCompletedDetailTicket(null);
+    } finally {
+      setCompletedDetailLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (ticketFilter === 'Completed') {
+      setTicketFilter('All');
+    }
+  }, [ticketFilter]);
+
+  useEffect(() => {
+    if (centerTab === 'completed') {
+      setCenterTab('medicine');
+    }
+  }, [centerTab]);
+
   useEffect(() => {
     document.body.classList.add('specialist-dashboard-body');
     const onboardingOverride =
@@ -1076,15 +1350,58 @@ const SpecialistDashboard = () => {
     if (!selectedTicketId) return;
 
     const activeTicket = tickets.find((ticket) => String(ticket.id) === String(selectedTicketId));
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalDateString();
+    const key = MEDCERT_STORAGE_KEY(selectedTicketId);
+    let stored = null;
+    if (key) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) stored = JSON.parse(raw);
+      } catch {
+        stored = null;
+      }
+    }
 
-    setCertificateForm({
-      diagnosisReason: activeTicket?.service || activeTicket?.chiefComplaint || '',
-      dateIssued: today,
-      restStartDate: today,
-      restEndDate: '',
-      additionalRemarks: '',
-    });
+    const nextForm =
+      stored && typeof stored === 'object'
+        ? {
+            diagnosisReason:
+              stored.diagnosisReason ||
+              activeTicket?.service ||
+              activeTicket?.chiefComplaint ||
+              '',
+            dateIssued: stored.dateIssued || today,
+            restStartDate: stored.restStartDate || today,
+            restEndDate: stored.restEndDate || '',
+            additionalRemarks: stored.additionalRemarks || '',
+          }
+        : {
+            diagnosisReason: activeTicket?.service || activeTicket?.chiefComplaint || '',
+            dateIssued: today,
+            restStartDate: today,
+            restEndDate: '',
+            additionalRemarks: '',
+          };
+
+    if (nextForm.restStartDate && nextForm.restStartDate < today) {
+      nextForm.restStartDate = today;
+    }
+    const minRestEnd =
+      nextForm.restStartDate && nextForm.restStartDate >= today
+        ? nextForm.restStartDate
+        : today;
+    if (nextForm.restEndDate && nextForm.restEndDate < minRestEnd) {
+      nextForm.restEndDate = minRestEnd;
+    }
+
+    setCertificateForm(nextForm);
+    if (key) {
+      try {
+        localStorage.setItem(key, JSON.stringify(nextForm));
+      } catch (e) {
+        console.warn('Failed to persist med cert draft:', e);
+      }
+    }
   }, [selectedTicketId, tickets]);
 
   useEffect(() => {
@@ -1146,6 +1463,83 @@ const SpecialistDashboard = () => {
       patient: null,
     });
   };
+
+  const selectedTicketForEmr = useMemo(
+    () => tickets.find((x) => String(x.id) === String(selectedTicketId)) || null,
+    [tickets, selectedTicketId],
+  );
+
+  const consultationStartedAtMs = useMemo(() => {
+    const t = selectedTicketForEmr;
+    if (!t) return null;
+    const rt = t.rawTicket || {};
+    const started = rt.consultationStartedAt || rt.startedAt;
+    if (started) {
+      const ms = new Date(started).getTime();
+      if (!Number.isNaN(ms)) return ms;
+    }
+    const st = normalizeStatus(t.status);
+    if (st === 'in consultation' || st === 'active') {
+      const c = rt.createdAt || t.createdAt;
+      if (c) {
+        const ms = new Date(c).getTime();
+        if (!Number.isNaN(ms)) return ms;
+      }
+    }
+    return null;
+  }, [selectedTicketForEmr]);
+
+  const [consultationElapsedSec, setConsultationElapsedSec] = useState(0);
+
+  useEffect(() => {
+    if (consultationStartedAtMs == null) {
+      setConsultationElapsedSec(0);
+      return undefined;
+    }
+    const tick = () => {
+      setConsultationElapsedSec(
+        Math.max(0, Math.floor((Date.now() - consultationStartedAtMs) / 1000)),
+      );
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [consultationStartedAtMs]);
+
+  const formatConsultationDuration = useCallback((totalSec) => {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }, []);
+
+  const handleStartVideoCall = useCallback(() => {
+    const ticket = tickets.find((x) => String(x.id) === String(selectedTicketId));
+    if (!ticket) return;
+    const p = ticket.rawTicket?.patient;
+    const rawImg = p?.profileUrl || p?.profileImage || p?.avatar;
+    let avatar = null;
+    if (rawImg) {
+      avatar =
+        rawImg.startsWith('http') || rawImg.startsWith('data:')
+          ? rawImg
+          : `${API_BASE_URL}${rawImg}`;
+    }
+    setCallState({
+      isOpen: true,
+      callType: 'video',
+      patient: {
+        ticketId: ticket.id,
+        name: ticket.patientFullName || ticket.patient || 'Patient',
+        avatar,
+      },
+    });
+  }, [tickets, selectedTicketId]);
+
+  const handleEmrTicketToggle = useCallback((ticketId) => {
+    setSelectedTicketId((prev) =>
+      prev != null && String(prev) === String(ticketId) ? null : ticketId,
+    );
+  }, []);
 
   const handleProfileChange = (field, value) => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
@@ -1392,8 +1786,26 @@ const SpecialistDashboard = () => {
 
   const handleCompleteConsultation = async () => {
     if (!selectedTicketId) return;
+    const ticketRow = tickets.find(
+      (x) => String(x.id) === String(selectedTicketId),
+    );
+    const dbStatus = String(ticketRow?.rawTicket?.status || '').toLowerCase();
     try {
       setIsLoading(true);
+      if (dbStatus === 'confirmed' || dbStatus === 'processing') {
+        try {
+          await specialistApi.startConsultation(selectedTicketId);
+        } catch (startErr) {
+          const msg = String(startErr?.message || '');
+          const alreadyStarted = /confirmed or processing tickets can be started/i.test(
+            msg,
+          );
+          if (!alreadyStarted) {
+            throw startErr;
+          }
+        }
+        await loadTicketsData();
+      }
       await specialistApi.completeConsultation({
         ticketId: selectedTicketId,
         subjective: encounter.subjective,
@@ -1593,10 +2005,39 @@ const SpecialistDashboard = () => {
   };
 
   const handleCertificateChange = (field, value) => {
-    setCertificateForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setCertificateForm((prev) => {
+      const today = getLocalDateString();
+      let next = { ...prev, [field]: value };
+
+      if (field === 'restStartDate') {
+        if (value && value < today) {
+          next.restStartDate = today;
+        }
+        const start = next.restStartDate;
+        if (start && next.restEndDate && next.restEndDate < start) {
+          next.restEndDate = start;
+        }
+      }
+      if (field === 'restEndDate') {
+        const start = prev.restStartDate;
+        const minEnd = start && start >= today ? start : today;
+        if (value && value < minEnd) {
+          next.restEndDate = minEnd;
+        }
+      }
+
+      if (selectedTicketId) {
+        const key = MEDCERT_STORAGE_KEY(selectedTicketId);
+        if (key) {
+          try {
+            localStorage.setItem(key, JSON.stringify(next));
+          } catch (e) {
+            console.warn('Failed to persist med cert draft:', e);
+          }
+        }
+      }
+      return next;
+    });
   };
 
   const printCertificate = () => {
@@ -1811,7 +2252,8 @@ const SpecialistDashboard = () => {
   };
 
   const filteredTickets = useMemo(() => {
-    return filterTicketsByStatus(tickets, ticketFilter);
+    const incomplete = tickets.filter((t) => !isCompletedStatus(t?.status));
+    return filterTicketsByStatus(incomplete, ticketFilter);
   }, [tickets, ticketFilter]);
 
   const addSchedule = async () => {
@@ -2211,11 +2653,9 @@ const SpecialistDashboard = () => {
                       </td>
                       <td>
                         <button
+                          type='button'
                           className='completed-view-btn'
-                          onClick={() => {
-                            setSelectedTicketId(consultation?.id);
-                            setActiveTab('dashboard');
-                          }}
+                          onClick={() => openCompletedConsultDetailModal(consultation)}
                         >
                           View
                         </button>
@@ -2238,31 +2678,16 @@ const SpecialistDashboard = () => {
   };
 
   const renderDashboard = () => {
-    const selectedTicket =
-      tickets.find((x) => String(x.id) === String(selectedTicketId)) ||
-      completedConsultations.find((x) => String(x.id) === String(selectedTicketId));
-    const isReadOnlyCompletedTicket = isCompletedStatus(selectedTicket?.status);
-    const displayEncounter = isReadOnlyCompletedTicket
-      ? {
-          ...encounter,
-          subjective: selectedTicket?.rawTicket?.subjective || '',
-          objective: selectedTicket?.rawTicket?.objective || '',
-          assessment: selectedTicket?.rawTicket?.assessment || '',
-          plan: selectedTicket?.rawTicket?.plan || '',
-          icd10:
-            selectedTicket?.rawTicket?.icd10Code ||
-            selectedTicket?.rawTicket?.icd10 ||
-            '',
-          medicines: Array.isArray(selectedTicket?.rawTicket?.medicines)
-            ? selectedTicket.rawTicket.medicines
-            : [],
-          labRequests: Array.isArray(selectedTicket?.rawTicket?.labRequests)
-            ? selectedTicket.rawTicket.labRequests
-            : [],
-          labInstructions: selectedTicket?.rawTicket?.labInstructions || '',
-        }
-      : encounter;
-    const parsedIcd = parseICDCode(displayEncounter.icd10);
+    const selectedTicket = tickets.find(
+      (x) => String(x.id) === String(selectedTicketId),
+    );
+    const displayStatusNorm = normalizeStatus(selectedTicket?.status);
+    const isUnclaimedAvailable = displayStatusNorm === 'available';
+    const canCompleteConsultation =
+      Boolean(selectedTicket) &&
+      !isCompletedStatus(selectedTicket?.status) &&
+      !isUnclaimedAvailable;
+    const parsedIcd = parseICDCode(encounter.icd10);
     const chapterData = parsedIcd.chapter ? ICD11_CHAPTERS[parsedIcd.chapter] : null;
     const blockData = chapterData?.blocks?.[parsedIcd.block] || null;
     const categoryData = blockData?.categories?.[parsedIcd.category] || null;
@@ -2306,8 +2731,6 @@ const SpecialistDashboard = () => {
     const painMapAreas = normalizePainMapAreas(selectedPatient);
     const painMapView = getPainMapView(selectedPatient, painMapAreas);
 
-    const patientStatus = selectedPatient?.status || 'Unknown';
-    const isReadOnlyCompletedTicket = isCompletedStatus(patientStatus);
     const patientChatMessages = selectedPatient
       ? patientChatThreads[selectedTicketId] ||
         createPatientChatMessages(selectedPatient)
@@ -2316,90 +2739,29 @@ const SpecialistDashboard = () => {
       patientChatMessages.length === 1 &&
       patientChatMessages[0]?.sender === 'system';
 
-    if (!selectedPatient) {
-      return (
-        <div className='dashboard-content dashboard-1to1'>
-          <div className='assigned-patients-panel'>
-            <div className='panel-header'>
-              <h3>Assigned Patients</h3>
-            </div>
+    const emrDepartmentLabel =
+      profileData?.specialization || profileData?.subSpecialization || 'General';
 
-            <div className='status-filter-container'>
-              <select
-                value={ticketFilter === 'All' ? 'All Tickets' : ticketFilter}
-                onChange={(e) =>
-                  setTicketFilter(
-                    e.target.value === 'All Tickets' ? 'All' : e.target.value,
-                  )
-                }
-                className='input-sm status-filter-dropdown'
-              >
-                {[
-                  'All Tickets',
-                  'Available',
-                  'Awaiting',
-                  'In Consultation',
-                  'Completed',
-                ].map((label) => (
-                  <option key={label} value={label}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
+    const channelIsVideo = selectedPatient
+      ? String(
+          selectedPatient.consultationChannel ||
+            selectedPatient.rawTicket?.consultationChannel ||
+            '',
+        )
+          .toLowerCase()
+          .includes('video')
+      : false;
 
-            <div className='patient-list'>
-              {filteredTickets.length === 0 ? (
-                <div className='no-patient-text'>No patients assigned.</div>
-              ) : (
-                filteredTickets.map((t) => (
-                  <div
-                    key={t.id}
-                    className='patient-card'
-                    onClick={() => setSelectedTicketId(t.id)}
-                  >
-                    <div className='patient-card-header'>
-                      <div className='patient-card-title'>
-                        {t.patient || 'Unknown'}
-                      </div>
-                      <span className={`status-badge ${getStatusBadgeClass(t.status)}`}>
-                        {t.status}
-                      </span>
-                    </div>
-                    <div className='patient-card-subtitle'>
-                      {t.id} â€¢ {t.service || 'Consultation'}
-                    </div>
-                    <div className='patient-card-meta'>{t.when}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className='patient-details-panel'>
-            <div className='patient-details-empty-state'>
-              <div className='patient-details-empty-state__card'>
-                <h2>No selected tickets</h2>
-                <p>Select a ticket from the left panel to view the patient details, chat, and SOAP notes.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className='soap-panel'>
-            <div className='soap-header'>
-              <h3>SOAP Notes</h3>
-              <p>Document your clinical findings and treatment plan</p>
-            </div>
-          </div>
-        </div>
-      );
-    }
+    const headerAvatarNames = selectedPatient
+      ? getPatientAvatarNames(selectedPatient)
+      : { firstName: '', lastName: '' };
 
     return (
-      <div className='dashboard-content dashboard-1to1'>
-        <div className='assigned-patients-panel'>
-          <div className='panel-header'>
-            <h3>Assigned Patients</h3>
+      <div className='dashboard-content dashboard-1to1 emr-dash-layout'>
+        <div className='assigned-patients-panel emr-dash-panel emr-dash-panel--left'>
+          <div className='panel-header emr-assigned-panel-header'>
+            <FaRegUser className='emr-assigned-panel-header__icon' aria-hidden />
+            <h3 className='emr-assigned-panel-header__title'>Assigned Patients</h3>
           </div>
 
           <div className='status-filter-container'>
@@ -2417,7 +2779,6 @@ const SpecialistDashboard = () => {
                 'Available',
                 'Awaiting',
                 'In Consultation',
-                'Completed',
               ].map((label) => (
                 <option key={label} value={label}>
                   {label}
@@ -2426,56 +2787,159 @@ const SpecialistDashboard = () => {
             </select>
           </div>
 
-          <div className='patient-list'>
+          <div className='patient-list emr-patient-list'>
             {filteredTickets.length === 0 ? (
               <div className='no-patient-text'>No patients assigned.</div>
             ) : (
-              filteredTickets.map((t) => (
-                <div
-                  key={t.id}
-                  className={`patient-card ${String(selectedTicketId) === String(t.id) ? 'active' : ''}`}
-                  onClick={() => setSelectedTicketId(t.id)}
-                >
-                  <div className='patient-card-header'>
-                    <div className='patient-card-title'>
-                      {t.patient || 'Unknown'}
+              filteredTickets.map((t) => {
+                const { firstName, lastName } = getPatientAvatarNames(t);
+                const triaged = getEmrTriagedTime(t);
+                return (
+                  <div
+                    key={t.id}
+                    className={`emr-patient-card ${String(selectedTicketId) === String(t.id) ? 'emr-patient-card--active' : ''}`}
+                    onClick={() => handleEmrTicketToggle(t.id)}
+                    role='button'
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleEmrTicketToggle(t.id);
+                      }
+                    }}
+                  >
+                    <div className='emr-patient-card__top'>
+                      <div className='emr-patient-card__avatar'>
+                        <Avatar
+                          profileImageUrl={
+                            t.rawTicket?.patient?.profileUrl ||
+                            t.rawTicket?.patient?.profileImage
+                          }
+                          firstName={firstName}
+                          lastName={lastName}
+                          userType='patient'
+                          size={40}
+                          alt=''
+                          className='emr-patient-card__avatar-inner'
+                        />
+                      </div>
+                      <div className='emr-patient-card__ticket-col'>
+                        <div className='emr-patient-card__ticket'>{formatEmrTicketId(t)}</div>
+                      </div>
+                      <div className='emr-patient-card__name-row'>
+                        <div className='emr-patient-card__name'>
+                          {t.patientFullName || t.patient || 'Unknown'}
+                        </div>
+                        <span
+                          className={`emr-patient-card__badge status-badge ${getStatusBadgeClass(t.status)}`}
+                        >
+                          {t.status}
+                        </span>
+                      </div>
                     </div>
-                    <span className={`status-badge ${getStatusBadgeClass(t.status)}`}>
-                      {t.status}
-                    </span>
+                    <div className='emr-patient-card__meta'>
+                      <span className='emr-patient-card__meta-line'>
+                        <FaStethoscope aria-hidden />
+                        {emrDepartmentLabel}
+                      </span>
+                      <span className='emr-patient-card__meta-line'>
+                        <FaClock aria-hidden />
+                        Triaged: {triaged || '—'}
+                      </span>
+                    </div>
+                    <div className='emr-patient-card__complaint'>
+                      <strong>Complaint:</strong> {getEmrTicketComplaint(t)}
+                    </div>
                   </div>
-                  <div className='patient-card-subtitle'>
-                    {t.id} • {t.service || 'Consultation'}
-                  </div>
-                  <div className='patient-card-meta'>{t.when}</div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
 
-        <div className='patient-details-panel'>
-              <div className='patient-details-header'>
-                <div>
-                  <h2>{selectedPatient.patientFullName || selectedPatient.patient || 'Patient'}</h2>
-                  <p className='patient-specialization'>{selectedPatient.service || 'Consultation'}</p>
+        <div className='patient-details-panel emr-dash-panel emr-dash-panel--center'>
+          {selectedPatient ? (
+          <>
+          <div className='patient-details-emr-head'>
+            <div className='patient-details-header-emr'>
+              <div className='patient-details-header-emr__left'>
+                <Avatar
+                  profileImageUrl={
+                    selectedPatient.rawTicket?.patient?.profileUrl ||
+                    selectedPatient.rawTicket?.patient?.profileImage
+                  }
+                  firstName={headerAvatarNames.firstName}
+                  lastName={headerAvatarNames.lastName}
+                  userType='patient'
+                  size={48}
+                  alt=''
+                  className='patient-details-header-emr__avatar'
+                />
+                <div className='patient-details-header-emr__text'>
+                  <div className='patient-details-header-emr__title-row'>
+                    <h2 className='patient-details-header-emr__name'>
+                      {selectedPatient.patientFullName || selectedPatient.patient || 'Patient'}
+                    </h2>
+                    <span
+                      className={`patient-details-header-emr__status status-badge ${getStatusBadgeClass(selectedPatient.status)}`}
+                    >
+                      {selectedPatient.status}
+                    </span>
+                  </div>
+                  <p className='patient-details-header-emr__sub'>
+                    {emrDepartmentLabel}
+                    <span className='patient-details-header-emr__sub-sep'>•</span>
+                    <FaVideo className='patient-details-header-emr__video-ic' aria-hidden />
+                    {channelIsVideo ? 'Video Consultation' : 'Consultation'}
+                  </p>
                 </div>
-            <button
-              className='btn-primary complete-consultation'
-              onClick={handleCompleteConsultation}
-              disabled={!selectedPatient || isReadOnlyCompletedTicket}
-            >
-              {isReadOnlyCompletedTicket ? 'Completed' : 'Complete Consultation'}
-            </button>
+              </div>
+              <div className='patient-details-header-emr__right'>
+                <div className='consultation-duration-emr' aria-live='polite'>
+                  <FaClock className='consultation-duration-emr__icon' aria-hidden />
+                  <div className='consultation-duration-emr__text'>
+                    <span className='consultation-duration-emr__label'>Duration</span>
+                    <span className='consultation-duration-emr__value'>
+                      {formatConsultationDuration(consultationElapsedSec)}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type='button'
+                  className='start-video-call-btn'
+                  onClick={handleStartVideoCall}
+                  disabled={!selectedPatient || isUnclaimedAvailable}
+                  title={
+                    isUnclaimedAvailable
+                      ? 'Claim this ticket before starting a video call'
+                      : 'Start video call with patient'
+                  }
+                >
+                  <FaVideo aria-hidden />
+                  Start Video Call
+                </button>
+              </div>
+            </div>
           </div>
 
-          {isReadOnlyCompletedTicket && (
-            <div className='completed-view-banner'>
-              Completed consultation view only
-            </div>
-          )}
-
           <div className='patient-details-scroll'>
+            <div className='patient-details-complete-row patient-details-complete-row--in-scroll'>
+              <button
+                className='btn-complete-consultation-emr'
+                type='button'
+                onClick={handleCompleteConsultation}
+                disabled={!selectedPatient || !canCompleteConsultation}
+                title={
+                  canCompleteConsultation
+                    ? 'Save SOAP to encounter, then mark this visit complete'
+                    : isUnclaimedAvailable
+                      ? 'Claim this ticket before completing a consultation'
+                      : 'This consultation is already completed'
+                }
+              >
+                Complete Consultation
+              </button>
+            </div>
           <div className='patient-info-card'>
             <div className='section-title-small'>Patient Information</div>
             <div className='patient-info-grid'>
@@ -2548,7 +3012,7 @@ const SpecialistDashboard = () => {
               type='button'
               className='specialist-medical-history-btn'
               onClick={() => setShowMedicalRecords(true)}
-              disabled={!selectedTicket || isReadOnlyCompletedTicket}
+              disabled={!selectedTicket}
             >
               <span className='specialist-medical-history-icon'>
                 <FaFileMedical size={17} />
@@ -2609,9 +3073,9 @@ const SpecialistDashboard = () => {
           <div className='soap-card soap-card--subjective'>
             <div className='soap-card-title'>S - Subjective</div>
             <textarea
-              value={displayEncounter.subjective || ''}
+              value={encounter.subjective || ''}
               readOnly
-              onClick={isReadOnlyCompletedTicket ? undefined : () => openSoapModal('subjective')}
+              onClick={() => openSoapModal('subjective')}
               placeholder='Patient reports experiencing...'
               className='soap-card-textarea soap-card-textarea--display'
               aria-label='Open subjective SOAP editor'
@@ -2620,9 +3084,9 @@ const SpecialistDashboard = () => {
           <div className='soap-card soap-card--objective'>
             <div className='soap-card-title'>O - Objective</div>
             <textarea
-              value={displayEncounter.objective || ''}
+              value={encounter.objective || ''}
               readOnly
-              onClick={isReadOnlyCompletedTicket ? undefined : () => openSoapModal('objective')}
+              onClick={() => openSoapModal('objective')}
               placeholder='Physical examination reveals...'
               className='soap-card-textarea soap-card-textarea--display'
               aria-label='Open objective SOAP editor'
@@ -2631,9 +3095,9 @@ const SpecialistDashboard = () => {
           <div className='soap-card soap-card--assessment'>
             <div className='soap-card-title'>A - Assessment</div>
             <textarea
-              value={displayEncounter.assessment || ''}
+              value={encounter.assessment || ''}
               readOnly
-              onClick={isReadOnlyCompletedTicket ? undefined : () => openSoapModal('assessment')}
+              onClick={() => openSoapModal('assessment')}
               placeholder='Diagnosis: ...'
               className='soap-card-textarea soap-card-textarea--display'
               aria-label='Open assessment SOAP editor'
@@ -2680,9 +3144,9 @@ const SpecialistDashboard = () => {
           <div className='soap-card soap-card--plan'>
             <div className='soap-card-title'>P - Plan</div>
             <textarea
-              value={displayEncounter.plan || ''}
+              value={encounter.plan || ''}
               readOnly
-              onClick={isReadOnlyCompletedTicket ? undefined : () => openSoapModal('plan')}
+              onClick={() => openSoapModal('plan')}
               placeholder='Treatment plan includes...'
               className='soap-card-textarea soap-card-textarea--display'
               aria-label='Open plan SOAP editor'
@@ -2707,16 +3171,11 @@ const SpecialistDashboard = () => {
                 <button 
                   className='request-record-btn' 
                   onClick={requestPatientRecords}
-                  disabled={
-                    profileData.specialization === 'General Practitioner' ||
-                    isReadOnlyCompletedTicket
-                  }
+                  disabled={profileData.specialization === 'General Practitioner'}
                   title={
-                    isReadOnlyCompletedTicket
-                      ? 'Completed consultations are view only'
-                      : profileData.specialization === 'General Practitioner'
-                        ? 'General practitioners cannot request medical history'
-                        : ''
+                    profileData.specialization === 'General Practitioner'
+                      ? 'General practitioners cannot request medical history'
+                      : ''
                   }
                 >
                   Request Record from Patient
@@ -2803,33 +3262,33 @@ const SpecialistDashboard = () => {
                   onChange={(e) => setPatientChatDraft(e.target.value)}
                   placeholder='Type a message...'
                   className='patient-chat-input'
-                  disabled={isReadOnlyCompletedTicket}
                 />
                 <button
                   type='submit'
                   className='patient-chat-send-btn'
                   aria-label='Send message'
-                  disabled={isReadOnlyCompletedTicket}
                 >
                   <FaPaperPlane />
                 </button>
               </form>
-              {isReadOnlyCompletedTicket && (
-                <p className='patient-chat-readonly-note'>
-                  Messaging is disabled for completed consultations.
-                </p>
-              )}
+            </div>
+          )}
+          </>
+          ) : (
+            <div className='emr-panel-empty-state emr-panel-empty-state--fill'>
+              <p className='emr-panel-empty-state__text'>No ticket is selected</p>
             </div>
           )}
         </div>
 
-        <div className='soap-panel' ref={soapPanelRef}>
+        <div className='soap-panel emr-dash-panel emr-dash-panel--right' ref={soapPanelRef}>
+          {selectedPatient ? (
+          <>
           <div className='clinical-tabs' role='tablist' aria-label='Clinical tools'>
             <button
               type='button'
               className={`clinical-tab ${centerTab === 'medicine' ? 'active' : ''}`}
               onClick={() => setCenterTab('medicine')}
-              disabled={isReadOnlyCompletedTicket}
               role='tab'
               aria-selected={centerTab === 'medicine'}
             >
@@ -2840,7 +3299,6 @@ const SpecialistDashboard = () => {
               type='button'
               className={`clinical-tab ${centerTab === 'lab' ? 'active' : ''}`}
               onClick={() => setCenterTab('lab')}
-              disabled={isReadOnlyCompletedTicket}
               role='tab'
               aria-selected={centerTab === 'lab'}
             >
@@ -2851,30 +3309,15 @@ const SpecialistDashboard = () => {
               type='button'
               className={`clinical-tab ${centerTab === 'certificate' ? 'active' : ''}`}
               onClick={() => setCenterTab('certificate')}
-              disabled={isReadOnlyCompletedTicket}
               role='tab'
               aria-selected={centerTab === 'certificate'}
             >
               <FaFileMedical />
               <span>Med Certificate</span>
             </button>
-            <button
-              type='button'
-              className={`clinical-tab ${centerTab === 'completed' ? 'active' : ''}`}
-              onClick={() => setCenterTab('completed')}
-              disabled={isReadOnlyCompletedTicket}
-              role='tab'
-              aria-selected={centerTab === 'completed'}
-            >
-              <FaCheckCircle />
-              <span>Completed Consultations</span>
-            </button>
           </div>
 
-          <div
-            className='clinical-content'
-            style={isReadOnlyCompletedTicket ? { pointerEvents: 'none', opacity: 0.9 } : undefined}
-          >
+          <div className='clinical-content'>
           <div className='info-card' style={{ display: centerTab === 'medicine' ? 'block' : 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div>
@@ -3548,6 +3991,7 @@ const SpecialistDashboard = () => {
                     <label>Rest Period Start Date</label>
                     <input
                       type='date'
+                      min={getLocalDateString()}
                       value={certificateForm.restStartDate}
                       onChange={(e) => handleCertificateChange('restStartDate', e.target.value)}
                     />
@@ -3556,6 +4000,12 @@ const SpecialistDashboard = () => {
                     <label>Rest Period End Date</label>
                     <input
                       type='date'
+                      min={
+                        certificateForm.restStartDate &&
+                        certificateForm.restStartDate >= getLocalDateString()
+                          ? certificateForm.restStartDate
+                          : getLocalDateString()
+                      }
                       value={certificateForm.restEndDate}
                       onChange={(e) => handleCertificateChange('restEndDate', e.target.value)}
                     />
@@ -3621,90 +4071,13 @@ const SpecialistDashboard = () => {
               </section>
             </div>
           )}
-          {centerTab === 'completed' && (
-            <div className='info-card'>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div>
-                  <div className='info-card-title' style={{ marginBottom: '2px' }}>Completed Consultations</div>
-                  <p style={{ color: '#66788d', fontSize: '0.87rem', margin: 0 }}>Recent finished visits and consultation summaries</p>
-                </div>
-              </div>
-
-              {completedConsultationsLoading ? (
-                <div style={{ color: '#66788d', fontSize: '0.92rem', padding: '12px 0' }}>
-                  Loading completed consultations...
-                </div>
-              ) : completedConsultationsError ? (
-                <div style={{ color: '#b42318', fontSize: '0.92rem', padding: '12px 0' }}>
-                  {completedConsultationsError}
-                </div>
-              ) : completedConsultations.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {completedConsultations.map((consultation, index) => {
-                    const patientName =
-                      consultation?.patientName ||
-                      consultation?.patient ||
-                      consultation?.fullName ||
-                      'Unknown Patient';
-                    const service =
-                      consultation?.service ||
-                      consultation?.chiefComplaint ||
-                      consultation?.clinicalChiefComplaint ||
-                      'Consultation';
-                    const completedAtRaw =
-                      consultation?.completedAt ||
-                      consultation?.updatedAt ||
-                      consultation?.createdAt ||
-                      consultation?.consultationCompletedAt ||
-                      '';
-                    const completedAt = completedAtRaw
-                      ? new Date(completedAtRaw).toLocaleString([], {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      : 'Date unavailable';
-
-                    return (
-                      <div
-                        key={consultation?.id || `${patientName}-${index}`}
-                        style={{
-                          border: '1px solid #e2eaf6',
-                          borderRadius: '10px',
-                          padding: '12px 14px',
-                          background: '#fbfdff',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
-                          <div>
-                            <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '2px' }}>
-                              {patientName}
-                            </div>
-                            <div style={{ color: '#4b5563', fontSize: '0.9rem' }}>
-                              {service}
-                            </div>
-                          </div>
-                          <span className='status-pill status-pill--shared'>
-                            Completed
-                          </span>
-                        </div>
-                        <div style={{ marginTop: '8px', color: '#66788d', fontSize: '0.85rem' }}>
-                          {completedAt}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={{ color: '#66788d', fontSize: '0.92rem', padding: '12px 0' }}>
-                  No completed consultations yet.
-                </div>
-              )}
+          </div>
+          </>
+          ) : (
+            <div className='emr-panel-empty-state emr-panel-empty-state--fill'>
+              <p className='emr-panel-empty-state__text'>No ticket is selected</p>
             </div>
           )}
-          </div>
         </div>
       </div>
     );
@@ -4451,6 +4824,449 @@ const SpecialistDashboard = () => {
         </div>
       )}
 
+      {completedDetailOpen && (
+        <div
+          className='modal completed-consult-detail-modal'
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setCompletedDetailOpen(false);
+            }
+          }}
+        >
+          <div
+            className='modal-content completed-consult-detail-modal__content'
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className='modal-header'>
+              <h2>Consultation summary</h2>
+              <span
+                className='close-modal'
+                onClick={() => setCompletedDetailOpen(false)}
+                role='presentation'
+              >
+                <FaTimes />
+              </span>
+            </div>
+
+            {completedDetailLoading ? (
+              <div className='completed-consult-detail-modal__body'>
+                <p style={{ color: '#66788d', margin: 0 }}>Loading consultation...</p>
+              </div>
+            ) : !completedDetailTicket ? (
+              <div className='completed-consult-detail-modal__body'>
+                <p style={{ color: '#b42318', margin: '0 0 12px' }}>
+                  Could not load this consultation.
+                </p>
+                <button
+                  type='button'
+                  className='btn-primary'
+                  onClick={() => setCompletedDetailOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <div
+                  className='clinical-tabs completed-consult-detail-modal__tabs'
+                  role='tablist'
+                  aria-label='Consultation summary sections'
+                >
+                  <button
+                    type='button'
+                    className={`clinical-tab ${completedDetailTab === 'patient' ? 'active' : ''}`}
+                    onClick={() => setCompletedDetailTab('patient')}
+                    role='tab'
+                  >
+                    Patient details
+                  </button>
+                  <button
+                    type='button'
+                    className={`clinical-tab ${completedDetailTab === 'medicine' ? 'active' : ''}`}
+                    onClick={() => setCompletedDetailTab('medicine')}
+                    role='tab'
+                  >
+                    <FaPrescriptionBottleAlt />
+                    <span>Prescription</span>
+                  </button>
+                  <button
+                    type='button'
+                    className={`clinical-tab ${completedDetailTab === 'lab' ? 'active' : ''}`}
+                    onClick={() => setCompletedDetailTab('lab')}
+                    role='tab'
+                  >
+                    <FaFlask />
+                    <span>Lab requests</span>
+                  </button>
+                  <button
+                    type='button'
+                    className={`clinical-tab ${completedDetailTab === 'certificate' ? 'active' : ''}`}
+                    onClick={() => setCompletedDetailTab('certificate')}
+                    role='tab'
+                  >
+                    <FaFileMedical />
+                    <span>Med certificate</span>
+                  </button>
+                </div>
+                <div className='completed-consult-detail-modal__body'>
+                  {(() => {
+                    const d = completedDetailTicket;
+                    const rt = d.rawTicket;
+                    const enc = mergeEncounterSnapshotsForModal(rt, d.id);
+                    const cert = mergeCertificateSnapshotForModal(rt, d.service, d.id);
+                    const detailAllergies = toStringList(d.allergies);
+                    const detailMedHist = Array.isArray(d.medicalHistory)
+                      ? d.medicalHistory
+                      : toStringList(d.medicalHistory);
+                    let detailAge = 'Not provided';
+                    if (d.age != null && d.age !== '') {
+                      detailAge = `${d.age} years old`;
+                    } else if (d.patientBirthdate) {
+                      const birth = new Date(d.patientBirthdate);
+                      if (!Number.isNaN(birth.getTime())) {
+                        const ageYears = Math.floor(
+                          (Date.now() - birth.getTime()) /
+                            (1000 * 60 * 60 * 24 * 365.25),
+                        );
+                        detailAge = `${ageYears} years old`;
+                      }
+                    }
+                    const detailPainAreas = normalizePainMapAreas(d);
+                    const detailPainView = getPainMapView(d, detailPainAreas);
+                    let encLocalForSoap = null;
+                    try {
+                      encLocalForSoap = loadEncounterData(d.id);
+                    } catch {
+                      encLocalForSoap = null;
+                    }
+                    const soapSubjective =
+                      rt?.subjective || encLocalForSoap?.subjective || '';
+                    const soapObjective =
+                      rt?.objective || encLocalForSoap?.objective || '';
+                    const soapAssessment =
+                      rt?.assessment || encLocalForSoap?.assessment || '';
+                    const soapPlan = rt?.plan || encLocalForSoap?.plan || '';
+                    const soapIcdRaw =
+                      rt?.icd10Code ||
+                      rt?.icd10 ||
+                      encLocalForSoap?.icd10 ||
+                      '';
+
+                    return (
+                      <>
+                        {completedDetailTab === 'patient' && (
+                          <div className='completed-consult-detail-modal__scroll'>
+                            <div className='patient-info-card'>
+                              <div className='section-title-small'>Patient information</div>
+                              <div className='patient-info-grid'>
+                                <div className='info-item'>
+                                  <span className='info-label'>Age</span>
+                                  <span className='info-value'>{detailAge}</span>
+                                </div>
+                                <div className='info-item'>
+                                  <span className='info-label'>Gender</span>
+                                  <span className='info-value'>
+                                    {d.gender || 'Not provided'}
+                                  </span>
+                                </div>
+                                <div className='info-item'>
+                                  <span className='info-label'>Blood type</span>
+                                  <span className='info-value'>
+                                    {d.bloodType || 'Not provided'}
+                                  </span>
+                                </div>
+                                <div className='info-item'>
+                                  <span className='info-label'>Contact</span>
+                                  <span className='info-value'>
+                                    {d.mobile || d.contact || 'Not provided'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className='info-card'>
+                              <div className='info-card-title'>Allergies</div>
+                              <div className='info-card-body'>
+                                {detailAllergies.length > 0 ? (
+                                  detailAllergies.map((a) => (
+                                    <span key={a} className='pill'>
+                                      {a}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className='info-placeholder'>No known allergies</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className='info-card'>
+                              <div className='info-card-title'>Medical history</div>
+                              <div className='info-card-body'>
+                                {detailMedHist.length > 0 ? (
+                                  <ul className='history-list'>
+                                    {detailMedHist.map((item, idx) => (
+                                      <li key={idx}>{item}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <span className='info-placeholder'>No history available</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className='info-card'>
+                              <div className='info-card-title'>Triage notes (from nurse)</div>
+                              <div className='info-card-body'>
+                                {d.triageNotes || 'Vital signs not yet provided.'}
+                              </div>
+                            </div>
+                            <div className='info-card'>
+                              <div className='info-card-title'>Vital signs (from nurse)</div>
+                              <div className='patient-info-grid'>
+                                <div className='info-item'>
+                                  <span className='info-label'>Blood pressure</span>
+                                  <span className='info-value'>
+                                    {d.bloodPressure || 'N/A'}
+                                  </span>
+                                </div>
+                                <div className='info-item'>
+                                  <span className='info-label'>Heart rate</span>
+                                  <span className='info-value'>
+                                    {d.heartRate ? `${d.heartRate} bpm` : 'N/A'}
+                                  </span>
+                                </div>
+                                <div className='info-item'>
+                                  <span className='info-label'>Temperature</span>
+                                  <span className='info-value'>
+                                    {d.temperature ? `${d.temperature} C` : 'N/A'}
+                                  </span>
+                                </div>
+                                <div className='info-item'>
+                                  <span className='info-label'>Oxygen saturation</span>
+                                  <span className='info-value'>
+                                    {d.oxygenSaturation
+                                      ? `${d.oxygenSaturation}%`
+                                      : 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <PainMapSection
+                              className='specialist-pain-map-section'
+                              view={detailPainView}
+                              selectedAreas={detailPainAreas}
+                              readOnly
+                            />
+                            <div className='completed-consult-detail-soap completed-consult-detail-soap--inline'>
+                              <div className='section-title-small'>SOAP notes</div>
+                              <div className='info-card'>
+                                <div className='info-card-title'>S — Subjective</div>
+                                <div className='info-card-body completed-consult-soap-text'>
+                                  {soapSubjective.trim() || (
+                                    <span className='info-placeholder'>None recorded</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className='info-card'>
+                                <div className='info-card-title'>O — Objective</div>
+                                <div className='info-card-body completed-consult-soap-text'>
+                                  {soapObjective.trim() || (
+                                    <span className='info-placeholder'>None recorded</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className='info-card'>
+                                <div className='info-card-title'>A — Assessment</div>
+                                <div className='info-card-body completed-consult-soap-text'>
+                                  {soapAssessment.trim() || (
+                                    <span className='info-placeholder'>None recorded</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className='info-card'>
+                                <div className='info-card-title'>P — Plan</div>
+                                <div className='info-card-body completed-consult-soap-text'>
+                                  {soapPlan.trim() || (
+                                    <span className='info-placeholder'>None recorded</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className='info-card'>
+                                <div className='info-card-title'>ICD-10 / coding</div>
+                                <div className='info-card-body completed-consult-soap-text'>
+                                  {soapIcdRaw.trim() || (
+                                    <span className='info-placeholder'>Not recorded</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {completedDetailTab === 'medicine' && (
+                          <div className='completed-consult-detail-modal__scroll'>
+                            <div className='info-card'>
+                              <div className='info-card-title'>Prescription</div>
+                              <div className='info-card-body'>
+                                {enc.medicines && enc.medicines.length > 0 ? (
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: '12px',
+                                    }}
+                                  >
+                                    {enc.medicines.map((med, idx) => (
+                                      <div
+                                        key={idx}
+                                        style={{
+                                          border: '1px solid #e2eaf6',
+                                          borderRadius: '8px',
+                                          padding: '12px',
+                                          backgroundColor: '#fbfdff',
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            fontWeight: 600,
+                                            color: '#111827',
+                                            marginBottom: '4px',
+                                          }}
+                                        >
+                                          {med.name || 'Medication'}
+                                        </div>
+                                        <div style={{ color: '#6b7280', fontSize: '0.88rem' }}>
+                                          {med.dosage || 'No dosage recorded'}
+                                        </div>
+                                        {med.instructions ? (
+                                          <div
+                                            style={{
+                                              marginTop: '8px',
+                                              fontSize: '0.85rem',
+                                              color: '#374151',
+                                            }}
+                                          >
+                                            {med.instructions}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className='info-placeholder'>
+                                    No medications recorded for this visit.
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {completedDetailTab === 'lab' && (
+                          <div className='completed-consult-detail-modal__scroll'>
+                            <div className='info-card'>
+                              <div className='info-card-title'>Laboratory requests</div>
+                              <div className='info-card-body'>
+                                {enc.labRequests && enc.labRequests.length > 0 ? (
+                                  <ul className='history-list'>
+                                    {enc.labRequests.map((lab, idx) => (
+                                      <li key={idx}>
+                                        {lab.test === 'Custom Test'
+                                          ? lab.customTestName || 'Custom test'
+                                          : lab.test || 'Test'}
+                                        {lab.remarks ? ` — ${lab.remarks}` : ''}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <span className='info-placeholder'>
+                                    No lab requests recorded.
+                                  </span>
+                                )}
+                                {enc.labInstructions ? (
+                                  <p
+                                    style={{
+                                      marginTop: '12px',
+                                      color: '#374151',
+                                      fontSize: '0.9rem',
+                                    }}
+                                  >
+                                    <strong>Instructions:</strong> {enc.labInstructions}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {completedDetailTab === 'certificate' && (
+                          <div className='completed-consult-detail-modal__scroll'>
+                            <section className='certificate-preview-card'>
+                              <div className='certificate-preview-title'>MEDICAL CERTIFICATE</div>
+                              <div className='certificate-preview-clinic'>Healthcare Clinic</div>
+                              <div className='certificate-preview-clinic'>
+                                123 Medical Center, Manila, Philippines
+                              </div>
+                              <div className='certificate-preview-clinic'>Tel: +63 2 1234 5678</div>
+                              <div className='certificate-preview-meta'>
+                                <FaFileMedical />
+                                <span>
+                                  Date Issued:{' '}
+                                  {formatDisplayDate(cert.dateIssued) || '____________'}
+                                </span>
+                              </div>
+                              <div className='certificate-preview-body'>
+                                <p>This is to certify that:</p>
+                                <div className='certificate-preview-patient'>
+                                  {d.patientFullName || d.patient || 'Patient'}
+                                </div>
+                                <p className='certificate-preview-text'>
+                                  was examined and treated at this clinic and is diagnosed with:
+                                </p>
+                                <div className='certificate-preview-diagnosis'>
+                                  {cert.diagnosisReason || '________________'}
+                                </div>
+                                <div className='certificate-preview-rest'>
+                                  Rest period:{' '}
+                                  {formatDisplayDate(cert.restStartDate) || '____________'} to{' '}
+                                  {formatDisplayDate(cert.restEndDate) || '____________'}
+                                </div>
+                                {cert.additionalRemarks ? (
+                                  <div className='certificate-preview-remarks'>
+                                    <span>Additional Remarks:</span>
+                                    <p>{cert.additionalRemarks}</p>
+                                  </div>
+                                ) : null}
+                              </div>
+                              <div className='certificate-signature'>
+                                <div className='certificate-signature-line'>________________</div>
+                                <div className='certificate-signature-name'>
+                                  {(
+                                    [profileData.firstName, profileData.lastName]
+                                      .filter(Boolean)
+                                      .join(' ')
+                                      .trim() ||
+                                    currentUser?.user?.name ||
+                                    'Attending Physician'
+                                  )}
+                                </div>
+                                <div className='certificate-signature-license'>
+                                  License No.{' '}
+                                  {profileData.prcNumber ||
+                                    currentUser?.user?.licenseNumber ||
+                                    '__________'}
+                                </div>
+                              </div>
+                            </section>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {showTicketModal && selectedTicket && (
         <div
           className='modal'
@@ -4768,7 +5584,18 @@ const SpecialistDashboard = () => {
         onClose={handleCloseCall}
         callType={callState.callType}
         patient={callState.patient}
-        currentUser={currentUser}
+        currentUser={
+          currentUser
+            ? {
+                ...currentUser,
+                profileImage:
+                  currentUser.profileUrl ||
+                  currentUser.profileImage ||
+                  profileData.profileUrl ||
+                  profileData.profileImage,
+              }
+            : null
+        }
       />
 
       {/* Success Modal */}

@@ -38,6 +38,8 @@ html:has(body.specialist-dashboard-body) {
   padding: 0;
   margin: 0;
   text-align: left;
+  display: flex;
+  flex-direction: column;
 }
 
 .specialist-dashboard .dashboard-header {
@@ -194,6 +196,15 @@ html:has(body.specialist-dashboard-body) {
   width: 100%;
   padding: 24px 32px;
   background: #f7f8fa;
+  flex: 1;
+  min-height: 0;
+}
+
+/* EMR: flush to header and viewport edges (no outer gutter); row fills remaining height */
+.specialist-dashboard .main-content:has(.dashboard-content.emr-dash-layout) {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .specialist-dashboard .dashboard-content {
@@ -793,8 +804,59 @@ html:has(body.specialist-dashboard-body) {
   text-align: center;
 }
 
+.specialist-dashboard .completed-consult-detail-modal .modal-content.completed-consult-detail-modal__content {
+  max-width: 960px;
+  width: 94vw;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 16px;
+}
 
+.specialist-dashboard .completed-consult-detail-modal__tabs {
+  flex-wrap: wrap;
+  padding: 0 20px;
+  border-bottom: 1px solid #eaedf2;
+  margin: 0;
+}
 
+.specialist-dashboard .completed-consult-detail-modal__body {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 16px 20px 0;
+}
+
+.specialist-dashboard .completed-consult-detail-modal__scroll {
+  overflow-y: auto;
+  max-height: min(62vh, 640px);
+  padding-right: 4px;
+}
+
+.specialist-dashboard .completed-consult-detail-soap .info-card {
+  margin-bottom: 0;
+}
+
+.specialist-dashboard .completed-consult-detail-soap--inline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.specialist-dashboard .completed-consult-detail-soap--inline .section-title-small {
+  margin-bottom: 0;
+}
+
+.specialist-dashboard .completed-consult-soap-text {
+  white-space: pre-wrap;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #1f2937;
+}
 
 @media (max-width: 992px) {
   .sidebar {
@@ -1555,6 +1617,675 @@ html:has(body.specialist-dashboard-body) {
   align-items: stretch;
   width: 100%;
   min-height: calc(100vh - 170px);
+}
+
+/* EMR dashboard: three columns flush, square panels, scoped only to .emr-dash-layout */
+.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout {
+  gap: 0;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  /* Keep EMR columns viewport-bounded; scroll inside each panel (e.g. med cert) not the whole page */
+  overflow: hidden;
+}
+
+.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--left,
+.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--center,
+.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--right {
+  border-radius: 0;
+  margin: 0;
+  box-shadow: none;
+}
+
+.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--left,
+.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--center {
+  border: none;
+  border-right: 1px solid #d9ecff;
+}
+
+.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--left {
+  padding: 16px;
+  flex: 0 0 20%;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--left
+  > .panel-header {
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--left
+  > .status-filter-container {
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--left
+  > .patient-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0;
+  gap: 8px;
+}
+
+.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--center {
+  padding: 16px;
+  flex: 0 0 50%;
+  max-height: none;
+  gap: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  align-self: stretch;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-empty-state {
+  padding: 16px;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-empty-state
+  .patient-details-empty-state__card {
+  border-radius: 0;
+  padding: 16px;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-empty-state
+  .patient-details-empty-state__card
+  h2 {
+  margin: 0 0 8px;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-emr-head {
+  flex-shrink: 0;
+  background: #fff;
+  border-bottom: none;
+  margin: -16px -16px 0;
+  padding: 0;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-scroll
+  > .patient-info-card,
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-scroll
+  > .info-card {
+  padding: 16px;
+  margin: 0;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-scroll
+  .specialist-pain-map-section {
+  margin-top: 0;
+  margin-bottom: 0;
+  max-width: none;
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-scroll
+  .specialist-pain-map-section
+  .triage-pain-map-content {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  justify-content: start;
+  width: 100%;
+  align-items: start;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-scroll
+  .specialist-pain-map-section
+  .triage-pain-map-picker {
+  width: auto;
+  max-width: 100%;
+  justify-self: start;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-scroll
+  .soap-panel {
+  padding: 0;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-scroll
+  .soap-panel
+  > .soap-header {
+  margin-bottom: 4px;
+  padding-bottom: 0;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-details-scroll
+  .soap-card {
+  margin-bottom: 0;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-chat-panel {
+  flex: 0 0 auto;
+  margin-top: 0;
+  border-radius: 0;
+  border-top: 1px solid #e2e8f0;
+  min-height: 240px;
+  max-height: 280px;
+  height: 260px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-chat-panel
+  .patient-chat-header {
+  padding: 12px 16px;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center
+  > .patient-chat-panel
+  .patient-chat-messages {
+  padding: 12px 16px;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--right {
+  border: none;
+  padding: 0;
+  flex: 0 0 30%;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  overflow: hidden;
+  /* Allow .soap-panel max-height to cap height; inner .clinical-content scrolls */
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--right
+  > .clinical-tabs {
+  padding: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  flex-shrink: 0;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--right
+  .clinical-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 12px 6px;
+  font-size: 0.78rem;
+  gap: 6px;
+  white-space: normal;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--right
+  .clinical-tab svg {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--right
+  .clinical-tab:first-child {
+  border-top-left-radius: 0;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--right
+  .clinical-tab:last-child {
+  border-top-right-radius: 0;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--right
+  > .clinical-content {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 16px;
+  gap: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* EMR: assigned patients header + list cards (override global .panel-header space-between) */
+.panel-header.emr-assigned-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.emr-assigned-panel-header__icon {
+  font-size: 1.25rem;
+  color: #0b5388;
+  flex-shrink: 0;
+}
+
+.emr-assigned-panel-header__title {
+  margin: 0;
+  text-align: left;
+  color: #0b5388;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.emr-patient-list {
+  gap: 12px;
+}
+
+.emr-patient-card {
+  background: #f5f9ff;
+  border: 1px solid #8cc5ff;
+  border-radius: 12px;
+  padding: 14px 12px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  text-align: left;
+}
+
+.emr-patient-card:hover {
+  border-color: #0a8eff;
+  box-shadow: 0 4px 14px rgba(10, 142, 255, 0.18);
+}
+
+.emr-patient-card--active {
+  border-color: #0b5388;
+  background: #eaf4ff;
+  box-shadow: 0 4px 16px rgba(11, 83, 136, 0.15);
+}
+
+.emr-patient-card__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+.emr-patient-card__avatar {
+  flex-shrink: 0;
+}
+
+.emr-patient-card__avatar .app-avatar-initials,
+.emr-patient-card__avatar .app-avatar-image {
+  border: 2px solid #e0edff;
+}
+
+.emr-patient-card__avatar .app-avatar-initials {
+  background: #7c3aed !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.emr-patient-card__ticket-col {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.emr-patient-card__ticket {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #0b5388;
+  line-height: 1.2;
+}
+
+.emr-patient-card__name-row {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  text-align: right;
+  min-width: 0;
+  max-width: 55%;
+}
+
+.emr-patient-card__name {
+  font-size: 0.88rem;
+  color: #334155;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+.emr-patient-card__badge {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.emr-patient-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.emr-patient-card__meta-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.emr-patient-card__meta-line svg {
+  flex-shrink: 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.emr-patient-card__complaint {
+  font-size: 0.84rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.emr-patient-card__complaint strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* EMR: center column static header (name, duration, video) */
+.patient-details-header-emr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.patient-details-header-emr__left {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+  flex: 1 1 280px;
+}
+
+.patient-details-header-emr__avatar.app-avatar-image {
+  border: 2px solid #e0edff;
+}
+
+/* Match default patient initials styling with left panel (emr-patient-card avatars) */
+.patient-details-header-emr__avatar.app-avatar-initials {
+  background: #7c3aed !important;
+  color: #fff !important;
+  font-weight: 700;
+  border: 2px solid #e0edff;
+}
+
+.patient-details-header-emr__text {
+  min-width: 0;
+}
+
+.patient-details-header-emr__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.patient-details-header-emr__name {
+  margin: 0;
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.patient-details-header-emr__status {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+}
+
+.patient-details-header-emr__status.status-in-consultation,
+.patient-details-header-emr__status.status-available {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.patient-details-header-emr__sub {
+  margin: 6px 0 0;
+  font-size: 0.92rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.patient-details-header-emr__sub-sep {
+  color: #94a3b8;
+}
+
+.patient-details-header-emr__video-ic {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.patient-details-header-emr__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.consultation-duration-emr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.consultation-duration-emr__icon {
+  font-size: 1.1rem;
+  color: #64748b;
+}
+
+.consultation-duration-emr__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.consultation-duration-emr__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.consultation-duration-emr__value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.start-video-call-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 10px;
+  background: #0d6efd;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.start-video-call-btn:hover:not(:disabled) {
+  background: #0b5ed7;
+}
+
+.start-video-call-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.patient-details-complete-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px 14px;
+  background: #fff;
+  border-bottom: none;
+}
+
+.patient-details-complete-row--in-scroll {
+  padding: 0 0 12px;
+  margin-bottom: 4px;
+  background: transparent;
+}
+
+.btn-complete-consultation-emr {
+  padding: 12px 28px;
+  border: none;
+  border-radius: 10px;
+  background: #00a65a;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.btn-complete-consultation-emr:hover:not(:disabled) {
+  background: #008f4d;
+}
+
+.btn-complete-consultation-emr:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.emr-panel-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.emr-panel-empty-state--fill {
+  flex: 1;
+  min-height: 200px;
+}
+
+.emr-panel-empty-state__text {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--right
+  .emr-panel-empty-state--fill {
+  width: 100%;
 }
 
 .assigned-patients-panel,
@@ -2859,6 +3590,49 @@ html:has(body.specialist-dashboard-body) {
 
   .soap-panel {
     max-height: none;
+  }
+
+  .specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--left {
+    max-height: none;
+  }
+
+  .specialist-dashboard
+    .dashboard-content.dashboard-1to1.emr-dash-layout
+    > .emr-dash-panel--left
+    > .patient-list {
+    max-height: 320px;
+  }
+
+  .specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--center {
+    max-height: none;
+  }
+
+  .specialist-dashboard
+    .dashboard-content.dashboard-1to1.emr-dash-layout
+    > .emr-dash-panel--center
+    > .patient-chat-panel {
+    max-height: 280px;
+  }
+
+  .specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--right {
+    max-height: none;
+  }
+
+  .specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--left,
+  .specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--center,
+  .specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--right {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .specialist-dashboard
+    .dashboard-content.dashboard-1to1.emr-dash-layout
+    > .emr-dash-panel--center
+    > .patient-details-scroll
+    .specialist-pain-map-section
+    .triage-pain-map-content {
+    grid-template-columns: 1fr;
   }
 }
 

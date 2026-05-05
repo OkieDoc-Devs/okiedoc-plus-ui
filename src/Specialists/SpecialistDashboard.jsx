@@ -2048,9 +2048,9 @@ const SpecialistDashboard = () => {
     const clinicPhone = 'Tel: +63 2 1234 5678';
     const doctorName =
       [profileData.firstName, profileData.lastName].filter(Boolean).join(' ').trim() ||
-      currentUser?.user?.name ||
+      currentUser?.fullName || currentUser?.name ||
       'Attending Physician';
-    const licenseNumber = profileData.prcNumber || currentUser?.user?.licenseNumber || '';
+    const licenseNumber = profileData.prcNumber || currentUser?.licenseNumber || '';
 
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -3180,8 +3180,8 @@ const SpecialistDashboard = () => {
                 <div className='medical-records-empty-text'>
                   No medical records shared yet
                 </div>
-                <button 
-                  className='request-record-btn' 
+                <button
+                  className='request-record-btn'
                   onClick={requestPatientRecords}
                   disabled={profileData.specialization === 'General Practitioner'}
                   title={
@@ -3285,7 +3285,6 @@ const SpecialistDashboard = () => {
               </form>
             </div>
           )}
-          </>
           ) : (
             <div className='emr-panel-empty-state emr-panel-empty-state--fill'>
               <p className='emr-panel-empty-state__text'>No ticket is selected</p>
@@ -3830,7 +3829,7 @@ const SpecialistDashboard = () => {
                     🗑️
                   </button>
                 </div>
-                
+
                 <div style={{ marginBottom: '12px' }}>
                   <label style={{ display: 'block', fontWeight: '600', fontSize: '0.85rem', marginBottom: '4px', color: '#111827' }}>
                     Common Laboratory Tests
@@ -4073,18 +4072,16 @@ const SpecialistDashboard = () => {
                   <div className='certificate-signature-line'>________________</div>
                   <div className='certificate-signature-name'>
                     {([profileData.firstName, profileData.lastName].filter(Boolean).join(' ').trim() ||
-                      currentUser?.user?.name ||
+                      currentUser?.fullName || currentUser?.name ||
                       'Attending Physician')}
                   </div>
                   <div className='certificate-signature-license'>
-                    License No. {profileData.prcNumber || currentUser?.user?.licenseNumber || '__________'}
+                    License No. {profileData.prcNumber || currentUser?.licenseNumber || '__________'}
                   </div>
                 </div>
               </section>
             </div>
           )}
-          </div>
-          </>
           ) : (
             <div className='emr-panel-empty-state emr-panel-empty-state--fill'>
               <p className='emr-panel-empty-state__text'>No ticket is selected</p>
@@ -5255,14 +5252,14 @@ const SpecialistDashboard = () => {
                                       .filter(Boolean)
                                       .join(' ')
                                       .trim() ||
-                                    currentUser?.user?.name ||
+                                    currentUser?.fullName || currentUser?.name ||
                                     'Attending Physician'
                                   )}
                                 </div>
                                 <div className='certificate-signature-license'>
                                   License No.{' '}
                                   {profileData.prcNumber ||
-                                    currentUser?.user?.licenseNumber ||
+                                    currentUser?.licenseNumber ||
                                     '__________'}
                                 </div>
                               </div>

@@ -2922,24 +2922,36 @@ const SpecialistDashboard = () => {
             </div>
           </div>
 
-          <div className='patient-details-scroll'>
-            <div className='patient-details-complete-row patient-details-complete-row--in-scroll'>
+        <div className='patient-details-panel'>
+              <div className='patient-details-header'>
+                <div>
+                  <h2>{selectedPatient.patientFullName || selectedPatient.patient || 'Patient'}</h2>
+                  <p className='patient-specialization'>{selectedPatient.service || 'Consultation'}</p>
+                </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {selectedPatient?.rawTicket?.status !== 'completed' && selectedPatient?.rawTicket?.status !== 'for_payment' && (
+                <button
+                  className='btn-primary generate-invoice-btn'
+                  style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
+                  onClick={() => {
+                    setSelectedTicketId(selectedPatient.id);
+                    setShowInvoiceModal(true);
+                  }}
+                >
+                  Generate Invoice
+                </button>
+              )}
               <button
-                className='btn-complete-consultation-emr'
-                type='button'
+                className='btn-primary complete-consultation'
                 onClick={handleCompleteConsultation}
-                disabled={!selectedPatient || !canCompleteConsultation}
-                title={
-                  canCompleteConsultation
-                    ? 'Save SOAP to encounter, then mark this visit complete'
-                    : isUnclaimedAvailable
-                      ? 'Claim this ticket before completing a consultation'
-                      : 'This consultation is already completed'
-                }
+                disabled={!selectedPatient || patientStatus === 'Completed'}
               >
-                Complete Consultation
+                {patientStatus === 'Completed' ? 'Completed' : 'Complete Consultation'}
               </button>
             </div>
+          </div>
+
+          <div className='patient-details-scroll'>
           <div className='patient-info-card'>
             <div className='section-title-small'>Patient Information</div>
             <div className='patient-info-grid'>

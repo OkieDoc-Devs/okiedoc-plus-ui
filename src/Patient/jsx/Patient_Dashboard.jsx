@@ -13,29 +13,33 @@ import {
   IconUserPlus,
   IconLink,
   IconCreditCard,
+  IconX,
 } from "@tabler/icons-react";
 import "../css/Patient_Dashboard.css";
 import { useModal } from "../contexts/Modals";
-import Patient_InvoiceModal from "../components/Patient_InvoiceModal";
-import { fetchPatientActiveTickets } from "../services/apiService";
+import {
+  RedirectModal,
+  InvoiceView,
+  PaymentSuccess,
+  PaymentFailure,
+} from "../components/PaymentComponents";
+import * as apiService from "../services/apiService";
+import usePaymentFlow from "../hooks/usePaymentFlow";
 
 export default function Dashboard_Patient({ setActive }) {
+  const payment = usePaymentFlow();
   const { openDiyModal } = useModal();
-  const [invoiceTicket, setInvoiceTicket] = useState(null);
 
-  // State to hold the REAL tickets from your MySQL database
   const [unpaidTickets, setUnpaidTickets] = useState([]);
 
   const loadTickets = async () => {
     try {
-      const response = await fetchPatientActiveTickets();
+      const response = await apiService.fetchPatientActiveTickets();
       const tickets = Array.isArray(response)
         ? response
         : response?.data || response?.activeTickets || response?.tickets || [];
 
-      const pendingPayment = tickets.filter(
-        (t) => t.paymentStatus === "unpaid" || t.status === "for_payment",
-      );
+      const pendingPayment = tickets.filter((t) => t.status === "for_payment");
       setUnpaidTickets(pendingPayment);
     } catch (error) {
       console.error("Error fetching tickets:", error);
@@ -45,6 +49,15 @@ export default function Dashboard_Patient({ setActive }) {
   useEffect(() => {
     loadTickets();
   }, []);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "TBA";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   return (
     <div className="pd-container">
@@ -190,7 +203,7 @@ export default function Dashboard_Patient({ setActive }) {
                   <IconLink size={16} className="pd-text-light" />
                   <span className="pd-text-sm">
                     <strong>Payment Required:</strong> ₱
-                    {ticket.totalAmount || 850}
+                    {ticket.totalAmount > 0 ? ticket.totalAmount : 850}
                   </span>
                 </div>
               </div>
@@ -200,14 +213,14 @@ export default function Dashboard_Patient({ setActive }) {
                   <span className="pd-badge pd-badge-warning">Pending</span>
                   <button
                     className="pd-btn pd-btn-warning"
-                    onClick={() => setInvoiceTicket(ticket)} // Passes the REAL ticket to the modal!
+                    onClick={() => payment.openPayment(ticket)}
                   >
                     <IconCreditCard size={16} /> Pay Now
                   </button>
                 </div>
                 <button
                   className="pd-btn pd-btn-outline pd-w-full pd-mt-8"
-                  onClick={() => setInvoiceTicket(ticket)}
+                  onClick={() => payment.openPayment(ticket)}
                 >
                   View Invoice
                 </button>
@@ -244,14 +257,76 @@ export default function Dashboard_Patient({ setActive }) {
         </div>
       </div>
 
-      <Patient_InvoiceModal
-        isOpen={!!invoiceTicket}
-        ticketData={invoiceTicket}
-        onClose={() => {
-          setInvoiceTicket(null);
-          loadTickets();
-        }}
-      />
+      {/* Payment Orchestrator Overlay */}
+      {payment.ticket && (
+        <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-100 to-sky-50 flex items-start justify-center py-10 px-4 overflow-y-auto">
+          <button
+            className="fixed top-2 right-2 z-[10000] text-xs px-2 py-1 bg-white/80 rounded shadow hover:bg-white text-slate-500 hover:text-slate-700 underline"
+            onClick={payment.downloadPaymentLogs}
+          >
+            Download Debug Log
+          </button>
+          <div className="relative w-full max-w-md">
+            <button
+              className="absolute -top-10 right-0 p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-full transition-colors"
+              onClick={() => {
+                payment.closePayment();
+                loadTickets();
+              }}
+            >
+              <IconX size={24} />
+            </button>
+
+            <div className="mt-2">
+              {payment.isVerifying && (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mb-4"></div>
+                  <p className="text-lg font-medium">Verifying payment...</p>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Checking your transaction status with the payment gateway.
+                  </p>
+                </div>
+              )}
+              {!payment.isVerifying && payment.view === "invoice" && (
+                <InvoiceView
+                  invoice={payment.invoiceData}
+                  onPay={payment.initiatePayment}
+                />
+              )}
+              {!payment.isVerifying && payment.view === "success" && (
+                <PaymentSuccess
+                  amount={payment.ticket.totalAmount}
+                  invoice={`INV-${payment.ticket.ticketNumber}`}
+                  paymentDate={new Date().toLocaleString()}
+                  documents={[]}
+                  onViewInvoice={() => payment.openPayment(payment.ticket)}
+                  onBackToHistory={() => {
+                    payment.closePayment();
+                    loadTickets();
+                  }}
+                />
+              )}
+              {!payment.isVerifying && payment.view === "failure" && (
+                <PaymentFailure
+                  amount={payment.ticket.totalAmount}
+                  invoice={`INV-${payment.ticket.ticketNumber}`}
+                  onRetry={payment.initiatePayment}
+                  onCancel={() => payment.openPayment(payment.ticket)}
+                />
+              )}
+            </div>
+
+            {!payment.isVerifying && payment.showModal && (
+              <RedirectModal
+                amount={`₱${payment.ticket.totalAmount}`}
+                invoice={`INV-${payment.ticket.ticketNumber}`}
+                onCancel={payment.cancelRedirect}
+                onComplete={payment.completeRedirect}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

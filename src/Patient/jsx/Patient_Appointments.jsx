@@ -19,9 +19,17 @@ import {
 import { fetchPatientActiveTickets } from "../services/apiService";
 import "../css/Patient_Appointments.css";
 import { useModal } from "../contexts/Modals";
-import Patient_InvoiceModal from "../components/Patient_InvoiceModal";
+
 import { useAuth } from "../../contexts/AuthContext";
 import JitsiMeetCall from "../../components/VideoCall/JitsiMeetCall";
+import {
+  RedirectModal,
+  InvoiceView,
+  PaymentSuccess,
+  PaymentFailure,
+} from "../components/PaymentComponents";
+import * as apiService from "../services/apiService";
+import usePaymentFlow from "../hooks/usePaymentFlow";
 
 export default function Patient_Appointments({ setActive, ticketIdParam }) {
   const { openDiyModal } = useModal();
@@ -32,7 +40,9 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
   const [statusFilter, setStatusFilter] = useState("All");
   const [viewingAppt, setViewingAppt] = useState(null);
   const [painMapView, setPainMapView] = useState("front");
-  const [invoiceTicket, setInvoiceTicket] = useState(null);
+
+  const payment = usePaymentFlow();
+
   const [jitsiConfig, setJitsiConfig] = useState({ isOpen: false, appt: null });
   const { user: currentUser } = useAuth();
   const popoverRef = useRef(null);
@@ -72,6 +82,7 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
   }, []);
 
   // Fetch data from MySQL backend
+
   useEffect(() => {
     const loadAppointments = async (isBackgroundRefresh = false) => {
       try {
@@ -99,34 +110,6 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
 
     return () => clearInterval(pollingInterval);
   }, []);
-
-  // Linking Effect
-  useEffect(() => {
-    const syncModalWithURL = () => {
-      const hashParts = window.location.hash.split("/");
-      const urlTicketId =
-        hashParts.length === 3 && hashParts[1] === "Appointments"
-          ? hashParts[2]
-          : null;
-
-      if (urlTicketId && appointments.length > 0) {
-        const foundAppt = appointments.find(
-          (a) => a.ticketNumber === urlTicketId,
-        );
-        if (foundAppt) {
-          setViewingAppt(foundAppt);
-        }
-      } else if (!urlTicketId) {
-        setViewingAppt(null);
-      }
-    };
-
-    syncModalWithURL();
-
-    window.addEventListener("hashchange", syncModalWithURL);
-
-    return () => window.removeEventListener("hashchange", syncModalWithURL);
-  }, [appointments]);
 
   // Filter logic
   const filteredAppointments = appointments.filter((appt) => {
@@ -229,6 +212,10 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
     setViewingAppt(null);
     window.history.pushState(null, "", "#/Appointments");
   };
+
+  const pendingPayments = appointments.filter(
+    (appt) => appt.status === "for_payment" && appt.specialistId != null,
+  );
 
   return (
     <div className="appt-page-container">
@@ -352,6 +339,75 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
         </div>
       ) : (
         <div className="appt-grid">
+          {/* Pending Payments Section */}
+          {pendingPayments.length > 0 && (
+            <div className="w-full col-span-full mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-amber-600 flex items-center gap-2">
+                  <IconAlertCircle size={20} />
+                  Pending Payments - Action Required
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pendingPayments.map((appt) => (
+                  <div
+                    key={`pending-${appt.id}`}
+                    className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-slate-800 text-sm">
+                          {appt.specialistName
+                            ? `Consultation with ${appt.specialistName}`
+                            : "Consultation"}
+                        </h4>
+                        <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full border border-amber-200">
+                          Pending
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mb-3">
+                        Consultation Date:{" "}
+                        {appt.preferredDate
+                          ? formatDate(appt.preferredDate)
+                          : "TBA"}
+                      </p>
+                      <div className="flex items-center text-xs text-slate-600 mb-1">
+                        <span className="font-medium">Fee:</span>
+                        <span className="ml-1 font-bold">
+                          ₱
+                          {(appt.totalAmount > 0
+                            ? appt.totalAmount
+                            : 850
+                          ).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 mt-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="flex-1 bg-white border border-amber-300 text-amber-700 hover:bg-amber-50 font-semibold py-2 rounded-xl text-sm transition-colors shadow-sm"
+                          onClick={() => payment.openPayment(appt)}
+                        >
+                          View Invoice
+                        </button>
+                        <button
+                          className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 rounded-xl text-sm transition-colors shadow-sm"
+                          onClick={() => {
+                            payment.openPayment(appt);
+                            // Auto-trigger the redirect modal after opening
+                            setTimeout(() => payment.initiatePayment(), 10);
+                          }}
+                        >
+                          Pay Now
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {filteredAppointments.map((appt) => {
             const displaySpecialist = appt.specialistName || "TBA";
             const displaySpecialization = appt.specialization || "TBA";
@@ -486,22 +542,23 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                   {appt.status === "for_payment" && (
                     <button
                       className="appt-btn appt-btn-primary full-width"
-                      onClick={() => setInvoiceTicket(appt)}
+                      onClick={() => payment.openPayment(appt)}
                     >
                       Pay Now
                     </button>
                   )}
-                  {["confirmed", "active"].includes(appt.status) && (
-                    <button
-                      className="appt-btn appt-btn-primary full-width"
-                      onClick={() => {
-                        handleCloseModal();
-                        setJitsiConfig({ isOpen: true, appt: appt });
-                      }}
-                    >
-                      Join Room
-                    </button>
-                  )}
+                  {appt.status === "active" &&
+                    appt.paymentStatus !== "unpaid" && (
+                      <button
+                        className="appt-btn appt-btn-primary full-width"
+                        onClick={() => {
+                          handleCloseModal();
+                          setJitsiConfig({ isOpen: true, appt: appt });
+                        }}
+                      >
+                        Join Room
+                      </button>
+                    )}
                 </div>
               </div>
             );
@@ -867,29 +924,90 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
               >
                 Close
               </button>
-              {["confirmed", "active"].includes(viewingAppt.status) && (
-                <button
-                  className="appt-btn appt-btn-primary"
-                  onClick={() => {
-                    handleCloseModal();
-                    setJitsiConfig({ isOpen: true, appt: viewingAppt });
-                  }}
-                >
-                  Join Consultation Room
-                </button>
-              )}
+              {viewingAppt.status === "active" &&
+                viewingAppt.paymentStatus !== "unpaid" && (
+                  <button
+                    className="appt-btn appt-btn-primary"
+                    onClick={() => {
+                      handleCloseModal();
+                      setJitsiConfig({ isOpen: true, appt: viewingAppt });
+                    }}
+                  >
+                    Join Consultation Room
+                  </button>
+                )}
             </div>
           </div>
         </div>
       )}
-      <Patient_InvoiceModal
-        isOpen={!!invoiceTicket}
-        ticketData={invoiceTicket}
-        onClose={() => {
-          setInvoiceTicket(null);
-          window.location.reload();
-        }}
-      />
+
+      {/* Payment Orchestrator Overlay */}
+      {payment.ticket && (
+        <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-100 to-sky-50 flex items-start justify-center py-10 px-4 overflow-y-auto">
+          <button
+            className="fixed top-2 right-2 z-[10000] text-xs px-2 py-1 bg-white/80 rounded shadow hover:bg-white text-slate-500 hover:text-slate-700 underline"
+            onClick={payment.downloadPaymentLogs}
+          >
+            Download Debug Log
+          </button>
+          <div className="relative w-full max-w-md">
+            <button
+              className="absolute -top-10 right-0 p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-full transition-colors"
+              onClick={payment.closePayment}
+            >
+              <IconX size={24} />
+            </button>
+
+            <div className="mt-2">
+              {payment.isVerifying && (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mb-4"></div>
+                  <p className="text-lg font-medium">Verifying payment...</p>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Checking your transaction status with the payment gateway.
+                  </p>
+                </div>
+              )}
+              {!payment.isVerifying && payment.view === "invoice" && (
+                <InvoiceView
+                  invoice={payment.invoiceData}
+                  onPay={payment.initiatePayment}
+                />
+              )}
+              {!payment.isVerifying && payment.view === "success" && (
+                <PaymentSuccess
+                  amount={payment.ticket.totalAmount}
+                  invoice={`INV-${payment.ticket.ticketNumber}`}
+                  paymentDate={new Date().toLocaleString()}
+                  documents={[]}
+                  onViewInvoice={() => payment.openPayment(payment.ticket)}
+                  onBackToHistory={() => {
+                    payment.closePayment();
+                    window.location.reload();
+                  }}
+                />
+              )}
+              {!payment.isVerifying && payment.view === "failure" && (
+                <PaymentFailure
+                  amount={payment.ticket.totalAmount}
+                  invoice={`INV-${payment.ticket.ticketNumber}`}
+                  onRetry={payment.initiatePayment}
+                  onCancel={() => payment.openPayment(payment.ticket)}
+                />
+              )}
+            </div>
+
+            {!payment.isVerifying && payment.showModal && (
+              <RedirectModal
+                amount={`₱${payment.ticket.totalAmount}`}
+                invoice={`INV-${payment.ticket.ticketNumber}`}
+                onCancel={payment.cancelRedirect}
+                onComplete={payment.completeRedirect}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 8x8 Jitsi Video Call Overlay */}
       <JitsiMeetCall

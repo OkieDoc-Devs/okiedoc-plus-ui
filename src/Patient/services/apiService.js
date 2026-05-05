@@ -177,7 +177,7 @@ export async function uploadProfilePicture(formData) {
  */
 export async function payTicket(ticketId) {
   try {
-    return await apiRequest("/api/v1/tickets/pay", {
+    return await apiRequest("/api/v1/payments/create-invoice", {
       method: "POST",
       headers: { Accept: "application/json" },
       body: JSON.stringify({ ticketId }),

@@ -122,6 +122,10 @@ export async function fetchMyActiveTickets() {
   return apiRequest("/api/v1/specialist/my-active-tickets");
 }
 
+export async function fetchCompletedConsultations() {
+  return apiRequest("/api/v1/specialist/completed-consultations");
+}
+
 export async function fetchAvailableTickets() {
   return apiRequest("/api/v1/specialist/view-available");
 }

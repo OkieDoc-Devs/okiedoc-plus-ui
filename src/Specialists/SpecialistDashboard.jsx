@@ -15,6 +15,7 @@ import {
   FaPrescriptionBottleAlt,
   FaFlask,
   FaFileMedical,
+  FaCheckCircle,
 } from 'react-icons/fa';
 import jsPDF from 'jspdf';
 import './SpecialistDashboard.css';
@@ -216,6 +217,17 @@ const COMMON_LAB_TESTS = [
   'Stool Examination',
 ];
 
+const QUEUE_STATUS_OPTIONS = [
+  'All Tickets',
+  'Available',
+  'Awaiting',
+  'In Consultation',
+  'Completed',
+];
+
+const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
+const isCompletedStatus = (status) => normalizeStatus(status) === 'completed';
+
 const formatDisplayDate = (dateValue) => {
   if (!dateValue) return '';
   const date = new Date(dateValue);
@@ -415,6 +427,9 @@ const SpecialistDashboard = () => {
   const [soapModalIcdCode, setSoapModalIcdCode] = useState('');
 
   const [centerTab, setCenterTab] = useState('medicine');
+  const [completedConsultations, setCompletedConsultations] = useState([]);
+  const [completedConsultationsLoading, setCompletedConsultationsLoading] = useState(false);
+  const [completedConsultationsError, setCompletedConsultationsError] = useState('');
 
   const [dashboardStats, setDashboardStats] = useState({
     totalPatients: 0,
@@ -893,6 +908,34 @@ const SpecialistDashboard = () => {
     }
   }, []);
 
+  const loadCompletedConsultations = useCallback(async () => {
+    setCompletedConsultationsLoading(true);
+    setCompletedConsultationsError('');
+
+    try {
+      const response = await specialistApi.fetchCompletedConsultations();
+      const items = Array.isArray(response?.completedConsultations)
+        ? response.completedConsultations
+        : Array.isArray(response?.consultations)
+          ? response.consultations
+          : Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response)
+              ? response
+              : [];
+
+      setCompletedConsultations(items);
+    } catch (error) {
+      console.warn('Failed to fetch completed consultations:', error);
+      setCompletedConsultations([]);
+      setCompletedConsultationsError(
+        error?.message || 'Failed to load completed consultations.',
+      );
+    } finally {
+      setCompletedConsultationsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     document.body.classList.add('specialist-dashboard-body');
     const onboardingOverride =
@@ -957,11 +1000,12 @@ const SpecialistDashboard = () => {
 
     loadTicketsData();
     loadDashboardData();
+    loadCompletedConsultations();
 
     return () => {
       document.body.classList.remove('specialist-dashboard-body');
     };
-  }, [navigate, loadTicketsData, loadDashboardData, location.search]);
+  }, [navigate, loadTicketsData, loadDashboardData, loadCompletedConsultations, location.search]);
 
   useEffect(() => {
     if (activeTab === 'dashboard') {
@@ -971,6 +1015,12 @@ const SpecialistDashboard = () => {
       loadTicketsData();
     }
   }, [activeTab, loadTicketsData]);
+
+  useEffect(() => {
+    if (activeTab === 'completed-consultations') {
+      loadCompletedConsultations();
+    }
+  }, [activeTab, loadCompletedConsultations]);
 
   useEffect(() => {
     if (activeTab !== 'dashboard') {
@@ -1356,6 +1406,7 @@ const SpecialistDashboard = () => {
       setSelectedTicketId(null);
       await loadTicketsData();
       await loadDashboardData();
+      await loadCompletedConsultations();
     } catch (error) {
       console.error('Failed to complete consultation:', error);
       alert(error.message || 'Failed to complete consultation.');
@@ -2068,9 +2119,150 @@ const SpecialistDashboard = () => {
     ));
   };
 
+  const renderCompletedConsultations = () => {
+    return (
+      <div className='dashboard-content completed-consultations-page'>
+        <div className='completed-consultations-header'>
+          <div>
+            <h2>Completed Consultations</h2>
+            <p>Finished visits and locked consultation summaries.</p>
+          </div>
+          <div className='completed-consultations-pill'>
+            {completedConsultations.length} completed
+          </div>
+        </div>
+
+        <div className='completed-consultations-table-container'>
+          <table className='completed-consultations-table'>
+            <thead>
+              <tr>
+                <th>TICKET ID</th>
+                <th>PATIENT NAME</th>
+                <th>CONTACT NUMBER</th>
+                <th>CONTACT METHOD</th>
+                <th>REQUEST TIME</th>
+                <th>CHIEF COMPLAINT</th>
+                <th>STATUS</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {completedConsultationsLoading ? (
+                <tr>
+                  <td colSpan='8' className='completed-table-empty'>
+                    Loading completed consultations...
+                  </td>
+                </tr>
+              ) : completedConsultationsError ? (
+                <tr>
+                  <td colSpan='8' className='completed-table-empty'>
+                    {completedConsultationsError}
+                  </td>
+                </tr>
+              ) : completedConsultations.length > 0 ? (
+                completedConsultations.map((consultation, index) => {
+                  const patientName =
+                    consultation?.patientName ||
+                    consultation?.patient ||
+                    consultation?.fullName ||
+                    'Unknown Patient';
+                  const contactNumber =
+                    consultation?.mobile ||
+                    consultation?.patientMobile ||
+                    consultation?.contactNumber ||
+                    'N/A';
+                  const contactMethod =
+                    consultation?.consultationChannel ||
+                    consultation?.contactMethod ||
+                    'Not specified';
+                  const requestTimeRaw =
+                    consultation?.preferredDate && consultation?.preferredTime
+                      ? `${consultation.preferredDate} ${consultation.preferredTime}`
+                      : consultation?.createdAt || '';
+                  const requestTime = requestTimeRaw
+                    ? new Date(requestTimeRaw).toLocaleString([], {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : 'Date unavailable';
+                  const chiefComplaint =
+                    consultation?.clinicalChiefComplaint ||
+                    consultation?.chiefComplaint ||
+                    consultation?.submittedConcern ||
+                    'Consultation';
+
+                  return (
+                    <tr key={consultation?.id || `${patientName}-${index}`}>
+                      <td className='completed-ticket-id'>
+                        {consultation?.ticketNumber || consultation?.id || 'N/A'}
+                      </td>
+                      <td className='completed-ticket-name'>{patientName}</td>
+                      <td>{contactNumber}</td>
+                      <td>{contactMethod}</td>
+                      <td>{requestTime}</td>
+                      <td className='completed-ticket-complaint'>{chiefComplaint}</td>
+                      <td>
+                        <span className='status-badge status-completed'>
+                          Completed
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className='completed-view-btn'
+                          onClick={() => {
+                            setSelectedTicketId(consultation?.id);
+                            setActiveTab('dashboard');
+                          }}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan='8' className='completed-table-empty'>
+                    No completed consultations found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   const renderDashboard = () => {
-    const selectedTicket = tickets.find((x) => String(x.id) === String(selectedTicketId));
-    const parsedIcd = parseICDCode(encounter.icd10);
+    const selectedTicket =
+      tickets.find((x) => String(x.id) === String(selectedTicketId)) ||
+      completedConsultations.find((x) => String(x.id) === String(selectedTicketId));
+    const isReadOnlyCompletedTicket = isCompletedStatus(selectedTicket?.status);
+    const displayEncounter = isReadOnlyCompletedTicket
+      ? {
+          ...encounter,
+          subjective: selectedTicket?.rawTicket?.subjective || '',
+          objective: selectedTicket?.rawTicket?.objective || '',
+          assessment: selectedTicket?.rawTicket?.assessment || '',
+          plan: selectedTicket?.rawTicket?.plan || '',
+          icd10:
+            selectedTicket?.rawTicket?.icd10Code ||
+            selectedTicket?.rawTicket?.icd10 ||
+            '',
+          medicines: Array.isArray(selectedTicket?.rawTicket?.medicines)
+            ? selectedTicket.rawTicket.medicines
+            : [],
+          labRequests: Array.isArray(selectedTicket?.rawTicket?.labRequests)
+            ? selectedTicket.rawTicket.labRequests
+            : [],
+          labInstructions: selectedTicket?.rawTicket?.labInstructions || '',
+        }
+      : encounter;
+    const parsedIcd = parseICDCode(displayEncounter.icd10);
     const chapterData = parsedIcd.chapter ? ICD11_CHAPTERS[parsedIcd.chapter] : null;
     const blockData = chapterData?.blocks?.[parsedIcd.block] || null;
     const categoryData = blockData?.categories?.[parsedIcd.category] || null;
@@ -2115,6 +2307,7 @@ const SpecialistDashboard = () => {
     const painMapView = getPainMapView(selectedPatient, painMapAreas);
 
     const patientStatus = selectedPatient?.status || 'Unknown';
+    const isReadOnlyCompletedTicket = isCompletedStatus(patientStatus);
     const patientChatMessages = selectedPatient
       ? patientChatThreads[selectedTicketId] ||
         createPatientChatMessages(selectedPatient)
@@ -2270,11 +2463,17 @@ const SpecialistDashboard = () => {
             <button
               className='btn-primary complete-consultation'
               onClick={handleCompleteConsultation}
-              disabled={!selectedPatient || patientStatus === 'Completed'}
+              disabled={!selectedPatient || isReadOnlyCompletedTicket}
             >
-              {patientStatus === 'Completed' ? 'Completed' : 'Complete Consultation'}
+              {isReadOnlyCompletedTicket ? 'Completed' : 'Complete Consultation'}
             </button>
           </div>
+
+          {isReadOnlyCompletedTicket && (
+            <div className='completed-view-banner'>
+              Completed consultation view only
+            </div>
+          )}
 
           <div className='patient-details-scroll'>
           <div className='patient-info-card'>
@@ -2349,7 +2548,7 @@ const SpecialistDashboard = () => {
               type='button'
               className='specialist-medical-history-btn'
               onClick={() => setShowMedicalRecords(true)}
-              disabled={!selectedTicket}
+              disabled={!selectedTicket || isReadOnlyCompletedTicket}
             >
               <span className='specialist-medical-history-icon'>
                 <FaFileMedical size={17} />
@@ -2410,9 +2609,9 @@ const SpecialistDashboard = () => {
           <div className='soap-card soap-card--subjective'>
             <div className='soap-card-title'>S - Subjective</div>
             <textarea
-              value={encounter.subjective || ''}
+              value={displayEncounter.subjective || ''}
               readOnly
-              onClick={() => openSoapModal('subjective')}
+              onClick={isReadOnlyCompletedTicket ? undefined : () => openSoapModal('subjective')}
               placeholder='Patient reports experiencing...'
               className='soap-card-textarea soap-card-textarea--display'
               aria-label='Open subjective SOAP editor'
@@ -2421,9 +2620,9 @@ const SpecialistDashboard = () => {
           <div className='soap-card soap-card--objective'>
             <div className='soap-card-title'>O - Objective</div>
             <textarea
-              value={encounter.objective || ''}
+              value={displayEncounter.objective || ''}
               readOnly
-              onClick={() => openSoapModal('objective')}
+              onClick={isReadOnlyCompletedTicket ? undefined : () => openSoapModal('objective')}
               placeholder='Physical examination reveals...'
               className='soap-card-textarea soap-card-textarea--display'
               aria-label='Open objective SOAP editor'
@@ -2432,9 +2631,9 @@ const SpecialistDashboard = () => {
           <div className='soap-card soap-card--assessment'>
             <div className='soap-card-title'>A - Assessment</div>
             <textarea
-              value={encounter.assessment || ''}
+              value={displayEncounter.assessment || ''}
               readOnly
-              onClick={() => openSoapModal('assessment')}
+              onClick={isReadOnlyCompletedTicket ? undefined : () => openSoapModal('assessment')}
               placeholder='Diagnosis: ...'
               className='soap-card-textarea soap-card-textarea--display'
               aria-label='Open assessment SOAP editor'
@@ -2481,9 +2680,9 @@ const SpecialistDashboard = () => {
           <div className='soap-card soap-card--plan'>
             <div className='soap-card-title'>P - Plan</div>
             <textarea
-              value={encounter.plan || ''}
+              value={displayEncounter.plan || ''}
               readOnly
-              onClick={() => openSoapModal('plan')}
+              onClick={isReadOnlyCompletedTicket ? undefined : () => openSoapModal('plan')}
               placeholder='Treatment plan includes...'
               className='soap-card-textarea soap-card-textarea--display'
               aria-label='Open plan SOAP editor'
@@ -2508,8 +2707,17 @@ const SpecialistDashboard = () => {
                 <button 
                   className='request-record-btn' 
                   onClick={requestPatientRecords}
-                  disabled={profileData.specialization === 'General Practitioner'}
-                  title={profileData.specialization === 'General Practitioner' ? 'General practitioners cannot request medical history' : ''}
+                  disabled={
+                    profileData.specialization === 'General Practitioner' ||
+                    isReadOnlyCompletedTicket
+                  }
+                  title={
+                    isReadOnlyCompletedTicket
+                      ? 'Completed consultations are view only'
+                      : profileData.specialization === 'General Practitioner'
+                        ? 'General practitioners cannot request medical history'
+                        : ''
+                  }
                 >
                   Request Record from Patient
                 </button>
@@ -2595,15 +2803,22 @@ const SpecialistDashboard = () => {
                   onChange={(e) => setPatientChatDraft(e.target.value)}
                   placeholder='Type a message...'
                   className='patient-chat-input'
+                  disabled={isReadOnlyCompletedTicket}
                 />
                 <button
                   type='submit'
                   className='patient-chat-send-btn'
                   aria-label='Send message'
+                  disabled={isReadOnlyCompletedTicket}
                 >
                   <FaPaperPlane />
                 </button>
               </form>
+              {isReadOnlyCompletedTicket && (
+                <p className='patient-chat-readonly-note'>
+                  Messaging is disabled for completed consultations.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -2614,6 +2829,7 @@ const SpecialistDashboard = () => {
               type='button'
               className={`clinical-tab ${centerTab === 'medicine' ? 'active' : ''}`}
               onClick={() => setCenterTab('medicine')}
+              disabled={isReadOnlyCompletedTicket}
               role='tab'
               aria-selected={centerTab === 'medicine'}
             >
@@ -2624,6 +2840,7 @@ const SpecialistDashboard = () => {
               type='button'
               className={`clinical-tab ${centerTab === 'lab' ? 'active' : ''}`}
               onClick={() => setCenterTab('lab')}
+              disabled={isReadOnlyCompletedTicket}
               role='tab'
               aria-selected={centerTab === 'lab'}
             >
@@ -2634,15 +2851,30 @@ const SpecialistDashboard = () => {
               type='button'
               className={`clinical-tab ${centerTab === 'certificate' ? 'active' : ''}`}
               onClick={() => setCenterTab('certificate')}
+              disabled={isReadOnlyCompletedTicket}
               role='tab'
               aria-selected={centerTab === 'certificate'}
             >
               <FaFileMedical />
               <span>Med Certificate</span>
             </button>
+            <button
+              type='button'
+              className={`clinical-tab ${centerTab === 'completed' ? 'active' : ''}`}
+              onClick={() => setCenterTab('completed')}
+              disabled={isReadOnlyCompletedTicket}
+              role='tab'
+              aria-selected={centerTab === 'completed'}
+            >
+              <FaCheckCircle />
+              <span>Completed Consultations</span>
+            </button>
           </div>
 
-          <div className='clinical-content'>
+          <div
+            className='clinical-content'
+            style={isReadOnlyCompletedTicket ? { pointerEvents: 'none', opacity: 0.9 } : undefined}
+          >
           <div className='info-card' style={{ display: centerTab === 'medicine' ? 'block' : 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div>
@@ -3389,6 +3621,89 @@ const SpecialistDashboard = () => {
               </section>
             </div>
           )}
+          {centerTab === 'completed' && (
+            <div className='info-card'>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div>
+                  <div className='info-card-title' style={{ marginBottom: '2px' }}>Completed Consultations</div>
+                  <p style={{ color: '#66788d', fontSize: '0.87rem', margin: 0 }}>Recent finished visits and consultation summaries</p>
+                </div>
+              </div>
+
+              {completedConsultationsLoading ? (
+                <div style={{ color: '#66788d', fontSize: '0.92rem', padding: '12px 0' }}>
+                  Loading completed consultations...
+                </div>
+              ) : completedConsultationsError ? (
+                <div style={{ color: '#b42318', fontSize: '0.92rem', padding: '12px 0' }}>
+                  {completedConsultationsError}
+                </div>
+              ) : completedConsultations.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {completedConsultations.map((consultation, index) => {
+                    const patientName =
+                      consultation?.patientName ||
+                      consultation?.patient ||
+                      consultation?.fullName ||
+                      'Unknown Patient';
+                    const service =
+                      consultation?.service ||
+                      consultation?.chiefComplaint ||
+                      consultation?.clinicalChiefComplaint ||
+                      'Consultation';
+                    const completedAtRaw =
+                      consultation?.completedAt ||
+                      consultation?.updatedAt ||
+                      consultation?.createdAt ||
+                      consultation?.consultationCompletedAt ||
+                      '';
+                    const completedAt = completedAtRaw
+                      ? new Date(completedAtRaw).toLocaleString([], {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : 'Date unavailable';
+
+                    return (
+                      <div
+                        key={consultation?.id || `${patientName}-${index}`}
+                        style={{
+                          border: '1px solid #e2eaf6',
+                          borderRadius: '10px',
+                          padding: '12px 14px',
+                          background: '#fbfdff',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '2px' }}>
+                              {patientName}
+                            </div>
+                            <div style={{ color: '#4b5563', fontSize: '0.9rem' }}>
+                              {service}
+                            </div>
+                          </div>
+                          <span className='status-pill status-pill--shared'>
+                            Completed
+                          </span>
+                        </div>
+                        <div style={{ marginTop: '8px', color: '#66788d', fontSize: '0.85rem' }}>
+                          {completedAt}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ color: '#66788d', fontSize: '0.92rem', padding: '12px 0' }}>
+                  No completed consultations yet.
+                </div>
+              )}
+            </div>
+          )}
           </div>
         </div>
       </div>
@@ -3943,6 +4258,14 @@ const SpecialistDashboard = () => {
             Dashboard
           </button>
           <button
+            className={`nav-tab ${activeTab === 'completed-consultations' ? 'active' : ''}`}
+            onClick={() =>
+              handleNavigation('completed-consultations', 'Completed Consultations')
+            }
+          >
+            Completed Consultations
+          </button>
+          <button
             className={`nav-tab ${activeTab === 'messages' ? 'active' : ''}`}
             onClick={() => handleNavigation('messages', 'Messages')}
           >
@@ -3971,6 +4294,7 @@ const SpecialistDashboard = () => {
 
       <div className='main-content'>
         {activeTab === 'dashboard' && renderDashboard()}
+        {activeTab === 'completed-consultations' && renderCompletedConsultations()}
         {activeTab === 'messages' && <Messages currentUser={currentUser} />}
         {activeTab === 'profile' && renderProfile()}
         {activeTab === 'schedule' && renderSchedules()}

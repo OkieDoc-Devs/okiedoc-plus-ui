@@ -147,13 +147,11 @@ const JitsiMeetCall = ({
     };
   }, [isOpen]);
 
-  const handleClose = async (hostForce = false) => {
+  const handleClose = async () => {
     if (closingInProgressRef.current) return;
     closingInProgressRef.current = true;
 
-    const finalIsHost = hostForce || isHost;
-
-    if (finalIsHost && ticketId) {
+    if (ticketId) {
       try {
         await apiRequest('/api/v1/comms/end-call', {
           method: 'POST',

@@ -85,6 +85,10 @@ export default function PatientMedicalRecordsModal({
   patientId,
   ticketId,
   consultationType,
+  overlayClassName = '',
+  contentClassName = '',
+  overlayStyle = {},
+  contentStyle = {},
 }) {
   const [activeTab, setActiveTab] = useState('history');
   const [activeDiseases, setActiveDiseases] = useState([]);
@@ -175,8 +179,14 @@ export default function PatientMedicalRecordsModal({
   };
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4'>
-      <div className='relative bg-white w-full max-w-xl rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[92vh]'>
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 ${overlayClassName}`.trim()}
+      style={overlayStyle}
+    >
+      <div
+        className={`relative bg-white w-full max-w-xl rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[92vh] ${contentClassName}`.trim()}
+        style={contentStyle}
+      >
         <div className='px-7 pt-6 pb-4 border-b border-gray-100'>
           <div className='flex items-start justify-between'>
             <div className='flex items-center gap-3'>

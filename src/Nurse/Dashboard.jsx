@@ -2091,7 +2091,6 @@ export default function Dashboard() {
       } else {
         await applyTicketPatch(selectedTicket.id, {
           nurse: Number(selectedNurseId),
-          assignedNurse: selectedNurse?.name || null,
           transferReason: transferReason.trim() || null,
           status: 'processing',
         });

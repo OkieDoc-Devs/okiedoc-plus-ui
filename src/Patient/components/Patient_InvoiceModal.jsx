@@ -10,6 +10,7 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import { payTicket } from "../services/apiService";
+import { generatePostConsultationBillingPDF } from "../../Nurse/services/invoiceService"; // I'm borrowing this for now @Muji
 import "../css/Patient_InvoiceModal.css";
 
 export default function Patient_InvoiceModal({ isOpen, onClose, ticketData }) {
@@ -52,8 +53,40 @@ export default function Patient_InvoiceModal({ isOpen, onClose, ticketData }) {
     }, 2000);
   };
 
-  const handleDownloadDocument = (docName) => {
-    alert(`Downloading ${docName}...`);
+  const handleDownloadInvoice = async () => {
+    try {
+      const billingPayload = {
+        patientName: "",
+        ticketId: data.invoiceNumber,
+        consultationType: data.specialty,
+        assignedDoctor: data.doctorName,
+        paymentType: "Online Gateway",
+        paymentStatus: ticketData?.paymentStatus || "unpaid",
+
+        baseConsultationFee: data.doctorFee,
+
+        customServices: [
+          ...(data.processingFee > 0
+            ? [{ label: "Processing Fee", amount: data.processingFee }]
+            : []),
+          ...(data.convenienceFee > 0
+            ? [{ label: "Convenience Fee", amount: data.convenienceFee }]
+            : []),
+          ...(data.discountAmount > 0
+            ? [{ label: "Discount", amount: -data.discountAmount }]
+            : []), // Note the negative sign
+        ],
+
+        // Subtotal and Final Total
+        subtotal: data.doctorFee + data.processingFee + data.convenienceFee,
+        finalTotal: data.amountDue,
+      };
+
+      await generatePostConsultationBillingPDF(billingPayload);
+    } catch (error) {
+      console.error("Failed to generate invoice PDF:", error);
+      alert("Failed to download the PDF. Please try again.");
+    }
   };
 
   if (!isOpen) return null;
@@ -190,7 +223,7 @@ export default function Patient_InvoiceModal({ isOpen, onClose, ticketData }) {
               </button>
               <button
                 className="invoice-btn-outline"
-                onClick={() => alert("Downloading PDF...")}
+                onClick={handleDownloadInvoice}
               >
                 <IconDownload size={18} /> Download Invoice PDF
               </button>

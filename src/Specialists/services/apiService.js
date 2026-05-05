@@ -5,6 +5,18 @@
 
 import { apiRequest, API_BASE_URL } from "../../api/apiClient";
 
+/** Sails validates specialist ticket IDs as numbers; coerce string IDs from React state. */
+function coerceNumericTicketId(ticketId) {
+  if (typeof ticketId === "number" && Number.isFinite(ticketId)) {
+    return ticketId;
+  }
+  const parsed = parseInt(String(ticketId ?? "").trim(), 10);
+  if (!Number.isFinite(parsed)) {
+    throw new Error("Invalid ticket ID");
+  }
+  return parsed;
+}
+
 // ==========================================
 // Authentication
 // ==========================================
@@ -122,6 +134,10 @@ export async function fetchMyActiveTickets() {
   return apiRequest("/api/v1/specialist/my-active-tickets");
 }
 
+export async function fetchCompletedConsultations() {
+  return apiRequest("/api/v1/specialist/completed-consultations");
+}
+
 export async function fetchAvailableTickets() {
   return apiRequest("/api/v1/specialist/view-available");
 }
@@ -179,14 +195,18 @@ export async function passTicketBackToNurse(ticketId, notes = "") {
 export async function startConsultation(ticketId) {
   return apiRequest("/api/v1/specialist/start-consultation", {
     method: "PATCH",
-    body: JSON.stringify({ ticketId }),
+    body: JSON.stringify({ ticketId: coerceNumericTicketId(ticketId) }),
   });
 }
 
 export async function completeConsultation(completionData) {
+  const { ticketId, ...rest } = completionData || {};
   return apiRequest("/api/v1/specialist/complete-consultation", {
     method: "PATCH",
-    body: JSON.stringify(completionData),
+    body: JSON.stringify({
+      ...rest,
+      ticketId: coerceNumericTicketId(ticketId),
+    }),
   });
 }
 

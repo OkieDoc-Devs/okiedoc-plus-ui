@@ -27,6 +27,8 @@ import DeniedVerification from './Specialists/DeniedVerification.jsx';
 import SuperAdminDashboard from './Admin/SuperAdminDashboard.jsx';
 import NurseAdminDashboard from './Admin/NurseAdminDashboard.jsx';
 import BarangayAdminDashboard from './Admin/BarangayAdminDashboard.jsx';
+import CreatePatient from './Admin/CreatePatient.jsx';
+import SpecialistManagement from './Admin/SpecialistManagement.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import VideoCallPage from './components/VideoCall/VideoCallPage.jsx';
 import AboutUs from './AboutUs.tsx';
@@ -202,6 +204,22 @@ function AppContent() {
           element={
             <ProtectedRoute allowedRoles={['barangay_admin', 'barangayadmin']}>
               <BarangayAdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/admin/create-patient'
+          element={
+            <ProtectedRoute allowedRoles={['nurse_admin', 'super_admin']}>
+              <CreatePatient />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/admin/specialist-management'
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+              <SpecialistManagement />
             </ProtectedRoute>
           }
         />

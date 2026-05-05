@@ -192,211 +192,255 @@ const SuperAdminDashboard = () => {
   );
 
   return (
-    <AdminLayout
-      title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace('_', ' ')}
-      subtitle="Overview of system activities and user management"
-      navLinks={navLinks}
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      adminName="System Admin"
-      adminRole="Super Admin"
-      adminAvatar={adminAvatar}
-      onLogout={handleLogout}
-      onAvatarUpload={handleAvatarChange}
-      headerSearch={searchTerm}
-      setHeaderSearch={setSearchTerm}
-    >
-      {activeTab === 'dashboard' && (
-        <div className="metrics-grid">
-          <MetricCard title="Total Patients" value={users.filter(u=>String(u.role || u.userType).toLowerCase() === 'patient').length || "0"} trendText="Active" trendType="neutral" />
-          <MetricCard title="Active Specialists" value={specialists.length || "0"} trendText="Verified" trendType="up" />
-          <MetricCard title="Pending Applications" value={pendingApplications.length || "0"} trendText="Requires Review" trendType="warning" />
-          <MetricCard title="Total Transactions" value={transactions.length || "0"} trendText="Lifetime" trendType="neutral" />
-        </div>
-      )}
+    <>
+      <style>
+        {`
+          /* ====================================================================
+             HARD CSS RESET: Forces all Action buttons (View, Approve, Deny) 
+             to align icons and text horizontally, side-by-side.
+             ==================================================================== */
+          table tbody td button,
+          .admin-table tbody td button,
+          .view-btn, .approve-btn, .deny-btn {
+            display: inline-flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            white-space: nowrap !important;
+            padding: 8px 16px !important;
+            height: auto !important;
+            margin-right: 8px !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            border-radius: 6px !important;
+            font-weight: 600 !important;
+            border: none !important;
+            cursor: pointer !important;
+            font-size: 0.9rem !important;
+            line-height: 1 !important;
+          }
+          table tbody td button:last-child,
+          .admin-table tbody td button:last-child {
+            margin-right: 0 !important;
+          }
+          table tbody td button svg,
+          .admin-table tbody td button svg,
+          .view-btn svg, .approve-btn svg, .deny-btn svg {
+            margin: 0 !important;
+            display: block !important;
+            position: static !important;
+            transform: none !important;
+          }
+        `}
+      </style>
 
-      <div style={{ display: activeTab !== 'dashboard' ? 'block' : 'none' }}>
-        
-        {isSpecialistTab && (
-          <div className="admin-page-card">
-            <div className="admin-card-header">
-              <h2 className="admin-card-title">Specialist Management</h2>
-              <div className="admin-tabs">
-                <button className={`admin-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}>Pending Applications</button>
-                <button className={`admin-tab ${activeTab === 'specialists' ? 'active' : ''}`} onClick={() => setActiveTab('specialists')}>Approved Specialist</button>
-              </div>
-            </div>
-            {activeTab === 'specialists' && <SpecialistTable specialists={filteredSpecialists} onStatusChange={handleUpdateSpecialistStatus} searchBar={renderSearchBar()} />}
-            {activeTab === 'pending' && <PendingTable applications={filteredPending} onApprove={() => {}} onDeny={() => {}} searchBar={renderSearchBar()} />}
+      <AdminLayout
+        title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace('_', ' ')}
+        subtitle="Overview of system activities and user management"
+        navLinks={navLinks}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        adminName="System Admin"
+        adminRole="Super Admin"
+        adminAvatar={adminAvatar}
+        onLogout={handleLogout}
+        onAvatarUpload={handleAvatarChange}
+        headerSearch={searchTerm}
+        setHeaderSearch={setSearchTerm}
+      >
+        {activeTab === 'dashboard' && (
+          <div className="metrics-grid">
+            <MetricCard title="Total Patients" value={users.filter(u=>String(u.role || u.userType).toLowerCase() === 'patient').length || "0"} trendText="Active" trendType="neutral" />
+            <MetricCard title="Active Specialists" value={specialists.length || "0"} trendText="Verified" trendType="up" />
+            <MetricCard title="Pending Applications" value={pendingApplications.length || "0"} trendText="Requires Review" trendType="warning" />
+            <MetricCard title="Total Transactions" value={transactions.length || "0"} trendText="Lifetime" trendType="neutral" />
           </div>
         )}
 
-        {isUserTab && (
-          <div className="admin-page-card">
-            <div className="admin-card-header">
-              <h2 className="admin-card-title">User Management</h2>
-              <div className="admin-tabs">
-                <button className={`admin-tab ${activeTab === 'patients' ? 'active' : ''}`} onClick={() => setActiveTab('patients')}>Patients</button>
-                <button className={`admin-tab ${activeTab === 'nurses' ? 'active' : ''}`} onClick={() => setActiveTab('nurses')}>Nurses</button>
-                <button className={`admin-tab ${activeTab === 'physicians' ? 'active' : ''}`} onClick={() => setActiveTab('physicians')}>General Physician</button>
+        <div style={{ display: activeTab !== 'dashboard' ? 'block' : 'none' }}>
+          
+          {isSpecialistTab && (
+            <div className="admin-page-card">
+              <div className="admin-card-header">
+                <h2 className="admin-card-title">Specialist Management</h2>
+                <div className="admin-tabs">
+                  <button className={`admin-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}>Pending Applications</button>
+                  <button className={`admin-tab ${activeTab === 'specialists' ? 'active' : ''}`} onClick={() => setActiveTab('specialists')}>Approved Specialist</button>
+                </div>
               </div>
+              {activeTab === 'specialists' && <SpecialistTable specialists={filteredSpecialists} onStatusChange={handleUpdateSpecialistStatus} searchBar={renderSearchBar()} />}
+              {activeTab === 'pending' && <PendingTable applications={filteredPending} onApprove={() => {}} onDeny={() => {}} searchBar={renderSearchBar()} />}
             </div>
-            <UserTable users={displayedUsers} onView={setViewingUser} searchBar={renderSearchBar()} />
-          </div>
-        )}
+          )}
 
-        {(isConsultationTab || isBillingTab) && (
-          <div className="admin-page-card">
-            <div className="admin-card-header">
-              <h2 className="admin-card-title">{isConsultationTab ? 'Consultation Management' : 'Billing & Transactions'}</h2>
-              <div className="admin-tabs">
-                {isConsultationTab ? (
-                  <>
-                    <button className={`admin-tab ${activeTab === 'active_tickets' ? 'active' : ''}`} onClick={() => setActiveTab('active_tickets')}>Active Tickets</button>
-                    <button className={`admin-tab ${activeTab === 'all_consultations' ? 'active' : ''}`} onClick={() => setActiveTab('all_consultations')}>All Consultation</button>
-                  </>
-                ) : (
-                  <>
-                    <button className={`admin-tab ${activeTab === 'payments' ? 'active' : ''}`} onClick={() => setActiveTab('payments')}>Payments</button>
-                    <button className={`admin-tab ${activeTab === 'hmo' ? 'active' : ''}`} onClick={() => setActiveTab('hmo')}>HMO / Insurance</button>
-                  </>
-                )}
+          {isUserTab && (
+            <div className="admin-page-card">
+              <div className="admin-card-header">
+                <h2 className="admin-card-title">User Management</h2>
+                <div className="admin-tabs">
+                  <button className={`admin-tab ${activeTab === 'patients' ? 'active' : ''}`} onClick={() => setActiveTab('patients')}>Patients</button>
+                  <button className={`admin-tab ${activeTab === 'nurses' ? 'active' : ''}`} onClick={() => setActiveTab('nurses')}>Nurses</button>
+                  <button className={`admin-tab ${activeTab === 'physicians' ? 'active' : ''}`} onClick={() => setActiveTab('physicians')}>General Physician</button>
+                </div>
               </div>
+              <UserTable users={displayedUsers} onView={setViewingUser} searchBar={renderSearchBar()} />
             </div>
-            
-            <div className="admin-toolbar">
-              {renderSearchBar()}
-              <button className="admin-export-btn" onClick={() => handleExport(filteredTransactions, 'records.csv')}><FiDownload /> Export Logs</button>
-            </div>
+          )}
 
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Ticket ID</th>
-                  <th>Patient Name</th>
-                  <th>Provider</th>
-                  <th>Service Type</th>
-                  <th>Date Created</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.length > 0 ? filteredTransactions.map(t => {
-                  const statusLabel = String(t.status).toLowerCase();
-                  let pillClass = 'status-pending';
-                  if (statusLabel.includes('completed')) pillClass = 'status-completed';
-                  if (statusLabel.includes('cancel')) pillClass = 'status-cancelled';
-                  if (statusLabel.includes('processing')) pillClass = 'status-processing';
-                  if (t.isUsingHmo) pillClass = 'status-hmo';
-
-                  return (
-                    <tr key={t.id}>
-                      <td style={{fontWeight: 500}}>{t.ticketNumber || t.id}</td>
-                      <td>{t.patientName || 'Unknown'}</td>
-                      <td>{t.specialistName || 'Unassigned'}</td>
-                      <td>{t.chiefComplaint || 'Consultation'}</td>
-                      <td>{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'N/A'}</td>
-                      <td><span className={`status-pill ${pillClass}`}>{t.isUsingHmo ? 'HMO Claim' : t.status}</span></td>
-                      <td>
-                        <button className="view-btn" onClick={() => setViewingTicket(t)}><FiEye style={{marginBottom: '-2px'}}/> View</button>
-                      </td>
-                    </tr>
-                  )
-                }) : <tr><td colSpan="7" style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>No records found in this category.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {isSettingsTab && (
-          <div className="admin-page-card">
-            <div className="admin-card-header">
-              <h2 className="admin-card-title">System Settings</h2>
-              <div className="admin-tabs">
-                <button className={`admin-tab ${activeTab === 'fee_config' ? 'active' : ''}`} onClick={() => setActiveTab('fee_config')}>Fee Configuration</button>
-                <button className={`admin-tab ${activeTab === 'role_permissions' ? 'active' : ''}`} onClick={() => setActiveTab('role_permissions')}>Role Permissions</button>
+          {(isConsultationTab || isBillingTab) && (
+            <div className="admin-page-card">
+              <div className="admin-card-header">
+                <h2 className="admin-card-title">{isConsultationTab ? 'Consultation Management' : 'Billing & Transactions'}</h2>
+                <div className="admin-tabs">
+                  {isConsultationTab ? (
+                    <>
+                      <button className={`admin-tab ${activeTab === 'active_tickets' ? 'active' : ''}`} onClick={() => setActiveTab('active_tickets')}>Active Tickets</button>
+                      <button className={`admin-tab ${activeTab === 'all_consultations' ? 'active' : ''}`} onClick={() => setActiveTab('all_consultations')}>All Consultation</button>
+                    </>
+                  ) : (
+                    <>
+                      <button className={`admin-tab ${activeTab === 'payments' ? 'active' : ''}`} onClick={() => setActiveTab('payments')}>Payments</button>
+                      <button className={`admin-tab ${activeTab === 'hmo' ? 'active' : ''}`} onClick={() => setActiveTab('hmo')}>HMO / Insurance</button>
+                    </>
+                  )}
+                </div>
               </div>
+              
+              <div className="admin-toolbar">
+                {renderSearchBar()}
+                <button className="admin-export-btn" onClick={() => handleExport(filteredTransactions, 'records.csv')}><FiDownload /> Export Logs</button>
+              </div>
+
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Ticket ID</th>
+                    <th>Patient Name</th>
+                    <th>Provider</th>
+                    <th>Service Type</th>
+                    <th>Date Created</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTransactions.length > 0 ? filteredTransactions.map(t => {
+                    const statusLabel = String(t.status).toLowerCase();
+                    let pillClass = 'status-pending';
+                    if (statusLabel.includes('completed')) pillClass = 'status-completed';
+                    if (statusLabel.includes('cancel')) pillClass = 'status-cancelled';
+                    if (statusLabel.includes('processing')) pillClass = 'status-processing';
+                    if (t.isUsingHmo) pillClass = 'status-hmo';
+
+                    return (
+                      <tr key={t.id}>
+                        <td style={{fontWeight: 500}}>{t.ticketNumber || t.id}</td>
+                        <td>{t.patientName || 'Unknown'}</td>
+                        <td>{t.specialistName || 'Unassigned'}</td>
+                        <td>{t.chiefComplaint || 'Consultation'}</td>
+                        <td>{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'N/A'}</td>
+                        <td><span className={`status-pill ${pillClass}`}>{t.isUsingHmo ? 'HMO Claim' : t.status}</span></td>
+                        <td>
+                          <button className="view-btn" onClick={() => setViewingTicket(t)}><FiEye size={16}/> View</button>
+                        </td>
+                      </tr>
+                    )
+                  }) : <tr><td colSpan="7" style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>No records found in this category.</td></tr>}
+                </tbody>
+              </table>
             </div>
-            
-            {activeTab === 'fee_config' ? (
-              <div>
-                {Object.entries(systemFees).map(([key, fee]) => (
-                  <div key={key} className="settings-row">
-                    <div className="settings-info">
-                      <span className="settings-name">{fee.name}</span>
-                      <span className="settings-desc">Toggle to enable or disable this fee platform-wide.</span>
+          )}
+
+          {isSettingsTab && (
+            <div className="admin-page-card">
+              <div className="admin-card-header">
+                <h2 className="admin-card-title">System Settings</h2>
+                <div className="admin-tabs">
+                  <button className={`admin-tab ${activeTab === 'fee_config' ? 'active' : ''}`} onClick={() => setActiveTab('fee_config')}>Fee Configuration</button>
+                  <button className={`admin-tab ${activeTab === 'role_permissions' ? 'active' : ''}`} onClick={() => setActiveTab('role_permissions')}>Role Permissions</button>
+                </div>
+              </div>
+              
+              {activeTab === 'fee_config' ? (
+                <div>
+                  {Object.entries(systemFees).map(([key, fee]) => (
+                    <div key={key} className="settings-row">
+                      <div className="settings-info">
+                        <span className="settings-name">{fee.name}</span>
+                        <span className="settings-desc">Toggle to enable or disable this fee platform-wide.</span>
+                      </div>
+                      <label className="toggle-switch">
+                        <input type="checkbox" checked={fee.isActive} onChange={() => setSystemFees(prev => ({...prev, [key]: {...prev[key], isActive: !prev[key].isActive}}))} />
+                        <span className="toggle-slider"></span>
+                      </label>
                     </div>
-                    <label className="toggle-switch">
-                      <input type="checkbox" checked={fee.isActive} onChange={() => setSystemFees(prev => ({...prev, [key]: {...prev[key], isActive: !prev[key].isActive}}))} />
-                      <span className="toggle-slider"></span>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="admin-empty-state" style={{border: 'none', height: '300px'}}>
-                <FiUsers style={{fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px'}}/>
-                <h3 style={{margin: 0}}>Role Permissions</h3>
-                <p style={{marginTop: '8px'}}>This module is currently under development.</p>
-              </div>
-            )}
-          </div>
-        )}
+                  ))}
+                </div>
+              ) : (
+                <div className="admin-empty-state" style={{border: 'none', height: '300px'}}>
+                  <FiUsers style={{fontSize: '3rem', color: '#cbd5e1', margin: '0 auto 16px auto'}}/>
+                  <h3 style={{margin: 0, textAlign: 'center'}}>Role Permissions</h3>
+                  <p style={{marginTop: '8px', textAlign: 'center'}}>This module is currently under development.</p>
+                </div>
+              )}
+            </div>
+          )}
 
-        {(activeTab === 'reports' || activeTab === 'audit_logs') && (
-           <div className="admin-page-card" style={{minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-             <div className="admin-empty-state" style={{border: 'none'}}>
-               {activeTab === 'reports' ? <FiPieChart style={{fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px'}}/> : <FiFileText style={{fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px'}}/>}
-               <h3 style={{margin: 0}}>{activeTab === 'reports' ? 'Reports & Exports' : 'System Audit Logs'}</h3>
-               <p style={{marginTop: '8px'}}>This module is temporarily unavailable per system requirements.</p>
+          {(activeTab === 'reports' || activeTab === 'audit_logs') && (
+             <div className="admin-page-card" style={{minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+               <div className="admin-empty-state" style={{border: 'none'}}>
+                 {activeTab === 'reports' ? <FiPieChart style={{fontSize: '3rem', color: '#cbd5e1', margin: '0 auto 16px auto'}}/> : <FiFileText style={{fontSize: '3rem', color: '#cbd5e1', margin: '0 auto 16px auto'}}/>}
+                 <h3 style={{margin: 0, textAlign: 'center'}}>{activeTab === 'reports' ? 'Reports & Exports' : 'System Audit Logs'}</h3>
+                 <p style={{marginTop: '8px', textAlign: 'center'}}>This module is temporarily unavailable per system requirements.</p>
+               </div>
              </div>
-           </div>
+          )}
+        </div>
+
+        {viewingTicket && (
+          <Modal title={`Ticket Details: ${viewingTicket.ticketNumber || viewingTicket.id}`} onClose={() => setViewingTicket(null)}>
+            <div className="ticket-modal-grid">
+              <div className="ticket-section">
+                <h3>Consultation Details</h3>
+                <div className="ticket-row"><span className="ticket-label">Patient Name</span><span className="ticket-value">{viewingTicket.patientName || 'Unknown'}</span></div>
+                <div className="ticket-row"><span className="ticket-label">Complaint</span><span className="ticket-value">{viewingTicket.chiefComplaint || 'General'}</span></div>
+                <div className="ticket-row"><span className="ticket-label">Symptoms</span><span className="ticket-value">{viewingTicket.symptoms || 'None'}</span></div>
+                <div className="ticket-row"><span className="ticket-label">Channel</span><span className="ticket-value" style={{textTransform:'capitalize'}}>{(viewingTicket.consultationChannel || 'standard').replace('_', ' ')}</span></div>
+                <div className="ticket-row"><span className="ticket-label">Date</span><span className="ticket-value">{viewingTicket.createdAt ? new Date(viewingTicket.createdAt).toLocaleString() : 'N/A'}</span></div>
+              </div>
+              <div className="ticket-section">
+                <h3>Billing & Provider</h3>
+                <div className="ticket-row"><span className="ticket-label">Provider</span><span className="ticket-value">{viewingTicket.specialistName || 'Awaiting Assignment'}</span></div>
+                <div className="ticket-row"><span className="ticket-label">Specialty</span><span className="ticket-value">{viewingTicket.targetSpecialty || 'General Practice'}</span></div>
+                <div className="ticket-row"><span className="ticket-label">Payment Method</span><span className="ticket-value">{viewingTicket.isUsingHmo ? 'HMO Coverage' : 'Direct Pay'}</span></div>
+                {viewingTicket.isUsingHmo && <div className="ticket-row"><span className="ticket-label">HMO Provider</span><span className="ticket-value" style={{color: '#0ea5e9'}}>{viewingTicket.hmoProvider}</span></div>}
+                <div className="ticket-row"><span className="ticket-label">Total Amount</span><span className="ticket-value">₱{Number(viewingTicket.totalAmount || 0).toFixed(2)}</span></div>
+              </div>
+            </div>
+            <button className="admin-modal-close-btn" onClick={() => setViewingTicket(null)}>Close Ticket</button>
+          </Modal>
         )}
-      </div>
 
-      {viewingTicket && (
-        <Modal title={`Ticket Details: ${viewingTicket.ticketNumber || viewingTicket.id}`} onClose={() => setViewingTicket(null)}>
-          <div className="ticket-modal-grid">
-            <div className="ticket-section">
-              <h3>Consultation Details</h3>
-              <div className="ticket-row"><span className="ticket-label">Patient Name</span><span className="ticket-value">{viewingTicket.patientName || 'Unknown'}</span></div>
-              <div className="ticket-row"><span className="ticket-label">Complaint</span><span className="ticket-value">{viewingTicket.chiefComplaint || 'General'}</span></div>
-              <div className="ticket-row"><span className="ticket-label">Symptoms</span><span className="ticket-value">{viewingTicket.symptoms || 'None'}</span></div>
-              <div className="ticket-row"><span className="ticket-label">Channel</span><span className="ticket-value" style={{textTransform:'capitalize'}}>{(viewingTicket.consultationChannel || 'standard').replace('_', ' ')}</span></div>
-              <div className="ticket-row"><span className="ticket-label">Date</span><span className="ticket-value">{viewingTicket.createdAt ? new Date(viewingTicket.createdAt).toLocaleString() : 'N/A'}</span></div>
+        {viewingUser && (
+          <Modal title="User Profile" onClose={() => setViewingUser(null)}>
+            <div style={{ marginBottom: '16px' }}>
+              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Full Name</span>
+              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingUser.firstName} {viewingUser.lastName}</p>
             </div>
-            <div className="ticket-section">
-              <h3>Billing & Provider</h3>
-              <div className="ticket-row"><span className="ticket-label">Provider</span><span className="ticket-value">{viewingTicket.specialistName || 'Awaiting Assignment'}</span></div>
-              <div className="ticket-row"><span className="ticket-label">Specialty</span><span className="ticket-value">{viewingTicket.targetSpecialty || 'General Practice'}</span></div>
-              <div className="ticket-row"><span className="ticket-label">Payment Method</span><span className="ticket-value">{viewingTicket.isUsingHmo ? 'HMO Coverage' : 'Direct Pay'}</span></div>
-              {viewingTicket.isUsingHmo && <div className="ticket-row"><span className="ticket-label">HMO Provider</span><span className="ticket-value" style={{color: '#0ea5e9'}}>{viewingTicket.hmoProvider}</span></div>}
-              <div className="ticket-row"><span className="ticket-label">Total Amount</span><span className="ticket-value">₱{Number(viewingTicket.totalAmount || 0).toFixed(2)}</span></div>
+            <div style={{ marginBottom: '16px' }}>
+              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Email Address</span>
+              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingUser.email}</p>
             </div>
-          </div>
-          <button className="admin-modal-close-btn" onClick={() => setViewingTicket(null)}>Close Ticket</button>
-        </Modal>
-      )}
-
-      {viewingUser && (
-        <Modal title="User Profile" onClose={() => setViewingUser(null)}>
-          <div style={{ marginBottom: '16px' }}>
-            <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Full Name</span>
-            <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingUser.firstName} {viewingUser.lastName}</p>
-          </div>
-          <div style={{ marginBottom: '16px' }}>
-            <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Email Address</span>
-            <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingUser.email}</p>
-          </div>
-          <div style={{ marginBottom: '24px' }}>
-            <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Phone Number</span>
-            <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingUser.mobileNumber || 'Not provided'}</p>
-          </div>
-          <button className="admin-modal-close-btn" onClick={() => setViewingUser(null)}>Close</button>
-        </Modal>
-      )}
-    </AdminLayout>
+            <div style={{ marginBottom: '24px' }}>
+              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Phone Number</span>
+              <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#0f172a' }}>{viewingUser.mobileNumber || 'Not provided'}</p>
+            </div>
+            <button className="admin-modal-close-btn" onClick={() => setViewingUser(null)}>Close</button>
+          </Modal>
+        )}
+      </AdminLayout>
+    </>
   );
 };
 

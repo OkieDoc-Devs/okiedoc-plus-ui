@@ -2856,6 +2856,7 @@ const SpecialistDashboard = () => {
     };
 
     const selectedPatient = selectedTicket || null;
+    const patientStatus = selectedPatient?.status || "Unknown";
     const selectedPatientAllergies = toStringList(selectedPatient?.allergies);
     const selectedPatientMedicalHistory = toStringList(
       selectedPatient?.medicalHistory,

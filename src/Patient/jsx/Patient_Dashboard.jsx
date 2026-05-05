@@ -260,12 +260,6 @@ export default function Dashboard_Patient({ setActive }) {
       {/* Payment Orchestrator Overlay */}
       {payment.ticket && (
         <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-100 to-sky-50 flex items-start justify-center py-10 px-4 overflow-y-auto">
-          <button
-            className="fixed top-2 right-2 z-[10000] text-xs px-2 py-1 bg-white/80 rounded shadow hover:bg-white text-slate-500 hover:text-slate-700 underline"
-            onClick={payment.downloadPaymentLogs}
-          >
-            Download Debug Log
-          </button>
           <div className="relative w-full max-w-md">
             <button
               className="absolute -top-10 right-0 p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-full transition-colors"

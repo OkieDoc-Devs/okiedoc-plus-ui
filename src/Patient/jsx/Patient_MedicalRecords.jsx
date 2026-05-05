@@ -13,29 +13,67 @@ import {
   IconSearch,
   IconFilter,
   IconVideo,
-  IconDownload,
-  IconMail,
   IconEye,
-  IconMapPin,
   IconCalendarEvent,
   IconStethoscope,
   IconCheck,
+  IconPhone,
+  IconClipboardList,
+  IconActivity,
 } from "@tabler/icons-react";
 import "../css/Patient_MedicalRecords.css";
 import { fetchPatientMedicalHistory } from "../../api/apiClient";
 
-// --- MOCK DATA ---
-const mockHistory = [];
+const toConsultationTypeLabel = (channel) => {
+  const normalized = String(channel || "")
+    .trim()
+    .toLowerCase();
+  if (!normalized) return "Chat";
+  if (normalized.includes("video")) return "Video";
+  if (
+    normalized.includes("call") ||
+    normalized.includes("audio") ||
+    normalized.includes("voice")
+  ) {
+    return "Voice";
+  }
+  return "Chat";
+};
 
-const mockPrescriptions = [];
+const consultationChannelBadge = (channel) => {
+  const label = toConsultationTypeLabel(channel);
+  if (label === "Video") return { label, Icon: IconVideo };
+  if (label === "Voice") return { label, Icon: IconPhone };
+  return { label, Icon: IconMessageCircle };
+};
 
-const mockLabs = [];
+const formatTicketStatus = (status) => {
+  if (!status) return "Unknown";
+  return String(status)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
-const mockCerts = [];
+/** Diagnosis / reason as entered on the Medical Certificate (issued certs from API). */
+const deriveDiagnosisReason = (h) => {
+  const certs = h.medicalCertificates || [];
+  const reasons = certs
+    .map((c) => String(c?.diagnosisReason || "").trim())
+    .filter(Boolean);
+  if (reasons.length > 0) return reasons.join("\n");
+  const code = String(h.icd10Code || "").trim();
+  return code || "—";
+};
 
-const mockPlans = [];
-
-const mockReferrals = [];
+const doctorInitials = (drLabel) => {
+  const stripped = String(drLabel || "")
+    .replace(/^Dr\.?\s*/i, "")
+    .trim();
+  const parts = stripped.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
 
 const TABS = (backendData) => [
   {
@@ -68,12 +106,6 @@ const TABS = (backendData) => [
     icon: IconClipboardHeart,
     data: backendData.plans,
   },
-  {
-    id: "referrals",
-    label: "Referrals",
-    icon: IconMessageCircle,
-    data: [],
-  },
 ];
 
 export default function Patient_MedicalRecords() {
@@ -91,28 +123,61 @@ export default function Patient_MedicalRecords() {
   const [backendLabs, setBackendLabs] = useState([]);
   const [backendCerts, setBackendCerts] = useState([]);
   const [backendPlans, setBackendPlans] = useState([]);
+  const [consultationDetail, setConsultationDetail] = useState(null);
   const popoverRef = useRef(null);
 
-  const handleDIY = (action) => alert(`DIY: ${action}`);
+  useEffect(() => {
+    setConsultationDetail(null);
+  }, [activeTab]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const response = await fetchPatientMedicalHistory();
         if (response && response.history) {
-          const history = response.history.map((h, i) => ({
-            id: `h-${i}`,
-            dr: `Dr. ${h.specialistName}`,
+          const sorted = [...response.history].sort((a, b) => {
+            const ta = a.visitDate ? new Date(a.visitDate).getTime() : 0;
+            const tb = b.visitDate ? new Date(b.visitDate).getTime() : 0;
+            return tb - ta;
+          });
+
+          const history = sorted.map((h, i) => ({
+            id: `h-${h.ticketNumber || i}-${i}`,
+            dr: `Dr. ${h.specialistName || "Unassigned"}`.replace(
+              /^Dr\.\s*Dr\./i,
+              "Dr.",
+            ),
             spec: h.specialistTitle || "Specialist",
-            date: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
+            date: h.visitDate
+              ? new Date(h.visitDate).toLocaleDateString()
+              : "N/A",
             time: h.preferredTime || "N/A",
             complaint: h.chiefComplaint || "N/A",
-            dur: "N/A", // or calculate from timestamps if available
-            status: "Completed",
+            dur: "N/A",
+            status: formatTicketStatus(h.status),
+            channel: h.consultationType,
+            detail: {
+              ticketNumber: h.ticketNumber || "—",
+              date: h.visitDate
+                ? new Date(h.visitDate).toLocaleDateString()
+                : "N/A",
+              consultationTypeLabel: toConsultationTypeLabel(
+                h.consultationType,
+              ),
+              specialistName: h.specialistName || "Unassigned",
+              specialistTitle: h.specialistTitle || "Specialist",
+              chiefComplaint: h.chiefComplaint || "—",
+              status: formatTicketStatus(h.status),
+              assessment: (h.assessment || "").trim() || "—",
+              diagnosis: deriveDiagnosisReason(h),
+              treatmentPlan: (h.plan || "").trim() || "—",
+              prescriptions: h.prescriptions || [],
+              labRequests: h.labRequests || [],
+            },
           }));
           setBackendHistory(history);
 
-          const prescriptions = response.history.flatMap((h) =>
+          const prescriptions = sorted.flatMap((h) =>
             (h.prescriptions || []).map((p, idx) => ({
               id: `p-${h.ticketNumber}-${idx}`,
               dr: `Dr. ${h.specialistName}`,
@@ -123,7 +188,7 @@ export default function Patient_MedicalRecords() {
           );
           setBackendPrescriptions(prescriptions);
 
-          const labs = response.history.flatMap((h) =>
+          const labs = sorted.flatMap((h) =>
             (h.labRequests || []).map((l, idx) => ({
               id: `l-${h.ticketNumber}-${idx}`,
               dr: `Dr. ${h.specialistName}`,
@@ -135,7 +200,7 @@ export default function Patient_MedicalRecords() {
           );
           setBackendLabs(labs);
 
-          const certs = response.history.flatMap((h) =>
+          const certs = sorted.flatMap((h) =>
             (h.medicalCertificates || []).map((c, idx) => ({
               id: `c-${h.ticketNumber}-${idx}`,
               dr: `Dr. ${h.specialistName}`,
@@ -146,7 +211,7 @@ export default function Patient_MedicalRecords() {
           );
           setBackendCerts(certs);
 
-          const plans = response.history.flatMap((h) =>
+          const plans = sorted.flatMap((h) =>
             (h.treatmentPlans || []).map((tp, idx) => ({
               id: `tp-${h.ticketNumber}-${idx}`,
               dr: `Dr. ${h.specialistName}`,
@@ -193,21 +258,136 @@ export default function Patient_MedicalRecords() {
 
   const filteredData = useMemo(() => {
     return currentTabData.filter((item) => {
-      const matchesSearch = Object.values(item).some((val) => {
+      const matchesSearch = Object.entries(item).some(([key, val]) => {
+        if (key === "detail") return false;
         if (typeof val === "string")
           return val.toLowerCase().includes(searchQuery.toLowerCase());
         if (Array.isArray(val))
-          return val.some((v) =>
-            v.toLowerCase().includes(searchQuery.toLowerCase()),
+          return val.some(
+            (v) =>
+              typeof v === "string" &&
+              v.toLowerCase().includes(searchQuery.toLowerCase()),
           );
         return false;
       });
+      if (activeTab === "history") {
+        return matchesSearch;
+      }
       const matchesStatus = statusFilter.includes(item.status);
       return matchesSearch && matchesStatus;
     });
-  }, [currentTabData, searchQuery, statusFilter]);
+  }, [currentTabData, searchQuery, statusFilter, activeTab]);
 
   const renderContent = () => {
+    if (activeTab === "history" && consultationDetail) {
+      const d = consultationDetail;
+      return (
+        <div className="mr-consultation-detail">
+          <div className="mr-consultation-detail-head">
+            <div>
+              <h3 className="mr-consultation-detail-title">
+                Consultation details
+              </h3>
+              <p className="mr-consultation-detail-meta">
+                {d.ticketNumber} · {d.consultationTypeLabel}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="mr-btn mr-btn-outline mr-consultation-back"
+              onClick={() => setConsultationDetail(null)}
+            >
+              Back to list
+            </button>
+          </div>
+
+          <div className="mr-consultation-detail-grid">
+            <div>
+              <span className="mr-detail-kicker">Date</span>
+              <p className="mr-detail-value">{d.date}</p>
+            </div>
+            <div>
+              <span className="mr-detail-kicker">Specialist</span>
+              <p className="mr-detail-value">Dr. {d.specialistName}</p>
+            </div>
+            <div>
+              <span className="mr-detail-kicker">Status</span>
+              <p className="mr-detail-value">{d.status}</p>
+            </div>
+            <div>
+              <span className="mr-detail-kicker">Chief complaint</span>
+              <p className="mr-detail-value">{d.chiefComplaint}</p>
+            </div>
+          </div>
+
+          <div className="mr-detail-blocks">
+            <div className="mr-detail-block mr-detail-block-assessment">
+              <div className="mr-detail-block-heading">
+                <IconStethoscope size={14} aria-hidden />
+                Assessment
+              </div>
+              <p className="mr-detail-block-body">{d.assessment}</p>
+            </div>
+            <div className="mr-detail-block mr-detail-block-diagnosis">
+              <div className="mr-detail-block-heading">
+                <IconActivity size={14} aria-hidden />
+                Diagnosis
+              </div>
+              <p className="mr-detail-block-body">{d.diagnosis}</p>
+            </div>
+            <div className="mr-detail-block mr-detail-block-plan">
+              <div className="mr-detail-block-heading">
+                <IconClipboardList size={14} aria-hidden />
+                Treatment plan
+              </div>
+              <p className="mr-detail-block-body">{d.treatmentPlan}</p>
+            </div>
+
+            {d.prescriptions?.length > 0 && (
+              <div className="mr-detail-block mr-detail-block-rx">
+                <div className="mr-detail-block-heading">
+                  <IconPill size={14} aria-hidden />
+                  Prescriptions
+                </div>
+                <ul className="mr-detail-list">
+                  {d.prescriptions.map((p, idx) => (
+                    <li key={idx}>
+                      <span className="mr-detail-list-strong">
+                        {p.generic} {p.brand ? `(${p.brand})` : ""}
+                      </span>
+                      {" — "}
+                      {p.dosage}
+                      {p.form ? `, ${p.form}` : ""}
+                      {p.quantity != null ? `, ${p.quantity} units` : ""}
+                      {p.instructions ? ` (${p.instructions})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {d.labRequests?.length > 0 && (
+              <div className="mr-detail-block mr-detail-block-labs">
+                <div className="mr-detail-block-heading">
+                  <IconFlask size={14} aria-hidden />
+                  Laboratory requests
+                </div>
+                <ul className="mr-detail-list">
+                  {d.labRequests.map((l, idx) => (
+                    <li key={idx}>
+                      <span className="mr-detail-list-strong">{l.test}</span>
+                      {l.customTestName ? ` (${l.customTestName})` : ""}
+                      {l.remarks ? ` — ${l.remarks}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     if (filteredData.length === 0) {
       return (
         <div className="mr-empty-state">
@@ -225,19 +405,18 @@ export default function Patient_MedicalRecords() {
         {filteredData.map((item) => {
           /* --- HISTORY --- */
           if (activeTab === "history") {
+            const { label: typeLabel, Icon: TypeIcon } =
+              consultationChannelBadge(item.channel);
             return (
               <div key={item.id} className="mr-card">
                 <div className="mr-card-flex">
                   <div className="mr-card-main">
-                    <div className="mr-avatar">
-                      {item.dr.split(" ")[1][0]}
-                      {item.dr.split(" ")[2]?.[0] || ""}
-                    </div>
+                    <div className="mr-avatar">{doctorInitials(item.dr)}</div>
                     <div className="mr-card-details">
                       <div className="mr-card-header-row">
                         <h4 className="mr-card-title">{item.dr}</h4>
                         <span className="mr-badge mr-badge-blue">
-                          <IconVideo size={10} /> Video
+                          <TypeIcon size={10} /> {typeLabel}
                         </span>
                       </div>
                       <p className="mr-card-spec">
@@ -266,22 +445,11 @@ export default function Patient_MedicalRecords() {
                   </div>
                   <div className="mr-card-actions">
                     <button
+                      type="button"
                       className="mr-btn mr-btn-primary"
-                      onClick={() => handleDIY("View Details")}
+                      onClick={() => setConsultationDetail(item.detail)}
                     >
                       <IconEye size={16} /> View Details
-                    </button>
-                    <button
-                      className="mr-btn mr-btn-outline"
-                      onClick={() => handleDIY("Download")}
-                    >
-                      <IconDownload size={16} /> Download
-                    </button>
-                    <button
-                      className="mr-btn mr-btn-ghost"
-                      onClick={() => handleDIY("Email")}
-                    >
-                      <IconMail size={16} /> Email
                     </button>
                   </div>
                 </div>
@@ -313,17 +481,8 @@ export default function Patient_MedicalRecords() {
                     </p>
                   </div>
                   <div className="mr-card-actions">
-                    <button
-                      className="mr-btn mr-btn-primary"
-                      onClick={() => handleDIY("View Details")}
-                    >
+                    <button type="button" className="mr-btn mr-btn-primary">
                       <IconEye size={16} /> View Details
-                    </button>
-                    <button
-                      className="mr-btn mr-btn-outline"
-                      onClick={() => handleDIY("Download")}
-                    >
-                      <IconDownload size={16} /> Download
                     </button>
                   </div>
                 </div>
@@ -356,20 +515,9 @@ export default function Patient_MedicalRecords() {
                     </p>
                   </div>
                   <div className="mr-card-actions">
-                    <button
-                      className="mr-btn mr-btn-primary"
-                      onClick={() => handleDIY("View Request")}
-                    >
-                      <IconEye size={16} /> View Request
+                    <button type="button" className="mr-btn mr-btn-primary">
+                      <IconEye size={16} /> View Details
                     </button>
-                    {item.status === "Completed" && (
-                      <button
-                        className="mr-btn mr-btn-outline"
-                        onClick={() => handleDIY("Download")}
-                      >
-                        <IconDownload size={16} /> Download Results
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -396,17 +544,8 @@ export default function Patient_MedicalRecords() {
                     </div>
                   </div>
                   <div className="mr-card-actions">
-                    <button
-                      className="mr-btn mr-btn-primary"
-                      onClick={() => handleDIY("View Certificate")}
-                    >
-                      <IconEye size={16} /> View Certificate
-                    </button>
-                    <button
-                      className="mr-btn mr-btn-outline"
-                      onClick={() => handleDIY("Download")}
-                    >
-                      <IconDownload size={16} /> Download PDF
+                    <button type="button" className="mr-btn mr-btn-primary">
+                      <IconEye size={16} /> View Details
                     </button>
                   </div>
                 </div>
@@ -434,17 +573,8 @@ export default function Patient_MedicalRecords() {
                     </p>
                   </div>
                   <div className="mr-card-actions">
-                    <button
-                      className="mr-btn mr-btn-primary"
-                      onClick={() => handleDIY("View Plan")}
-                    >
-                      <IconEye size={16} /> View Plan
-                    </button>
-                    <button
-                      className="mr-btn mr-btn-outline"
-                      onClick={() => handleDIY("Download")}
-                    >
-                      <IconDownload size={16} /> Download
+                    <button type="button" className="mr-btn mr-btn-primary">
+                      <IconEye size={16} /> View Details
                     </button>
                   </div>
                 </div>
@@ -452,67 +582,6 @@ export default function Patient_MedicalRecords() {
             );
           }
 
-          /* --- REFERRALS --- */
-          if (activeTab === "referrals") {
-            return (
-              <div key={item.id} className="mr-card">
-                <div className="mr-card-flex">
-                  <div className="mr-card-main-col">
-                    <div className="mr-card-header-row">
-                      <h4 className="mr-card-title">
-                        Referral to {item.refTo}
-                      </h4>
-                      <span
-                        className={`mr-badge ${item.status === "Booked" ? "mr-badge-active" : "mr-badge-pending"}`}
-                      >
-                        {item.status}
-                      </span>
-                    </div>
-                    <p className="mr-card-meta-margin">
-                      Referred by Dr. Maria Santos (General Physician)
-                    </p>
-                    <div className="mr-referral-grid">
-                      <p className="mr-info-icon-text mr-meta-spacing">
-                        <IconCalendarEvent size={14} /> Referral Date: Mar 10,
-                        2026
-                      </p>
-                      <p className="mr-info-icon-text mr-meta-spacing">
-                        <IconMapPin size={14} /> Specialist: {item.spec}
-                      </p>
-                      <p className="mr-info-icon-text mr-meta-spacing">
-                        <IconMessageCircle size={14} /> Reason: {item.reason}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mr-card-actions-wide">
-                    {item.status === "Pending" ? (
-                      <>
-                        <button
-                          className="mr-btn mr-btn-warning"
-                          onClick={() => handleDIY("Book")}
-                        >
-                          Book Appointment
-                        </button>
-                        <button
-                          className="mr-btn mr-btn-outline"
-                          onClick={() => handleDIY("View")}
-                        >
-                          <IconEye size={16} /> View Referral
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        className="mr-btn mr-btn-primary mr-btn-tall"
-                        onClick={() => handleDIY("View")}
-                      >
-                        <IconEye size={16} /> View Referral
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          }
           return null;
         })}
       </div>
@@ -597,7 +666,9 @@ export default function Patient_MedicalRecords() {
         </div>
 
         {/* STATIC SEARCH & FILTER BAR */}
-        <div className="mr-controls-bar">
+        <div
+          className={`mr-controls-bar ${activeTab === "history" && consultationDetail ? "mr-controls-bar-hidden" : ""}`}
+        >
           <div className="mr-search-wrapper">
             <IconSearch size={16} className="mr-search-icon" />
             <input
@@ -609,60 +680,63 @@ export default function Patient_MedicalRecords() {
             />
           </div>
 
-          <div className="mr-popover-container" ref={popoverRef}>
-            <button
-              className="mr-btn mr-btn-outline"
-              onClick={() => setFilterOpen(!filterOpen)}
-            >
-              <IconFilter size={16} /> Filters
-            </button>
+          {activeTab !== "history" && (
+            <div className="mr-popover-container" ref={popoverRef}>
+              <button
+                type="button"
+                className="mr-btn mr-btn-outline"
+                onClick={() => setFilterOpen(!filterOpen)}
+              >
+                <IconFilter size={16} /> Filters
+              </button>
 
-            {filterOpen && (
-              <div className="mr-popover-menu">
-                <div className="mr-popover-title">
-                  <span>Status Filter</span>
+              {filterOpen && (
+                <div className="mr-popover-menu">
+                  <div className="mr-popover-title">
+                    <span>Status Filter</span>
+                  </div>
+                  <div className="mr-checkbox-group">
+                    <label className="mr-checkbox-label">
+                      <input
+                        type="checkbox"
+                        className="mr-checkbox-input"
+                        checked={statusFilter.includes("Completed")}
+                        onChange={() => toggleStatus("Completed")}
+                      />{" "}
+                      Completed
+                    </label>
+                    <label className="mr-checkbox-label">
+                      <input
+                        type="checkbox"
+                        className="mr-checkbox-input"
+                        checked={statusFilter.includes("Pending")}
+                        onChange={() => toggleStatus("Pending")}
+                      />{" "}
+                      Pending
+                    </label>
+                    <label className="mr-checkbox-label">
+                      <input
+                        type="checkbox"
+                        className="mr-checkbox-input"
+                        checked={statusFilter.includes("Active")}
+                        onChange={() => toggleStatus("Active")}
+                      />{" "}
+                      Active
+                    </label>
+                    <label className="mr-checkbox-label">
+                      <input
+                        type="checkbox"
+                        className="mr-checkbox-input"
+                        checked={statusFilter.includes("Booked")}
+                        onChange={() => toggleStatus("Booked")}
+                      />{" "}
+                      Booked
+                    </label>
+                  </div>
                 </div>
-                <div className="mr-checkbox-group">
-                  <label className="mr-checkbox-label">
-                    <input
-                      type="checkbox"
-                      className="mr-checkbox-input"
-                      checked={statusFilter.includes("Completed")}
-                      onChange={() => toggleStatus("Completed")}
-                    />{" "}
-                    Completed
-                  </label>
-                  <label className="mr-checkbox-label">
-                    <input
-                      type="checkbox"
-                      className="mr-checkbox-input"
-                      checked={statusFilter.includes("Pending")}
-                      onChange={() => toggleStatus("Pending")}
-                    />{" "}
-                    Pending
-                  </label>
-                  <label className="mr-checkbox-label">
-                    <input
-                      type="checkbox"
-                      className="mr-checkbox-input"
-                      checked={statusFilter.includes("Active")}
-                      onChange={() => toggleStatus("Active")}
-                    />{" "}
-                    Active
-                  </label>
-                  <label className="mr-checkbox-label">
-                    <input
-                      type="checkbox"
-                      className="mr-checkbox-input"
-                      checked={statusFilter.includes("Booked")}
-                      onChange={() => toggleStatus("Booked")}
-                    />{" "}
-                    Booked
-                  </label>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

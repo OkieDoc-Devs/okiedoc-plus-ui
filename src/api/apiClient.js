@@ -188,7 +188,11 @@ export async function updateCallbackStatus(callbackId, statusOrPatch) {
 }
 
 export async function fetchPatientMedicalHistory(patientId) {
-  return apiRequest(`/api/v1/patients/medical-history?patientId=${patientId}`, {
+  const query =
+    patientId != null && patientId !== ''
+      ? `?patientId=${encodeURIComponent(patientId)}`
+      : '';
+  return apiRequest(`/api/v1/patients/medical-history${query}`, {
     method: 'GET',
   });
 }

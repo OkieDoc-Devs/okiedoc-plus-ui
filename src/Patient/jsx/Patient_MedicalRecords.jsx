@@ -26,6 +26,7 @@ import {
 } from "@tabler/icons-react";
 import "../css/Patient_MedicalRecords.css";
 import { fetchPatientMedicalHistory } from "../../api/apiClient";
+import { ICD11_CHAPTERS, parseICDCode } from "../../Specialists/utils/icdData";
 
 const toConsultationTypeLabel = (channel) => {
   const normalized = String(channel || "")
@@ -57,15 +58,41 @@ const formatTicketStatus = (status) => {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-/** Diagnosis / reason as entered on the Medical Certificate (issued certs from API). */
 const deriveDiagnosisReason = (h) => {
   const certs = h.medicalCertificates || [];
   const reasons = certs
     .map((c) => String(c?.diagnosisReason || "").trim())
     .filter(Boolean);
+
   if (reasons.length > 0) return reasons.join("\n");
+
   const code = String(h.icd10Code || "").trim();
-  return code || "—";
+  let label = "";
+
+  if (code) {
+    const parsed = parseICDCode(code);
+    const chapter = parsed.chapter ? ICD11_CHAPTERS[parsed.chapter] : null;
+    const block = chapter?.blocks?.[parsed.block] || null;
+    const category = block?.categories?.[parsed.category] || null;
+    const subcategory = category?.subcategories?.[parsed.subcategory] || null;
+
+    const data = subcategory || category || block || chapter;
+    if (data) {
+      label = `${data.code} - ${data.label}`;
+    } else {
+      label = code;
+    }
+  }
+
+  return label || "—";
+};
+
+const nurseInitials = (name) => {
+  if (!name) return "N";
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "N";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
 const doctorInitials = (drLabel) => {
@@ -169,6 +196,7 @@ export default function Patient_MedicalRecords() {
               ),
               specialistName: h.specialistName || "Unassigned",
               specialistTitle: h.specialistTitle || "Specialist",
+              nurseName: h.nurseName,
               chiefComplaint: h.chiefComplaint || "—",
               status: formatTicketStatus(h.status),
               assessment: (h.assessment || "").trim() || "—",
@@ -176,6 +204,7 @@ export default function Patient_MedicalRecords() {
               treatmentPlan: (h.plan || "").trim() || "—",
               prescriptions: h.prescriptions || [],
               labRequests: h.labRequests || [],
+              visitDateRaw: h.visitDate,
             },
           }));
           setBackendHistory(history);
@@ -284,6 +313,7 @@ export default function Patient_MedicalRecords() {
   const renderContent = () => {
     if (activeTab === "history" && consultationDetail) {
       const d = consultationDetail;
+      const { Icon: TypeIcon } = consultationChannelBadge(d.consultationTypeLabel);
       return (
         <div className="mr-consultation-details-page">
           <div className="mr-back-nav">
@@ -306,28 +336,30 @@ export default function Patient_MedicalRecords() {
                 <p className="mr-header-spec">
                   <IconStethoscope size={16} /> {d.specialistTitle}
                 </p>
-                <div className="mr-assisted-by">
-                  <div className="mr-assist-avatar small">JC</div>
-                  <div className="mr-assist-text">
-                    Assisted by:<br />
-                    <strong>Nurse Jane Cruz</strong>
+                {d.nurseName && (
+                  <div className="mr-assisted-by">
+                    <div className="mr-assist-avatar small">{nurseInitials(d.nurseName)}</div>
+                    <div className="mr-assist-text">
+                      Assisted by:<br />
+                      <strong>Nurse {d.nurseName}</strong>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
             <div className="mr-header-right">
               <div className="mr-header-action-badge">
-                <IconVideo size={16} /> Video Consultation
+                <TypeIcon size={16} /> {d.consultationTypeLabel} Consultation
               </div>
               <div className="mr-header-datetime">
-                <IconCalendarEvent size={18} /> Saturday, March 28, 2026
+                <IconCalendarEvent size={18} /> {d.date}
               </div>
               <div className="mr-header-time">
-                <IconClock size={16} /> 10:30 AM • 25 minutes
+                <IconClock size={16} /> {consultationDetail.time}
               </div>
               <div className="mr-header-status">
                 <span className="mr-status-pill">
-                  <IconCircleCheck size={14} /> Completed
+                  <IconCircleCheck size={14} /> {d.status}
                 </span>
               </div>
             </div>

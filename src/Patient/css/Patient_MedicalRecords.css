@@ -329,7 +329,7 @@
 .mr-card-flex {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 24px;
 }
 
@@ -619,6 +619,316 @@
   .mr-card-actions,
   .mr-card-actions-wide {
     width: 100%;
+  }
+}
+
+.mr-scrollable-content.mr-detail-view-active {
+  padding: 0;
+  overflow: visible;
+}
+
+/* --- CONSULTATION DETAIL NEW DESIGN --- */
+.mr-consultation-details-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.mr-back-nav {
+  margin-bottom: 8px;
+}
+
+.mr-back-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #008080;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.mr-back-link:hover {
+  color: #006666;
+  text-decoration: underline;
+}
+
+.mr-details-header-card {
+  background: linear-gradient(135deg, #00a0a0 0%, #00bbbb 100%);
+  border-radius: 20px;
+  padding: 30px;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 15px rgba(0, 160, 160, 0.2);
+}
+
+.mr-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.mr-header-avatar {
+  width: 80px;
+  height: 80px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 2px solid white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.mr-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mr-header-name {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.mr-header-spec {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.mr-assisted-by {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 8px 15px;
+  border-radius: 30px;
+}
+
+.mr-assist-avatar {
+  width: 35px;
+  height: 35px;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.mr-assist-text {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.mr-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.mr-header-action-badge {
+  background: #007070;
+  padding: 6px 15px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mr-header-datetime {
+  font-size: 18px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mr-header-time {
+  font-size: 16px;
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mr-status-pill {
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 1px solid white;
+  padding: 4px 12px;
+  border-radius: 15px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mr-complaint-section {
+  background-color: #f0f8ff;
+  border: 1px solid #d0e8ff;
+  border-radius: 15px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.mr-section-kicker {
+  color: #008080;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 10px 0;
+  text-transform: none;
+}
+
+.mr-complaint-text {
+  font-size: 18px;
+  color: #333;
+  margin: 0;
+}
+
+.mr-clinical-notes-card {
+  background: white;
+  border: 1px solid #eef0f2;
+  border-radius: 20px;
+  padding: 25px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+}
+
+.mr-clinical-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 25px;
+}
+
+.mr-clinical-icon-box {
+  width: 40px;
+  height: 40px;
+  background-color: #00a0a0;
+  color: white;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mr-clinical-title-row h4 {
+  font-size: 18px;
+  margin: 0;
+  color: #333;
+}
+
+.mr-assessment-block {
+  margin-bottom: 20px;
+}
+
+.mr-assessment-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #008080;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.mr-assessment-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #666;
+  padding-left: 26px;
+}
+
+.mr-diagnosis-block {
+  background-color: #e6f6f6;
+  border: 1px solid #b3e6e6;
+  border-radius: 12px;
+  padding: 15px 20px;
+  margin-bottom: 20px;
+}
+
+.mr-diagnosis-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #006666;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.mr-diagnosis-text {
+  font-size: 16px;
+  color: #2b8a3e;
+  font-weight: 600;
+  padding-left: 26px;
+}
+
+.mr-treatment-section {
+  margin-top: 25px;
+}
+
+.mr-treatment-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #008080;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 15px;
+}
+
+.mr-treatment-body {
+  font-size: 15px;
+  color: #444;
+  line-height: 1.8;
+  padding-left: 26px;
+  white-space: pre-wrap;
+}
+
+.mr-treatment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.mr-treatment-item {
+  position: relative;
+  padding-left: 0;
+  margin-bottom: 8px;
+}
+
+/* --- RESPONSIVE DESIGN FOR NEW PAGE --- */
+@media (max-width: 768px) {
+  .mr-details-header-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  .mr-header-right {
+    align-items: flex-start;
   }
 }
 

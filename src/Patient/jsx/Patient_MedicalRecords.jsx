@@ -20,6 +20,9 @@ import {
   IconPhone,
   IconClipboardList,
   IconActivity,
+  IconArrowLeft,
+  IconCircleCheck,
+  IconAlertCircle,
 } from "@tabler/icons-react";
 import "../css/Patient_MedicalRecords.css";
 import { fetchPatientMedicalHistory } from "../../api/apiClient";
@@ -282,107 +285,99 @@ export default function Patient_MedicalRecords() {
     if (activeTab === "history" && consultationDetail) {
       const d = consultationDetail;
       return (
-        <div className="mr-consultation-detail">
-          <div className="mr-consultation-detail-head">
-            <div>
-              <h3 className="mr-consultation-detail-title">
-                Consultation details
-              </h3>
-              <p className="mr-consultation-detail-meta">
-                {d.ticketNumber} · {d.consultationTypeLabel}
-              </p>
-            </div>
+        <div className="mr-consultation-details-page">
+          <div className="mr-back-nav">
             <button
               type="button"
-              className="mr-btn mr-btn-outline mr-consultation-back"
+              className="mr-back-link"
               onClick={() => setConsultationDetail(null)}
             >
-              Back to list
+              <IconArrowLeft size={18} /> Back to Medical Records
             </button>
           </div>
 
-          <div className="mr-consultation-detail-grid">
-            <div>
-              <span className="mr-detail-kicker">Date</span>
-              <p className="mr-detail-value">{d.date}</p>
+          <div className="mr-details-header-card">
+            <div className="mr-header-left">
+              <div className="mr-header-avatar">
+                {doctorInitials(d.specialistName)}
+              </div>
+              <div className="mr-header-info">
+                <h2 className="mr-header-name">Dr. {d.specialistName}</h2>
+                <p className="mr-header-spec">
+                  <IconStethoscope size={16} /> {d.specialistTitle}
+                </p>
+                <div className="mr-assisted-by">
+                  <div className="mr-assist-avatar small">JC</div>
+                  <div className="mr-assist-text">
+                    Assisted by:<br />
+                    <strong>Nurse Jane Cruz</strong>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="mr-detail-kicker">Specialist</span>
-              <p className="mr-detail-value">Dr. {d.specialistName}</p>
-            </div>
-            <div>
-              <span className="mr-detail-kicker">Status</span>
-              <p className="mr-detail-value">{d.status}</p>
-            </div>
-            <div>
-              <span className="mr-detail-kicker">Chief complaint</span>
-              <p className="mr-detail-value">{d.chiefComplaint}</p>
+            <div className="mr-header-right">
+              <div className="mr-header-action-badge">
+                <IconVideo size={16} /> Video Consultation
+              </div>
+              <div className="mr-header-datetime">
+                <IconCalendarEvent size={18} /> Saturday, March 28, 2026
+              </div>
+              <div className="mr-header-time">
+                <IconClock size={16} /> 10:30 AM • 25 minutes
+              </div>
+              <div className="mr-header-status">
+                <span className="mr-status-pill">
+                  <IconCircleCheck size={14} /> Completed
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="mr-detail-blocks">
-            <div className="mr-detail-block mr-detail-block-assessment">
-              <div className="mr-detail-block-heading">
-                <IconStethoscope size={14} aria-hidden />
-                Assessment
+          <div className="mr-complaint-section">
+            <h5 className="mr-section-kicker">Chief Complaint</h5>
+            <p className="mr-complaint-text">{d.chiefComplaint}</p>
+          </div>
+
+          <div className="mr-clinical-notes-card">
+            <div className="mr-clinical-title-row">
+              <div className="mr-clinical-icon-box">
+                <IconFileDescription size={20} />
               </div>
-              <p className="mr-detail-block-body">{d.assessment}</p>
-            </div>
-            <div className="mr-detail-block mr-detail-block-diagnosis">
-              <div className="mr-detail-block-heading">
-                <IconActivity size={14} aria-hidden />
-                Diagnosis
-              </div>
-              <p className="mr-detail-block-body">{d.diagnosis}</p>
-            </div>
-            <div className="mr-detail-block mr-detail-block-plan">
-              <div className="mr-detail-block-heading">
-                <IconClipboardList size={14} aria-hidden />
-                Treatment plan
-              </div>
-              <p className="mr-detail-block-body">{d.treatmentPlan}</p>
+              <h4>Diagnosis & Clinical Notes</h4>
             </div>
 
-            {d.prescriptions?.length > 0 && (
-              <div className="mr-detail-block mr-detail-block-rx">
-                <div className="mr-detail-block-heading">
-                  <IconPill size={14} aria-hidden />
-                  Prescriptions
-                </div>
-                <ul className="mr-detail-list">
-                  {d.prescriptions.map((p, idx) => (
-                    <li key={idx}>
-                      <span className="mr-detail-list-strong">
-                        {p.generic} {p.brand ? `(${p.brand})` : ""}
-                      </span>
-                      {" — "}
-                      {p.dosage}
-                      {p.form ? `, ${p.form}` : ""}
-                      {p.quantity != null ? `, ${p.quantity} units` : ""}
-                      {p.instructions ? ` (${p.instructions})` : ""}
-                    </li>
-                  ))}
-                </ul>
+            <div className="mr-assessment-block">
+              <div className="mr-assessment-label">
+                <IconAlertCircle size={18} /> Assessment
               </div>
-            )}
+              <p className="mr-assessment-text">{d.assessment}</p>
+            </div>
 
-            {d.labRequests?.length > 0 && (
-              <div className="mr-detail-block mr-detail-block-labs">
-                <div className="mr-detail-block-heading">
-                  <IconFlask size={14} aria-hidden />
-                  Laboratory requests
-                </div>
-                <ul className="mr-detail-list">
-                  {d.labRequests.map((l, idx) => (
-                    <li key={idx}>
-                      <span className="mr-detail-list-strong">{l.test}</span>
-                      {l.customTestName ? ` (${l.customTestName})` : ""}
-                      {l.remarks ? ` — ${l.remarks}` : ""}
-                    </li>
-                  ))}
+            <div className="mr-diagnosis-block">
+              <div className="mr-diagnosis-label">
+                <IconCircleCheck size={18} /> Diagnosis
+              </div>
+              <p className="mr-diagnosis-text">{d.diagnosis}</p>
+            </div>
+
+            <div className="mr-treatment-section">
+              <div className="mr-treatment-label">
+                <IconClipboardList size={18} /> Treatment Plan
+              </div>
+              <div className="mr-treatment-body">
+                <ul className="mr-treatment-list">
+                  {(d.treatmentPlan || "").split("\n").map((line, idx) => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return null;
+                    return (
+                      <li key={idx} className="mr-treatment-item">
+                        {trimmed}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
-            )}
+            </div>
           </div>
         </div>
       );
@@ -591,157 +586,161 @@ export default function Patient_MedicalRecords() {
   return (
     <div className="mr-page-wrapper">
       {/* --- STICKY TOP SECTION --- */}
-      <div className="mr-sticky-header">
-        {/* Title Area */}
-        <div className="mr-header-title-container">
-          <h2 className="mr-page-title">Medical Records</h2>
-          <p className="mr-page-subtitle">
-            Access your complete healthcare history
-          </p>
-        </div>
-
-        {/* Consent Banner */}
-        <div className="mr-consent-banner">
-          <div className="mr-banner-content">
-            <div className="mr-banner-icon-bg">
-              <IconShare size={24} />
-            </div>
-            <div className="mr-banner-text-area">
-              <div className="mr-banner-title-row">
-                <h4 className="mr-banner-title">
-                  Medical Records Sharing & Consent
-                </h4>
-                <span className="mr-badge mr-badge-primary">New</span>
-              </div>
-              <p className="mr-banner-desc">
-                Securely share your medical records with doctors during
-                consultations. Full control over what you share and for how
-                long.
-              </p>
-              <div className="mr-banner-tags-row">
-                <span className="mr-tag mr-tag-green">
-                  <IconShieldCheck size={12} /> Privacy Protected
-                </span>
-                <span className="mr-tag mr-tag-primary">
-                  <IconLock size={12} /> Encrypted
-                </span>
-                <span className="mr-tag mr-tag-primary">
-                  <IconClock size={12} /> Time-Limited Access
-                </span>
-              </div>
-            </div>
+      {!(activeTab === "history" && consultationDetail) && (
+        <div className="mr-sticky-header">
+          {/* Title Area */}
+          <div className="mr-header-title-container">
+            <h2 className="mr-page-title">Medical Records</h2>
+            <p className="mr-page-subtitle">
+              Access your complete healthcare history
+            </p>
           </div>
-          <button
-            className="mr-btn mr-btn-primary"
-            onClick={() => (window.location.hash = "#/RecordSharing")}
-          >
-            <IconShare size={16} /> Manage Sharing
-          </button>
-        </div>
 
-        {/* Tabs Navigation */}
-        <div className="mr-tabs-container">
-          <div className="mr-tabs-scroll">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                className={`mr-custom-tab ${activeTab === tab.id ? "mr-tab-active" : ""}`}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setSearchQuery("");
-                }}
-              >
-                <div className="mr-tab-top">
-                  <tab.icon size={20} stroke={activeTab === tab.id ? 2 : 1.5} />
-                  <span
-                    className={`mr-tab-count ${activeTab === tab.id ? "mr-tab-count-active" : "mr-tab-count-inactive"}`}
-                  >
-                    {tab.data.length}
+          {/* Consent Banner */}
+          <div className="mr-consent-banner">
+            <div className="mr-banner-content">
+              <div className="mr-banner-icon-bg">
+                <IconShare size={24} />
+              </div>
+              <div className="mr-banner-text-area">
+                <div className="mr-banner-title-row">
+                  <h4 className="mr-banner-title">
+                    Medical Records Sharing & Consent
+                  </h4>
+                  <span className="mr-badge mr-badge-primary">New</span>
+                </div>
+                <p className="mr-banner-desc">
+                  Securely share your medical records with doctors during
+                  consultations. Full control over what you share and for how
+                  long.
+                </p>
+                <div className="mr-banner-tags-row">
+                  <span className="mr-tag mr-tag-green">
+                    <IconShieldCheck size={12} /> Privacy Protected
+                  </span>
+                  <span className="mr-tag mr-tag-primary">
+                    <IconLock size={12} /> Encrypted
+                  </span>
+                  <span className="mr-tag mr-tag-primary">
+                    <IconClock size={12} /> Time-Limited Access
                   </span>
                 </div>
-                <span className="mr-tab-label">{tab.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* STATIC SEARCH & FILTER BAR */}
-        <div
-          className={`mr-controls-bar ${activeTab === "history" && consultationDetail ? "mr-controls-bar-hidden" : ""}`}
-        >
-          <div className="mr-search-wrapper">
-            <IconSearch size={16} className="mr-search-icon" />
-            <input
-              type="text"
-              className="mr-search-input"
-              placeholder={`Search ${tabs.find((t) => t.id === activeTab).label.toLowerCase()}...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          {activeTab !== "history" && (
-            <div className="mr-popover-container" ref={popoverRef}>
-              <button
-                type="button"
-                className="mr-btn mr-btn-outline"
-                onClick={() => setFilterOpen(!filterOpen)}
-              >
-                <IconFilter size={16} /> Filters
-              </button>
-
-              {filterOpen && (
-                <div className="mr-popover-menu">
-                  <div className="mr-popover-title">
-                    <span>Status Filter</span>
-                  </div>
-                  <div className="mr-checkbox-group">
-                    <label className="mr-checkbox-label">
-                      <input
-                        type="checkbox"
-                        className="mr-checkbox-input"
-                        checked={statusFilter.includes("Completed")}
-                        onChange={() => toggleStatus("Completed")}
-                      />{" "}
-                      Completed
-                    </label>
-                    <label className="mr-checkbox-label">
-                      <input
-                        type="checkbox"
-                        className="mr-checkbox-input"
-                        checked={statusFilter.includes("Pending")}
-                        onChange={() => toggleStatus("Pending")}
-                      />{" "}
-                      Pending
-                    </label>
-                    <label className="mr-checkbox-label">
-                      <input
-                        type="checkbox"
-                        className="mr-checkbox-input"
-                        checked={statusFilter.includes("Active")}
-                        onChange={() => toggleStatus("Active")}
-                      />{" "}
-                      Active
-                    </label>
-                    <label className="mr-checkbox-label">
-                      <input
-                        type="checkbox"
-                        className="mr-checkbox-input"
-                        checked={statusFilter.includes("Booked")}
-                        onChange={() => toggleStatus("Booked")}
-                      />{" "}
-                      Booked
-                    </label>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
-          )}
+            <button
+              className="mr-btn mr-btn-primary"
+              onClick={() => (window.location.hash = "#/RecordSharing")}
+            >
+              <IconShare size={16} /> Manage Sharing
+            </button>
+          </div>
+
+          {/* Tabs Navigation */}
+          <div className="mr-tabs-container">
+            <div className="mr-tabs-scroll">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  className={`mr-custom-tab ${activeTab === tab.id ? "mr-tab-active" : ""}`}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setSearchQuery("");
+                  }}
+                >
+                  <div className="mr-tab-top">
+                    <tab.icon size={20} stroke={activeTab === tab.id ? 2 : 1.5} />
+                    <span
+                      className={`mr-tab-count ${activeTab === tab.id ? "mr-tab-count-active" : "mr-tab-count-inactive"}`}
+                    >
+                      {tab.data.length}
+                    </span>
+                  </div>
+                  <span className="mr-tab-label">{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* STATIC SEARCH & FILTER BAR */}
+          <div
+            className={`mr-controls-bar ${activeTab === "history" && consultationDetail ? "mr-controls-bar-hidden" : ""}`}
+          >
+            <div className="mr-search-wrapper">
+              <IconSearch size={16} className="mr-search-icon" />
+              <input
+                type="text"
+                className="mr-search-input"
+                placeholder={`Search ${tabs.find((t) => t.id === activeTab).label.toLowerCase()}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            {activeTab !== "history" && (
+              <div className="mr-popover-container" ref={popoverRef}>
+                <button
+                  type="button"
+                  className="mr-btn mr-btn-outline"
+                  onClick={() => setFilterOpen(!filterOpen)}
+                >
+                  <IconFilter size={16} /> Filters
+                </button>
+
+                {filterOpen && (
+                  <div className="mr-popover-menu">
+                    <div className="mr-popover-title">
+                      <span>Status Filter</span>
+                    </div>
+                    <div className="mr-checkbox-group">
+                      <label className="mr-checkbox-label">
+                        <input
+                          type="checkbox"
+                          className="mr-checkbox-input"
+                          checked={statusFilter.includes("Completed")}
+                          onChange={() => toggleStatus("Completed")}
+                        />{" "}
+                        Completed
+                      </label>
+                      <label className="mr-checkbox-label">
+                        <input
+                          type="checkbox"
+                          className="mr-checkbox-input"
+                          checked={statusFilter.includes("Pending")}
+                          onChange={() => toggleStatus("Pending")}
+                        />{" "}
+                        Pending
+                      </label>
+                      <label className="mr-checkbox-label">
+                        <input
+                          type="checkbox"
+                          className="mr-checkbox-input"
+                          checked={statusFilter.includes("Active")}
+                          onChange={() => toggleStatus("Active")}
+                        />{" "}
+                        Active
+                      </label>
+                      <label className="mr-checkbox-label">
+                        <input
+                          type="checkbox"
+                          className="mr-checkbox-input"
+                          checked={statusFilter.includes("Booked")}
+                          onChange={() => toggleStatus("Booked")}
+                        />{" "}
+                        Booked
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* --- SCROLLABLE CONTENT SECTION --- */}
-      <div className="mr-scrollable-content">{renderContent()}</div>
+      <div className={`mr-scrollable-content ${activeTab === "history" && consultationDetail ? "mr-detail-view-active" : ""}`}>
+        {renderContent()}
+      </div>
     </div>
   );
 }

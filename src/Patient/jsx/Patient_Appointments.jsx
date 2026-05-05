@@ -20,6 +20,8 @@ import { fetchPatientActiveTickets } from "../services/apiService";
 import "../css/Patient_Appointments.css";
 import { useModal } from "../contexts/Modals";
 import Patient_InvoiceModal from "../components/Patient_InvoiceModal";
+import { useAuth } from "../../contexts/AuthContext";
+import JitsiMeetCall from "../../components/VideoCall/JitsiMeetCall";
 
 export default function Patient_Appointments({ setActive, ticketIdParam }) {
   const { openDiyModal } = useModal();
@@ -31,6 +33,8 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
   const [viewingAppt, setViewingAppt] = useState(null);
   const [painMapView, setPainMapView] = useState("front");
   const [invoiceTicket, setInvoiceTicket] = useState(null);
+  const [jitsiConfig, setJitsiConfig] = useState({ isOpen: false, appt: null });
+  const { user: currentUser } = useAuth();
   const popoverRef = useRef(null);
 
   const PAIN_MAP_AREAS = {
@@ -492,9 +496,7 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                       className="appt-btn appt-btn-primary full-width"
                       onClick={() => {
                         handleCloseModal();
-                        openDiyModal(
-                          `Joining Room for Ticket #${appt.ticketNumber}`,
-                        );
+                        setJitsiConfig({ isOpen: true, appt: appt });
                       }}
                     >
                       Join Room
@@ -870,9 +872,7 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                   className="appt-btn appt-btn-primary"
                   onClick={() => {
                     handleCloseModal();
-                    openDiyModal(
-                      `Joining Room for Ticket #${viewingAppt.ticketNumber}`,
-                    );
+                    setJitsiConfig({ isOpen: true, appt: viewingAppt });
                   }}
                 >
                   Join Consultation Room
@@ -889,6 +889,19 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
           setInvoiceTicket(null);
           window.location.reload();
         }}
+      />
+
+      {/* 8x8 Jitsi Video Call Overlay */}
+      <JitsiMeetCall
+        isOpen={jitsiConfig.isOpen}
+        onClose={() => setJitsiConfig({ isOpen: false, appt: null })}
+        callType="video"
+        ticketId={jitsiConfig.appt?.id}
+        patient={{
+          name: jitsiConfig.appt?.specialistName || "Specialist",
+          id: jitsiConfig.appt?.specialistId || "UnknownSpecialist",
+        }}
+        currentUser={currentUser}
       />
     </div>
   );

@@ -22,7 +22,7 @@ import authService from './authService';
 import * as specialistApi from './services/apiService';
 import { API_BASE_URL } from '../api/apiClient';
 import { getConversations as fetchChatConversations } from '../Nurse/services/chatService.js';
-import SpecialistCall from './SpecialistCall';
+import JitsiMeetCall from '../components/VideoCall/JitsiMeetCall';
 import Messages from './Messages';
 import ImageCropperModal from '../components/ImageCropperModal';
 import PatientMedicalRecordsModal from '../components/MedicalRecords';
@@ -4438,13 +4438,14 @@ const SpecialistDashboard = () => {
         </div>
       )}
 
-      {/* Call/Video Call Component */}
-      <SpecialistCall
+      {/* 8x8 Jitsi Video Call Overlay */}
+      <JitsiMeetCall
         isOpen={callState.isOpen}
         onClose={handleCloseCall}
         callType={callState.callType}
         patient={callState.patient}
         currentUser={currentUser}
+        ticketId={callState.patient?.ticketId || selectedTicket?.id}
       />
 
       {/* Success Modal */}

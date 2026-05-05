@@ -19,6 +19,10 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import "../css/Patient_RecordSharing.css";
+import {
+  shareMedicalRecords,
+  revokeMedicalRecords,
+} from "../services/apiService";
 
 // --- MOCK DATA ---
 const DOCTORS_FLOW = [
@@ -90,6 +94,7 @@ export default function RecordSharing({ onGoBack }) {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [selectedRecords, setSelectedRecords] = useState([]);
   const [accessDuration, setAccessDuration] = useState("one-time");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // View Modal State
   const [viewingActivity, setViewingActivity] = useState(null);
@@ -123,16 +128,49 @@ export default function RecordSharing({ onGoBack }) {
     }
   };
 
-  const handleShare = (isAll = false) => {
+  const handleShare = async (isAll = false) => {
     const recordsToShare = isAll
       ? RECORD_TYPES.map((r) => r.id)
       : selectedRecords;
+
+    setIsSubmitting(true); // Disable the button while sending
+
+    try {
+      const dbResponse = await shareMedicalRecords({
+        specialistId: selectedDoctor.id,
+        allowedRecordTypes: recordsToShare,
+        duration: accessDuration,
+      });
+
+      const newActivity = {
+        id: dbResponse.id || Date.now(),
+        doctor: selectedDoctor,
+        recordCount: recordsToShare.length,
+        sharedRecordIds: recordsToShare,
+        duration:
+          accessDuration === "one-time"
+            ? "One-time only"
+            : "30 Days (Follow-up)",
+        date: new Date().toLocaleString(),
+      };
+
+      setSharedActivities([newActivity, ...sharedActivities]);
+      setAvailableDoctors(
+        availableDoctors.filter((d) => d.id !== selectedDoctor.id),
+      );
+      closeModal();
+    } catch (error) {
+      console.error("Error bridging records:", error);
+      alert("Failed to share records. Please check your connection.");
+    } finally {
+      setIsSubmitting(false);
+    }
 
     const newActivity = {
       id: Date.now(),
       doctor: selectedDoctor,
       recordCount: recordsToShare.length,
-      sharedRecordIds: recordsToShare, // <--- NEW: Saves the exact records checked
+      sharedRecordIds: recordsToShare,
       duration:
         accessDuration === "one-time" ? "One-time only" : "30 Days (Follow-up)",
       date: "April 23, 2026 at 02:22 PM",
@@ -145,10 +183,17 @@ export default function RecordSharing({ onGoBack }) {
     closeModal();
   };
 
-  const handleRevoke = (activityId, doctor) => {
-    setSharedActivities(sharedActivities.filter((a) => a.id !== activityId));
-    setAvailableDoctors([...availableDoctors, doctor]);
-    setViewingActivity(null); // Close view modal if open
+  const handleRevoke = async (activityId, doctor) => {
+    try {
+      await revokeMedicalRecords(activityId);
+
+      setSharedActivities(sharedActivities.filter((a) => a.id !== activityId));
+      setAvailableDoctors([...availableDoctors, doctor]);
+      setViewingActivity(null);
+    } catch (error) {
+      console.error("Error revoking records:", error);
+      alert("Failed to revoke access. Please try again.");
+    }
   };
 
   const isAllSelected = selectedRecords.length === RECORD_TYPES.length;

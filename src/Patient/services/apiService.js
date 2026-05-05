@@ -205,6 +205,42 @@ export async function verifyTicketPayment(ticketId) {
   }
 }
 
+export const shareMedicalRecords = async (payload) => {
+  try {
+    const response = await apiRequest("/api/sharedrecordaccess", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    return response?.data || response;
+  } catch (error) {
+    console.error("Failed to share records:", error);
+    throw new Error("Failed to share records");
+  }
+};
+
+export const revokeMedicalRecords = async (accessId) => {
+  try {
+    const response = await apiRequest(`/api/sharedrecordaccess/${accessId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "revoked" }),
+    });
+    return response?.data || response;
+  } catch (error) {
+    console.error("Failed to revoke records:", error);
+    throw new Error("Failed to revoke records");
+  }
+};
+
+export const fetchPatientMedicalRecords = async () => {
+  try {
+    const response = await apiRequest("/api/patient/medical-records");
+    return response?.data || response || {};
+  } catch (error) {
+    console.error("Failed to fetch medical records:", error);
+    throw new Error("Failed to fetch medical records");
+  }
+};
+
 /**
  * Logout Patient
  */

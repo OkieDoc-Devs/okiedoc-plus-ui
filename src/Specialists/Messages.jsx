@@ -17,7 +17,7 @@ import {
   formatFileSize,
   getUserTypeLabel,
 } from "../Nurse/services/chatService";
-import SpecialistCall from "./SpecialistCall";
+import JitsiMeetCall from "../components/VideoCall/JitsiMeetCall";
 import "./SpecialistDashboard.css";
 
 const Messages = ({ currentUser, onNavigateToDashboard }) => {
@@ -64,6 +64,8 @@ const Messages = ({ currentUser, onNavigateToDashboard }) => {
     startConversation,
     searchUsers,
     getAllUsers,
+    isCallActive,
+    activeCallHost,
   } = useChat({ currentUserId, currentUserType: "s" });
 
   useEffect(() => {
@@ -413,20 +415,33 @@ const Messages = ({ currentUser, onNavigateToDashboard }) => {
                   </div>
                 </div>
                 <div className="chat-actions">
-                  <button
-                    className="icon-btn"
-                    onClick={handleVoiceCall}
-                    title="Voice Call"
-                  >
-                    <FaPhone />
-                  </button>
-                  <button
-                    className="icon-btn video-btn"
-                    onClick={handleVideoCallClick}
-                    title="Video Call"
-                  >
-                    <FaVideo />
-                  </button>
+                  {isCallActive && activeCallHost && Number(activeCallHost) !== Number(currentUserId) ? (
+                    <button
+                      className="join-call-pulse-btn"
+                      onClick={handleVideoCallClick}
+                      title="Join Patient Call"
+                    >
+                      <FaVideo style={{ marginRight: '8px' }} />
+                      Join Call
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="icon-btn"
+                        onClick={handleVoiceCall}
+                        title="Voice Call"
+                      >
+                        <FaPhone />
+                      </button>
+                      <button
+                        className="icon-btn video-btn"
+                        onClick={handleVideoCallClick}
+                        title="Video Call"
+                      >
+                        <FaVideo />
+                      </button>
+                    </>
+                  )}
                   <button
                     className="icon-btn"
                     onClick={closeChat}
@@ -706,11 +721,11 @@ const Messages = ({ currentUser, onNavigateToDashboard }) => {
       )}
 
       {showVideoCall && activeConversation && (
-        <SpecialistCall
+        <JitsiMeetCall
           isOpen={showVideoCall}
           onClose={handleCloseVideoCall}
-          onCallEnd={handleCallEnd}
           callType={isVideoCall ? "video" : "audio"}
+          ticketId={activeConversation?.id}
           patient={{
             name: activeConversation?.name,
             avatar: activeConversation?.avatar,

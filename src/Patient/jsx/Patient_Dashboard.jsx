@@ -14,6 +14,7 @@ import {
   IconLink,
   IconCreditCard,
   IconX,
+  IconClock,
 } from "@tabler/icons-react";
 import "../css/Patient_Dashboard.css";
 import { useModal } from "../contexts/Modals";
@@ -25,12 +26,14 @@ import {
 } from "../components/PaymentComponents";
 import * as apiService from "../services/apiService";
 import usePaymentFlow from "../hooks/usePaymentFlow";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function Dashboard_Patient({ setActive }) {
   const payment = usePaymentFlow();
   const { openDiyModal } = useModal();
-
+  const { user: currentUser } = useAuth();
   const [unpaidTickets, setUnpaidTickets] = useState([]);
+  const [nextAppointment, setNextAppointment] = useState(null);
 
   const loadTickets = async () => {
     try {
@@ -41,6 +44,14 @@ export default function Dashboard_Patient({ setActive }) {
 
       const pendingPayment = tickets.filter((t) => t.status === "for_payment");
       setUnpaidTickets(pendingPayment);
+
+      // Find the next active appointment (Triaged/Processing, waiting for doctor)
+      const upcoming = tickets.filter(
+        (t) =>
+          t.status.toLowerCase() === "processing" ||
+          t.status.toLowerCase() === "confirmed",
+      );
+      setNextAppointment(upcoming.length > 0 ? upcoming[0] : null);
     } catch (error) {
       console.error("Error fetching tickets:", error);
     }
@@ -50,12 +61,30 @@ export default function Dashboard_Patient({ setActive }) {
     loadTickets();
   }, []);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "TBA";
+  const getInitials = (name) => {
+    if (!name || name === "TBA" || name === "Unassigned") return "OD";
+    const parts = name.replace("Dr. ", "").split(" ");
+    return (parts[0]?.[0] || "") + (parts[parts.length - 1]?.[0] || "");
+  };
+
+  const isToday = (dateInput) => {
+    if (!dateInput) return false;
+    const dbDate = new Date(dateInput);
+    const today = new Date();
+
+    return (
+      dbDate.getDate() === today.getDate() &&
+      dbDate.getMonth() === today.getMonth() &&
+      dbDate.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const formatApptDate = (dateString) => {
+    if (!dateString) return "--/--/----";
     return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
+      month: "short",
       day: "numeric",
+      year: "numeric",
     });
   };
 
@@ -63,7 +92,9 @@ export default function Dashboard_Patient({ setActive }) {
     <div className="pd-container">
       {/* --- HERO SECTION --- */}
       <section className="pd-hero">
-        <h2 className="pd-hero-title">Good evening, Sarah!</h2>
+        <h2 className="pd-hero-title">
+          Good evening, {currentUser?.firstName || "Patient"}!
+        </h2>
         <p className="pd-hero-subtitle">How can we help you today?</p>
 
         <div className="pd-hero-grid">
@@ -109,33 +140,54 @@ export default function Dashboard_Patient({ setActive }) {
       </section>
 
       {/* --- NEXT APPOINTMENT --- */}
-      <div className="pd-card pd-mb-32">
-        <div className="pd-appt-header">
-          <span className="pd-badge pd-badge-primary">TODAY</span>
-          <span className="pd-text-light pd-text-sm">Next Appointment</span>
-        </div>
-
-        <div className="pd-appt-body">
-          <div>
-            <h3 className="pd-appt-doctor">Dr. Sarah Johnson</h3>
-            <p className="pd-text-light pd-text-sm pd-mb-12">Family Medicine</p>
-            <div className="pd-appt-details">
-              <span className="pd-appt-time">
-                <IconCalendarEvent size={16} /> 2:30 PM
+      {nextAppointment && (
+        <div className="pd-card pd-mb-32">
+          <div className="pd-appt-header">
+            {isToday(nextAppointment.preferredDate) ? (
+              <span className="pd-badge pd-badge-primary">Today</span>
+            ) : (
+              <span className="pd-badge pd-btn-outline-primary">
+                {formatApptDate(nextAppointment.preferredDate)}
               </span>
-              <span className="pd-appt-type">
-                <IconVideo size={16} /> Video Consultation
-              </span>
-            </div>
+            )}
+            <span className="pd-text-light pd-text-sm">Next Appointment</span>
           </div>
-          <button
-            className="pd-btn pd-btn-primary"
-            onClick={() => openDiyModal("Join Video Call")}
-          >
-            Join Video Call
-          </button>
+
+          <div className="pd-appt-body">
+            <div>
+              <h3 className="pd-appt-doctor">
+                {nextAppointment.specialistName ||
+                  (nextAppointment.specialist
+                    ? `Dr. ${nextAppointment.specialist.lastName}`
+                    : "Assigned Specialist")}
+              </h3>
+              <p className="pd-text-light pd-text-sm pd-mb-12">
+                {nextAppointment.targetSpecialty || "General Medicine"}
+              </p>
+              <div className="pd-appt-details">
+                <span className="pd-appt-time">
+                  <IconClock size={16} />{" "}
+                  {nextAppointment.preferredTime || "TBA"}
+                </span>
+                <span className="pd-appt-type">
+                  <IconVideo size={16} />
+                  {nextAppointment.consultationChannel
+                    ? nextAppointment.consultationChannel
+                        .replace("_", " ")
+                        .replace(/\b\w/g, (l) => l.toUpperCase())
+                    : "Video Consultation"}
+                </span>
+              </div>
+            </div>
+            <button
+              className="pd-btn pd-btn-primary"
+              onClick={() => openDiyModal("Join Video Call")}
+            >
+              <IconVideo size={18} /> Join Video Call
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* --- ACTION REQUIRED --- */}
       <div className="pd-section-header">

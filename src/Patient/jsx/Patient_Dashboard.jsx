@@ -34,6 +34,71 @@ export default function Dashboard_Patient({ setActive }) {
   const { user: currentUser } = useAuth();
   const [unpaidTickets, setUnpaidTickets] = useState([]);
   const [nextAppointment, setNextAppointment] = useState(null);
+  const [activeMedicationsCount, setActiveMedicationsCount] = useState(0);
+  const [upcomingAppointmentsCount, setUpcomingAppointmentsCount] = useState(0);
+  const [greeting, setGreeting] = useState("Good day");
+  useEffect(() => {
+    const updateGreeting = () => {
+      const currentHour = new Date().getHours();
+
+      if (currentHour >= 1 && currentHour < 12) {
+        setGreeting("Good morning");
+      } else if (currentHour >= 12 && currentHour < 18) {
+        setGreeting("Good afternoon");
+      } else {
+        setGreeting("Good evening");
+      }
+    };
+    updateGreeting();
+
+    const syncInterval = setInterval(updateGreeting, 60000);
+
+    return () => clearInterval(syncInterval);
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      const [ticketsResponse, recordsResponse] = await Promise.all([
+        apiService.fetchPatientActiveTickets().catch(() => []),
+        apiService
+          .fetchPatientMedicalRecords()
+          .catch(() => ({ prescriptions: [] })),
+      ]);
+
+      const tickets = Array.isArray(ticketsResponse)
+        ? ticketsResponse
+        : ticketsResponse?.data ||
+          ticketsResponse?.activeTickets ||
+          ticketsResponse?.tickets ||
+          [];
+
+      const pendingPayment = tickets.filter((t) => t.status === "for_payment");
+      setUnpaidTickets(pendingPayment);
+
+      const upcoming = tickets.filter(
+        (t) =>
+          t.status.toLowerCase() === "processing" ||
+          t.status.toLowerCase() === "confirmed",
+      );
+      setNextAppointment(upcoming.length > 0 ? upcoming[0] : null);
+
+      const activeAppts = tickets.filter(
+        (t) => t.status.toLowerCase() !== "completed",
+      );
+      setUpcomingAppointmentsCount(activeAppts.length);
+
+      const prescriptions =
+        recordsResponse?.prescriptions ||
+        recordsResponse?.data?.prescriptions ||
+        [];
+      const activeMeds = prescriptions.filter(
+        (p) => p.status === "Active" || p.status === "active",
+      );
+      setActiveMedicationsCount(activeMeds.length);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    }
+  };
 
   const loadTickets = async () => {
     try {
@@ -45,7 +110,6 @@ export default function Dashboard_Patient({ setActive }) {
       const pendingPayment = tickets.filter((t) => t.status === "for_payment");
       setUnpaidTickets(pendingPayment);
 
-      // Find the next active appointment (Triaged/Processing, waiting for doctor)
       const upcoming = tickets.filter(
         (t) =>
           t.status.toLowerCase() === "processing" ||
@@ -88,12 +152,22 @@ export default function Dashboard_Patient({ setActive }) {
     });
   };
 
+  useEffect(() => {
+    loadTickets();
+
+    const pollingInterval = setInterval(() => {
+      loadTickets();
+    }, 10000);
+
+    return () => clearInterval(pollingInterval);
+  }, []);
+
   return (
     <div className="pd-container">
       {/* --- HERO SECTION --- */}
       <section className="pd-hero">
         <h2 className="pd-hero-title">
-          Good evening, {currentUser?.firstName || "Patient"}!
+          {greeting}, {currentUser?.firstName || "Patient"}!
         </h2>
         <p className="pd-hero-subtitle">How can we help you today?</p>
 
@@ -190,115 +264,89 @@ export default function Dashboard_Patient({ setActive }) {
       )}
 
       {/* --- ACTION REQUIRED --- */}
-      <div className="pd-section-header">
-        <div className="pd-section-title">
-          <IconAlertCircle className="pd-text-warning" size={20} />
-          <h4>Action Required</h4>
-        </div>
-        <button
-          className="pd-btn-view-all"
-          onClick={() => setActive("MedicalRecords")}
-        >
-          View All <IconArrowRight size={14} />
-        </button>
-      </div>
-
-      <div className="pd-action-list">
-        {/* 1. Static Specialist Referral Card */}
-        <div className="pd-card pd-warning-card">
-          <div className="pd-warning-content">
-            <div className="pd-warning-info">
-              <h5>Specialist Referral - Orthopedic Surgeon</h5>
-              <p className="pd-text-light pd-text-sm pd-mb-8">
-                Referred by Dr. Sofia Lim (Cardiologist)
-              </p>
-              <div className="pd-info-row">
-                <IconUser size={16} className="pd-text-light" />
-                <span className="pd-text-sm">
-                  <strong>Reason:</strong> Knee pain after exercise
-                </span>
-              </div>
+      {unpaidTickets.length > 0 && (
+        <>
+          <div className="pd-section-header">
+            <div className="pd-section-title">
+              <IconAlertCircle className="pd-text-warning" size={20} />
+              <h4>Action Required</h4>
             </div>
-            <div className="pd-warning-actions">
-              <div className="pd-warning-actions-top">
-                <span className="pd-badge pd-badge-warning">Pending</span>
-                <button
-                  className="pd-btn pd-btn-warning"
-                  onClick={() => setActive("Services")}
-                >
-                  <IconUserPlus size={16} /> Book Appointment
-                </button>
-              </div>
-              <button
-                className="pd-btn pd-btn-outline pd-w-full pd-mt-8"
-                onClick={() => openDiyModal("View Details")}
-              >
-                View Details
-              </button>
-            </div>
+            <button
+              className="pd-btn-view-all"
+              onClick={() => setActive("MedicalRecords")}
+            >
+              View All <IconArrowRight size={14} />
+            </button>
           </div>
-        </div>
 
-        {/* --- PAYMENT CARDS --- */}
-        {unpaidTickets.map((ticket) => (
-          <div className="pd-card pd-warning-card" key={ticket.id}>
-            <div className="pd-warning-content">
-              <div className="pd-warning-info">
-                <h5>
-                  Consultation with {ticket.targetSpecialty || "Specialist"}
-                </h5>
-                <p className="pd-text-light pd-text-sm pd-mb-8">
-                  Ticket Reference: {ticket.ticketNumber}
-                </p>
+          <div className="pd-action-list">
+            {/* --- PAYMENT CARDS --- */}
+            {unpaidTickets.map((ticket) => (
+              <div className="pd-card pd-warning-card" key={ticket.id}>
+                <div className="pd-warning-content">
+                  <div className="pd-warning-info">
+                    <h5>
+                      Consultation with {ticket.targetSpecialty || "Specialist"}
+                    </h5>
+                    <p className="pd-text-light pd-text-sm pd-mb-8">
+                      Ticket Reference: {ticket.ticketNumber}
+                    </p>
 
-                <div className="pd-info-row">
-                  <IconLink size={16} className="pd-text-light" />
-                  <span className="pd-text-sm">
-                    <strong>Payment Required:</strong> ₱
-                    {ticket.totalAmount > 0 ? ticket.totalAmount : 850}
-                  </span>
+                    <div className="pd-info-row">
+                      <IconLink size={16} className="pd-text-light" />
+                      <span className="pd-text-sm">
+                        <strong>Payment Required:</strong> ₱
+                        {ticket.totalAmount > 0 ? ticket.totalAmount : 850}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pd-warning-actions">
+                    <div className="pd-warning-actions-top">
+                      <span className="pd-badge pd-badge-warning">Pending</span>
+                      <button
+                        className="pd-btn pd-btn-warning"
+                        onClick={() => payment.openPayment(ticket)}
+                      >
+                        <IconCreditCard size={16} /> Pay Now
+                      </button>
+                    </div>
+                    <button
+                      className="pd-btn pd-btn-outline pd-w-full pd-mt-8"
+                      onClick={() => payment.openPayment(ticket)}
+                    >
+                      View Invoice
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              <div className="pd-warning-actions">
-                <div className="pd-warning-actions-top">
-                  <span className="pd-badge pd-badge-warning">Pending</span>
-                  <button
-                    className="pd-btn pd-btn-warning"
-                    onClick={() => payment.openPayment(ticket)}
-                  >
-                    <IconCreditCard size={16} /> Pay Now
-                  </button>
-                </div>
-                <button
-                  className="pd-btn pd-btn-outline pd-w-full pd-mt-8"
-                  onClick={() => payment.openPayment(ticket)}
-                >
-                  View Invoice
-                </button>
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
       {/* --- HEALTH OVERVIEW --- */}
       <h4 className="pd-mb-12">Health Overview</h4>
       <div className="pd-overview-grid">
+        {/* Dynamic Active Medications Card */}
         <div className="pd-card pd-overview-item">
           <div className="pd-overview-icon pd-bg-light-primary pd-text-primary">
             <IconPill size={24} />
           </div>
-          <h2>3</h2>
+          <h2>{activeMedicationsCount}</h2>
           <p className="pd-text-light pd-text-sm">Active Medications</p>
         </div>
+
+        {/* Dynamic Upcoming Appointments Card */}
         <div className="pd-card pd-overview-item">
           <div className="pd-overview-icon pd-bg-light-primary pd-text-primary">
             <IconCalendarEvent size={24} />
           </div>
-          <h2>2</h2>
+          <h2>{upcomingAppointmentsCount}</h2>
           <p className="pd-text-light pd-text-sm">Upcoming Appointments</p>
         </div>
+
+        {/* Lab Results 
         <div className="pd-card pd-overview-item pd-relative">
           <span className="pd-badge pd-badge-warning pd-badge-new">New</span>
           <div className="pd-overview-icon pd-bg-light-primary pd-text-primary">
@@ -307,6 +355,7 @@ export default function Dashboard_Patient({ setActive }) {
           <h2>1 New</h2>
           <p className="pd-text-light pd-text-sm">Lab Results</p>
         </div>
+        */}
       </div>
 
       {/* Payment Orchestrator Overlay */}
@@ -317,7 +366,7 @@ export default function Dashboard_Patient({ setActive }) {
               className="absolute -top-10 right-0 p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-full transition-colors"
               onClick={() => {
                 payment.closePayment();
-                loadTickets();
+                loadDashboardData();
               }}
             >
               <IconX size={24} />
@@ -348,7 +397,7 @@ export default function Dashboard_Patient({ setActive }) {
                   onViewInvoice={() => payment.openPayment(payment.ticket)}
                   onBackToHistory={() => {
                     payment.closePayment();
-                    loadTickets();
+                    loadDashboardData();
                   }}
                 />
               )}

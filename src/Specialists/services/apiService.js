@@ -100,17 +100,21 @@ export async function changePassword(currentPassword, newPassword) {
 }
 
 export async function getMedicalHistoryData(patientId) {
-  return apiRequest(`/api/v1/patients/view-medical-history?patientId=${patientId}`);
+  return apiRequest(
+    `/api/v1/patients/view-medical-history?patientId=${patientId}`,
+  );
 }
 
 export async function getPatientProfile(patientId) {
-  const data = await apiRequest(`/api/v1/specialist/patient-profile/${patientId}`);
+  const data = await apiRequest(
+    `/api/v1/specialist/patient-profile/${patientId}`,
+  );
   return data.data || data;
 }
 
 export async function requestMedicalHistory(ticketId) {
-  return apiRequest('/api/v1/specialist/request-medical-history', {
-    method: 'POST',
+  return apiRequest("/api/v1/specialist/request-medical-history", {
+    method: "POST",
     body: JSON.stringify({ ticketId }),
   });
 }
@@ -177,18 +181,24 @@ export async function updateTicket(ticketId, updateData) {
 }
 
 export async function updateTicketConsultation(ticketId, consultationData) {
-  const data = await apiRequest(`/api/v1/specialist/tickets/${ticketId}/consultation`, {
-    method: "PUT",
-    body: JSON.stringify(consultationData),
-  });
+  const data = await apiRequest(
+    `/api/v1/specialist/tickets/${ticketId}/consultation`,
+    {
+      method: "PUT",
+      body: JSON.stringify(consultationData),
+    },
+  );
   return data.ticket;
 }
 
 export async function passTicketBackToNurse(ticketId, notes = "") {
-  const data = await apiRequest(`/api/v1/specialist/tickets/${ticketId}/pass-back`, {
-    method: "POST",
-    body: JSON.stringify({ notes }),
-  });
+  const data = await apiRequest(
+    `/api/v1/specialist/tickets/${ticketId}/pass-back`,
+    {
+      method: "POST",
+      body: JSON.stringify({ notes }),
+    },
+  );
   return data.ticket;
 }
 
@@ -306,3 +316,21 @@ export async function testConnection() {
 }
 
 export { API_BASE_URL };
+
+/**
+ * Fetch a patient's shared medical records.
+ * Will throw an error (403) if the specialist does not have access.
+ */
+export async function fetchSharedRecords(patientId) {
+  try {
+    return await apiRequest(
+      `/api/v1/specialist/patient-records?patientId=${patientId}`,
+      {
+        method: "GET",
+      },
+    );
+  } catch (error) {
+    console.error("Error fetching shared records:", error);
+    throw error;
+  }
+}

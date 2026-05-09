@@ -700,6 +700,8 @@ const SpecialistDashboard = () => {
   const [completedDetailLoading, setCompletedDetailLoading] = useState(false);
   const [completedDetailTicket, setCompletedDetailTicket] = useState(null);
   const [completedDetailTab, setCompletedDetailTab] = useState("patient");
+  const [hasSharedAccess, setHasSharedAccess] = useState(false);
+  const [sharedMedicalData, setSharedMedicalData] = useState(null);
 
   const [dashboardStats, setDashboardStats] = useState({
     totalPatients: 0,
@@ -1382,16 +1384,37 @@ const SpecialistDashboard = () => {
   }, [activeTab, loadTicketsData]);
 
   useEffect(() => {
-    if (selectedTicketId) {
-      const data = loadEncounterData(selectedTicketId);
-      if (data) {
-        setEncounter(data);
-      } else {
-        setEncounter(createDefaultEncounter());
+    const checkRecordAccess = async () => {
+      if (!selectedTicketId) {
+        setHasSharedAccess(false);
+        setSharedMedicalData(null);
+        return;
       }
-      setMhRequests([]);
-    }
-  }, [selectedTicketId]);
+
+      const activeTicket = tickets.find(
+        (t) => String(t.id) === String(selectedTicketId),
+      );
+      const patientId =
+        activeTicket?.rawTicket?.patient?.id ||
+        activeTicket?.patientId ||
+        activeTicket?.rawTicket?.patientId;
+
+      if (!patientId) return;
+
+      try {
+        const response = await specialistApi.fetchSharedRecords(patientId);
+        setHasSharedAccess(true);
+        setSharedMedicalData(response.data);
+        setMhRequests([{ label: "Shared via System" }]); // Tricks the UI to show the 'Shared' pill
+      } catch (error) {
+        setHasSharedAccess(false);
+        setSharedMedicalData(null);
+        setMhRequests([]);
+      }
+    };
+
+    checkRecordAccess();
+  }, [selectedTicketId, tickets]);
 
   useEffect(() => {
     const savedLabRequests = Array.isArray(encounter?.labRequests)
@@ -1582,6 +1605,39 @@ const SpecialistDashboard = () => {
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [consultationStartedAtMs]);
+
+  useEffect(() => {
+    const checkRecordAccess = async () => {
+      if (!selectedTicketId) {
+        setHasSharedAccess(false);
+        setSharedMedicalData(null);
+        return;
+      }
+      const activeTicket = tickets.find(
+        (t) => String(t.id) === String(selectedTicketId),
+      );
+      const patientId =
+        activeTicket?.rawTicket?.patient?.id || activeTicket?.patientId;
+
+      if (!patientId) return;
+
+      try {
+        // Ask the Bouncer route!
+        const response = await specialistApi.fetchSharedRecords(patientId);
+
+        setHasSharedAccess(true);
+        setSharedMedicalData(response.data);
+
+        setMhRequests([{ label: "Shared via System" }]);
+      } catch (error) {
+        setHasSharedAccess(false);
+        setSharedMedicalData(null);
+        setMhRequests([]); // Clear the dummy requests
+      }
+    };
+
+    checkRecordAccess();
+  }, [selectedTicketId, tickets]);
 
   const formatConsultationDuration = useCallback((totalSec) => {
     const m = Math.floor(totalSec / 60);
@@ -3205,7 +3261,12 @@ const SpecialistDashboard = () => {
                       type="button"
                       className="specialist-medical-history-btn"
                       onClick={() => setShowMedicalRecords(true)}
-                      disabled={!selectedTicket}
+                      disabled={!selectedTicket || !hasSharedAccess} // <-- CHANGED
+                      title={
+                        !hasSharedAccess
+                          ? "The patient must share their records first."
+                          : ""
+                      }
                     >
                       <span className="specialist-medical-history-icon">
                         <FaFileMedical size={17} />
@@ -3371,72 +3432,69 @@ const SpecialistDashboard = () => {
                             Patient record permissions and shared details.
                           </p>
                         </div>
-                        {mhRequests.length > 0 && (
+                        {hasSharedAccess && (
                           <span className="status-pill status-pill--shared">
                             Shared
                           </span>
                         )}
                       </div>
-                      {mhRequests.length === 0 ? (
+
+                      {!hasSharedAccess ? (
                         <div className="medical-records-empty">
                           <div className="medical-records-icon">🔒</div>
                           <div className="medical-records-empty-text">
                             No medical records shared yet
                           </div>
-                          <button
-                            className="request-record-btn"
-                            onClick={requestPatientRecords}
-                            disabled={
-                              profileData.specialization ===
-                              "General Practitioner"
-                            }
-                            title={
-                              profileData.specialization ===
-                              "General Practitioner"
-                                ? "General practitioners cannot request medical history"
-                                : ""
-                            }
+                          <p
+                            style={{
+                              color: "#66788d",
+                              fontSize: "0.87rem",
+                              margin: "8px 0 0 0",
+                              textAlign: "center",
+                            }}
                           >
-                            Request Record from Patient
-                          </button>
-                          {profileData.specialization ===
-                            "General Practitioner" && (
-                            <p
-                              style={{
-                                color: "#66788d",
-                                fontSize: "0.87rem",
-                                margin: "8px 0 0 0",
-                                textAlign: "center",
-                              }}
-                            >
-                              General practitioners cannot request patient
-                              medical history
-                            </p>
-                          )}
+                            The patient must grant you access from their
+                            dashboard.
+                          </p>
                         </div>
                       ) : (
                         <div className="medical-records-list">
-                          {[
-                            { label: "Previous Consultations", icon: "📄" },
-                            { label: "Prescriptions", icon: "💊" },
-                            { label: "Lab Results", icon: "🧪" },
-                            { label: "Treatment Plans", icon: "🩺" },
-                          ].map((item) => (
-                            <div
-                              key={item.label}
-                              className="medical-records-item"
-                            >
-                              <span className="medical-records-item-icon">
-                                {item.icon}
-                              </span>
-                              <span className="medical-records-item-label">
-                                {item.label}
-                              </span>
-                              <span className="medical-records-item-arrow">
-                                ▸
-                              </span>
-                            </div>
-                          ))}
+                          <div className="medical-records-item">
+                            <span className="medical-records-item-icon">
+                              📄
+                            </span>
+                            <span className="medical-records-item-label">
+                              Consultations (
+                              {sharedMedicalData?.certificates?.length || 0})
+                            </span>
+                          </div>
+                          <div className="medical-records-item">
+                            <span className="medical-records-item-icon">
+                              💊
+                            </span>
+                            <span className="medical-records-item-label">
+                              Prescriptions (
+                              {sharedMedicalData?.prescriptions?.length || 0})
+                            </span>
+                          </div>
+                          <div className="medical-records-item">
+                            <span className="medical-records-item-icon">
+                              🧪
+                            </span>
+                            <span className="medical-records-item-label">
+                              Lab Results (
+                              {sharedMedicalData?.labRequests?.length || 0})
+                            </span>
+                          </div>
+                          <div className="medical-records-item">
+                            <span className="medical-records-item-icon">
+                              🩺
+                            </span>
+                            <span className="medical-records-item-label">
+                              Treatment Plans (
+                              {sharedMedicalData?.treatmentPlans?.length || 0})
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -6591,6 +6649,7 @@ const SpecialistDashboard = () => {
             consultationType={
               selectedTicket?.consultationChannel || selectedTicket?.service
             }
+            sharedData={sharedMedicalData}
             overlayClassName="modal"
             overlayStyle={{ zIndex: 999999 }}
           />,

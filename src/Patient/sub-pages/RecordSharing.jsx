@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   IconArrowLeft,
   IconShieldCheck,
@@ -19,70 +19,43 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import "../css/Patient_RecordSharing.css";
+import * as apiService from "../services/apiService";
 
-// --- MOCK DATA ---
-const DOCTORS_FLOW = [
-  {
-    id: 1,
-    name: "Dr. Maria Santos",
-    spec: "Cardiologist",
-    reason: "Heart condition follow-up",
-  },
-  {
-    id: 2,
-    name: "Dr. James Chen",
-    spec: "Orthopedic Surgeon",
-    reason: "Knee pain assessment",
-  },
-  {
-    id: 3,
-    name: "Dr. Sofia Reyes",
-    spec: "Dermatologist",
-    reason: "Skin condition review",
-  },
-];
-
+// --- STATIC RECORD TYPES ---
 const RECORD_TYPES = [
   {
-    id: "consults",
-    title: "Previous Consultations",
-    items: 8,
-    desc: "History of past doctor visits and diagnoses",
-    icon: IconCalendarEvent,
-  },
-  {
     id: "prescriptions",
-    title: "Prescriptions",
-    items: 12,
-    desc: "Medication history and current prescriptions",
     icon: IconPill,
+    title: "Prescriptions",
+    items: 4,
+    desc: "Active and past medication records",
   },
   {
-    id: "labs",
-    title: "Lab Results",
-    items: 5,
-    desc: "Blood tests, imaging, and diagnostic reports",
+    id: "lab_results",
     icon: IconFlask,
-  },
-  {
-    id: "certs",
-    title: "Medical Certificates",
-    items: 3,
-    desc: "Sick leaves and fitness to work documents",
-    icon: IconCertificate,
-  },
-  {
-    id: "plans",
-    title: "Treatment Plans",
+    title: "Laboratory Results",
     items: 2,
-    desc: "Ongoing treatment protocols and care plans",
+    desc: "Recent blood tests and imaging reports",
+  },
+  {
+    id: "certificates",
+    icon: IconCertificate,
+    title: "Medical Certificates",
+    items: 1,
+    desc: "Clearances and fit-to-work documents",
+  },
+  {
+    id: "clinical_notes",
     icon: IconClipboardList,
+    title: "Clinical Notes",
+    items: 5,
+    desc: "Past consultation summaries and diagnoses",
   },
 ];
 
 export default function RecordSharing({ onGoBack }) {
   // --- STATE ---
-  const [availableDoctors, setAvailableDoctors] = useState(DOCTORS_FLOW);
+  const [availableDoctors, setAvailableDoctors] = useState([]);
   const [sharedActivities, setSharedActivities] = useState([]);
 
   // Share Modal State
@@ -93,6 +66,10 @@ export default function RecordSharing({ onGoBack }) {
 
   // View Modal State
   const [viewingActivity, setViewingActivity] = useState(null);
+
+  // State to hold real doctors
+  const [doctorsList, setDoctorsList] = useState([]);
+  const [isLoadingDoctors, setIsLoadingDoctors] = useState(true);
 
   // --- HANDLERS ---
   const openModal = (doctor) => {
@@ -123,26 +100,37 @@ export default function RecordSharing({ onGoBack }) {
     }
   };
 
-  const handleShare = (isAll = false) => {
-    const recordsToShare = isAll
-      ? RECORD_TYPES.map((r) => r.id)
-      : selectedRecords;
+  const handleShare = async (isAll = false) => {
+    try {
+      // 1. Send the request to the backend!
+      await apiService.shareRecords(selectedDoctor.id);
 
-    const newActivity = {
-      id: Date.now(),
-      doctor: selectedDoctor,
-      recordCount: recordsToShare.length,
-      sharedRecordIds: recordsToShare, // <--- NEW: Saves the exact records checked
-      duration:
-        accessDuration === "one-time" ? "One-time only" : "30 Days (Follow-up)",
-      date: "April 23, 2026 at 02:22 PM",
-    };
+      // 2. Keep your awesome frontend UI logic intact so it looks good for the user
+      const recordsToShare = isAll
+        ? RECORD_TYPES.map((r) => r.id)
+        : selectedRecords;
 
-    setSharedActivities([newActivity, ...sharedActivities]);
-    setAvailableDoctors(
-      availableDoctors.filter((d) => d.id !== selectedDoctor.id),
-    );
-    closeModal();
+      const newActivity = {
+        id: Date.now(),
+        doctor: selectedDoctor,
+        recordCount: recordsToShare.length,
+        sharedRecordIds: recordsToShare,
+        duration:
+          accessDuration === "one-time"
+            ? "One-time only"
+            : "30 Days (Follow-up)",
+        date: new Date().toLocaleString(), // Dynamically get today's date instead of hardcoded April 2026!
+      };
+
+      setSharedActivities([newActivity, ...sharedActivities]);
+      setAvailableDoctors(
+        availableDoctors.filter((d) => d.id !== selectedDoctor.id),
+      );
+      closeModal();
+    } catch (error) {
+      console.error("Failed to share records via API:", error);
+      // Optional: Add a toast notification here to tell the user it failed
+    }
   };
 
   const handleRevoke = (activityId, doctor) => {
@@ -152,6 +140,26 @@ export default function RecordSharing({ onGoBack }) {
   };
 
   const isAllSelected = selectedRecords.length === RECORD_TYPES.length;
+
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        setIsLoadingDoctors(true);
+        const response = await apiService.fetchDoctors();
+
+        if (response && response.doctors) {
+          // CHANGE THIS LINE: Inject the real doctors into your existing state!
+          setAvailableDoctors(response.doctors);
+        }
+      } catch (error) {
+        console.error("Failed to load doctors:", error);
+      } finally {
+        setIsLoadingDoctors(false);
+      }
+    };
+
+    loadDoctors();
+  }, []);
 
   return (
     <div className="mrs-container">

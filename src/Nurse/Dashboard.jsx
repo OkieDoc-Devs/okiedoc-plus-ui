@@ -1,14 +1,14 @@
-import '../App.css';
-import '../index.css';
-import './NurseStyles.css';
-import './CallbackStyles.css';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import "../App.css";
+import "../index.css";
+import "./NurseStyles.css";
+import "./CallbackStyles.css";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   getNurseFirstName,
   getNurseProfileImage,
   saveNurseProfileImage,
-} from './services/storageService.js';
+} from "./services/storageService.js";
 import {
   fetchDashboardFromAPI,
   fetchDoctorsFromAPI,
@@ -17,17 +17,17 @@ import {
   fetchTicketsFromAPI,
   triageTicket,
   updateTicket,
-} from './services/apiService.js';
-import { useAuth } from '../contexts/AuthContext';
-import { transformProfileFromAPI } from './services/profileService.js';
-import { sendMessage as sendMessageToTicket } from './services/chatService.js';
-import NotificationBell from '../components/Notifications/NotificationBell';
-import Avatar from '../components/Avatar';
-import CallbackQueueCard from '../components/CallbackQueueCard';
-import PatientMedicalRecordsModal from '../components/MedicalRecords';
-import { disconnectSocket } from '../utils/socketClient';
-import { useChat } from './services/useChat.js';
-import { fetchCallbacks, updateCallbackStatus } from '../api/apiClient';
+} from "./services/apiService.js";
+import { useAuth } from "../contexts/AuthContext";
+import { transformProfileFromAPI } from "./services/profileService.js";
+import { sendMessage as sendMessageToTicket } from "./services/chatService.js";
+import NotificationBell from "../components/Notifications/NotificationBell";
+import Avatar from "../components/Avatar";
+import CallbackQueueCard from "../components/CallbackQueueCard";
+import PatientMedicalRecordsModal from "../components/MedicalRecords";
+import { disconnectSocket } from "../utils/socketClient";
+import { useChat } from "./services/useChat.js";
+import { fetchCallbacks, updateCallbackStatus } from "../api/apiClient";
 import {
   Activity,
   AlertCircle,
@@ -50,99 +50,99 @@ import {
   Users,
   UserRound,
   Video,
-} from 'lucide-react';
+} from "lucide-react";
 
-const DEFAULT_TEXT = 'N/A';
+const DEFAULT_TEXT = "N/A";
 const DASHBOARD_REFRESH_MS = 30000;
 const QUICK_MESSAGE_LIMIT = 60;
-const DASHBOARD_TICKETS_CACHE_KEY = 'nurse.dashboardTicketsCache';
+const DASHBOARD_TICKETS_CACHE_KEY = "nurse.dashboardTicketsCache";
 const TRIAGE_STATUS_OPTIONS = [
-  'Waiting',
-  'In Triage',
-  'Ready for Doctor',
-  'Urgent',
-  'Completed',
+  "Waiting",
+  "In Triage",
+  "Ready for Doctor",
+  "Urgent",
+  "Completed",
 ];
-const CALLBACK_STATUS_OPTIONS = ['new', 'in_progress', 'pending', 'expired'];
+const CALLBACK_STATUS_OPTIONS = ["new", "in_progress", "pending", "expired"];
 const SYMPTOM_PILL_OPTIONS = [
-  'Fever',
-  'Headache',
-  'Cough',
-  'Body Pain',
-  'Dizziness',
-  'Chest Pain',
-  'Sore Throat',
-  'Nausea',
-  'Fatigue',
-  'Shortness of Breath',
-  'Stomach Pain',
-  'Loss of Appetite',
+  "Fever",
+  "Headache",
+  "Cough",
+  "Body Pain",
+  "Dizziness",
+  "Chest Pain",
+  "Sore Throat",
+  "Nausea",
+  "Fatigue",
+  "Shortness of Breath",
+  "Stomach Pain",
+  "Loss of Appetite",
 ];
 const ACTIVE_DISEASE_OPTIONS = [
-  'Hypertension',
-  'Diabetes',
-  'Asthma',
-  'Heart Disease',
-  'Kidney Disease',
-  'Thyroid Disorder',
-  'Cancer',
-  'Arthritis',
+  "Hypertension",
+  "Diabetes",
+  "Asthma",
+  "Heart Disease",
+  "Kidney Disease",
+  "Thyroid Disorder",
+  "Cancer",
+  "Arthritis",
 ];
 const ROS_GROUPS = [
   {
-    title: 'General',
-    items: ['Fever', 'Fatigue', 'Weight Loss'],
+    title: "General",
+    items: ["Fever", "Fatigue", "Weight Loss"],
   },
   {
-    title: 'Respiratory',
-    items: ['Cough', 'Shortness of Breath', 'Wheezing'],
+    title: "Respiratory",
+    items: ["Cough", "Shortness of Breath", "Wheezing"],
   },
   {
-    title: 'Cardiovascular',
-    items: ['Chest Pain', 'Palpitations'],
+    title: "Cardiovascular",
+    items: ["Chest Pain", "Palpitations"],
   },
   {
-    title: 'Gastrointestinal',
-    items: ['Nausea', 'Vomiting', 'Diarrhea', 'Constipation', 'Abdominal Pain'],
+    title: "Gastrointestinal",
+    items: ["Nausea", "Vomiting", "Diarrhea", "Constipation", "Abdominal Pain"],
   },
   {
-    title: 'Neurological',
-    items: ['Dizziness', 'Headache', 'Numbness', 'Weakness'],
+    title: "Neurological",
+    items: ["Dizziness", "Headache", "Numbness", "Weakness"],
   },
 ];
-const URGENCY_LEVEL_OPTIONS = ['Low', 'Normal', 'Urgent', 'Critical'];
-const PAIN_MAP_VIEWS = ['front', 'back'];
+const URGENCY_LEVEL_OPTIONS = ["Low", "Normal", "Urgent", "Critical"];
+const PAIN_MAP_VIEWS = ["front", "back"];
 const PAIN_MAP_AREAS = {
   front: [
-    { key: 'head', label: 'Head', className: 'part-head' },
-    { key: 'neck', label: 'Neck', className: 'part-neck' },
-    { key: 'chest', label: 'Chest', className: 'part-chest' },
-    { key: 'abdomen', label: 'Abdomen', className: 'part-abdomen' },
-    { key: 'left-arm', label: 'Left Arm', className: 'part-left-arm' },
-    { key: 'right-arm', label: 'Right Arm', className: 'part-right-arm' },
-    { key: 'left-leg', label: 'Left Leg', className: 'part-left-leg' },
-    { key: 'right-leg', label: 'Right Leg', className: 'part-right-leg' },
+    { key: "head", label: "Head", className: "part-head" },
+    { key: "neck", label: "Neck", className: "part-neck" },
+    { key: "chest", label: "Chest", className: "part-chest" },
+    { key: "abdomen", label: "Abdomen", className: "part-abdomen" },
+    { key: "left-arm", label: "Left Arm", className: "part-left-arm" },
+    { key: "right-arm", label: "Right Arm", className: "part-right-arm" },
+    { key: "left-leg", label: "Left Leg", className: "part-left-leg" },
+    { key: "right-leg", label: "Right Leg", className: "part-right-leg" },
   ],
   back: [
-    { key: 'head', label: 'Head', className: 'part-head' },
-    { key: 'neck', label: 'Neck', className: 'part-neck' },
-    { key: 'upper-back', label: 'Upper Back', className: 'part-chest' },
-    { key: 'lower-back', label: 'Lower Back', className: 'part-abdomen' },
-    { key: 'left-arm', label: 'Left Arm', className: 'part-left-arm' },
-    { key: 'right-arm', label: 'Right Arm', className: 'part-right-arm' },
-    { key: 'left-leg', label: 'Left Leg', className: 'part-left-leg' },
-    { key: 'right-leg', label: 'Right Leg', className: 'part-right-leg' },
+    { key: "head", label: "Head", className: "part-head" },
+    { key: "neck", label: "Neck", className: "part-neck" },
+    { key: "upper-back", label: "Upper Back", className: "part-chest" },
+    { key: "lower-back", label: "Lower Back", className: "part-abdomen" },
+    { key: "left-arm", label: "Left Arm", className: "part-left-arm" },
+    { key: "right-arm", label: "Right Arm", className: "part-right-arm" },
+    { key: "left-leg", label: "Left Leg", className: "part-left-leg" },
+    { key: "right-leg", label: "Right Leg", className: "part-right-leg" },
   ],
 };
-const TRIAGE_DRAFTS_STORAGE_KEY = 'nurse.triageDraftsByTicket';
+const TRIAGE_DRAFTS_STORAGE_KEY = "nurse.triageDraftsByTicket";
 const FALLBACK_DEPARTMENTS = [
-  'General Medicine',
-  'Cardiology',
-  'Pediatrics',
-  'Orthopedics',
-  'Dermatology',
-  'Internal Medicine',
-  'Surgery',
+  "General Medicine",
+  "Cardiology",
+  "Pediatrics",
+  "Orthopedics",
+  "Dermatology",
+  "Internal Medicine",
+  "Surgery",
 ];
 
 const readValue = (source, keys, fallback = DEFAULT_TEXT) => {
@@ -151,7 +151,7 @@ const readValue = (source, keys, fallback = DEFAULT_TEXT) => {
       Object.prototype.hasOwnProperty.call(source || {}, key) &&
       source[key] !== null &&
       source[key] !== undefined &&
-      String(source[key]).trim() !== ''
+      String(source[key]).trim() !== ""
     ) {
       return source[key];
     }
@@ -161,10 +161,10 @@ const readValue = (source, keys, fallback = DEFAULT_TEXT) => {
 
 const toList = (value) => {
   if (Array.isArray(value)) {
-    return value.map((entry) => String(entry || '').trim()).filter(Boolean);
+    return value.map((entry) => String(entry || "").trim()).filter(Boolean);
   }
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const trimmed = value.trim();
     if (!trimmed) {
       return [];
@@ -174,7 +174,7 @@ const toList = (value) => {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed)) {
         return parsed
-          .map((entry) => String(entry || '').trim())
+          .map((entry) => String(entry || "").trim())
           .filter(Boolean);
       }
     } catch {}
@@ -189,11 +189,11 @@ const toList = (value) => {
 };
 
 const parseJsonValue = (value, fallback = null) => {
-  if (value === null || value === undefined || value === '') {
+  if (value === null || value === undefined || value === "") {
     return fallback;
   }
 
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return value;
   }
 
@@ -204,14 +204,14 @@ const parseJsonValue = (value, fallback = null) => {
   }
 };
 
-const getIntakeValue = (ticket, keys, fallback = '') => {
+const getIntakeValue = (ticket, keys, fallback = "") => {
   const intakeDetails = parseJsonValue(
     ticket?.intakeDetails,
     ticket?.intakeDetails,
   );
   const intakeEntries = Array.isArray(intakeDetails)
     ? intakeDetails
-    : intakeDetails && typeof intakeDetails === 'object'
+    : intakeDetails && typeof intakeDetails === "object"
       ? [intakeDetails]
       : [];
 
@@ -220,7 +220,7 @@ const getIntakeValue = (ticket, keys, fallback = '') => {
     if (
       directValue !== null &&
       directValue !== undefined &&
-      directValue !== ''
+      directValue !== ""
     ) {
       return directValue;
     }
@@ -230,7 +230,7 @@ const getIntakeValue = (ticket, keys, fallback = '') => {
       if (
         nestedValue !== null &&
         nestedValue !== undefined &&
-        nestedValue !== ''
+        nestedValue !== ""
       ) {
         return nestedValue;
       }
@@ -248,12 +248,12 @@ const normalizePainAreas = (value) => {
 
   return parsed
     .map((entry) => {
-      if (entry && typeof entry === 'object') {
-        const view = PAIN_MAP_VIEWS.includes(entry.view) ? entry.view : 'front';
+      if (entry && typeof entry === "object") {
+        const view = PAIN_MAP_VIEWS.includes(entry.view) ? entry.view : "front";
         const key =
           entry.key ||
-          String(entry.id || '')
-            .split(':')
+          String(entry.id || "")
+            .split(":")
             .pop();
         const label = entry.label || key;
 
@@ -269,24 +269,24 @@ const normalizePainAreas = (value) => {
         };
       }
 
-      const raw = String(entry || '').trim();
+      const raw = String(entry || "").trim();
       if (!raw) {
         return null;
       }
 
-      const [maybeView, maybeKey] = raw.includes(':')
-        ? raw.split(':')
-        : ['front', raw];
-      const view = PAIN_MAP_VIEWS.includes(maybeView) ? maybeView : 'front';
+      const [maybeView, maybeKey] = raw.includes(":")
+        ? raw.split(":")
+        : ["front", raw];
+      const view = PAIN_MAP_VIEWS.includes(maybeView) ? maybeView : "front";
       const key = maybeKey || raw;
       return {
         id: `${view}:${key}`,
         view,
         key,
         label: key
-          .split('-')
+          .split("-")
           .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(' '),
+          .join(" "),
       };
     })
     .filter(Boolean);
@@ -300,16 +300,16 @@ const formatDate = (dateString) => {
     if (Number.isNaN(date.getTime())) return String(dateString);
 
     if (
-      typeof dateString === 'string' &&
-      /^\d{4}-\d{2}-\d{2}$/.test(dateString.split('T')[0])
+      typeof dateString === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(dateString.split("T")[0])
     ) {
       date = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
     }
 
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   } catch {
     return String(dateString);
@@ -317,12 +317,12 @@ const formatDate = (dateString) => {
 };
 
 const formatTime = (dateString) => {
-  if (!dateString) return '--:--';
+  if (!dateString) return "--:--";
   const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return '--:--';
-  return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
+  if (Number.isNaN(date.getTime())) return "--:--";
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 
@@ -344,22 +344,22 @@ const calculateAge = (birthdate) => {
 
 const normalizeStatus = (ticket, isSelected) => {
   if (isSelected) {
-    return 'active';
+    return "active";
   }
 
-  const status = String(ticket.status || '').toLowerCase();
+  const status = String(ticket.status || "").toLowerCase();
 
-  if (status === 'urgent' || status.includes('urgent')) {
-    return 'urgent';
+  if (status === "urgent" || status.includes("urgent")) {
+    return "urgent";
   }
 
-  return 'pending';
+  return "pending";
 };
 
 const getStatusLabel = (status) => {
-  if (!status) return 'pending';
-  if (status === 'active') return 'active';
-  if (status === 'urgent') return 'Urgent';
+  if (!status) return "pending";
+  if (status === "active") return "active";
+  if (status === "urgent") return "Urgent";
   return status;
 };
 
@@ -374,11 +374,11 @@ const getPatientIdFromTicket = (ticket) => {
     nestedPatientId ??
     readValue(
       ticket,
-      ['patientId', 'Patient_ID', 'patientUserId', 'User_ID', 'userId'],
+      ["patientId", "Patient_ID", "patientUserId", "User_ID", "userId"],
       null,
     );
 
-  if (id === null || id === undefined || id === '') {
+  if (id === null || id === undefined || id === "") {
     return null;
   }
 
@@ -387,179 +387,194 @@ const getPatientIdFromTicket = (ticket) => {
 };
 
 const mapTicketStatusToTriageStatus = (statusValue) => {
-  const value = String(statusValue || '')
+  const value = String(statusValue || "")
     .trim()
     .toLowerCase();
-  if (!value) return 'Waiting';
-  if (value === 'pending') return 'Waiting';
-  if (value === 'processing') return 'In Triage';
-  if (value === 'confirmed') return 'Ready for Doctor';
-  if (value === 'completed') return 'Completed';
-  if (value.includes('urgent')) return 'Urgent';
-  if (value === 'in triage') return 'In Triage';
-  if (value === 'ready for doctor') return 'Ready for Doctor';
-  return 'Waiting';
+  if (!value) return "Waiting";
+  if (value === "pending") return "Waiting";
+  if (value === "processing") return "In Triage";
+  if (value === "confirmed") return "Ready for Doctor";
+  if (value === "completed") return "Completed";
+  if (value.includes("urgent")) return "Urgent";
+  if (value === "in triage") return "In Triage";
+  if (value === "ready for doctor") return "Ready for Doctor";
+  return "Waiting";
 };
 
 const mapTriageStatusToTicketStatus = (triageStatus) => {
-  const value = String(triageStatus || '')
+  const value = String(triageStatus || "")
     .trim()
     .toLowerCase();
-  if (value === 'waiting') return 'pending';
-  if (value === 'in triage') return 'processing';
-  if (value === 'ready for doctor') return 'confirmed';
-  if (value === 'completed') return 'completed';
-  if (value === 'urgent') return 'urgent';
-  return 'pending';
+  if (value === "waiting") return "pending";
+  if (value === "in triage") return "processing";
+  if (value === "ready for doctor") return "confirmed";
+  if (value === "completed") return "completed";
+  if (value === "urgent") return "urgent";
+  return "pending";
 };
 
 const normalizeUrgencyLevel = (value) => {
-  const normalized = String(value || '')
+  const normalized = String(value || "")
     .trim()
     .toLowerCase();
-  if (!normalized) return '';
-  if (normalized === 'high') return 'Urgent';
-  if (normalized === 'low') return 'Low';
-  if (normalized === 'normal') return 'Normal';
-  if (normalized === 'urgent') return 'Urgent';
-  if (normalized === 'critical') return 'Critical';
-  return '';
+  if (!normalized) return "";
+  if (normalized === "high") return "Urgent";
+  if (normalized === "low") return "Low";
+  if (normalized === "normal") return "Normal";
+  if (normalized === "urgent") return "Urgent";
+  if (normalized === "critical") return "Critical";
+  return "";
 };
 
 const toBooleanFlag = (value) => {
   if (value === true || value === 1) return true;
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
-    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+    return normalized === "true" || normalized === "1" || normalized === "yes";
   }
   return false;
 };
 
 const getTriageStatusKey = (statusValue) =>
-  String(statusValue || '')
+  String(statusValue || "")
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '-');
+    .replace(/\s+/g, "-");
 
 const renderTriageStatusIcon = (statusValue) => {
   const statusKey = getTriageStatusKey(statusValue);
 
-  if (statusKey === 'waiting') {
+  if (statusKey === "waiting") {
     return (
-      <Clock3 size={16} strokeWidth={2.2} className='triage-status-icon' />
+      <Clock3 size={16} strokeWidth={2.2} className="triage-status-icon" />
     );
   }
 
-  if (statusKey === 'in-triage') {
+  if (statusKey === "in-triage") {
     return (
-      <Activity size={16} strokeWidth={2.2} className='triage-status-icon' />
+      <Activity size={16} strokeWidth={2.2} className="triage-status-icon" />
     );
   }
 
-  if (statusKey === 'ready-for-doctor') {
+  if (statusKey === "ready-for-doctor") {
     return (
       <CheckCircle2
         size={16}
         strokeWidth={2.2}
-        className='triage-status-icon'
+        className="triage-status-icon"
       />
     );
   }
 
-  if (statusKey === 'urgent') {
+  if (statusKey === "urgent") {
     return (
-      <AlertCircle size={16} strokeWidth={2.2} className='triage-status-icon' />
+      <AlertCircle size={16} strokeWidth={2.2} className="triage-status-icon" />
     );
   }
 
-  if (statusKey === 'completed') {
-    return <span className='triage-status-icon triage-status-icon-x'>x</span>;
+  if (statusKey === "completed") {
+    return <span className="triage-status-icon triage-status-icon-x">x</span>;
   }
 
-  return <Clock3 size={16} strokeWidth={2.2} className='triage-status-icon' />;
+  return <Clock3 size={16} strokeWidth={2.2} className="triage-status-icon" />;
 };
 
 const getChannelLabel = (ticket) => {
   const channel = String(
-    readValue(ticket, ['consultationChannel', 'channel'], 'chat'),
+    readValue(ticket, ["consultationChannel", "channel"], "chat"),
   ).toLowerCase();
-  if (channel.includes('video')) return 'Video';
-  if (channel.includes('voice') || channel.includes('call')) return 'Voice';
-  return 'Chat';
+
+  if (
+    channel.includes("in_person") ||
+    channel.includes("physical") ||
+    channel.includes("clinic")
+  )
+    return "Physical";
+  if (channel.includes("video")) return "Video";
+  if (channel.includes("voice") || channel.includes("call")) return "Voice";
+  return "Chat";
 };
 
 const getCallbackChannelLabel = (callback) => {
   const channel = String(
-    callback?.callType || callback?.contactMethod || callback?.channel || '',
+    callback?.callType || callback?.contactMethod || callback?.channel || "",
   )
     .trim()
     .toLowerCase();
 
-  if (channel.includes('video')) return 'Video';
   if (
-    channel.includes('voice') ||
-    channel.includes('audio') ||
-    channel.includes('call') ||
-    channel.includes('phone')
+    channel.includes("in_person") ||
+    channel.includes("physical") ||
+    channel.includes("clinic")
+  )
+    return "Physical";
+  if (channel.includes("video")) return "Video";
+  if (
+    channel.includes("voice") ||
+    channel.includes("audio") ||
+    channel.includes("call") ||
+    channel.includes("phone")
   ) {
-    return 'Voice';
+    return "Voice";
   }
 
-  return 'Chat';
+  return "Chat";
 };
 
 const mapCallbackStatusToTicketStatus = (statusValue) => {
-  const value = String(statusValue || '')
+  const value = String(statusValue || "")
     .trim()
     .toLowerCase();
 
-  if (value === 'in_progress' || value === 'inquiry' || value === 'escalated') {
-    return 'processing';
+  if (value === "in_progress" || value === "inquiry" || value === "escalated") {
+    return "processing";
   }
-  if (value === 'expired' || value === 'closed') return 'completed';
-  return 'pending';
+  if (value === "expired" || value === "closed") return "completed";
+  return "pending";
 };
 
 const getCallbackStatusOptionFromDisplay = (displayValue) => {
-  const value = String(displayValue || '')
+  const value = String(displayValue || "")
     .trim()
     .toLowerCase();
 
-  if (value === 'in progress') return 'in_progress';
-  if (value === 'new') return 'new';
-  if (value === 'pending') return 'pending';
-  if (value === 'expired') return 'expired';
-  return 'new';
+  if (value === "in progress") return "in_progress";
+  if (value === "new") return "new";
+  if (value === "pending") return "pending";
+  if (value === "expired") return "expired";
+  return "new";
 };
 
 const getCallbackStatusLabel = (statusValue) => {
-  const value = String(statusValue || '')
+  const value = String(statusValue || "")
     .trim()
     .toLowerCase();
 
-  if (value === 'new') return 'Waiting';
-  if (value === 'in_progress') return 'In Progress';
-  if (value === 'inquiry') return 'Inquiry';
-  if (value === 'escalated') return 'Escalated';
-  if (value === 'closed' || value === 'expired') return 'Closed';
-  return value || 'Waiting';
+  if (value === "new") return "Waiting";
+  if (value === "in_progress") return "In Progress";
+  if (value === "inquiry") return "Inquiry";
+  if (value === "escalated") return "Escalated";
+  if (value === "closed" || value === "expired") return "Closed";
+  return value || "Waiting";
 };
 
 const getCallbackFullName = (callback) => {
-  const directFullName = String(callback?.fullName || '').trim();
+  const directFullName = String(callback?.fullName || "").trim();
   if (directFullName) {
     return directFullName;
   }
 
-  const fallbackName = String(callback?.patientName || callback?.name || '').trim();
+  const fallbackName = String(
+    callback?.patientName || callback?.name || "",
+  ).trim();
   if (fallbackName) {
     return fallbackName;
   }
 
-  const firstName = String(callback?.firstName || '').trim();
-  const lastName = String(callback?.lastName || '').trim();
+  const firstName = String(callback?.firstName || "").trim();
+  const lastName = String(callback?.lastName || "").trim();
   const combinedName = `${firstName} ${lastName}`.trim();
-  return combinedName || 'Callback Request';
+  return combinedName || "Callback Request";
 };
 
 const buildTicketFromCallback = (callback) => {
@@ -588,11 +603,11 @@ const buildTicketFromCallback = (callback) => {
     allergies: toList(callback?.allergies),
     medicalHistory: activeDiseases,
     activeDiseases,
-    chiefComplaint: callback?.message || 'Callback request',
-    symptoms: callback?.message || '',
+    chiefComplaint: callback?.message || "Callback request",
+    symptoms: callback?.message || "",
     consultationChannel: getCallbackChannelLabel(callback),
     status: mapCallbackStatusToTicketStatus(callback?.status),
-    callbackStatus: callback?.status || 'new',
+    callbackStatus: callback?.status || "new",
     preferredDate: callback?.createdAt || null,
     createdAt: callback?.createdAt || null,
     linkedTicketId: callback?.linkedTicketId || null,
@@ -601,14 +616,14 @@ const buildTicketFromCallback = (callback) => {
 
 const getUrgencyLevelFromTicket = (ticket) => {
   const fromFields = normalizeUrgencyLevel(
-    readValue(ticket, ['urgencyLevel', 'urgency', 'priority'], ''),
+    readValue(ticket, ["urgencyLevel", "urgency", "priority"], ""),
   );
 
   return fromFields;
 };
 
 const getTicketDraftFingerprint = (ticket) =>
-  String(readValue(ticket, ['createdAt', 'updatedAt'], '') || '').trim();
+  String(readValue(ticket, ["createdAt", "updatedAt"], "") || "").trim();
 
 const loadCachedDashboardTickets = () => {
   try {
@@ -631,64 +646,64 @@ export default function Dashboard() {
   const [tickets, setTickets] = useState(() => loadCachedDashboardTickets());
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [hasManualDeselection, setHasManualDeselection] = useState(false);
-  const [quickMessage, setQuickMessage] = useState('');
-  const [quickMessageError, setQuickMessageError] = useState('');
+  const [quickMessage, setQuickMessage] = useState("");
+  const [quickMessageError, setQuickMessageError] = useState("");
   const [isSendingQuickMessage, setIsSendingQuickMessage] = useState(false);
-  const [triageStatus, setTriageStatus] = useState('Waiting');
+  const [triageStatus, setTriageStatus] = useState("Waiting");
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [markInquiry, setMarkInquiry] = useState(false);
   const [markIncomplete, setMarkIncomplete] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [patientSubmittedConcern, setPatientSubmittedConcern] = useState('');
-  const [chiefComplaintDraft, setChiefComplaintDraft] = useState('');
-  const [associatedSymptomsDraft, setAssociatedSymptomsDraft] = useState('');
-  const [additionalRemarksDraft, setAdditionalRemarksDraft] = useState('');
-  const [selectedUrgencyLevel, setSelectedUrgencyLevel] = useState('');
+  const [patientSubmittedConcern, setPatientSubmittedConcern] = useState("");
+  const [chiefComplaintDraft, setChiefComplaintDraft] = useState("");
+  const [associatedSymptomsDraft, setAssociatedSymptomsDraft] = useState("");
+  const [additionalRemarksDraft, setAdditionalRemarksDraft] = useState("");
+  const [selectedUrgencyLevel, setSelectedUrgencyLevel] = useState("");
   const [urgencyOverridesByTicketId, setUrgencyOverridesByTicketId] = useState(
     {},
   );
   const [selectedSymptomPills, setSelectedSymptomPills] = useState([]);
   const [selectedRosItems, setSelectedRosItems] = useState([]);
-  const [painMapView, setPainMapView] = useState('front');
+  const [painMapView, setPainMapView] = useState("front");
   const [selectedPainAreas, setSelectedPainAreas] = useState([]);
   const [isAdditionalDetailsOpen, setIsAdditionalDetailsOpen] = useState(false);
-  const [newAllergy, setNewAllergy] = useState('');
+  const [newAllergy, setNewAllergy] = useState("");
   const [activeDiseasesDraft, setActiveDiseasesDraft] = useState([]);
-  const [customActiveDiseaseDraft, setCustomActiveDiseaseDraft] = useState('');
-  const [pastDiseasesDraft, setPastDiseasesDraft] = useState('');
-  const [familyHistoryDraft, setFamilyHistoryDraft] = useState('');
-  const [smokingDraft, setSmokingDraft] = useState('');
-  const [drinkingDraft, setDrinkingDraft] = useState('');
-  const [lifestyleNotesDraft, setLifestyleNotesDraft] = useState('');
-  const [surgeriesDraft, setSurgeriesDraft] = useState('');
+  const [customActiveDiseaseDraft, setCustomActiveDiseaseDraft] = useState("");
+  const [pastDiseasesDraft, setPastDiseasesDraft] = useState("");
+  const [familyHistoryDraft, setFamilyHistoryDraft] = useState("");
+  const [smokingDraft, setSmokingDraft] = useState("");
+  const [drinkingDraft, setDrinkingDraft] = useState("");
+  const [lifestyleNotesDraft, setLifestyleNotesDraft] = useState("");
+  const [surgeriesDraft, setSurgeriesDraft] = useState("");
   const [currentMedicationsDraft, setCurrentMedicationsDraft] = useState([]);
-  const [newMedication, setNewMedication] = useState('');
+  const [newMedication, setNewMedication] = useState("");
   const [triageDraftsByTicketId, setTriageDraftsByTicketId] = useState(() => {
     try {
       const raw = localStorage.getItem(TRIAGE_DRAFTS_STORAGE_KEY);
       if (!raw) return {};
       const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' ? parsed : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
     } catch {
       return {};
     }
   });
   const [vitalsDraft, setVitalsDraft] = useState({
-    bloodPressure: '',
-    heartRate: '',
-    temperature: '',
-    oxygenSaturation: '',
+    bloodPressure: "",
+    heartRate: "",
+    temperature: "",
+    oxygenSaturation: "",
   });
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [transferTarget, setTransferTarget] = useState('doctor');
+  const [transferTarget, setTransferTarget] = useState("doctor");
   const [availableDoctors, setAvailableDoctors] = useState([]);
   const [availableDepartments, setAvailableDepartments] =
     useState(FALLBACK_DEPARTMENTS);
   const [availableNurses, setAvailableNurses] = useState([]);
-  const [selectedDepartment, setSelectedDepartment] = useState('');
-  const [selectedDoctorId, setSelectedDoctorId] = useState('');
-  const [selectedNurseId, setSelectedNurseId] = useState('');
-  const [transferReason, setTransferReason] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [selectedDoctorId, setSelectedDoctorId] = useState("");
+  const [selectedNurseId, setSelectedNurseId] = useState("");
+  const [transferReason, setTransferReason] = useState("");
   const [isTransferSubmitting, setIsTransferSubmitting] = useState(false);
   const [isDepartmentMenuOpen, setIsDepartmentMenuOpen] = useState(false);
   const [isDoctorMenuOpen, setIsDoctorMenuOpen] = useState(false);
@@ -696,17 +711,17 @@ export default function Dashboard() {
   const [callbacks, setCallbacks] = useState([]);
   const [showCallbackModal, setShowCallbackModal] = useState(false);
   const [activeCallback, setActiveCallback] = useState(null);
-  const [callbackNurseRemarks, setCallbackNurseRemarks] = useState('');
-  const [callbackInternalNotes, setCallbackInternalNotes] = useState('');
+  const [callbackNurseRemarks, setCallbackNurseRemarks] = useState("");
+  const [callbackInternalNotes, setCallbackInternalNotes] = useState("");
   const [callbackActionLoadingStatus, setCallbackActionLoadingStatus] =
-    useState('');
+    useState("");
   const [showMedicalRecords, setShowMedicalRecords] = useState(false);
   const [
     optimisticQuickMessagesByTicketId,
     setOptimisticQuickMessagesByTicketId,
   ] = useState({});
-  const [queueFilter, setQueueFilter] = useState('All');
-  const [dashboardTab, setDashboardTab] = useState('Patient Queue');
+  const [queueFilter, setQueueFilter] = useState("All");
+  const [dashboardTab, setDashboardTab] = useState("Patient Queue");
 
   const selectedPatientId = useMemo(
     () => (selectedTicket ? getPatientIdFromTicket(selectedTicket) : null),
@@ -724,21 +739,21 @@ export default function Dashboard() {
     openConversation,
     startConversation,
     sendMessage: sendChatMessage,
-  } = useChat({ currentUserId: user?.id || null, currentUserType: 'n' });
+  } = useChat({ currentUserId: user?.id || null, currentUserType: "n" });
 
   const handleLogout = async () => {
     try {
       disconnectSocket();
       await logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     }
-    navigate('/');
+    navigate("/");
   };
 
   const handleAddAllergy = async (incomingValue) => {
     if (!newAllergy.trim() || !selectedTicket) {
-      if (!String(incomingValue || '').trim() || !selectedTicket) {
+      if (!String(incomingValue || "").trim() || !selectedTicket) {
         return false;
       }
     }
@@ -755,7 +770,7 @@ export default function Dashboard() {
 
     if (!isDuplicate) {
       const updatedAllergies = [...currentAllergies, incomingAllergy];
-      const allergiesString = updatedAllergies.join(', ');
+      const allergiesString = updatedAllergies.join(", ");
 
       await applyTicketPatch(selectedTicket.id, {
         allergies: allergiesString,
@@ -763,7 +778,7 @@ export default function Dashboard() {
     }
 
     if (incomingValue === undefined) {
-      setNewAllergy('');
+      setNewAllergy("");
     }
     return !isDuplicate;
   };
@@ -777,7 +792,7 @@ export default function Dashboard() {
       (a) => a.toLowerCase() !== allergyToRemove.toLowerCase(),
     );
 
-    const allergiesString = updatedAllergies.join(', ');
+    const allergiesString = updatedAllergies.join(", ");
 
     await applyTicketPatch(selectedTicket.id, {
       allergies: allergiesString,
@@ -809,7 +824,7 @@ export default function Dashboard() {
     );
     if (isDuplicate) {
       if (incomingValue === undefined) {
-        setCustomActiveDiseaseDraft('');
+        setCustomActiveDiseaseDraft("");
       }
       return;
     }
@@ -817,7 +832,7 @@ export default function Dashboard() {
     const next = [...activeDiseasesDraft, incoming];
     setActiveDiseasesDraft(next);
     if (incomingValue === undefined) {
-      setCustomActiveDiseaseDraft('');
+      setCustomActiveDiseaseDraft("");
     }
     persistTriageDraft(selectedTicket.id, { activeDiseasesDraft: next });
     await applyTicketPatch(selectedTicket.id, {
@@ -843,7 +858,7 @@ export default function Dashboard() {
     setIsDepartmentMenuOpen(false);
     setIsDoctorMenuOpen(false);
     setIsNurseMenuOpen(false);
-    setTransferReason('');
+    setTransferReason("");
   };
 
   const closeTransferMenus = () => {
@@ -855,9 +870,9 @@ export default function Dashboard() {
   const closeCallbackModal = () => {
     setShowCallbackModal(false);
     setActiveCallback(null);
-    setCallbackNurseRemarks('');
-    setCallbackInternalNotes('');
-    setCallbackActionLoadingStatus('');
+    setCallbackNurseRemarks("");
+    setCallbackInternalNotes("");
+    setCallbackActionLoadingStatus("");
   };
 
   const applyCallbackStatusChange = async (callbackId, nextStatus) => {
@@ -904,18 +919,18 @@ export default function Dashboard() {
     }
 
     setActiveCallback(callback);
-    setCallbackNurseRemarks(callback?.nurseRemarks || '');
-    setCallbackInternalNotes(callback?.callbackNotes || '');
+    setCallbackNurseRemarks(callback?.nurseRemarks || "");
+    setCallbackInternalNotes(callback?.callbackNotes || "");
     setShowCallbackModal(true);
 
-    if (String(callback.status || '').toLowerCase() !== 'new') {
+    if (String(callback.status || "").toLowerCase() !== "new") {
       return;
     }
 
     try {
-      await applyCallbackStatusChange(callback.id, 'in_progress');
+      await applyCallbackStatusChange(callback.id, "in_progress");
     } catch (error) {
-      console.error('Failed to move callback to in-progress:', error);
+      console.error("Failed to move callback to in-progress:", error);
     }
   };
 
@@ -927,13 +942,13 @@ export default function Dashboard() {
     setCallbackActionLoadingStatus(nextStatus);
     try {
       await applyCallbackStatusChange(activeCallback.id, nextStatus);
-      if (nextStatus === 'closed') {
+      if (nextStatus === "closed") {
         closeCallbackModal();
       }
     } catch (error) {
       console.error(`Failed to update callback to ${nextStatus}:`, error);
     } finally {
-      setCallbackActionLoadingStatus('');
+      setCallbackActionLoadingStatus("");
     }
   };
 
@@ -942,14 +957,14 @@ export default function Dashboard() {
       return;
     }
 
-    navigate('/nurse-manage-appointments', {
+    navigate("/nurse-manage-appointments", {
       state: {
         openCreateTicket: true,
         createTicketPrefill: {
           fullName: getCallbackFullName(activeCallback),
-          mobileNumber: String(activeCallback?.contactNumber || '').trim(),
-          email: String(activeCallback?.email || '').trim(),
-          chiefComplaint: String(activeCallback?.message || '').trim(),
+          mobileNumber: String(activeCallback?.contactNumber || "").trim(),
+          email: String(activeCallback?.email || "").trim(),
+          chiefComplaint: String(activeCallback?.message || "").trim(),
         },
       },
     });
@@ -958,11 +973,11 @@ export default function Dashboard() {
 
   const openTransferModal = () => {
     setShowTransferModal(true);
-    setTransferTarget('doctor');
-    setSelectedDepartment('');
-    setSelectedDoctorId('');
-    setSelectedNurseId('');
-    setTransferReason('');
+    setTransferTarget("doctor");
+    setSelectedDepartment("");
+    setSelectedDoctorId("");
+    setSelectedNurseId("");
+    setTransferReason("");
     setIsDepartmentMenuOpen(false);
     setIsDoctorMenuOpen(false);
     setIsNurseMenuOpen(false);
@@ -1051,18 +1066,18 @@ export default function Dashboard() {
 
         if (profileData.firstName) {
           setNurseName(profileData.firstName);
-          localStorage.setItem('nurse.firstName', profileData.firstName);
+          localStorage.setItem("nurse.firstName", profileData.firstName);
         }
 
         if (profileData.profileImage) {
           saveNurseProfileImage(profileData.profileImage);
           setNurseProfileImage(getNurseProfileImage());
         } else {
-          localStorage.removeItem('nurse.profileImage');
-          setNurseProfileImage('/account.svg');
+          localStorage.removeItem("nurse.profileImage");
+          setNurseProfileImage("/account.svg");
         }
       } catch (profileError) {
-        console.error('Could not fetch nurse profile:', profileError.message);
+        console.error("Could not fetch nurse profile:", profileError.message);
       }
 
       try {
@@ -1092,7 +1107,7 @@ export default function Dashboard() {
           });
         }
       } catch (ticketError) {
-        console.error('Tickets API error:', ticketError.message);
+        console.error("Tickets API error:", ticketError.message);
       }
     };
 
@@ -1119,7 +1134,7 @@ export default function Dashboard() {
           setCallbacks(response.callbacks);
         }
       } catch (error) {
-        console.error('Error loading callbacks:', error);
+        console.error("Error loading callbacks:", error);
         if (isMounted) {
           setCallbacks([]);
         }
@@ -1154,8 +1169,8 @@ export default function Dashboard() {
                   String(
                     readValue(
                       doctor,
-                      ['specialization', 'department', 'specialty'],
-                      '',
+                      ["specialization", "department", "specialty"],
+                      "",
                     ),
                   ).trim(),
                 )
@@ -1176,7 +1191,7 @@ export default function Dashboard() {
               .filter((entry) => Number(entry?.id) !== Number(user?.id))
               .map((entry) => ({
                 id: Number(entry?.id),
-                name: String(entry?.name || '').trim() || 'Unknown Nurse',
+                name: String(entry?.name || "").trim() || "Unknown Nurse",
               })),
           );
         }
@@ -1211,7 +1226,7 @@ export default function Dashboard() {
     if (existingConversation) {
       if (Number(activeConversation?.id) !== Number(existingConversation.id)) {
         openConversation(existingConversation).catch((error) => {
-          console.error('Failed to open quick conversation:', error);
+          console.error("Failed to open quick conversation:", error);
         });
       }
       return;
@@ -1227,33 +1242,33 @@ export default function Dashboard() {
       id: selectedTicketId,
       name: readValue(
         selectedTicket,
-        ['patientName', 'fullName', 'name'],
-        'Patient',
+        ["patientName", "fullName", "name"],
+        "Patient",
       ),
-      type: 'direct',
+      type: "direct",
       participants: [
         {
           id: selectedPatientId,
           name: readValue(
             selectedTicket,
-            ['patientName', 'fullName', 'name'],
-            'Patient',
+            ["patientName", "fullName", "name"],
+            "Patient",
           ),
-          type: 'p',
+          type: "p",
         },
       ],
-      lastMessage: 'No messages yet',
+      lastMessage: "No messages yet",
       unreadCount: 0,
-      otherUserType: 'p',
+      otherUserType: "p",
     };
 
     openConversation(fallbackConversation)
       .catch(async (error) => {
-        console.error('Failed to open quick conversation by ticket id:', error);
+        console.error("Failed to open quick conversation by ticket id:", error);
         try {
-          await startConversation('direct', selectedPatientId);
+          await startConversation("direct", selectedPatientId);
         } catch (createError) {
-          console.error('Failed to create quick conversation:', createError);
+          console.error("Failed to create quick conversation:", createError);
         }
       })
       .finally(() => {
@@ -1276,33 +1291,33 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!selectedTicket) {
-      setTriageStatus('Waiting');
+      setTriageStatus("Waiting");
       setMarkInquiry(false);
       setMarkIncomplete(false);
-      setChiefComplaintDraft('');
-      setAssociatedSymptomsDraft('');
-      setAdditionalRemarksDraft('');
-      setSelectedUrgencyLevel('');
+      setChiefComplaintDraft("");
+      setAssociatedSymptomsDraft("");
+      setAdditionalRemarksDraft("");
+      setSelectedUrgencyLevel("");
       setSelectedSymptomPills([]);
       setSelectedRosItems([]);
-      setPainMapView('front');
+      setPainMapView("front");
       setSelectedPainAreas([]);
       setIsAdditionalDetailsOpen(false);
       setActiveDiseasesDraft([]);
-      setCustomActiveDiseaseDraft('');
-      setPastDiseasesDraft('');
-      setFamilyHistoryDraft('');
-      setSmokingDraft('');
-      setDrinkingDraft('');
-      setLifestyleNotesDraft('');
-      setSurgeriesDraft('');
+      setCustomActiveDiseaseDraft("");
+      setPastDiseasesDraft("");
+      setFamilyHistoryDraft("");
+      setSmokingDraft("");
+      setDrinkingDraft("");
+      setLifestyleNotesDraft("");
+      setSurgeriesDraft("");
       setCurrentMedicationsDraft([]);
-      setNewMedication('');
+      setNewMedication("");
       setVitalsDraft({
-        bloodPressure: '',
-        heartRate: '',
-        temperature: '',
-        oxygenSaturation: '',
+        bloodPressure: "",
+        heartRate: "",
+        temperature: "",
+        oxygenSaturation: "",
       });
       return;
     }
@@ -1316,17 +1331,17 @@ export default function Dashboard() {
     const localDraft = shouldUseLocalDraft ? rawLocalDraft : {};
 
     if (isSelectedCallbackTicket) {
-      const callbackStatus = selectedTicket.callbackStatus || 'new';
+      const callbackStatus = selectedTicket.callbackStatus || "new";
       setTriageStatus(
-        callbackStatus === 'new'
-          ? 'New'
-          : callbackStatus === 'in_progress'
-            ? 'In Progress'
-            : callbackStatus === 'pending'
-              ? 'Pending'
-              : callbackStatus === 'expired'
-                ? 'Expired'
-                : 'New',
+        callbackStatus === "new"
+          ? "New"
+          : callbackStatus === "in_progress"
+            ? "In Progress"
+            : callbackStatus === "pending"
+              ? "Pending"
+              : callbackStatus === "expired"
+                ? "Expired"
+                : "New",
       );
     } else {
       const hydratedStatus =
@@ -1334,12 +1349,12 @@ export default function Dashboard() {
       setTriageStatus(mapTicketStatusToTriageStatus(hydratedStatus));
     }
     const inquiryFlag = toBooleanFlag(
-      readValue(selectedTicket, ['isInquiry', 'is_inquiry', 'inquiry'], false),
+      readValue(selectedTicket, ["isInquiry", "is_inquiry", "inquiry"], false),
     );
     const incompleteFlag = toBooleanFlag(
       readValue(
         selectedTicket,
-        ['isIncomplete', 'is_incomplete', 'incomplete'],
+        ["isIncomplete", "is_incomplete", "incomplete"],
         false,
       ),
     );
@@ -1350,14 +1365,14 @@ export default function Dashboard() {
 
     const toDraftTextValue = (value) => {
       if (value === DEFAULT_TEXT || value === null || value === undefined) {
-        return '';
+        return "";
       }
 
       if (Array.isArray(value)) {
         return value
-          .map((entry) => String(entry || '').trim())
+          .map((entry) => String(entry || "").trim())
           .filter(Boolean)
-          .join(', ');
+          .join(", ");
       }
 
       return String(value);
@@ -1368,13 +1383,13 @@ export default function Dashboard() {
         readValue(
           selectedTicket,
           [
-            'patientSubmittedConcern',
-            'submittedConcern',
-            'patientConcern',
-            'chiefComplaint',
-            'mainConcern',
+            "patientSubmittedConcern",
+            "submittedConcern",
+            "patientConcern",
+            "chiefComplaint",
+            "mainConcern",
           ],
-          getIntakeValue(selectedTicket, ['mainConcern'], ''),
+          getIntakeValue(selectedTicket, ["mainConcern"], ""),
         ),
       ),
     );
@@ -1384,11 +1399,11 @@ export default function Dashboard() {
           readValue(
             selectedTicket,
             [
-              'clinicalChiefComplaint',
-              'nurseChiefComplaint',
-              'professionalChiefComplaint',
+              "clinicalChiefComplaint",
+              "nurseChiefComplaint",
+              "professionalChiefComplaint",
             ],
-            '',
+            "",
           ),
         ),
     );
@@ -1397,11 +1412,11 @@ export default function Dashboard() {
         toDraftTextValue(
           readValue(
             selectedTicket,
-            ['otherSymptoms', 'associatedSymptoms', 'additionalSymptoms'],
+            ["otherSymptoms", "associatedSymptoms", "additionalSymptoms"],
             getIntakeValue(
               selectedTicket,
-              ['otherSymptoms', 'associatedSymptoms', 'additionalSymptoms'],
-              '',
+              ["otherSymptoms", "associatedSymptoms", "additionalSymptoms"],
+              "",
             ),
           ),
         ),
@@ -1411,15 +1426,15 @@ export default function Dashboard() {
         toDraftTextValue(
           readValue(
             selectedTicket,
-            ['additionalRemarks', 'nurseRemarks', 'remarks', 'notes'],
-            '',
+            ["additionalRemarks", "nurseRemarks", "remarks", "notes"],
+            "",
           ),
         ),
     );
     setPastDiseasesDraft(
       localDraft.pastDiseasesDraft ??
         toDraftTextValue(
-          readValue(selectedTicket, ['pastDiseases', 'pastMedicalHistory'], ''),
+          readValue(selectedTicket, ["pastDiseases", "pastMedicalHistory"], ""),
         ),
     );
     setActiveDiseasesDraft(
@@ -1428,31 +1443,31 @@ export default function Dashboard() {
         : toList(
             readValue(
               selectedTicket,
-              ['activeDiseases', 'activeDisease', 'active_conditions'],
-              '',
+              ["activeDiseases", "activeDisease", "active_conditions"],
+              "",
             ),
           ),
     );
-    setCustomActiveDiseaseDraft('');
+    setCustomActiveDiseaseDraft("");
     setFamilyHistoryDraft(
       localDraft.familyHistoryDraft ??
-        toDraftTextValue(readValue(selectedTicket, ['familyHistory'], '')),
+        toDraftTextValue(readValue(selectedTicket, ["familyHistory"], "")),
     );
     setSmokingDraft(
       localDraft.smokingDraft ??
-        toDraftTextValue(readValue(selectedTicket, ['smoking'], '')),
+        toDraftTextValue(readValue(selectedTicket, ["smoking"], "")),
     );
     setDrinkingDraft(
       localDraft.drinkingDraft ??
-        toDraftTextValue(readValue(selectedTicket, ['drinking'], '')),
+        toDraftTextValue(readValue(selectedTicket, ["drinking"], "")),
     );
     setLifestyleNotesDraft(
       localDraft.lifestyleNotesDraft ??
-        toDraftTextValue(readValue(selectedTicket, ['lifestyleNotes'], '')),
+        toDraftTextValue(readValue(selectedTicket, ["lifestyleNotes"], "")),
     );
     setSurgeriesDraft(
       localDraft.surgeriesDraft ??
-        toDraftTextValue(readValue(selectedTicket, ['surgeries'], '')),
+        toDraftTextValue(readValue(selectedTicket, ["surgeries"], "")),
     );
     setCurrentMedicationsDraft(
       Array.isArray(localDraft.currentMedicationsDraft)
@@ -1460,20 +1475,20 @@ export default function Dashboard() {
         : toList(
             readValue(
               selectedTicket,
-              ['currentMedications', 'medications', 'currentMedication'],
-              '',
+              ["currentMedications", "medications", "currentMedication"],
+              "",
             ),
           ),
     );
-    setNewMedication('');
+    setNewMedication("");
     setSelectedUrgencyLevel(
       localDraft.selectedUrgencyLevel ||
         urgencyOverridesByTicketId[Number(selectedTicket.id)] ||
         normalizeUrgencyLevel(
           readValue(
             selectedTicket,
-            ['urgencyLevel', 'urgency', 'priority'],
-            '',
+            ["urgencyLevel", "urgency", "priority"],
+            "",
           ),
         ),
     );
@@ -1483,24 +1498,24 @@ export default function Dashboard() {
         : toList(
             getIntakeValue(
               selectedTicket,
-              ['symptoms', 'symptomTags', 'symptomPills'],
-              '',
+              ["symptoms", "symptomTags", "symptomPills"],
+              "",
             ),
           )
             .map((entry) =>
-              String(entry || '')
+              String(entry || "")
                 .trim()
                 .toLowerCase(),
             )
             .map((normalizedEntry) => {
-              if (normalizedEntry === 'body pain') return 'Body pain';
-              if (normalizedEntry === 'chest pain') return 'Chest pain';
-              if (normalizedEntry === 'sore throat') return 'Sore throat';
-              if (normalizedEntry === 'shortness of breath')
-                return 'Shortness of breath';
-              if (normalizedEntry === 'stomach pain') return 'Stomach pain';
-              if (normalizedEntry === 'loss of appetite')
-                return 'Loss of appetite';
+              if (normalizedEntry === "body pain") return "Body pain";
+              if (normalizedEntry === "chest pain") return "Chest pain";
+              if (normalizedEntry === "sore throat") return "Sore throat";
+              if (normalizedEntry === "shortness of breath")
+                return "Shortness of breath";
+              if (normalizedEntry === "stomach pain") return "Stomach pain";
+              if (normalizedEntry === "loss of appetite")
+                return "Loss of appetite";
               return SYMPTOM_PILL_OPTIONS.find(
                 (option) => option.toLowerCase() === normalizedEntry,
               );
@@ -1513,7 +1528,7 @@ export default function Dashboard() {
         : normalizePainAreas(
             getIntakeValue(
               selectedTicket,
-              ['selectedPainAreas', 'painAreas', 'painMap'],
+              ["selectedPainAreas", "painAreas", "painMap"],
               [],
             ),
           ),
@@ -1521,7 +1536,7 @@ export default function Dashboard() {
 
     const toEditableValue = (value) =>
       value === DEFAULT_TEXT || value === null || value === undefined
-        ? ''
+        ? ""
         : String(value);
 
     setVitalsDraft({
@@ -1530,22 +1545,22 @@ export default function Dashboard() {
         toEditableValue(
           readValue(
             selectedTicket,
-            ['bloodPressure', 'bp', 'vitalBloodPressure'],
-            '',
+            ["bloodPressure", "bp", "vitalBloodPressure"],
+            "",
           ),
         ),
       heartRate:
         localDraft.vitalsDraft?.heartRate ??
         toEditableValue(
-          readValue(selectedTicket, ['heartRate', 'bpm', 'vitalHeartRate'], ''),
+          readValue(selectedTicket, ["heartRate", "bpm", "vitalHeartRate"], ""),
         ),
       temperature:
         localDraft.vitalsDraft?.temperature ??
         toEditableValue(
           readValue(
             selectedTicket,
-            ['temperature', 'temp', 'vitalTemperature'],
-            '',
+            ["temperature", "temp", "vitalTemperature"],
+            "",
           ),
         ),
       oxygenSaturation:
@@ -1553,8 +1568,8 @@ export default function Dashboard() {
         toEditableValue(
           readValue(
             selectedTicket,
-            ['oxygenSaturation', 'spo2', 'vitalOxygenSaturation'],
-            '',
+            ["oxygenSaturation", "spo2", "vitalOxygenSaturation"],
+            "",
           ),
         ),
     });
@@ -1565,47 +1580,51 @@ export default function Dashboard() {
       return null;
     }
 
-    const bloodType = readValue(selectedTicket, ['bloodType', 'Blood_Type']);
+    const bloodType = readValue(selectedTicket, ["bloodType", "Blood_Type"]);
     const allergies = toList(
       readValue(
         selectedTicket,
-        ['allergies', 'Allergies', 'patientAllergies'],
-        '',
+        ["allergies", "Allergies", "patientAllergies"],
+        "",
       ),
     );
     const medicalHistory = toList(
       readValue(
         selectedTicket,
-        ['medicalHistory', 'Medical_History', 'history'],
-        '',
+        ["medicalHistory", "Medical_History", "history"],
+        "",
       ),
     );
-    const barangay = readValue(selectedTicket, ['barangay', 'patientBarangay'], '');
-    const city = readValue(selectedTicket, ['city', 'patientCity'], '');
+    const barangay = readValue(
+      selectedTicket,
+      ["barangay", "patientBarangay"],
+      "",
+    );
+    const city = readValue(selectedTicket, ["city", "patientCity"], "");
     const province = readValue(
       selectedTicket,
-      ['province', 'state', 'patientProvince'],
-      '',
+      ["province", "state", "patientProvince"],
+      "",
     );
     const composedAddress = [barangay, city, province]
-      .map((part) => String(part || '').trim())
+      .map((part) => String(part || "").trim())
       .filter((part, index, array) => part && array.indexOf(part) === index)
-      .join(', ');
+      .join(", ");
 
     return {
-      fullName: readValue(selectedTicket, ['patientName', 'fullName', 'name']),
+      fullName: readValue(selectedTicket, ["patientName", "fullName", "name"]),
       age:
-        readValue(selectedTicket, ['age'], null) ||
+        readValue(selectedTicket, ["age"], null) ||
         calculateAge(
           readValue(
             selectedTicket,
-            ['patientBirthdate', 'birthdate', 'dob'],
+            ["patientBirthdate", "birthdate", "dob"],
             null,
           ),
         ),
-      gender: readValue(selectedTicket, ['gender', 'sex']),
-      phone: readValue(selectedTicket, ['mobile', 'phone', 'contactNumber']),
-      email: readValue(selectedTicket, ['email', 'patientEmail']),
+      gender: readValue(selectedTicket, ["gender", "sex"]),
+      phone: readValue(selectedTicket, ["mobile", "phone", "contactNumber"]),
+      email: readValue(selectedTicket, ["email", "patientEmail"]),
       bloodType,
       allergies,
       medicalHistory,
@@ -1613,29 +1632,29 @@ export default function Dashboard() {
       lastVisit: formatDate(
         readValue(
           selectedTicket,
-          ['lastVisit', 'lastVisitDate', 'lastConsultationDate', 'updatedAt'],
+          ["lastVisit", "lastVisitDate", "lastConsultationDate", "updatedAt"],
           null,
         ),
       ),
       temperature: readValue(selectedTicket, [
-        'temperature',
-        'temp',
-        'vitalTemperature',
+        "temperature",
+        "temp",
+        "vitalTemperature",
       ]),
       bloodPressure: readValue(selectedTicket, [
-        'bloodPressure',
-        'bp',
-        'vitalBloodPressure',
+        "bloodPressure",
+        "bp",
+        "vitalBloodPressure",
       ]),
       heartRate: readValue(selectedTicket, [
-        'heartRate',
-        'bpm',
-        'vitalHeartRate',
+        "heartRate",
+        "bpm",
+        "vitalHeartRate",
       ]),
       additionalDetails: readValue(
         selectedTicket,
-        ['additionalDetails', 'intakeDetails', '0', 'additionalDetails'],
-        '',
+        ["additionalDetails", "intakeDetails", "0", "additionalDetails"],
+        "",
       ),
     };
   }, [selectedTicket]);
@@ -1643,37 +1662,37 @@ export default function Dashboard() {
   const painMapReadOnlyMeta = useMemo(() => {
     if (!selectedTicket) {
       return {
-        painScore: '',
-        durationValue: '',
-        durationUnit: '',
+        painScore: "",
+        durationValue: "",
+        durationUnit: "",
       };
     }
 
     const normalizeDisplayValue = (value) =>
       value === DEFAULT_TEXT || value === null || value === undefined
-        ? ''
+        ? ""
         : String(value);
 
     return {
       painScore: normalizeDisplayValue(
         getIntakeValue(
           selectedTicket,
-          ['severity', 'painScore', 'painSeverity'],
-          '',
+          ["severity", "painScore", "painSeverity"],
+          "",
         ),
       ),
       durationValue: normalizeDisplayValue(
         getIntakeValue(
           selectedTicket,
-          ['durationValue', 'painDurationValue', 'duration'],
-          '',
+          ["durationValue", "painDurationValue", "duration"],
+          "",
         ),
       ),
       durationUnit: normalizeDisplayValue(
         getIntakeValue(
           selectedTicket,
-          ['durationUnit', 'painDurationUnit', 'durationType'],
-          '',
+          ["durationUnit", "painDurationUnit", "durationType"],
+          "",
         ),
       ),
     };
@@ -1702,7 +1721,7 @@ export default function Dashboard() {
   ]);
 
   const chatEntries = useMemo(() => {
-    const patientName = String(selectedPatient?.fullName || '').trim();
+    const patientName = String(selectedPatient?.fullName || "").trim();
     if (!patientName || !selectedTicket?.id) {
       return quickMessages;
     }
@@ -1711,7 +1730,7 @@ export default function Dashboard() {
     const normalizedStarter = starterText.toLowerCase();
     const hasStarterMessage = quickMessages.some(
       (message) =>
-        String(message?.text || '')
+        String(message?.text || "")
           .trim()
           .toLowerCase() === normalizedStarter,
     );
@@ -1723,7 +1742,7 @@ export default function Dashboard() {
     const starterTimestamp = formatTime(
       readValue(
         selectedTicket,
-        ['createdAt', 'preferredDate', 'updatedAt'],
+        ["createdAt", "preferredDate", "updatedAt"],
         null,
       ),
     );
@@ -1761,13 +1780,13 @@ export default function Dashboard() {
       const statusLabel = getStatusLabel(queueStatus);
       const channelLabel = getChannelLabel(ticket);
       const persistedUrgencyLevel =
-        triageDraftsByTicketId[Number(ticket?.id)]?.selectedUrgencyLevel || '';
+        triageDraftsByTicketId[Number(ticket?.id)]?.selectedUrgencyLevel || "";
       const urgencyLevel =
         persistedUrgencyLevel ||
         urgencyOverridesByTicketId[Number(ticket?.id)] ||
         getUrgencyLevelFromTicket(ticket);
       return {
-        type: 'ticket',
+        type: "ticket",
         ticket,
         queueStatus,
         statusLabel,
@@ -1777,19 +1796,19 @@ export default function Dashboard() {
     });
 
     const callbackCards = (callbacks || []).map((callback) => ({
-      type: 'callback',
+      type: "callback",
       callback,
       callbackTicket: buildTicketFromCallback(callback),
     }));
 
     const combined = [...callbackCards, ...ticketCards].sort((a, b) => {
       const dateA = new Date(
-        a.type === 'callback'
+        a.type === "callback"
           ? a.callback.createdAt
           : a.ticket.createdAt || a.ticket.preferredDate,
       ).getTime();
       const dateB = new Date(
-        b.type === 'callback'
+        b.type === "callback"
           ? b.callback.createdAt
           : b.ticket.createdAt || b.ticket.preferredDate,
       ).getTime();
@@ -1797,11 +1816,11 @@ export default function Dashboard() {
     });
 
     // Apply filtering
-    if (queueFilter === 'Consults') {
-      return combined.filter((card) => card.type === 'ticket');
+    if (queueFilter === "Consults") {
+      return combined.filter((card) => card.type === "ticket");
     }
-    if (queueFilter === 'Callbacks') {
-      return combined.filter((card) => card.type === 'callback');
+    if (queueFilter === "Callbacks") {
+      return combined.filter((card) => card.type === "callback");
     }
 
     return combined;
@@ -1816,10 +1835,10 @@ export default function Dashboard() {
 
   const shouldEnableCloseTicket = markInquiry || markIncomplete;
   const closeReasonLabel = markInquiry
-    ? 'Inquiry'
+    ? "Inquiry"
     : markIncomplete
-      ? 'Incomplete'
-      : '';
+      ? "Incomplete"
+      : "";
 
   const applyTicketPatch = async (ticketId, patch) => {
     const normalizedTicketId = Number(ticketId);
@@ -1832,7 +1851,7 @@ export default function Dashboard() {
       try {
         await updateTicket(ticketId, patch);
       } catch (error) {
-        console.error('Failed to update ticket:', error);
+        console.error("Failed to update ticket:", error);
       }
     }
 
@@ -1863,16 +1882,16 @@ export default function Dashboard() {
   const handleCallbackPatch = async (callbackId, patch = {}) => {
     const normalizedCallbackId = Number(callbackId);
     if (!Number.isFinite(normalizedCallbackId)) {
-      throw new Error('Invalid callback id.');
+      throw new Error("Invalid callback id.");
     }
 
     const payload = {};
 
-    if (typeof patch.status === 'string') {
+    if (typeof patch.status === "string") {
       payload.status = patch.status;
     }
 
-    if (typeof patch.notes === 'string') {
+    if (typeof patch.notes === "string") {
       payload.notes = patch.notes;
     }
 
@@ -1922,7 +1941,7 @@ export default function Dashboard() {
         return buildTicketFromCallback(updatedCallback);
       });
     } catch (error) {
-      console.error('Failed to update callback:', error);
+      console.error("Failed to update callback:", error);
       throw error;
     }
   };
@@ -1934,15 +1953,15 @@ export default function Dashboard() {
 
     if (isSelectedCallbackTicket) {
       const displayStatus =
-        nextStatus === 'new'
-          ? 'New'
-          : nextStatus === 'in_progress'
-            ? 'In Progress'
-            : nextStatus === 'pending'
-              ? 'Pending'
-              : nextStatus === 'expired'
-                ? 'Expired'
-                : 'New';
+        nextStatus === "new"
+          ? "New"
+          : nextStatus === "in_progress"
+            ? "In Progress"
+            : nextStatus === "pending"
+              ? "Pending"
+              : nextStatus === "expired"
+                ? "Expired"
+                : "New";
       setTriageStatus(displayStatus);
     } else {
       setTriageStatus(nextStatus);
@@ -1970,7 +1989,7 @@ export default function Dashboard() {
     }
 
     await applyTicketPatch(selectedTicket.id, {
-      status: 'completed',
+      status: "completed",
       isInquiry: markInquiry,
       isIncomplete: markIncomplete,
     });
@@ -1991,7 +2010,7 @@ export default function Dashboard() {
 
     return (availableDoctors || []).filter(
       (doctor) =>
-        String(readValue(doctor, ['specialization', 'department'], ''))
+        String(readValue(doctor, ["specialization", "department"], ""))
           .trim()
           .toLowerCase() === selectedDepartment.toLowerCase(),
     );
@@ -2011,21 +2030,21 @@ export default function Dashboard() {
   const canTransferToNurse = Boolean(selectedNurseId && !isTransferSubmitting);
 
   const buildTransferTriagePayload = () => {
-    const clinicalConcern = String(chiefComplaintDraft || '').trim();
-    const patientConcern = String(patientSubmittedConcern || '').trim();
-    const remarks = String(additionalRemarksDraft || '').trim();
+    const clinicalConcern = String(chiefComplaintDraft || "").trim();
+    const patientConcern = String(patientSubmittedConcern || "").trim();
+    const remarks = String(additionalRemarksDraft || "").trim();
 
     return {
-      chiefComplaint: clinicalConcern || selectedTicket?.chiefComplaint || '',
+      chiefComplaint: clinicalConcern || selectedTicket?.chiefComplaint || "",
       clinicalChiefComplaint: clinicalConcern || null,
       patientSubmittedConcern: patientConcern || null,
       submittedConcern: patientConcern || null,
       additionalRemarks: remarks || null,
-      bloodPressure: String(vitalsDraft.bloodPressure || '').trim() || null,
-      heartRate: String(vitalsDraft.heartRate || '').trim() || null,
-      temperature: String(vitalsDraft.temperature || '').trim() || null,
+      bloodPressure: String(vitalsDraft.bloodPressure || "").trim() || null,
+      heartRate: String(vitalsDraft.heartRate || "").trim() || null,
+      temperature: String(vitalsDraft.temperature || "").trim() || null,
       oxygenSaturation:
-        String(vitalsDraft.oxygenSaturation || '').trim() || null,
+        String(vitalsDraft.oxygenSaturation || "").trim() || null,
       selectedPainAreas,
       painAreas: selectedPainAreas,
       painMapView,
@@ -2041,12 +2060,12 @@ export default function Dashboard() {
       selectedSymptomPills,
       selectedRosItems,
       activeDiseases: activeDiseasesDraft,
-      pastDiseases: String(pastDiseasesDraft || '').trim() || null,
-      familyHistory: String(familyHistoryDraft || '').trim() || null,
-      smoking: String(smokingDraft || '').trim() || null,
-      drinking: String(drinkingDraft || '').trim() || null,
-      lifestyleNotes: String(lifestyleNotesDraft || '').trim() || null,
-      surgeries: String(surgeriesDraft || '').trim() || null,
+      pastDiseases: String(pastDiseasesDraft || "").trim() || null,
+      familyHistory: String(familyHistoryDraft || "").trim() || null,
+      smoking: String(smokingDraft || "").trim() || null,
+      drinking: String(drinkingDraft || "").trim() || null,
+      lifestyleNotes: String(lifestyleNotesDraft || "").trim() || null,
+      surgeries: String(surgeriesDraft || "").trim() || null,
       currentMedications: currentMedicationsDraft,
       urgencyLevel: selectedUrgencyLevel || null,
       transferReason: transferReason.trim() || null,
@@ -2059,13 +2078,13 @@ export default function Dashboard() {
     }
 
     if (
-      transferTarget === 'doctor' &&
+      transferTarget === "doctor" &&
       (!selectedDepartment || !selectedDoctorId)
     ) {
       return;
     }
 
-    if (transferTarget === 'nurse' && !selectedNurseId) {
+    if (transferTarget === "nurse" && !selectedNurseId) {
       return;
     }
 
@@ -2074,14 +2093,14 @@ export default function Dashboard() {
     try {
       const transferredTicketId = Number(selectedTicket.id);
 
-      if (transferTarget === 'doctor') {
+      if (transferTarget === "doctor") {
         const triagePayload = buildTransferTriagePayload();
 
         await triageTicket({
           ticketId: Number(selectedTicket.id),
           targetSpecialty: selectedDepartment,
           specialistId: Number(selectedDoctorId),
-          urgency: 'medium',
+          urgency: "medium",
           ...triagePayload,
         });
 
@@ -2092,7 +2111,7 @@ export default function Dashboard() {
         await applyTicketPatch(selectedTicket.id, {
           nurse: Number(selectedNurseId),
           transferReason: transferReason.trim() || null,
-          status: 'processing',
+          status: "processing",
         });
       }
 
@@ -2116,9 +2135,9 @@ export default function Dashboard() {
     }
 
     const nextInquiry =
-      reason === 'inquiry' ? checked : checked ? false : markInquiry;
+      reason === "inquiry" ? checked : checked ? false : markInquiry;
     const nextIncomplete =
-      reason === 'incomplete' ? checked : checked ? false : markIncomplete;
+      reason === "incomplete" ? checked : checked ? false : markIncomplete;
 
     setMarkInquiry(nextInquiry);
     setMarkIncomplete(nextIncomplete);
@@ -2145,13 +2164,13 @@ export default function Dashboard() {
   };
 
   const sanitizeNumericVital = (value, maxDigits = 3) =>
-    String(value || '')
-      .replace(/\D/g, '')
+    String(value || "")
+      .replace(/\D/g, "")
       .slice(0, maxDigits);
 
   const sanitizeTemperatureVital = (value, maxDigits = 3, maxDecimals = 1) => {
-    const cleaned = String(value || '').replace(/[^\d.]/g, '');
-    const firstDotIndex = cleaned.indexOf('.');
+    const cleaned = String(value || "").replace(/[^\d.]/g, "");
+    const firstDotIndex = cleaned.indexOf(".");
 
     if (firstDotIndex === -1) {
       return cleaned.slice(0, maxDigits);
@@ -2159,27 +2178,27 @@ export default function Dashboard() {
 
     const integerPart = cleaned
       .slice(0, firstDotIndex)
-      .replace(/\./g, '')
+      .replace(/\./g, "")
       .slice(0, maxDigits);
     const decimalPart = cleaned
       .slice(firstDotIndex + 1)
-      .replace(/\./g, '')
+      .replace(/\./g, "")
       .slice(0, maxDecimals);
 
     return `${integerPart}.${decimalPart}`;
   };
 
   const sanitizeBloodPressureVital = (value, maxDigitsPerSide = 3) => {
-    const cleaned = String(value || '').replace(/[^\d/]/g, '');
-    const [rawSystolic = '', ...rest] = cleaned.split('/');
-    const rawDiastolic = rest.join('');
+    const cleaned = String(value || "").replace(/[^\d/]/g, "");
+    const [rawSystolic = "", ...rest] = cleaned.split("/");
+    const rawDiastolic = rest.join("");
 
-    const systolic = rawSystolic.replace(/\//g, '').slice(0, maxDigitsPerSide);
+    const systolic = rawSystolic.replace(/\//g, "").slice(0, maxDigitsPerSide);
     const diastolic = rawDiastolic
-      .replace(/\//g, '')
+      .replace(/\//g, "")
       .slice(0, maxDigitsPerSide);
 
-    if (cleaned.includes('/')) {
+    if (cleaned.includes("/")) {
       return `${systolic}/${diastolic}`;
     }
 
@@ -2191,7 +2210,7 @@ export default function Dashboard() {
       return;
     }
 
-    const value = String(vitalsDraft[field] || '').trim();
+    const value = String(vitalsDraft[field] || "").trim();
     const patch = {
       [field]: value || null,
     };
@@ -2211,8 +2230,8 @@ export default function Dashboard() {
       return;
     }
 
-    const clinicalConcern = String(chiefComplaintDraft || '').trim();
-    const patientConcern = String(patientSubmittedConcern || '').trim();
+    const clinicalConcern = String(chiefComplaintDraft || "").trim();
+    const patientConcern = String(patientSubmittedConcern || "").trim();
 
     await applyTicketPatch(selectedTicket.id, {
       chiefComplaint: clinicalConcern || null,
@@ -2234,7 +2253,7 @@ export default function Dashboard() {
       return;
     }
 
-    const value = String(associatedSymptomsDraft || '').trim();
+    const value = String(associatedSymptomsDraft || "").trim();
     await applyTicketPatch(selectedTicket.id, {
       otherSymptoms: value || null,
       associatedSymptoms: value || null,
@@ -2253,7 +2272,7 @@ export default function Dashboard() {
       return;
     }
 
-    const value = String(additionalRemarksDraft || '').trim();
+    const value = String(additionalRemarksDraft || "").trim();
     await applyTicketPatch(selectedTicket.id, {
       additionalRemarks: value || null,
       nurseRemarks: value || null,
@@ -2307,7 +2326,7 @@ export default function Dashboard() {
       return;
     }
 
-    const trimmed = String(value || '').trim();
+    const trimmed = String(value || "").trim();
     await applyTicketPatch(selectedTicket.id, {
       [fieldName]: trimmed || null,
     });
@@ -2330,7 +2349,7 @@ export default function Dashboard() {
     );
     if (isDuplicate) {
       if (incomingValue === undefined) {
-        setNewMedication('');
+        setNewMedication("");
       }
       return;
     }
@@ -2338,7 +2357,7 @@ export default function Dashboard() {
     const next = [...currentMedicationsDraft, incoming];
     setCurrentMedicationsDraft(next);
     if (incomingValue === undefined) {
-      setNewMedication('');
+      setNewMedication("");
     }
     persistTriageDraft(selectedTicket.id, { currentMedicationsDraft: next });
     await applyTicketPatch(selectedTicket.id, {
@@ -2368,13 +2387,13 @@ export default function Dashboard() {
 
     await applyTicketPatch(selectedTicket.id, {
       activeDiseases: activeDiseasesDraft,
-      allergies: (selectedPatient?.allergies || []).join(', ') || null,
-      pastDiseases: String(pastDiseasesDraft || '').trim() || null,
-      familyHistory: String(familyHistoryDraft || '').trim() || null,
-      smoking: String(smokingDraft || '').trim() || null,
-      drinking: String(drinkingDraft || '').trim() || null,
-      lifestyleNotes: String(lifestyleNotesDraft || '').trim() || null,
-      surgeries: String(surgeriesDraft || '').trim() || null,
+      allergies: (selectedPatient?.allergies || []).join(", ") || null,
+      pastDiseases: String(pastDiseasesDraft || "").trim() || null,
+      familyHistory: String(familyHistoryDraft || "").trim() || null,
+      smoking: String(smokingDraft || "").trim() || null,
+      drinking: String(drinkingDraft || "").trim() || null,
+      lifestyleNotes: String(lifestyleNotesDraft || "").trim() || null,
+      surgeries: String(surgeriesDraft || "").trim() || null,
       currentMedications: currentMedicationsDraft,
     });
   };
@@ -2494,12 +2513,12 @@ export default function Dashboard() {
     }
 
     if (isSelectedCallbackTicket) {
-      setQuickMessageError('Chat is not available for callback requests.');
+      setQuickMessageError("Chat is not available for callback requests.");
       return;
     }
 
     setIsSendingQuickMessage(true);
-    setQuickMessageError('');
+    setQuickMessageError("");
 
     const selectedTicketId = Number(selectedTicket?.id);
     const optimisticMessage = {
@@ -2507,7 +2526,7 @@ export default function Dashboard() {
       text: trimmedMessage,
       timestamp: formatTime(new Date()),
       isSent: true,
-      sender: 'nurse',
+      sender: "nurse",
       pending: true,
     };
 
@@ -2533,30 +2552,30 @@ export default function Dashboard() {
           id: Number(selectedTicket.id),
           name: readValue(
             selectedTicket,
-            ['patientName', 'fullName', 'name'],
-            'Patient',
+            ["patientName", "fullName", "name"],
+            "Patient",
           ),
-          type: 'direct',
+          type: "direct",
           participants: [
             {
               id: selectedPatientId,
               name: readValue(
                 selectedTicket,
-                ['patientName', 'fullName', 'name'],
-                'Patient',
+                ["patientName", "fullName", "name"],
+                "Patient",
               ),
-              type: 'p',
+              type: "p",
             },
           ],
           lastMessage: trimmedMessage,
           unreadCount: 0,
-          otherUserType: 'p',
+          otherUserType: "p",
         });
       } else {
-        setQuickMessageError('Select a patient ticket to send a message.');
+        setQuickMessageError("Select a patient ticket to send a message.");
         return;
       }
-      setQuickMessage('');
+      setQuickMessage("");
       window.setTimeout(() => {
         setOptimisticQuickMessagesByTicketId((previous) => {
           const currentMessages = previous[selectedTicketId] || [];
@@ -2575,8 +2594,8 @@ export default function Dashboard() {
         });
       }, 8000);
     } catch (error) {
-      console.error('Failed to send quick message:', error);
-      setQuickMessageError('Unable to send your message right now.');
+      console.error("Failed to send quick message:", error);
+      setQuickMessageError("Unable to send your message right now.");
       setOptimisticQuickMessagesByTicketId((previous) => {
         const currentMessages = previous[selectedTicketId] || [];
         return {
@@ -2592,41 +2611,41 @@ export default function Dashboard() {
   };
 
   return (
-    <div className='dashboard triage-dashboard'>
-      <div className='dashboard-header'>
-        <div className='header-center'>
+    <div className="dashboard triage-dashboard">
+      <div className="dashboard-header">
+        <div className="header-center">
           <img
-            src='/okie-doc-logo.png'
-            alt='Okie-Doc+'
-            className='logo-image'
+            src="/okie-doc-logo.png"
+            alt="Okie-Doc+"
+            className="logo-image"
           />
         </div>
-        <h3 className='dashboard-title'>Nurse Dashboard</h3>
+        <h3 className="dashboard-title">Nurse Dashboard</h3>
 
-        <div className='nurse-header-actions'>
+        <div className="nurse-header-actions">
           <NotificationBell />
-          <div className='user-account'>
+          <div className="user-account">
             <Avatar
               profileImageUrl={
-                nurseProfileImage !== '/account.svg' ? nurseProfileImage : null
+                nurseProfileImage !== "/account.svg" ? nurseProfileImage : null
               }
               firstName={nurseName}
-              lastName={localStorage.getItem('nurse.lastName') || ''}
-              userType='nurse'
+              lastName={localStorage.getItem("nurse.lastName") || ""}
+              userType="nurse"
               size={40}
-              alt='Account'
-              className='account-icon'
+              alt="Account"
+              className="account-icon"
             />
-            <span className='account-name'>{nurseName}</span>
-            <div className='account-dropdown'>
+            <span className="account-name">{nurseName}</span>
+            <div className="account-dropdown">
               <button
-                className='dropdown-item'
-                onClick={() => navigate('/nurse-myaccount')}
+                className="dropdown-item"
+                onClick={() => navigate("/nurse-myaccount")}
               >
                 My Account
               </button>
               <button
-                className='dropdown-item logout-item'
+                className="dropdown-item logout-item"
                 onClick={handleLogout}
               >
                 Logout
@@ -2634,86 +2653,86 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <div className='dashboard-nav'>
+        <div className="dashboard-nav">
           <button
-            className='nav-tab active'
-            onClick={() => navigate('/nurse-dashboard')}
+            className="nav-tab active"
+            onClick={() => navigate("/nurse-dashboard")}
           >
             Dashboard
           </button>
           <button
-            className='nav-tab'
-            onClick={() => navigate('/nurse-manage-appointments')}
+            className="nav-tab"
+            onClick={() => navigate("/nurse-manage-appointments")}
           >
             Manage Appointments
           </button>
           <button
-            className='nav-tab'
-            onClick={() => navigate('/nurse-messages')}
+            className="nav-tab"
+            onClick={() => navigate("/nurse-messages")}
           >
             Messages
           </button>
         </div>
       </div>
 
-      <div className='nurse-dashboard-main-tabs'>
+      <div className="nurse-dashboard-main-tabs">
         <button
-          className={`nurse-main-tab ${dashboardTab === 'Patient Queue' ? 'active' : ''}`}
-          onClick={() => setDashboardTab('Patient Queue')}
+          className={`nurse-main-tab ${dashboardTab === "Patient Queue" ? "active" : ""}`}
+          onClick={() => setDashboardTab("Patient Queue")}
         >
           Patient Queue
         </button>
         <button
-          className={`nurse-main-tab ${dashboardTab === 'Callback Requests' ? 'active' : ''}`}
-          onClick={() => setDashboardTab('Callback Requests')}
+          className={`nurse-main-tab ${dashboardTab === "Callback Requests" ? "active" : ""}`}
+          onClick={() => setDashboardTab("Callback Requests")}
         >
           Callback Requests
         </button>
       </div>
 
-      {dashboardTab === 'Patient Queue' ? (
-        <div className='triage-shell'>
-          <div className='triage-grid'>
-            <section className='triage-queue-col'>
-              <div className='triage-col-header'>
+      {dashboardTab === "Patient Queue" ? (
+        <div className="triage-shell">
+          <div className="triage-grid">
+            <section className="triage-queue-col">
+              <div className="triage-col-header">
                 <Users size={16} strokeWidth={2.2} />
                 <h3>Patient Queue</h3>
               </div>
 
-              <div className='nurse-queue-filter-container'>
-                <div className='nurse-queue-filter-pills'>
+              <div className="nurse-queue-filter-container">
+                <div className="nurse-queue-filter-pills">
                   <button
-                    className={`nurse-filter-pill ${queueFilter === 'All' ? 'active' : ''}`}
-                    onClick={() => setQueueFilter('All')}
+                    className={`nurse-filter-pill ${queueFilter === "All" ? "active" : ""}`}
+                    onClick={() => setQueueFilter("All")}
                   >
-                    <span className='pill-label'>All</span>
-                    <span className='pill-count'>
+                    <span className="pill-label">All</span>
+                    <span className="pill-count">
                       {[...tickets, ...callbacks].length}
                     </span>
                   </button>
                   <button
-                    className={`nurse-filter-pill ${queueFilter === 'Consults' ? 'active' : ''}`}
-                    onClick={() => setQueueFilter('Consults')}
+                    className={`nurse-filter-pill ${queueFilter === "Consults" ? "active" : ""}`}
+                    onClick={() => setQueueFilter("Consults")}
                   >
-                    <span className='pill-label'>Consults</span>
-                    <span className='pill-count'>{tickets.length}</span>
+                    <span className="pill-label">Consults</span>
+                    <span className="pill-count">{tickets.length}</span>
                   </button>
                   <button
-                    className={`nurse-filter-pill ${queueFilter === 'Callbacks' ? 'active' : ''}`}
-                    onClick={() => setQueueFilter('Callbacks')}
+                    className={`nurse-filter-pill ${queueFilter === "Callbacks" ? "active" : ""}`}
+                    onClick={() => setQueueFilter("Callbacks")}
                   >
-                    <span className='pill-label'>Callbacks</span>
-                    <span className='pill-count highlighted'>
+                    <span className="pill-label">Callbacks</span>
+                    <span className="pill-count highlighted">
                       {callbacks.length}
                     </span>
                   </button>
                 </div>
               </div>
 
-              <div className='triage-queue-list'>
+              <div className="triage-queue-list">
                 {queueCards.length > 0 ? (
                   queueCards.map((item) => {
-                    if (item.type === 'callback') {
+                    if (item.type === "callback") {
                       const callback = item.callback;
                       const callbackTicket = item.callbackTicket;
                       const isSelectedCallback =
@@ -2765,8 +2784,8 @@ export default function Dashboard() {
                     return (
                       <button
                         key={ticket.id}
-                        type='button'
-                        className={`triage-queue-card ${isSelected ? 'selected' : ''}`}
+                        type="button"
+                        className={`triage-queue-card ${isSelected ? "selected" : ""}`}
                         onClick={() => {
                           if (isSelected) {
                             setSelectedTicket(null);
@@ -2775,24 +2794,25 @@ export default function Dashboard() {
                             setSelectedTicket(ticket);
                             setHasManualDeselection(false);
                           }
-                          setQuickMessageError('');
+                          setQuickMessageError("");
                         }}
                       >
-                        <div className='triage-queue-card-top'>
-                          <div className='triage-queue-main'>
-                            <div className='triage-queue-avatar'>
+                        <div className="triage-queue-card-top">
+                          <div className="triage-queue-main">
+                            <div className="triage-queue-avatar">
                               <UserRound size={15} strokeWidth={2.2} />
                             </div>
 
                             <div>
-                              <div className='triage-ticket-code'>
-                                {ticket.ticketNumber || `T-${String(ticket.id).padStart(3, '0')}`}
+                              <div className="triage-ticket-code">
+                                {ticket.ticketNumber ||
+                                  `T-${String(ticket.id).padStart(3, "0")}`}
                               </div>
-                              <div className='triage-ticket-name'>
+                              <div className="triage-ticket-name">
                                 {readValue(ticket, [
-                                  'patientName',
-                                  'fullName',
-                                  'name',
+                                  "patientName",
+                                  "fullName",
+                                  "name",
                                 ])}
                               </div>
                             </div>
@@ -2804,25 +2824,27 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        <div className='triage-channel-chip'>
-                          {channelLabel === 'Video' ? (
+                        <div className="triage-channel-chip">
+                          {channelLabel === "Video" ? (
                             <Video size={14} strokeWidth={2.2} />
-                          ) : channelLabel === 'Voice' ? (
+                          ) : channelLabel === "Voice" ? (
                             <Phone size={14} strokeWidth={2.2} />
+                          ) : channelLabel === "Physical" ? (
+                            <MapPin size={14} strokeWidth={2.2} />
                           ) : (
                             <MessageSquare size={14} strokeWidth={2.2} />
                           )}
                           <span>{channelLabel}</span>
                         </div>
 
-                        <div className='triage-queue-footer'>
-                          <div className='triage-ticket-time'>
+                        <div className="triage-queue-footer">
+                          <div className="triage-ticket-time">
                             <Clock3 size={14} strokeWidth={2.2} />
                             <span>
                               {formatTime(
                                 readValue(
                                   ticket,
-                                  ['preferredDate', 'createdAt'],
+                                  ["preferredDate", "createdAt"],
                                   null,
                                 ),
                               )}
@@ -2837,8 +2859,8 @@ export default function Dashboard() {
                             </span>
                           ) : (
                             <span
-                              className='triage-urgency-badge triage-urgency-badge-placeholder'
-                              aria-hidden='true'
+                              className="triage-urgency-badge triage-urgency-badge-placeholder"
+                              aria-hidden="true"
                             >
                               Placeholder
                             </span>
@@ -2848,78 +2870,77 @@ export default function Dashboard() {
                     );
                   })
                 ) : (
-                  <div className='triage-empty-note'>
+                  <div className="triage-empty-note">
                     No patients or callbacks in queue.
                   </div>
                 )}
               </div>
             </section>
 
-            <section className='triage-snapshot-col'>
-              <div className='triage-col-header'>
+            <section className="triage-snapshot-col">
+              <div className="triage-col-header">
                 <Info size={16} strokeWidth={2.2} />
                 <h3>Patient Snapshot</h3>
               </div>
-              <div className='triage-snapshot-scroll'>
+              <div className="triage-snapshot-scroll">
                 {!selectedPatient ? (
-                  <div className='triage-empty-note'>
+                  <div className="triage-empty-note">
                     Select a patient from queue.
                   </div>
                 ) : (
                   <>
-                    <article className='triage-profile-card'>
-                      <div className='triage-profile-top'>
-                        <div className='triage-avatar'>
-                          {(selectedPatient.fullName || '?')
-                            .split(' ')
+                    <article className="triage-profile-card">
+                      <div className="triage-profile-top">
+                        <div className="triage-avatar">
+                          {(selectedPatient.fullName || "?")
+                            .split(" ")
                             .slice(0, 2)
                             .map((part) => part.charAt(0).toUpperCase())
-                            .join('')
+                            .join("")
                             .slice(0, 2)}
                         </div>
                         <div>
                           <h4>{selectedPatient.fullName}</h4>
                           <p>
-                            {selectedPatient.age} years {'\u2022'}{' '}
+                            {selectedPatient.age} years {"\u2022"}{" "}
                             {selectedPatient.gender}
                           </p>
                         </div>
                       </div>
 
-                      <div className='triage-profile-grid'>
+                      <div className="triage-profile-grid">
                         <div>
                           <label>Phone</label>
-                          <p className='triage-value-line'>
+                          <p className="triage-value-line">
                             <Phone size={13} strokeWidth={2.2} />
                             <span>{selectedPatient.phone}</span>
                           </p>
                         </div>
                         <div>
                           <label>Blood Type</label>
-                          <p className='triage-value-line triage-blood'>
+                          <p className="triage-value-line triage-blood">
                             <Droplet size={13} strokeWidth={2.2} />
                             <span>{selectedPatient.bloodType}</span>
                           </p>
                         </div>
-                        <div className='full'>
+                        <div className="full">
                           <label>Email</label>
-                          <p className='triage-value-line'>
+                          <p className="triage-value-line">
                             <Mail size={13} strokeWidth={2.2} />
                             <span>{selectedPatient.email}</span>
                           </p>
                         </div>
                       </div>
 
+                      <div className="triage-divider" />
 
-                      <div className='triage-divider' />
-
-                      <div className='triage-last-visit'>
+                      <div className="triage-last-visit">
                         <Clock3 size={14} strokeWidth={2.2} />
                         <span>Last visit:</span>
                         <strong>{selectedPatient.lastVisit}</strong>
                       </div>
 
-                      <div className='triage-divider' />
+                      <div className="triage-divider" />
 
                       <button
                         onClick={() => setShowMedicalRecords(true)}
@@ -2928,8 +2949,8 @@ export default function Dashboard() {
                         }
                         className={`w-full px-4 py-3 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 ${
                           isSelectedCallbackTicket || !selectedPatientId
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "bg-blue-50 hover:bg-blue-100 text-blue-700"
                         }`}
                       >
                         <FileText size={14} strokeWidth={2} />
@@ -2937,35 +2958,35 @@ export default function Dashboard() {
                       </button>
 
                       {isSelectedCallbackTicket && (
-                        <p className='text-[11px] text-gray-500 mt-2'>
+                        <p className="text-[11px] text-gray-500 mt-2">
                           Callback-only entries do not have direct medical
                           record editing context.
                         </p>
                       )}
                     </article>
 
-                    <article className='triage-details-panel'>
+                    <article className="triage-details-panel">
                       <button
-                        type='button'
-                        className='triage-details-toggle'
+                        type="button"
+                        className="triage-details-toggle"
                         onClick={() =>
                           setIsAdditionalDetailsOpen((prev) => !prev)
                         }
                       >
-                        <span className='triage-details-title'>
+                        <span className="triage-details-title">
                           <MapPin size={14} strokeWidth={2.2} />
                           <span>Additional Details</span>
                         </span>
                         <ChevronDown
                           size={16}
                           strokeWidth={2.3}
-                          className={isAdditionalDetailsOpen ? 'open' : ''}
+                          className={isAdditionalDetailsOpen ? "open" : ""}
                         />
                       </button>
 
                       {isAdditionalDetailsOpen && (
-                        <div className='triage-details-content'>
-                          <div className='triage-detail-row'>
+                        <div className="triage-details-content">
+                          <div className="triage-detail-row">
                             <label>Address</label>
                             <p>{selectedPatient.address}</p>
                           </div>
@@ -2979,17 +3000,17 @@ export default function Dashboard() {
               {(!selectedPatient ||
                 (selectedPatientId &&
                   selectedPatient.email &&
-                  selectedPatient.email !== 'N/A')) && (
-                <div className='triage-snapshot-chat-dock'>
-                  <article className='triage-chat-panel'>
+                  selectedPatient.email !== "N/A")) && (
+                <div className="triage-snapshot-chat-dock">
+                  <article className="triage-chat-panel">
                     <header>
                       <h4>Chat Consultation</h4>
                       <p>Context for triage assessment</p>
                     </header>
 
-                    <div className='triage-chat-list' ref={quickChatListRef}>
+                    <div className="triage-chat-list" ref={quickChatListRef}>
                       {!selectedPatient ? (
-                        <div className='triage-empty-note'>
+                        <div className="triage-empty-note">
                           Select a patient to open chat.
                         </div>
                       ) : chatEntries.length > 0 ? (
@@ -2997,12 +3018,12 @@ export default function Dashboard() {
                           message.isSystem ? (
                             <div
                               key={message.id}
-                              className='triage-chat-system-row'
+                              className="triage-chat-system-row"
                             >
-                              <span className='triage-chat-system-avatar'>
+                              <span className="triage-chat-system-avatar">
                                 <UserRound size={14} strokeWidth={2.2} />
                               </span>
-                              <div className='triage-chat-bubble system'>
+                              <div className="triage-chat-bubble system">
                                 <p>{message.text}</p>
                                 <span>{message.timestamp}</span>
                               </div>
@@ -3010,7 +3031,7 @@ export default function Dashboard() {
                           ) : (
                             <div
                               key={message.id}
-                              className={`triage-chat-bubble ${message.isSent ? 'sent' : 'received'}`}
+                              className={`triage-chat-bubble ${message.isSent ? "sent" : "received"}`}
                             >
                               <p>{message.text}</p>
                               <span>{message.timestamp}</span>
@@ -3018,31 +3039,28 @@ export default function Dashboard() {
                           ),
                         )
                       ) : (
-                        <div className='triage-empty-note'>
+                        <div className="triage-empty-note">
                           No messages yet for this patient.
                         </div>
                       )}
                     </div>
 
                     <form
-                      className='triage-chat-input-row'
+                      className="triage-chat-input-row"
                       onSubmit={handleQuickSendMessage}
                     >
                       <input
-                        type='text'
-                        placeholder='Type a message...'
+                        type="text"
+                        placeholder="Type a message..."
                         value={quickMessage}
                         onChange={(event) =>
                           setQuickMessage(event.target.value)
                         }
-                        disabled={
-                          !selectedPatient ||
-                          isSendingQuickMessage
-                        }
+                        disabled={!selectedPatient || isSendingQuickMessage}
                       />
                       <button
-                        className='triage-chat-send-btn'
-                        type='submit'
+                        className="triage-chat-send-btn"
+                        type="submit"
                         disabled={
                           !selectedPatient ||
                           !quickMessage.trim() ||
@@ -3054,41 +3072,41 @@ export default function Dashboard() {
                     </form>
 
                     {quickMessageError && (
-                      <p className='nurse-quick-error'>{quickMessageError}</p>
+                      <p className="nurse-quick-error">{quickMessageError}</p>
                     )}
                   </article>
                 </div>
               )}
             </section>
 
-            <section className='triage-workspace-col'>
-              <div className='triage-col-header'>
+            <section className="triage-workspace-col">
+              <div className="triage-col-header">
                 <ClipboardList size={16} strokeWidth={2.2} />
                 <h3>Triage Workspace</h3>
               </div>
 
               {selectedPatient && (
-                <div className='triage-workspace-head'>
-                  <div className='triage-workspace-head-main'>
-                    <div className='triage-name-badge-row'>
+                <div className="triage-workspace-head">
+                  <div className="triage-workspace-head-main">
+                    <div className="triage-name-badge-row">
                       <h2>{selectedPatient.fullName}</h2>
-                      <span className='triage-chat-badge'>
+                      <span className="triage-chat-badge">
                         {getChannelLabel(selectedTicket)}
                       </span>
                     </div>
 
-                    <div className='triage-status-select-wrap'>
+                    <div className="triage-status-select-wrap">
                       <button
-                        type='button'
+                        type="button"
                         className={`triage-status-select ${
                           isSelectedCallbackTicket
                             ? `callback-status-${getCallbackStatusOptionFromDisplay(triageStatus)}`
-                            : triageStatus.toLowerCase().replace(/\s+/g, '-')
+                            : triageStatus.toLowerCase().replace(/\s+/g, "-")
                         }`}
                         onClick={() => setShowStatusMenu((prev) => !prev)}
                         disabled={isUpdatingStatus}
                       >
-                        <span className='triage-status-current'>
+                        <span className="triage-status-current">
                           {!isSelectedCallbackTicket &&
                             renderTriageStatusIcon(triageStatus)}
                           <span>{triageStatus}</span>
@@ -3097,22 +3115,22 @@ export default function Dashboard() {
                       </button>
 
                       {showStatusMenu && (
-                        <div className='triage-status-menu'>
+                        <div className="triage-status-menu">
                           {(isSelectedCallbackTicket
                             ? CALLBACK_STATUS_OPTIONS
                             : TRIAGE_STATUS_OPTIONS
                           ).map((option) => (
                             <button
                               key={option}
-                              type='button'
-                              className='triage-status-option'
+                              type="button"
+                              className="triage-status-option"
                               onClick={() => handleStatusChange(option)}
                             >
-                              <span className='triage-status-option-main'>
+                              <span className="triage-status-option-main">
                                 {!isSelectedCallbackTicket ? (
                                   <>
                                     <span
-                                      className={`dot ${option.toLowerCase().replace(/\s+/g, '-')}`}
+                                      className={`dot ${option.toLowerCase().replace(/\s+/g, "-")}`}
                                     />
                                     {renderTriageStatusIcon(option)}
                                   </>
@@ -3123,14 +3141,14 @@ export default function Dashboard() {
                                 )}
                                 <span>
                                   {isSelectedCallbackTicket
-                                    ? option === 'new'
-                                      ? 'New'
-                                      : option === 'in_progress'
-                                        ? 'In Progress'
-                                        : option === 'pending'
-                                          ? 'Pending'
-                                          : option === 'expired'
-                                            ? 'Expired'
+                                    ? option === "new"
+                                      ? "New"
+                                      : option === "in_progress"
+                                        ? "In Progress"
+                                        : option === "pending"
+                                          ? "Pending"
+                                          : option === "expired"
+                                            ? "Expired"
                                             : option
                                     : option}
                                 </span>
@@ -3142,7 +3160,7 @@ export default function Dashboard() {
                                   <Check
                                     size={16}
                                     strokeWidth={2.4}
-                                    className='triage-status-selected-check'
+                                    className="triage-status-selected-check"
                                   />
                                 ) : (
                                   <span />
@@ -3151,7 +3169,7 @@ export default function Dashboard() {
                                 <Check
                                   size={16}
                                   strokeWidth={2.4}
-                                  className='triage-status-selected-check'
+                                  className="triage-status-selected-check"
                                 />
                               ) : (
                                 <span />
@@ -3163,15 +3181,15 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <div className='triage-mark-actions'>
+                  <div className="triage-mark-actions">
                     <label>
                       <input
-                        type='checkbox'
+                        type="checkbox"
                         checked={markInquiry}
                         disabled={isSelectedCallbackTicket}
                         onChange={(event) =>
                           handleCloseReasonToggle(
-                            'inquiry',
+                            "inquiry",
                             event.target.checked,
                           )
                         }
@@ -3180,12 +3198,12 @@ export default function Dashboard() {
                     </label>
                     <label>
                       <input
-                        type='checkbox'
+                        type="checkbox"
                         checked={markIncomplete}
                         disabled={isSelectedCallbackTicket}
                         onChange={(event) =>
                           handleCloseReasonToggle(
-                            'incomplete',
+                            "incomplete",
                             event.target.checked,
                           )
                         }
@@ -3196,114 +3214,114 @@ export default function Dashboard() {
                 </div>
               )}
 
-              <div className='triage-workspace-scroll'>
+              <div className="triage-workspace-scroll">
                 {selectedPatient ? (
                   <>
-                    <article className='triage-vitals-card'>
+                    <article className="triage-vitals-card">
                       <h4>
                         <Activity size={16} strokeWidth={2.2} />
                         <span>Vital Signs</span>
                       </h4>
-                      <div className='triage-vitals-grid'>
+                      <div className="triage-vitals-grid">
                         <div>
                           <label>Blood Pressure</label>
                           <input
-                            type='text'
-                            className='triage-vital-input'
-                            placeholder='120/80'
+                            type="text"
+                            className="triage-vital-input"
+                            placeholder="120/80"
                             maxLength={7}
                             value={vitalsDraft.bloodPressure}
                             onChange={(event) =>
                               handleVitalChange(
-                                'bloodPressure',
+                                "bloodPressure",
                                 sanitizeBloodPressureVital(event.target.value),
                               )
                             }
-                            onBlur={() => handleVitalBlur('bloodPressure')}
+                            onBlur={() => handleVitalBlur("bloodPressure")}
                           />
                         </div>
                         <div>
                           <label>Heart Rate</label>
-                          <div className='triage-vital-input-wrap'>
+                          <div className="triage-vital-input-wrap">
                             <input
-                              type='text'
-                              className='triage-vital-input with-unit'
-                              placeholder='72'
-                              inputMode='numeric'
+                              type="text"
+                              className="triage-vital-input with-unit"
+                              placeholder="72"
+                              inputMode="numeric"
                               maxLength={3}
                               value={vitalsDraft.heartRate}
                               onChange={(event) =>
                                 handleVitalChange(
-                                  'heartRate',
+                                  "heartRate",
                                   sanitizeNumericVital(event.target.value),
                                 )
                               }
-                              onBlur={() => handleVitalBlur('heartRate')}
+                              onBlur={() => handleVitalBlur("heartRate")}
                             />
-                            <span className='triage-vital-unit'>bpm</span>
+                            <span className="triage-vital-unit">bpm</span>
                           </div>
                         </div>
                         <div>
                           <label>Temperature</label>
-                          <div className='triage-vital-input-wrap'>
+                          <div className="triage-vital-input-wrap">
                             <input
-                              type='text'
-                              className='triage-vital-input with-unit'
-                              placeholder='36.8'
-                              inputMode='decimal'
+                              type="text"
+                              className="triage-vital-input with-unit"
+                              placeholder="36.8"
+                              inputMode="decimal"
                               maxLength={5}
                               value={vitalsDraft.temperature}
                               onChange={(event) =>
                                 handleVitalChange(
-                                  'temperature',
+                                  "temperature",
                                   sanitizeTemperatureVital(event.target.value),
                                 )
                               }
-                              onBlur={() => handleVitalBlur('temperature')}
+                              onBlur={() => handleVitalBlur("temperature")}
                             />
-                            <span className='triage-vital-unit'>°C</span>
+                            <span className="triage-vital-unit">°C</span>
                           </div>
                         </div>
                         <div>
                           <label>Oxygen Saturation</label>
-                          <div className='triage-vital-input-wrap'>
+                          <div className="triage-vital-input-wrap">
                             <input
-                              type='text'
-                              className='triage-vital-input with-unit'
-                              placeholder='98'
-                              inputMode='numeric'
+                              type="text"
+                              className="triage-vital-input with-unit"
+                              placeholder="98"
+                              inputMode="numeric"
                               maxLength={3}
                               value={vitalsDraft.oxygenSaturation}
                               onChange={(event) =>
                                 handleVitalChange(
-                                  'oxygenSaturation',
+                                  "oxygenSaturation",
                                   sanitizeNumericVital(event.target.value),
                                 )
                               }
-                              onBlur={() => handleVitalBlur('oxygenSaturation')}
+                              onBlur={() => handleVitalBlur("oxygenSaturation")}
                             />
-                            <span className='triage-vital-unit'>%</span>
+                            <span className="triage-vital-unit">%</span>
                           </div>
                         </div>
                       </div>
                     </article>
 
-                    <article className='triage-submitted-concern-card'>
+                    <article className="triage-submitted-concern-card">
                       <h4>Patient Submitted Concern</h4>
                       <div
-                        className={`triage-submitted-concern-quote ${patientSubmittedConcern ? 'filled' : 'empty'}`}
+                        className={`triage-submitted-concern-quote ${patientSubmittedConcern ? "filled" : "empty"}`}
                       >
                         {patientSubmittedConcern
                           ? `"${patientSubmittedConcern}"`
                           : '"No patient concern submitted"'}
                       </div>
-                      <p className='triage-complaint-help'>
+                      <p className="triage-complaint-help">
                         This is the patient's original submitted concern. Review
                         and create professional chief complaint below.
                       </p>
                     </article>
 
-                    <article className='triage-clinical-complaint-card'>
+                    <article className="triage-clinical-complaint-card">
                       <h4>Chief Complaint (Clinical)</h4>
                       <textarea
                         value={chiefComplaintDraft}
@@ -3311,15 +3329,15 @@ export default function Dashboard() {
                           handleChiefComplaintChange(event.target.value)
                         }
                         onBlur={handleChiefComplaintBlur}
-                        placeholder='Enter professional clinical chief complaint based on triage assessment...'
+                        placeholder="Enter professional clinical chief complaint based on triage assessment..."
                       />
-                      <p className='triage-complaint-help'>
+                      <p className="triage-complaint-help">
                         This is the professional triage chief complaint that
                         will be sent to the doctor.
                       </p>
                     </article>
 
-                    <article className='triage-complaint-symptoms'>
+                    <article className="triage-complaint-symptoms">
                       <h4>Associated Symptoms</h4>
                       <textarea
                         value={associatedSymptomsDraft}
@@ -3327,17 +3345,17 @@ export default function Dashboard() {
                           handleAssociatedSymptomsChange(event.target.value)
                         }
                         onBlur={handleAssociatedSymptomsBlur}
-                        placeholder='Additional symptoms and clinical observations...'
+                        placeholder="Additional symptoms and clinical observations..."
                       />
-                      <div className='triage-symptom-pills'>
+                      <div className="triage-symptom-pills">
                         {SYMPTOM_PILL_OPTIONS.map((pill) => {
                           const isSelected =
                             selectedSymptomPills.includes(pill);
                           return (
                             <button
                               key={pill}
-                              type='button'
-                              className={`triage-symptom-pill ${isSelected ? 'selected' : ''}`}
+                              type="button"
+                              className={`triage-symptom-pill ${isSelected ? "selected" : ""}`}
                               onClick={() => handleSymptomPillToggle(pill)}
                             >
                               {pill}
@@ -3347,52 +3365,52 @@ export default function Dashboard() {
                       </div>
                     </article>
 
-                    <article className='triage-pain-map-card'>
+                    <article className="triage-pain-map-card">
                       <h4>Pain Map</h4>
-                      <div className='triage-pain-map-controls-row'>
+                      <div className="triage-pain-map-controls-row">
                         <div
-                          className='triage-pain-map-view-toggle'
-                          role='tablist'
-                          aria-label='Pain map view'
+                          className="triage-pain-map-view-toggle"
+                          role="tablist"
+                          aria-label="Pain map view"
                         >
                           <button
-                            type='button'
-                            role='tab'
-                            aria-selected={painMapView === 'front'}
-                            className={`triage-pain-map-view-btn ${painMapView === 'front' ? 'active' : ''}`}
-                            onClick={() => handlePainMapViewChange('front')}
+                            type="button"
+                            role="tab"
+                            aria-selected={painMapView === "front"}
+                            className={`triage-pain-map-view-btn ${painMapView === "front" ? "active" : ""}`}
+                            onClick={() => handlePainMapViewChange("front")}
                           >
                             Front
                           </button>
                           <button
-                            type='button'
-                            role='tab'
-                            aria-selected={painMapView === 'back'}
-                            className={`triage-pain-map-view-btn ${painMapView === 'back' ? 'active' : ''}`}
-                            onClick={() => handlePainMapViewChange('back')}
+                            type="button"
+                            role="tab"
+                            aria-selected={painMapView === "back"}
+                            className={`triage-pain-map-view-btn ${painMapView === "back" ? "active" : ""}`}
+                            onClick={() => handlePainMapViewChange("back")}
                           >
                             Back
                           </button>
                         </div>
-                        <div className='triage-pain-readonly-meta inline'>
-                          <div className='triage-vitals-grid triage-vitals-grid-readonly inline'>
-                            <div className='triage-pain-meta-item'>
+                        <div className="triage-pain-readonly-meta inline">
+                          <div className="triage-vitals-grid triage-vitals-grid-readonly inline">
+                            <div className="triage-pain-meta-item">
                               <label>Pain Score</label>
-                              <div className='triage-vital-input-wrap triage-vital-input-wrap-readonly triage-vital-input-wrap-meta'>
-                                <span className='triage-pain-meta-value'>
-                                  {painMapReadOnlyMeta.painScore || 'N/A'}
+                              <div className="triage-vital-input-wrap triage-vital-input-wrap-readonly triage-vital-input-wrap-meta">
+                                <span className="triage-pain-meta-value">
+                                  {painMapReadOnlyMeta.painScore || "N/A"}
                                 </span>
-                                <span className='triage-vital-unit'>/10</span>
+                                <span className="triage-vital-unit">/10</span>
                               </div>
                             </div>
-                            <div className='triage-pain-meta-item triage-pain-meta-item-duration'>
+                            <div className="triage-pain-meta-item triage-pain-meta-item-duration">
                               <label>Pain Duration</label>
-                              <div className='triage-vital-input-wrap triage-vital-input-wrap-readonly triage-vital-input-wrap-duration triage-vital-input-wrap-meta'>
-                                <span className='triage-pain-meta-value'>
-                                  {painMapReadOnlyMeta.durationValue || 'N/A'}
+                              <div className="triage-vital-input-wrap triage-vital-input-wrap-readonly triage-vital-input-wrap-duration triage-vital-input-wrap-meta">
+                                <span className="triage-pain-meta-value">
+                                  {painMapReadOnlyMeta.durationValue || "N/A"}
                                 </span>
-                                <span className='triage-vital-unit'>
-                                  {painMapReadOnlyMeta.durationUnit || '--'}
+                                <span className="triage-vital-unit">
+                                  {painMapReadOnlyMeta.durationUnit || "--"}
                                 </span>
                               </div>
                             </div>
@@ -3400,9 +3418,9 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      <div className='triage-pain-map-content'>
+                      <div className="triage-pain-map-content">
                         <div
-                          className={`triage-pain-map-figure ${painMapView === 'back' ? 'back' : 'front'}`}
+                          className={`triage-pain-map-figure ${painMapView === "back" ? "back" : "front"}`}
                         >
                           {PAIN_MAP_AREAS[painMapView].map((area) => {
                             const areaId = `${painMapView}:${area.key}`;
@@ -3413,8 +3431,8 @@ export default function Dashboard() {
                             return (
                               <button
                                 key={areaId}
-                                type='button'
-                                className={`triage-body-part ${area.className} ${isSelected ? 'selected' : ''}`}
+                                type="button"
+                                className={`triage-body-part ${area.className} ${isSelected ? "selected" : ""}`}
                                 onClick={() => handlePainAreaToggle(area)}
                                 aria-pressed={isSelected}
                                 aria-label={`${area.label} (${painMapView})`}
@@ -3423,28 +3441,28 @@ export default function Dashboard() {
                           })}
                         </div>
 
-                        <div className='triage-pain-map-selection'>
-                          <div className='triage-pain-map-selection-title'>
+                        <div className="triage-pain-map-selection">
+                          <div className="triage-pain-map-selection-title">
                             Selected pain areas:
                           </div>
                           {selectedPainAreas.length === 0 ? (
-                            <div className='triage-pain-map-empty'>
+                            <div className="triage-pain-map-empty">
                               No areas selected
                             </div>
                           ) : (
-                            <div className='triage-pain-map-chips'>
+                            <div className="triage-pain-map-chips">
                               {selectedPainAreas.map((area) => (
                                 <div
                                   key={area.id}
-                                  className='triage-pain-map-chip'
+                                  className="triage-pain-map-chip"
                                 >
                                   <span>
                                     {area.label}
-                                    {` (${area.view === 'back' ? 'Back' : 'Front'})`}
+                                    {` (${area.view === "back" ? "Back" : "Front"})`}
                                   </span>
                                   <button
-                                    type='button'
-                                    className='triage-pain-map-chip-remove'
+                                    type="button"
+                                    className="triage-pain-map-chip-remove"
                                     onClick={() =>
                                       handlePainAreaRemove(area.id)
                                     }
@@ -3459,30 +3477,30 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      <div className='triage-pain-map-instruction'>
+                      <div className="triage-pain-map-instruction">
                         Click on body parts to mark pain locations
                       </div>
                     </article>
 
-                    <article className='triage-ros-card'>
+                    <article className="triage-ros-card">
                       <h4>Review of Systems (ROS)</h4>
-                      <div className='triage-ros-grid'>
+                      <div className="triage-ros-grid">
                         {ROS_GROUPS.map((group) => (
                           <section
                             key={group.title}
-                            className='triage-ros-group'
+                            className="triage-ros-group"
                           >
-                            <div className='triage-ros-group-title'>
+                            <div className="triage-ros-group-title">
                               {group.title}
                             </div>
-                            <div className='triage-ros-items'>
+                            <div className="triage-ros-items">
                               {group.items.map((item) => {
                                 const isChecked =
                                   selectedRosItems.includes(item);
                                 return (
-                                  <label key={item} className='triage-ros-item'>
+                                  <label key={item} className="triage-ros-item">
                                     <input
-                                      type='checkbox'
+                                      type="checkbox"
                                       checked={isChecked}
                                       onChange={() => handleRosItemToggle(item)}
                                     />
@@ -3496,22 +3514,22 @@ export default function Dashboard() {
                       </div>
                     </article>
 
-                    <article className='triage-medical-history-card'>
-                      <header className='triage-medical-history-title'>
+                    <article className="triage-medical-history-card">
+                      <header className="triage-medical-history-title">
                         <Heart size={16} strokeWidth={2.2} />
                         <span>Medical History</span>
                       </header>
 
-                      <section className='triage-medical-history-section'>
+                      <section className="triage-medical-history-section">
                         <h5>
                           <Activity
                             size={14}
                             strokeWidth={2.2}
-                            className='triage-active-diseases-icon'
+                            className="triage-active-diseases-icon"
                           />
                           <span>Active Diseases</span>
                         </h5>
-                        <div className='triage-medical-pill-row'>
+                        <div className="triage-medical-pill-row">
                           {ACTIVE_DISEASE_OPTIONS.map((disease) => {
                             const isSelected = activeDiseasesDraft.some(
                               (entry) =>
@@ -3520,8 +3538,8 @@ export default function Dashboard() {
                             return (
                               <button
                                 key={disease}
-                                type='button'
-                                className={`triage-medical-choice-pill ${isSelected ? 'selected' : ''}`}
+                                type="button"
+                                className={`triage-medical-choice-pill ${isSelected ? "selected" : ""}`}
                                 onClick={() =>
                                   handleActiveDiseaseToggle(disease)
                                 }
@@ -3531,22 +3549,22 @@ export default function Dashboard() {
                             );
                           })}
                         </div>
-                        <div className='triage-inline-add-row'>
+                        <div className="triage-inline-add-row">
                           <input
-                            type='text'
-                            className='triage-vital-input'
+                            type="text"
+                            className="triage-vital-input"
                             value={customActiveDiseaseDraft}
                             onChange={(event) =>
                               setCustomActiveDiseaseDraft(event.target.value)
                             }
                             onKeyDown={(event) =>
-                              event.key === 'Enter' && handleAddActiveDisease()
+                              event.key === "Enter" && handleAddActiveDisease()
                             }
-                            placeholder='Add custom disease...'
+                            placeholder="Add custom disease..."
                           />
                           <button
-                            type='button'
-                            className='triage-inline-add-btn'
+                            type="button"
+                            className="triage-inline-add-btn"
                             onClick={handleAddActiveDisease}
                             disabled={!customActiveDiseaseDraft.trim()}
                           >
@@ -3554,18 +3572,18 @@ export default function Dashboard() {
                           </button>
                         </div>
                         {activeDiseasesDraft.length === 0 && (
-                          <p className='triage-empty-medical-history'>
+                          <p className="triage-empty-medical-history">
                             No active diseases recorded
                           </p>
                         )}
                         {activeDiseasesDraft.length > 0 && (
-                          <div className='triage-tag-list triage-tag-list-medications'>
+                          <div className="triage-tag-list triage-tag-list-medications">
                             {activeDiseasesDraft.map((disease) => (
                               <span key={disease}>
                                 {disease}
                                 <button
-                                  type='button'
-                                  className='triage-medication-remove-btn'
+                                  type="button"
+                                  className="triage-medication-remove-btn"
                                   onClick={() =>
                                     handleRemoveActiveDisease(disease)
                                   }
@@ -3578,27 +3596,27 @@ export default function Dashboard() {
                         )}
                       </section>
 
-                      <section className='triage-medical-history-section triage-medical-history-alert'>
+                      <section className="triage-medical-history-section triage-medical-history-alert">
                         <h5>
                           <AlertCircle size={14} strokeWidth={2.2} />
                           <span>Allergies (Auto-saves to Patient Profile)</span>
                         </h5>
-                        <div className='triage-inline-add-row'>
+                        <div className="triage-inline-add-row">
                           <input
-                            type='text'
-                            className='triage-vital-input'
+                            type="text"
+                            className="triage-vital-input"
                             value={newAllergy}
                             onChange={(event) =>
                               setNewAllergy(event.target.value)
                             }
                             onKeyDown={(event) =>
-                              event.key === 'Enter' && handleAddAllergy()
+                              event.key === "Enter" && handleAddAllergy()
                             }
-                            placeholder='Add allergy...'
+                            placeholder="Add allergy..."
                           />
                           <button
-                            type='button'
-                            className='triage-inline-add-btn triage-inline-add-btn-alert'
+                            type="button"
+                            className="triage-inline-add-btn triage-inline-add-btn-alert"
                             onClick={handleAddAllergy}
                             disabled={!newAllergy.trim()}
                           >
@@ -3606,13 +3624,13 @@ export default function Dashboard() {
                           </button>
                         </div>
                         {selectedPatient?.allergies?.length > 0 && (
-                          <div className='triage-tag-list triage-medical-allergy-list'>
+                          <div className="triage-tag-list triage-medical-allergy-list">
                             {selectedPatient.allergies.map((allergy) => (
                               <span key={allergy}>
                                 {allergy}
                                 <button
-                                  type='button'
-                                  className='triage-medication-remove-btn'
+                                  type="button"
+                                  className="triage-medication-remove-btn"
                                   onClick={() => handleRemoveAllergy(allergy)}
                                 >
                                   &times;
@@ -3623,146 +3641,146 @@ export default function Dashboard() {
                         )}
                       </section>
 
-                      <section className='triage-medical-history-section triage-medical-history-section--compact'>
+                      <section className="triage-medical-history-section triage-medical-history-section--compact">
                         <h5>Past Diseases</h5>
                         <textarea
-                          className='triage-note-textarea triage-note-textarea-compact'
+                          className="triage-note-textarea triage-note-textarea-compact"
                           value={pastDiseasesDraft}
                           onChange={(event) =>
                             handlePastDiseasesChange(event.target.value)
                           }
                           onBlur={() =>
                             handleMedicalHistorySectionBlur(
-                              'pastDiseases',
+                              "pastDiseases",
                               pastDiseasesDraft,
                             )
                           }
-                          placeholder='List past diseases, conditions, or illnesses...'
+                          placeholder="List past diseases, conditions, or illnesses..."
                         />
                       </section>
 
-                      <section className='triage-medical-history-section triage-medical-history-section--compact'>
-                        <h5 className='triage-family-history-title'>
+                      <section className="triage-medical-history-section triage-medical-history-section--compact">
+                        <h5 className="triage-family-history-title">
                           Family History
                         </h5>
                         <textarea
-                          className='triage-note-textarea triage-note-textarea-compact'
+                          className="triage-note-textarea triage-note-textarea-compact"
                           value={familyHistoryDraft}
                           onChange={(event) =>
                             handleFamilyHistoryChange(event.target.value)
                           }
                           onBlur={() =>
                             handleMedicalHistorySectionBlur(
-                              'familyHistory',
+                              "familyHistory",
                               familyHistoryDraft,
                             )
                           }
-                          placeholder='Family medical history (parents, siblings, etc.)...'
+                          placeholder="Family medical history (parents, siblings, etc.)..."
                         />
                       </section>
 
-                      <section className='triage-medical-history-section triage-social-history-box'>
+                      <section className="triage-medical-history-section triage-social-history-box">
                         <h5>Social History</h5>
-                        <div className='triage-social-history-grid'>
+                        <div className="triage-social-history-grid">
                           <div>
                             <label>Smoking</label>
                             <input
-                              className='triage-vital-input'
-                              type='text'
+                              className="triage-vital-input"
+                              type="text"
                               value={smokingDraft}
                               onChange={(event) =>
                                 handleSmokingChange(event.target.value)
                               }
                               onBlur={() =>
                                 handleMedicalHistorySectionBlur(
-                                  'smoking',
+                                  "smoking",
                                   smokingDraft,
                                 )
                               }
-                              placeholder='e.g., Non-smoker, 10/day'
+                              placeholder="e.g., Non-smoker, 10/day"
                             />
                           </div>
                           <div>
                             <label>Drinking</label>
                             <input
-                              className='triage-vital-input'
-                              type='text'
+                              className="triage-vital-input"
+                              type="text"
                               value={drinkingDraft}
                               onChange={(event) =>
                                 handleDrinkingChange(event.target.value)
                               }
                               onBlur={() =>
                                 handleMedicalHistorySectionBlur(
-                                  'drinking',
+                                  "drinking",
                                   drinkingDraft,
                                 )
                               }
-                              placeholder='e.g., Occasional, Daily'
+                              placeholder="e.g., Occasional, Daily"
                             />
                           </div>
                         </div>
-                        <label className='triage-lifestyle-label'>
+                        <label className="triage-lifestyle-label">
                           Lifestyle Notes
                         </label>
                         <textarea
-                          className='triage-note-textarea triage-note-textarea-compact'
+                          className="triage-note-textarea triage-note-textarea-compact"
                           value={lifestyleNotesDraft}
                           onChange={(event) =>
                             handleLifestyleNotesChange(event.target.value)
                           }
                           onBlur={() =>
                             handleMedicalHistorySectionBlur(
-                              'lifestyleNotes',
+                              "lifestyleNotes",
                               lifestyleNotesDraft,
                             )
                           }
-                          placeholder='Diet, exercise, occupation, stress factors...'
+                          placeholder="Diet, exercise, occupation, stress factors..."
                         />
                       </section>
 
-                      <section className='triage-medical-history-section triage-medical-history-section--compact'>
+                      <section className="triage-medical-history-section triage-medical-history-section--compact">
                         <h5>Surgeries</h5>
                         <textarea
-                          className='triage-note-textarea triage-note-textarea-compact'
+                          className="triage-note-textarea triage-note-textarea-compact"
                           value={surgeriesDraft}
                           onChange={(event) =>
                             handleSurgeriesChange(event.target.value)
                           }
                           onBlur={() =>
                             handleMedicalHistorySectionBlur(
-                              'surgeries',
+                              "surgeries",
                               surgeriesDraft,
                             )
                           }
-                          placeholder='List previous surgeries with dates if available...'
+                          placeholder="List previous surgeries with dates if available..."
                         />
                       </section>
 
-                      <section className='triage-medical-history-section triage-medical-history-section--compact'>
-                        <h5 className='triage-medications-title'>
+                      <section className="triage-medical-history-section triage-medical-history-section--compact">
+                        <h5 className="triage-medications-title">
                           <Pill
                             size={14}
                             strokeWidth={2.2}
-                            className='triage-medications-icon'
+                            className="triage-medications-icon"
                           />
                           <span>Current Medications</span>
                         </h5>
-                        <div className='triage-inline-add-row'>
+                        <div className="triage-inline-add-row">
                           <input
-                            type='text'
-                            className='triage-vital-input'
+                            type="text"
+                            className="triage-vital-input"
                             value={newMedication}
                             onChange={(event) =>
                               setNewMedication(event.target.value)
                             }
                             onKeyDown={(event) =>
-                              event.key === 'Enter' && handleMedicationAdd()
+                              event.key === "Enter" && handleMedicationAdd()
                             }
-                            placeholder='Add medication...'
+                            placeholder="Add medication..."
                           />
                           <button
-                            type='button'
-                            className='triage-inline-add-btn'
+                            type="button"
+                            className="triage-inline-add-btn"
                             onClick={handleMedicationAdd}
                             disabled={!newMedication.trim()}
                           >
@@ -3770,13 +3788,13 @@ export default function Dashboard() {
                           </button>
                         </div>
                         {currentMedicationsDraft.length > 0 && (
-                          <div className='triage-tag-list triage-tag-list-medications'>
+                          <div className="triage-tag-list triage-tag-list-medications">
                             {currentMedicationsDraft.map((medication) => (
                               <span key={medication}>
                                 {medication}
                                 <button
-                                  type='button'
-                                  className='triage-medication-remove-btn'
+                                  type="button"
+                                  className="triage-medication-remove-btn"
                                   onClick={() =>
                                     handleMedicationRemove(medication)
                                   }
@@ -3790,35 +3808,35 @@ export default function Dashboard() {
                       </section>
                     </article>
 
-                    <article className='triage-note-card'>
+                    <article className="triage-note-card">
                       <h4>
                         <FileText size={16} strokeWidth={2.2} />
                         <span>Additional Remarks</span>
                       </h4>
                       <textarea
-                        className='triage-note-textarea'
+                        className="triage-note-textarea"
                         value={additionalRemarksDraft}
                         onChange={(event) =>
                           handleAdditionalRemarksChange(event.target.value)
                         }
                         onBlur={handleAdditionalRemarksBlur}
-                        placeholder='Add remarks or important notes...'
+                        placeholder="Add remarks or important notes..."
                       />
                     </article>
 
-                    <article className='triage-urgency-card'>
+                    <article className="triage-urgency-card">
                       <h4>
                         <AlertCircle size={16} strokeWidth={2.2} />
                         <span>Urgency Level</span>
                       </h4>
-                      <div className='triage-urgency-grid'>
+                      <div className="triage-urgency-grid">
                         {URGENCY_LEVEL_OPTIONS.map((level) => {
                           const isSelected = selectedUrgencyLevel === level;
                           return (
                             <button
                               key={level}
-                              type='button'
-                              className={`triage-urgency-option level-${level.toLowerCase()} ${isSelected ? 'selected' : ''}`}
+                              type="button"
+                              className={`triage-urgency-option level-${level.toLowerCase()} ${isSelected ? "selected" : ""}`}
                               onClick={() => handleUrgencyLevelSelect(level)}
                             >
                               {level}
@@ -3829,7 +3847,7 @@ export default function Dashboard() {
                     </article>
                   </>
                 ) : (
-                  <div className='triage-empty-note'>
+                  <div className="triage-empty-note">
                     Select a patient from queue.
                   </div>
                 )}
@@ -3837,27 +3855,27 @@ export default function Dashboard() {
 
               {selectedPatient && !isSelectedCallbackTicket && (
                 <div
-                  className={`triage-workspace-footer ${shouldEnableCloseTicket ? 'active' : 'inactive'}`}
+                  className={`triage-workspace-footer ${shouldEnableCloseTicket ? "active" : "inactive"}`}
                 >
-                  <div className='triage-bottom-actions'>
+                  <div className="triage-bottom-actions">
                     <button
-                      type='button'
-                      className='triage-transfer-btn'
+                      type="button"
+                      className="triage-transfer-btn"
                       onClick={openTransferModal}
                     >
                       <UserRound size={16} strokeWidth={2.2} />
                       Transfer Patient
                     </button>
                     <button
-                      type='button'
-                      className={`triage-close-btn ${shouldEnableCloseTicket ? 'active' : 'inactive'}`}
+                      type="button"
+                      className={`triage-close-btn ${shouldEnableCloseTicket ? "active" : "inactive"}`}
                       disabled={!shouldEnableCloseTicket}
                       onClick={handleCloseTicket}
                     >
-                      <span className='triage-close-x'>&times;</span>
+                      <span className="triage-close-x">&times;</span>
                       <span>Close Ticket</span>
                       {closeReasonLabel && (
-                        <span className='triage-close-tag'>
+                        <span className="triage-close-tag">
                           {closeReasonLabel}
                         </span>
                       )}
@@ -3865,7 +3883,7 @@ export default function Dashboard() {
                   </div>
 
                   {!shouldEnableCloseTicket && (
-                    <p className='triage-close-help'>
+                    <p className="triage-close-help">
                       Mark ticket as "Inquiry" or "Incomplete" to enable closing
                     </p>
                   )}
@@ -3875,34 +3893,34 @@ export default function Dashboard() {
           </div>
         </div>
       ) : (
-        <div className='nurse-callback-requests-container'>
-          <div className='nurse-callback-header'>
-            <div className='nurse-callback-header-left'>
-              <div className='nurse-callback-title-row'>
-                <Phone className='nurse-callback-title-icon' />
+        <div className="nurse-callback-requests-container">
+          <div className="nurse-callback-header">
+            <div className="nurse-callback-header-left">
+              <div className="nurse-callback-title-row">
+                <Phone className="nurse-callback-title-icon" />
                 <h2>Callback Requests</h2>
               </div>
               <p>Free inquiry and triage assessment</p>
             </div>
-            <div className='nurse-callback-header-right'>
-              <div className='nurse-callback-status-pill'>
-                {callbacks.filter((c) => c.status === 'new').length} Waiting
+            <div className="nurse-callback-header-right">
+              <div className="nurse-callback-status-pill">
+                {callbacks.filter((c) => c.status === "new").length} Waiting
               </div>
-              <div className='nurse-callback-status-pill in-progress'>
+              <div className="nurse-callback-status-pill in-progress">
                 {
                   callbacks.filter((c) =>
-                    ['in_progress', 'inquiry', 'escalated'].includes(
-                      String(c.status || '').toLowerCase(),
+                    ["in_progress", "inquiry", "escalated"].includes(
+                      String(c.status || "").toLowerCase(),
                     ),
                   ).length
-                }{' '}
+                }{" "}
                 Active
               </div>
             </div>
           </div>
 
-          <div className='nurse-callback-table-container'>
-            <table className='nurse-callback-table'>
+          <div className="nurse-callback-table-container">
+            <table className="nurse-callback-table">
               <thead>
                 <tr>
                   <th>TICKET ID</th>
@@ -3919,30 +3937,38 @@ export default function Dashboard() {
                 {callbacks.length > 0 ? (
                   callbacks.map((callback) => (
                     <tr key={callback.id}>
-                      <td className='text-xs font-medium text-gray-500'>
+                      <td className="text-xs font-medium text-gray-500">
                         {callback.callbackNumber ||
-                          `CB-${String(callback.id).padStart(3, '0')}`}
+                          `CB-${String(callback.id).padStart(3, "0")}`}
                       </td>
-                      <td className='font-bold'>
+                      <td className="font-bold">
                         {getCallbackFullName(callback)}
                       </td>
                       <td>{callback.contactNumber}</td>
                       <td>
-                        <div className='flex items-center gap-2'>
-                          {getCallbackChannelLabel(callback) === 'Video' ? (
-                            <Video size={16} className='text-blue-500' />
+                        <div className="flex items-center gap-2">
+                          {getCallbackChannelLabel(callback) === "Video" ? (
+                            <Video size={16} className="text-blue-500" />
+                          ) : getCallbackChannelLabel(callback) === "Voice" ? (
+                            <Phone size={16} className="text-blue-500" />
+                          ) : getCallbackChannelLabel(callback) ===
+                            "Physical" ? (
+                            <MapPin size={16} className="text-blue-500" />
                           ) : (
-                            <Phone size={16} className='text-blue-500' />
+                            <MessageSquare
+                              size={16}
+                              className="text-blue-500"
+                            />
                           )}
                           <span>{getCallbackChannelLabel(callback)}</span>
                         </div>
                       </td>
                       <td>
-                        {formatDate(callback.createdAt)}{' '}
+                        {formatDate(callback.createdAt)}{" "}
                         {formatTime(callback.createdAt)}
                       </td>
-                      <td className='nurse-table-complaint'>
-                        {callback.message || 'Callback request'}
+                      <td className="nurse-table-complaint">
+                        {callback.message || "Callback request"}
                       </td>
                       <td>
                         <span
@@ -3952,14 +3978,14 @@ export default function Dashboard() {
                         </span>
                       </td>
                       <td>
-                        <div className='nurse-table-actions text-nowrap'>
+                        <div className="nurse-table-actions text-nowrap">
                           <button
-                            className={`nurse-action-btn ${callback.status === 'new' ? 'start' : 'view'}`}
+                            className={`nurse-action-btn ${callback.status === "new" ? "start" : "view"}`}
                             onClick={() => openCallbackModal(callback)}
                           >
-                            {callback.status === 'new' ? (
+                            {callback.status === "new" ? (
                               <>
-                                <div className='play-icon' />
+                                <div className="play-icon" />
                                 Start
                               </>
                             ) : (
@@ -3975,7 +4001,7 @@ export default function Dashboard() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan='8' className='nurse-table-empty'>
+                    <td colSpan="8" className="nurse-table-empty">
                       No callback requests found
                     </td>
                   </tr>
@@ -3988,38 +4014,38 @@ export default function Dashboard() {
 
       {showTransferModal && selectedPatient && (
         <div
-          className='triage-transfer-modal-overlay'
+          className="triage-transfer-modal-overlay"
           onClick={closeTransferModal}
-          role='presentation'
+          role="presentation"
         >
           <div
-            className='triage-transfer-modal'
+            className="triage-transfer-modal"
             onClick={(event) => event.stopPropagation()}
-            role='dialog'
-            aria-modal='true'
-            aria-label='Transfer patient'
+            role="dialog"
+            aria-modal="true"
+            aria-label="Transfer patient"
           >
             <button
-              type='button'
-              className='triage-transfer-modal-close'
+              type="button"
+              className="triage-transfer-modal-close"
               onClick={closeTransferModal}
-              aria-label='Close transfer modal'
+              aria-label="Close transfer modal"
             >
               &times;
             </button>
 
-            <h3 className='triage-transfer-title'>Transfer Patient</h3>
-            <p className='triage-transfer-subtitle'>
+            <h3 className="triage-transfer-title">Transfer Patient</h3>
+            <p className="triage-transfer-subtitle">
               Transfer {selectedPatient.fullName} to another healthcare
               provider.
             </p>
 
-            <div className='triage-transfer-targets'>
+            <div className="triage-transfer-targets">
               <button
-                type='button'
-                className={`triage-transfer-target ${transferTarget === 'doctor' ? 'active' : ''}`}
+                type="button"
+                className={`triage-transfer-target ${transferTarget === "doctor" ? "active" : ""}`}
                 onClick={() => {
-                  setTransferTarget('doctor');
+                  setTransferTarget("doctor");
                   setIsDepartmentMenuOpen(false);
                   setIsDoctorMenuOpen(false);
                   setIsNurseMenuOpen(false);
@@ -4028,10 +4054,10 @@ export default function Dashboard() {
                 To Doctor
               </button>
               <button
-                type='button'
-                className={`triage-transfer-target ${transferTarget === 'nurse' ? 'active' : ''}`}
+                type="button"
+                className={`triage-transfer-target ${transferTarget === "nurse" ? "active" : ""}`}
                 onClick={() => {
-                  setTransferTarget('nurse');
+                  setTransferTarget("nurse");
                   setIsDepartmentMenuOpen(false);
                   setIsDoctorMenuOpen(false);
                   setIsNurseMenuOpen(false);
@@ -4041,30 +4067,30 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {transferTarget === 'doctor' ? (
-              <div className='triage-transfer-field'>
+            {transferTarget === "doctor" ? (
+              <div className="triage-transfer-field">
                 <label>Select Specialist Department</label>
-                <div className='triage-transfer-select-wrap'>
+                <div className="triage-transfer-select-wrap">
                   <button
-                    type='button'
-                    className={`triage-transfer-select ${selectedDepartment ? '' : 'placeholder'}`}
+                    type="button"
+                    className={`triage-transfer-select ${selectedDepartment ? "" : "placeholder"}`}
                     onClick={() =>
                       setIsDepartmentMenuOpen((previous) => !previous)
                     }
                   >
-                    <span>{selectedDepartment || 'Choose a department'}</span>
+                    <span>{selectedDepartment || "Choose a department"}</span>
                     <ChevronDown size={17} strokeWidth={2.1} />
                   </button>
                   {isDepartmentMenuOpen && (
-                    <div className='triage-transfer-menu'>
+                    <div className="triage-transfer-menu">
                       {availableDepartments.map((department) => (
                         <button
                           key={department}
-                          type='button'
-                          className={`triage-transfer-option ${selectedDepartment === department ? 'active' : ''}`}
+                          type="button"
+                          className={`triage-transfer-option ${selectedDepartment === department ? "active" : ""}`}
                           onClick={() => {
                             setSelectedDepartment(department);
-                            setSelectedDoctorId('');
+                            setSelectedDoctorId("");
                             setIsDepartmentMenuOpen(false);
                             setIsDoctorMenuOpen(false);
                           }}
@@ -4077,10 +4103,10 @@ export default function Dashboard() {
                 </div>
 
                 <label style={{ marginTop: 14 }}>Select Doctor</label>
-                <div className='triage-transfer-select-wrap'>
+                <div className="triage-transfer-select-wrap">
                   <button
-                    type='button'
-                    className={`triage-transfer-select ${selectedDepartment ? '' : 'disabled'} ${selectedDoctor ? '' : 'placeholder'}`}
+                    type="button"
+                    className={`triage-transfer-select ${selectedDepartment ? "" : "disabled"} ${selectedDoctor ? "" : "placeholder"}`}
                     onClick={() => {
                       if (!selectedDepartment) {
                         return;
@@ -4088,17 +4114,17 @@ export default function Dashboard() {
                       setIsDoctorMenuOpen((previous) => !previous);
                     }}
                   >
-                    <span>{selectedDoctor?.name || 'Choose a doctor'}</span>
+                    <span>{selectedDoctor?.name || "Choose a doctor"}</span>
                     <ChevronDown size={17} strokeWidth={2.1} />
                   </button>
                   {isDoctorMenuOpen && selectedDepartment && (
-                    <div className='triage-transfer-menu'>
+                    <div className="triage-transfer-menu">
                       {filteredDoctorsByDepartment.length > 0 ? (
                         filteredDoctorsByDepartment.map((doctor) => (
                           <button
                             key={doctor.id}
-                            type='button'
-                            className={`triage-transfer-option ${Number(selectedDoctorId) === Number(doctor.id) ? 'active' : ''}`}
+                            type="button"
+                            className={`triage-transfer-option ${Number(selectedDoctorId) === Number(doctor.id) ? "active" : ""}`}
                             onClick={() => {
                               setSelectedDoctorId(String(doctor.id));
                               setIsDoctorMenuOpen(false);
@@ -4108,7 +4134,7 @@ export default function Dashboard() {
                           </button>
                         ))
                       ) : (
-                        <div className='triage-transfer-empty'>
+                        <div className="triage-transfer-empty">
                           No doctors found for this department
                         </div>
                       )}
@@ -4118,27 +4144,27 @@ export default function Dashboard() {
               </div>
             ) : (
               <>
-                <div className='triage-transfer-field'>
+                <div className="triage-transfer-field">
                   <label>Select Nurse</label>
-                  <div className='triage-transfer-select-wrap'>
+                  <div className="triage-transfer-select-wrap">
                     <button
-                      type='button'
-                      className={`triage-transfer-select ${selectedNurse ? '' : 'placeholder'}`}
+                      type="button"
+                      className={`triage-transfer-select ${selectedNurse ? "" : "placeholder"}`}
                       onClick={() =>
                         setIsNurseMenuOpen((previous) => !previous)
                       }
                     >
-                      <span>{selectedNurse?.name || 'Choose a nurse'}</span>
+                      <span>{selectedNurse?.name || "Choose a nurse"}</span>
                       <ChevronDown size={17} strokeWidth={2.1} />
                     </button>
                     {isNurseMenuOpen && (
-                      <div className='triage-transfer-menu'>
+                      <div className="triage-transfer-menu">
                         {availableNurses.length > 0 ? (
                           availableNurses.map((nurse) => (
                             <button
                               key={nurse.id}
-                              type='button'
-                              className={`triage-transfer-option ${Number(selectedNurseId) === Number(nurse.id) ? 'active' : ''}`}
+                              type="button"
+                              className={`triage-transfer-option ${Number(selectedNurseId) === Number(nurse.id) ? "active" : ""}`}
                               onClick={() => {
                                 setSelectedNurseId(String(nurse.id));
                                 setIsNurseMenuOpen(false);
@@ -4148,7 +4174,7 @@ export default function Dashboard() {
                             </button>
                           ))
                         ) : (
-                          <div className='triage-transfer-empty'>
+                          <div className="triage-transfer-empty">
                             No nurses available
                           </div>
                         )}
@@ -4157,11 +4183,11 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className='triage-transfer-field'>
+                <div className="triage-transfer-field">
                   <label>Reason for Transfer (Optional)</label>
                   <textarea
-                    className='triage-transfer-reason'
-                    placeholder='Enter reason or notes for the transfer...'
+                    className="triage-transfer-reason"
+                    placeholder="Enter reason or notes for the transfer..."
                     value={transferReason}
                     onFocus={closeTransferMenus}
                     onClick={closeTransferMenus}
@@ -4171,28 +4197,28 @@ export default function Dashboard() {
               </>
             )}
 
-            <div className='triage-transfer-actions'>
+            <div className="triage-transfer-actions">
               <button
-                type='button'
-                className='triage-transfer-cancel'
+                type="button"
+                className="triage-transfer-cancel"
                 onClick={closeTransferModal}
                 disabled={isTransferSubmitting}
               >
                 Cancel
               </button>
               <button
-                type='button'
-                className='triage-transfer-submit'
+                type="button"
+                className="triage-transfer-submit"
                 disabled={
-                  transferTarget === 'doctor'
+                  transferTarget === "doctor"
                     ? !canTransferToDoctor
                     : !canTransferToNurse
                 }
                 onClick={handleTransferSubmit}
               >
-                {transferTarget === 'doctor'
-                  ? 'Transfer to Doctor'
-                  : 'Transfer to Nurse'}
+                {transferTarget === "doctor"
+                  ? "Transfer to Doctor"
+                  : "Transfer to Nurse"}
               </button>
             </div>
           </div>
@@ -4201,36 +4227,36 @@ export default function Dashboard() {
 
       {showCallbackModal && activeCallback && (
         <div
-          className='callback-form-modal-overlay'
+          className="callback-form-modal-overlay"
           onClick={closeCallbackModal}
-          role='presentation'
+          role="presentation"
         >
           <div
-            className='callback-form-modal'
+            className="callback-form-modal"
             onClick={(event) => event.stopPropagation()}
-            role='dialog'
-            aria-modal='true'
-            aria-label='Callback details'
+            role="dialog"
+            aria-modal="true"
+            aria-label="Callback details"
           >
             <button
-              type='button'
-              className='callback-form-close'
+              type="button"
+              className="callback-form-close"
               onClick={closeCallbackModal}
-              aria-label='Close callback form'
+              aria-label="Close callback form"
             >
               &times;
             </button>
 
-            <h3 className='callback-form-title'>
-              Callback Details -{' '}
+            <h3 className="callback-form-title">
+              Callback Details -{" "}
               {activeCallback.callbackNumber ||
-                `CB-${String(activeCallback.id).padStart(3, '0')}`}
+                `CB-${String(activeCallback.id).padStart(3, "0")}`}
             </h3>
-            <p className='callback-form-subtitle'>
+            <p className="callback-form-subtitle">
               Patient inquiry and triage assessment
             </p>
 
-            <div className='callback-form-card'>
+            <div className="callback-form-card">
               <div>
                 <label>Patient Name</label>
                 <p>{getCallbackFullName(activeCallback)}</p>
@@ -4246,85 +4272,85 @@ export default function Dashboard() {
               <div>
                 <label>Request Time</label>
                 <p>
-                  {formatDate(activeCallback.createdAt)}{' '}
+                  {formatDate(activeCallback.createdAt)}{" "}
                   {formatTime(activeCallback.createdAt)}
                 </p>
               </div>
             </div>
 
-            <div className='callback-form-field'>
+            <div className="callback-form-field">
               <label>Chief Complaint</label>
-              <div className='callback-form-static-input'>
-                {activeCallback.message || 'No chief complaint provided'}
+              <div className="callback-form-static-input">
+                {activeCallback.message || "No chief complaint provided"}
               </div>
             </div>
 
-            <div className='callback-form-field'>
+            <div className="callback-form-field">
               <label>Symptoms</label>
-              <div className='callback-form-static-input'>
-                {activeCallback.message || 'No symptoms provided'}
+              <div className="callback-form-static-input">
+                {activeCallback.message || "No symptoms provided"}
               </div>
             </div>
 
-            <div className='callback-form-field'>
+            <div className="callback-form-field">
               <label>Nurse Remarks</label>
               <textarea
                 value={callbackNurseRemarks}
                 onChange={(event) =>
                   setCallbackNurseRemarks(event.target.value)
                 }
-                placeholder='Add your assessment and recommendations...'
+                placeholder="Add your assessment and recommendations..."
               />
             </div>
 
-            <div className='callback-form-field'>
+            <div className="callback-form-field">
               <label>Callback Notes</label>
               <textarea
                 value={callbackInternalNotes}
                 onChange={(event) =>
                   setCallbackInternalNotes(event.target.value)
                 }
-                placeholder='Internal notes about the callback...'
+                placeholder="Internal notes about the callback..."
               />
             </div>
 
-            <div className='callback-form-actions'>
+            <div className="callback-form-actions">
               <button
-                type='button'
-                className='callback-form-btn close'
+                type="button"
+                className="callback-form-btn close"
                 onClick={closeCallbackModal}
                 disabled={Boolean(callbackActionLoadingStatus)}
               >
                 Close
               </button>
               <button
-                type='button'
-                className='callback-form-btn inquiry'
-                onClick={() => handleCallbackModalStatusAction('inquiry')}
+                type="button"
+                className="callback-form-btn inquiry"
+                onClick={() => handleCallbackModalStatusAction("inquiry")}
                 disabled={Boolean(callbackActionLoadingStatus)}
               >
                 Mark as Inquiry
               </button>
               <button
-                type='button'
-                className='callback-form-btn convert'
+                type="button"
+                className="callback-form-btn convert"
                 onClick={handleConvertCallbackToTicket}
                 disabled={Boolean(callbackActionLoadingStatus)}
               >
                 Convert to Ticket
               </button>
               <button
-                type='button'
-                className='callback-form-btn escalate'
-                onClick={() => handleCallbackModalStatusAction('escalated')}
+                type="button"
+                className="callback-form-btn escalate"
+                onClick={() => handleCallbackModalStatusAction("escalated")}
                 disabled={Boolean(callbackActionLoadingStatus)}
               >
                 Escalate to Doctor
               </button>
               <button
-                type='button'
-                className='callback-form-btn completed'
-                onClick={() => handleCallbackModalStatusAction('closed')}
+                type="button"
+                className="callback-form-btn completed"
+                onClick={() => handleCallbackModalStatusAction("closed")}
                 disabled={Boolean(callbackActionLoadingStatus)}
               >
                 Mark as Completed
@@ -4342,7 +4368,10 @@ export default function Dashboard() {
             onClose={() => setShowMedicalRecords(false)}
             patient={selectedPatient}
             patientId={selectedPatientId}
-            ticketId={selectedTicket.ticketNumber || `T-${String(selectedTicket.id).padStart(3, '0')}`}
+            ticketId={
+              selectedTicket.ticketNumber ||
+              `T-${String(selectedTicket.id).padStart(3, "0")}`
+            }
             consultationType={getChannelLabel(selectedTicket)}
           />
         )}

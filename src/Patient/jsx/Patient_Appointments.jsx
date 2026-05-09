@@ -510,17 +510,19 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                         className="detail-icon"
                         style={{ flexShrink: 0 }}
                       />
-                      <span>{displayLocation}</span>
+                      <span>
+                        {appt.clinicAddress ||
+                          appt.specialistAddress ||
+                          displayLocation ||
+                          "Clinic Address TBA"}
+                      </span>
                     </div>
                   )}
 
                   <div className="appt-detail-row">
                     {getChannelIcon(appt.consultationChannel)}
                     <span style={{ textTransform: "capitalize" }}>
-                      {(appt.consultationChannel || "Platform Call").replace(
-                        "_",
-                        " ",
-                      )}
+                      {getChannelTypeLabel(appt.consultationChannel)}
                     </span>
                   </div>
                 </div>
@@ -548,15 +550,29 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                     </button>
                   )}
                   {appt.status === "active" &&
-                    appt.paymentStatus !== "unpaid" && (
+                    appt.paymentStatus !== "unpaid" &&
+                    appt.consultationChannel !== "in_person" && (
                       <button
-                        className="appt-btn appt-btn-primary full-width"
+                        className="appt-btn appt-btn-primary"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
                         onClick={() => {
-                          handleCloseModal();
-                          setJitsiConfig({ isOpen: true, appt: appt });
+                          setJitsiConfig({ isOpen: true, appt });
                         }}
                       >
-                        Join Room
+                        {appt.consultationChannel?.includes("audio") ||
+                        appt.consultationChannel === "mobile_call" ? (
+                          <>
+                            <IconPhone size={16} /> Join Voice Call
+                          </>
+                        ) : (
+                          <>
+                            <IconVideo size={16} /> Join Video Call
+                          </>
+                        )}
                       </button>
                     )}
                 </div>
@@ -653,9 +669,7 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                       className="appt-modal-value"
                       style={{ textTransform: "capitalize" }}
                     >
-                      {(
-                        viewingAppt.consultationChannel || "platform_call"
-                      ).replace("_", " ")}
+                      {getChannelTypeLabel(viewingAppt.consultationChannel)}
                     </p>
                   </div>
                 </div>

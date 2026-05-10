@@ -25,6 +25,7 @@ import {
   fetchDoctorsFromAPI,
   createTicket,
   searchPatientsFromAPI,
+  generateInvoice,
 } from './services/apiService.js';
 import NotificationBell from '../components/Notifications/NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
@@ -1213,8 +1214,30 @@ export default function ManageAppointment() {
     await generatePostConsultationBillingPDF(billingPayload);
   };
 
-  const handleSendToPatient = () => {
-    alert('Send to Patient is interactive but not connected yet.');
+  const handleSendToPatient = async (billingPayload) => {
+    try {
+      const response = await generateInvoice({
+        ticketId: invoiceTicket.id,
+        consultationType: 'initial', // Default for now
+        includesCertificate: billingPayload.selectedAdditionalServices.some(
+          (s) => s.id === 'medical-certificate'
+        ),
+        discountType: billingPayload.discountType,
+      });
+
+      if (response) {
+        alert(
+          response.message || 'Invoice generated and sent to patient successfully!'
+        );
+        setShowInvoiceModal(false);
+        // Refresh tickets
+        const updated = await fetchTicketsFromAPI();
+        setTickets(updated);
+      }
+    } catch (error) {
+      console.error('Error sending invoice:', error);
+      alert('Failed to generate invoice. Please try again.');
+    }
   };
 
   const handleRedirectPaymentGateway = () => {

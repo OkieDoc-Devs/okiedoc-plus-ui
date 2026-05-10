@@ -26,6 +26,7 @@ export default function PostConsultationBillingModal({
 }) {
   const [paymentType, setPaymentType] = useState('Private');
   const [paymentStatus, setPaymentStatus] = useState('Pending');
+  const [discountType, setDiscountType] = useState('None');
   const [additionalServices, setAdditionalServices] = useState(
     DEFAULT_ADDITIONAL_SERVICES.map((service) => ({ ...service, selected: false })),
   );
@@ -37,6 +38,7 @@ export default function PostConsultationBillingModal({
     if (!isOpen) return;
     setPaymentType('Private');
     setPaymentStatus('Pending');
+    setDiscountType('None');
     setAdditionalServices(
       DEFAULT_ADDITIONAL_SERVICES.map((service) => ({ ...service, selected: false })),
     );
@@ -66,7 +68,8 @@ export default function PostConsultationBillingModal({
   );
 
   const subtotal = baseConsultationFee + additionalTotal + customTotal;
-  const finalTotal = subtotal;
+  const discountAmount = discountType !== 'None' ? baseConsultationFee * 0.2 : 0;
+  const finalTotal = subtotal - discountAmount;
 
   if (!isOpen || !ticket) return null;
 
@@ -106,6 +109,8 @@ export default function PostConsultationBillingModal({
     consultationDate: ticket.preferredDate || ticket.createdAt || '',
     paymentType,
     paymentStatus,
+    discountType,
+    discountAmount,
     baseConsultationFee,
     selectedAdditionalServices: additionalServices.filter((service) => service.selected),
     customServices,
@@ -180,6 +185,38 @@ export default function PostConsultationBillingModal({
           </section>
 
           <section className='billing-section'>
+            <h3>Apply Discounts</h3>
+            <div style={{ display: 'flex', gap: '24px', marginTop: '12px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                <input
+                  type='radio'
+                  name='discountType'
+                  value='Pwd'
+                  checked={discountType === 'Pwd'}
+                  onChange={(e) => setDiscountType(e.target.value === discountType ? 'None' : e.target.value)}
+                  onClick={(e) => {
+                    if (discountType === 'Pwd') setDiscountType('None');
+                  }}
+                />
+                <span className='billing-value'>Person with Disability</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                <input
+                  type='radio'
+                  name='discountType'
+                  value='Senior'
+                  checked={discountType === 'Senior'}
+                  onChange={(e) => setDiscountType(e.target.value === discountType ? 'None' : e.target.value)}
+                  onClick={(e) => {
+                    if (discountType === 'Senior') setDiscountType('None');
+                  }}
+                />
+                <span className='billing-value'>Senior Citizen</span>
+              </label>
+            </div>
+          </section>
+
+          <section className='billing-section'>
             <h3>Additional Billable Services</h3>
             <div className='billing-services-list'>
               {additionalServices.map((service) => (
@@ -246,6 +283,12 @@ export default function PostConsultationBillingModal({
               <span>Subtotal</span>
               <span>{toPeso(subtotal)}</span>
             </div>
+            {discountType !== 'None' && (
+              <div className='billing-summary-row'>
+                <span>Discount ({discountType})</span>
+                <span style={{ color: '#d32f2f' }}>-{toPeso(discountAmount)}</span>
+              </div>
+            )}
             <div className='billing-summary-row billing-summary-total'>
               <span>Final Total</span>
               <span>{toPeso(finalTotal)}</span>

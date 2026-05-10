@@ -246,6 +246,24 @@ export async function searchPatientsFromAPI(search = "") {
 }
 
 /**
+ * Generate invoice for a ticket
+ * @param {Object} data - Invoice data
+ * @returns {Promise<Object>} API response
+ */
+export async function generateInvoice(data) {
+  try {
+    const response = await apiRequest("/api/v1/tickets/generate-invoice", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return response;
+  } catch (error) {
+    console.error("Error generating invoice:", error);
+    throw error;
+  }
+}
+
+/**
  * Create a new ticket via API
  * @param {Object} ticketData - Ticket data to create
  * @returns {Promise<Object>} Created ticket data

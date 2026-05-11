@@ -200,7 +200,7 @@ export default function Dashboard_Patient({ setActive }) {
 
           <button
             className="pd-hero-card"
-            onClick={() => setActive("Services")}
+            onClick={() => setActive("Messages")}
           >
             <div className="pd-hero-icon pd-icon-message">
               <IconMessage size={24} />

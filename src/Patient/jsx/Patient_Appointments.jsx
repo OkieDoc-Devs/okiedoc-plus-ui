@@ -174,20 +174,23 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
   };
 
   const getChannelIcon = (channel) => {
-    if (channel === "chat")
+    const c = String(channel || "").toLowerCase();
+    if (c.includes("chat"))
       return <IconMessageCircle size={16} className="detail-icon" />;
-    if (channel === "mobile_call" || channel?.includes("audio"))
+    if (c.includes("mobile_call") || c.includes("audio") || c.includes("phone"))
       return <IconPhone size={16} className="detail-icon" />;
-    if (channel === "in_person")
+    if (c.includes("in_person") || c.includes("physical"))
       return <IconMapPin size={16} className="detail-icon" />;
     return <IconVideo size={16} className="detail-icon" />;
   };
 
   const getChannelTypeLabel = (channel) => {
-    if (channel === "chat") return "Text Chat";
-    if (channel === "mobile_call" || channel?.includes("audio"))
+    const c = String(channel || "").toLowerCase();
+    if (c.includes("chat")) return "Text Chat";
+    if (c.includes("mobile_call") || c.includes("audio") || c.includes("phone"))
       return "Voice Call";
-    if (channel === "in_person") return "Clinic Visit";
+    if (c.includes("in_person") || c.includes("physical"))
+      return "Clinic Visit";
     return "Video Call";
   };
 

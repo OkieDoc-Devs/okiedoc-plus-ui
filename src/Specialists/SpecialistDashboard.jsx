@@ -19,6 +19,9 @@ import {
   FaStethoscope,
   FaClock,
   FaVideo,
+  FaPhone,
+  FaBuilding,
+  FaComments,
 } from "react-icons/fa";
 import jsPDF from "jspdf";
 import "./SpecialistDashboard.css";
@@ -284,6 +287,20 @@ const getPatientAvatarNames = (t) => {
     return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
   }
   return { firstName: parts[0] || "Patient", lastName: "" };
+};
+
+const getChannelDetails = (channel) => {
+  const c = String(channel || "").toLowerCase();
+  if (c.includes("video"))
+    return { label: "Video Consultation", icon: FaVideo, type: "video" };
+  if (c.includes("phone"))
+    return { label: "Phone Consultation", icon: FaPhone, type: "phone" };
+  if (c.includes("chat") || c.includes("message"))
+    return { label: "Chat Consultation", icon: FaComments, type: "chat" };
+  if (c.includes("physical") || c.includes("in-person") || c.includes("clinic"))
+    return { label: "Physical Visit", icon: FaBuilding, type: "physical" };
+
+  return { label: "Consultation", icon: FaStethoscope, type: "default" }; // Fallback
 };
 
 const formatPatientNameFromPatientObj = (p) => {
@@ -1083,23 +1100,73 @@ const SpecialistDashboard = () => {
         {
           id: "TKT-001",
           patient: "John Doe",
-          service: "Consultation",
+          patientFullName: "John Doe",
+          service: "General Checkup",
+          chiefComplaint: "Fever and persistent cough for 3 days",
           when: formatDateLabel(plusDays(0), "10:30 AM"),
           status: "Confirmed",
+          consultationChannel: "Video",
+          mobile: "+63 917 123 4567",
+          gender: "Male",
+          patientBirthdate: "1990-05-15",
+          bloodType: "O+",
+          allergies: ["Peanuts", "Dust"],
+          medicalHistory: ["Asthma diagnosed in childhood"],
+          triageNotes:
+            "BP 120/80, HR 85, Temp 38.2C. Patient appears fatigued.",
         },
         {
           id: "TKT-002",
           patient: "Jane Smith",
+          patientFullName: "Jane Smith",
           service: "Medical Certificate",
+          chiefComplaint: "Needs fit-to-work clearance after viral infection",
           when: formatDateLabel(plusDays(1), "2:15 PM"),
-          status: "Pending",
+          status: "Confirmed",
+          consultationChannel: "Physical",
+          mobile: "+63 918 987 6543",
+          gender: "Female",
+          patientBirthdate: "1985-11-20",
+          bloodType: "A+",
+          allergies: ["None"],
+          medicalHistory: ["No significant past medical history"],
+          triageNotes:
+            "BP 110/70, HR 72, Temp 36.5C. Ready for physical assessment.",
         },
         {
           id: "TKT-003",
           patient: "Robert Johnson",
-          service: "Medical Clearance",
+          patientFullName: "Robert Johnson",
+          service: "Follow-up",
+          chiefComplaint: "Review of hypertension medication efficacy",
           when: formatDateLabel(plusDays(2), "9:00 AM"),
           status: "Confirmed",
+          consultationChannel: "Phone",
+          mobile: "+63 922 333 4444",
+          gender: "Male",
+          patientBirthdate: "1978-02-10",
+          bloodType: "B+",
+          allergies: ["Penicillin"],
+          medicalHistory: ["Hypertension (Diagnosed 2021)"],
+          triageNotes:
+            "Patient requested a phone call. Vitals self-reported: BP 130/85.",
+        },
+        {
+          id: "TKT-004",
+          patient: "Maria Clara",
+          patientFullName: "Maria Clara",
+          service: "Dermatology Consult",
+          chiefComplaint: "Spreading red rash on left arm",
+          when: formatDateLabel(plusDays(0), "1:00 PM"),
+          status: "Confirmed",
+          consultationChannel: "Chat",
+          mobile: "+63 999 888 7777",
+          gender: "Female",
+          patientBirthdate: "2000-08-08",
+          bloodType: "AB+",
+          allergies: ["Seafood"],
+          medicalHistory: ["Mild Eczema"],
+          triageNotes: "Patient uploaded 2 images of the rash via chat portal.",
         },
       ];
 
@@ -2933,15 +3000,12 @@ const SpecialistDashboard = () => {
       profileData?.subSpecialization ||
       "General";
 
-    const channelIsVideo = selectedPatient
-      ? String(
-          selectedPatient.consultationChannel ||
-            selectedPatient.rawTicket?.consultationChannel ||
-            "",
-        )
-          .toLowerCase()
-          .includes("video")
-      : false;
+    const selectedChannelRaw =
+      selectedPatient?.consultationChannel ||
+      selectedPatient?.rawTicket?.consultationChannel ||
+      "default";
+    const selectedChannel = getChannelDetails(selectedChannelRaw);
+    const SelectedChannelIcon = selectedChannel.icon;
 
     const headerAvatarNames = selectedPatient
       ? getPatientAvatarNames(selectedPatient)
@@ -3037,6 +3101,29 @@ const SpecialistDashboard = () => {
                         <FaStethoscope aria-hidden />
                         {emrDepartmentLabel}
                       </span>
+                      {(() => {
+                        const channelRaw =
+                          t.consultationChannel ||
+                          t.rawTicket?.consultationChannel ||
+                          "default";
+                        const channelDetails = getChannelDetails(channelRaw);
+                        const ChannelIcon = channelDetails.icon;
+                        return (
+                          <span
+                            className="emr-patient-card__meta-line"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              color: "#0b5388",
+                              fontWeight: "600",
+                            }}
+                          >
+                            <ChannelIcon aria-hidden />
+                            {channelDetails.label}
+                          </span>
+                        );
+                      })()}
                       <span className="emr-patient-card__meta-line">
                         <FaClock aria-hidden />
                         Triaged: {triaged || "—"}
@@ -3088,11 +3175,12 @@ const SpecialistDashboard = () => {
                         <span className="patient-details-header-emr__sub-sep">
                           •
                         </span>
-                        <FaVideo
+                        <SelectedChannelIcon
                           className="patient-details-header-emr__video-ic"
                           aria-hidden
+                          style={{ marginRight: "4px" }}
                         />
-                        {channelIsVideo ? "Video Consultation" : "Consultation"}
+                        {selectedChannel.label}
                       </p>
                     </div>
                   </div>
@@ -3114,20 +3202,98 @@ const SpecialistDashboard = () => {
                         </span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      className="start-video-call-btn"
-                      onClick={handleStartVideoCall}
-                      disabled={!selectedPatient || isUnclaimedAvailable}
-                      title={
-                        isUnclaimedAvailable
-                          ? "Claim this ticket before starting a video call"
-                          : "Start video call with patient"
-                      }
-                    >
-                      <FaVideo aria-hidden />
-                      Start Video Call
-                    </button>
+                    {selectedChannel.type === "video" && (
+                      <button
+                        type="button"
+                        className="start-video-call-btn"
+                        onClick={handleStartVideoCall}
+                        disabled={!selectedPatient || isUnclaimedAvailable}
+                        title={
+                          isUnclaimedAvailable
+                            ? "Claim this ticket before starting a video call"
+                            : "Start video call with patient"
+                        }
+                      >
+                        <FaVideo aria-hidden />
+                        Start Video Call
+                      </button>
+                    )}
+
+                    {selectedChannel.type === "phone" && (
+                      <button
+                        type="button"
+                        className="start-video-call-btn"
+                        style={{
+                          backgroundColor: "#10b981",
+                          borderColor: "#10b981",
+                          color: "white",
+                        }}
+                        onClick={() =>
+                          alert(
+                            `Dialing patient at: ${selectedPatient?.mobile || "No number on file"}`,
+                          )
+                        }
+                        disabled={!selectedPatient || isUnclaimedAvailable}
+                        title={
+                          isUnclaimedAvailable
+                            ? "Claim this ticket before calling"
+                            : "Call patient"
+                        }
+                      >
+                        <FaPhone aria-hidden />
+                        Call Patient
+                      </button>
+                    )}
+
+                    {selectedChannel.type === "chat" && (
+                      <button
+                        type="button"
+                        className="start-video-call-btn"
+                        style={{
+                          backgroundColor: "#8b5cf6",
+                          borderColor: "#8b5cf6",
+                          color: "white",
+                        }}
+                        onClick={() => {
+                          if (patientChatMessagesRef.current) {
+                            patientChatMessagesRef.current.scrollIntoView({
+                              behavior: "smooth",
+                              block: "center",
+                            });
+                          }
+                        }}
+                        disabled={!selectedPatient || isUnclaimedAvailable}
+                        title="Jump to Chat Panel"
+                      >
+                        <FaComments aria-hidden />
+                        Open Chat
+                      </button>
+                    )}
+
+                    {selectedChannel.type === "physical" && (
+                      <div
+                        className="clinic-address-badge"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          padding: "10px 16px",
+                          backgroundColor: "#f3f4f6",
+                          borderRadius: "8px",
+                          border: "1px solid #d1d5db",
+                          color: "#374151",
+                          fontSize: "0.9rem",
+                        }}
+                      >
+                        <FaBuilding style={{ color: "#6b7280" }} />
+                        <span>
+                          <strong>Clinic Location:</strong>{" "}
+                          {profileData.addressLine1 ||
+                            profileData.city ||
+                            "Address not configured in profile"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

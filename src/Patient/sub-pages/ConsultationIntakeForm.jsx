@@ -298,14 +298,15 @@ export default function ConsultationIntakeForm({
 
     try {
       const channelMap = {
-        "Chat Consultation": "chat",
-        "Voice Consultation": "mobile_call",
-        "Video Consultation": "platform_call",
+        "Chat Consultation": "Chat",
+        "Voice Consultation": "Phone",
+        "Video Consultation": "Video",
+        "Physical Consultation": "Physical",
       };
 
       const payload = {
         mainConcern: formData.mainConcern.trim(),
-        consultationChannel: channelMap[type] || "platform_call",
+        consultationChannel: channelMap[type] || "Video",
         symptoms: formData.symptoms,
         otherSymptoms: formData.otherSymptoms.trim(),
         durationValue: durationNum,
@@ -524,7 +525,10 @@ export default function ConsultationIntakeForm({
             </div>
 
             <figure className="triage-pain-reference-card">
-              <img src={referredPainChart} alt="Referred pain reference chart" />
+              <img
+                src={referredPainChart}
+                alt="Referred pain reference chart"
+              />
             </figure>
 
             <div className="triage-pain-map-selection">

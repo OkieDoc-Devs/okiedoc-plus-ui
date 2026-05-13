@@ -36,6 +36,8 @@ const SuperAdminDashboard = () => {
   const [specialists, setSpecialists] = useState([]);
   const [users, setUsers] = useState([]);
   const [viewingUser, setViewingUser] = useState(null);
+  const [denyingSpecialistId, setDenyingSpecialistId] = useState(null);
+  const [denyReason, setDenyReason] = useState('');
 
   const [systemFees, setSystemFees] = useState({
     doctorsFee: { isActive: true, name: "Doctor's Fee" },
@@ -114,9 +116,49 @@ const SuperAdminDashboard = () => {
     finally { sessionStorage.removeItem('isAdminLoggedIn'); localStorage.removeItem('admin_token'); navigate('/login'); }
   };
 
-  const handleUpdateSpecialistStatus = async (id, status) => {
-    try { await updateSpecialistStatus({ specialistId: id, status }); setSpecialists(prev => prev.map(s => s.id === id ? { ...s, status } : s)); } 
-    catch (e) { alert('Update failed'); }
+  const handleApproveSpecialist = async (id) => {
+    if (!window.confirm("Are you sure you want to approve this specialist?")) return;
+    try { 
+      await updateSpecialistStatus({ specialistId: String(id), status: 'approved' }); 
+      alert('Specialist successfully approved!');
+      window.location.reload(); 
+    } catch (e) { 
+      console.error(e);
+      alert('Failed to approve specialist. Check console.'); 
+    }
+  };
+
+  const triggerDenySpecialist = (id) => {
+    setDenyReason('');
+    setDenyingSpecialistId(id);
+  };
+
+  const submitDenySpecialist = async () => {
+    if (!denyReason.trim()) {
+      alert("Please provide a reason for denial.");
+      return;
+    }
+    try { 
+      await updateSpecialistStatus({ specialistId: String(denyingSpecialistId), status: 'denied', denialReason: denyReason }); 
+      alert('Specialist application denied.');
+      setDenyingSpecialistId(null);
+      window.location.reload(); 
+    } catch (e) { 
+      console.error(e);
+      alert('Failed to deny specialist. Check console.'); 
+    }
+  };
+
+  const handleSuspendSpecialist = async (id) => {
+    if (!window.confirm("Are you sure you want to suspend this active specialist?")) return;
+    try { 
+      await updateSpecialistStatus({ specialistId: String(id), status: 'suspended' }); 
+      alert('Specialist account suspended.');
+      window.location.reload(); 
+    } catch (e) { 
+      console.error(e);
+      alert('Failed to suspend specialist. Check console.'); 
+    }
   };
 
   const handleAvatarChange = async (event) => {
@@ -195,10 +237,6 @@ const SuperAdminDashboard = () => {
     <>
       <style>
         {`
-          /* ====================================================================
-             HARD CSS RESET: Forces all Action buttons (View, Approve, Deny) 
-             to align icons and text horizontally, side-by-side.
-             ==================================================================== */
           table tbody td button,
           .admin-table tbody td button,
           .view-btn, .approve-btn, .deny-btn {
@@ -269,8 +307,9 @@ const SuperAdminDashboard = () => {
                   <button className={`admin-tab ${activeTab === 'specialists' ? 'active' : ''}`} onClick={() => setActiveTab('specialists')}>Approved Specialist</button>
                 </div>
               </div>
-              {activeTab === 'specialists' && <SpecialistTable specialists={filteredSpecialists} onStatusChange={handleUpdateSpecialistStatus} searchBar={renderSearchBar()} />}
-              {activeTab === 'pending' && <PendingTable applications={filteredPending} onApprove={() => {}} onDeny={() => {}} searchBar={renderSearchBar()} />}
+              
+              {activeTab === 'specialists' && <SpecialistTable specialists={filteredSpecialists} onSuspend={handleSuspendSpecialist} searchBar={renderSearchBar()} />}
+              {activeTab === 'pending' && <PendingTable applications={filteredPending} onApprove={handleApproveSpecialist} onDeny={triggerDenySpecialist} searchBar={renderSearchBar()} />}
             </div>
           )}
 
@@ -439,6 +478,47 @@ const SuperAdminDashboard = () => {
             <button className="admin-modal-close-btn" onClick={() => setViewingUser(null)}>Close</button>
           </Modal>
         )}
+
+      {/* Deny Reason Modal */}
+      {denyingSpecialistId && (
+        <Modal title="Deny Specialist Application" onClose={() => setDenyingSpecialistId(null)}>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
+              Reason for Denial <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <textarea
+              value={denyReason}
+              onChange={(e) => setDenyReason(e.target.value)}
+              placeholder="E.g., Incomplete documents, invalid PRC license..."
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                minHeight: '100px',
+                fontSize: '0.9rem',
+                outline: 'none',
+                resize: 'vertical',
+                fontFamily: 'inherit'
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              onClick={() => setDenyingSpecialistId(null)}
+              style={{ flex: 1, padding: '12px', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={submitDenySpecialist}
+              style={{ flex: 1, padding: '12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
+            >
+              Confirm Denial
+            </button>
+          </div>
+        </Modal>
+      )}
       </AdminLayout>
     </>
   );

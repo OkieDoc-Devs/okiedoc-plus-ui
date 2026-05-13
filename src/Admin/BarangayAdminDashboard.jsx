@@ -54,16 +54,17 @@ const BarangayAdminDashboard = () => {
             if (profileData.profileUrl && !profileData.profileUrl.includes('admin_avatar.png')) {
                 setAdminAvatar(profileData.profileUrl);
             }
-            if (profileData.barangay) {
-                setBarangayName(profileData.barangay);
-            } else {
-                setBarangayName('Unassigned LGU');
-            }
+            setBarangayName(profileData.barangay || 'Unassigned LGU');
+        } else {
+            setBarangayName('Unassigned LGU');
         }
 
         setUsers(safeArray(usersData));
         setTransactions(safeArray(transactionsData));
-      } catch (error) { console.error('Failed to fetch data:', error); }
+      } catch (error) { 
+        console.error('Failed to fetch data:', error); 
+        setBarangayName('Unassigned LGU');
+      }
     };
     fetchAndProcessData();
   }, []);
@@ -109,104 +110,135 @@ const BarangayAdminDashboard = () => {
   );
 
   return (
-    <AdminLayout
-      title="Barangay Admin Dashboard"
-      subtitle={`Assigned Location: ${barangayName}`}
-      navLinks={navLinks}
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      adminName="LGU Official"
-      adminRole="Barangay Admin"
-      adminAvatar={adminAvatar}
-      onLogout={handleLogout}
-      headerSearch={searchTerm}
-      setHeaderSearch={setSearchTerm}
-    >
-      {activeTab === 'dashboard' && (
-        <div className="metrics-grid">
-          <MetricCard title="Total Residents" value={users.filter(u => (u.role || u.userType) === 'patient' || (u.role || u.userType) === 'Patient').length || "0"} trendText="Registered" trendType="neutral" />
-          <MetricCard title="Active Consultations" value={activeTickets.length || "0"} trendText="Currently Ongoing" trendType="neutral" />
-          <MetricCard title="Local Nurses" value={users.filter(u => (u.role || u.userType) === 'nurse' || (u.role || u.userType) === 'Nurse').length || "0"} trendText="Active" trendType="neutral" />
-        </div>
-      )}
+    <>
+      <style>
+        {`
+          table tbody td button,
+          .admin-table tbody td button,
+          .view-btn {
+            display: inline-flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            white-space: nowrap !important;
+            padding: 8px 16px !important;
+            height: auto !important;
+            margin-right: 8px !important;
+            border-radius: 6px !important;
+            font-weight: 600 !important;
+            border: none !important;
+            cursor: pointer !important;
+            font-size: 0.9rem !important;
+          }
+          table tbody td button:last-child,
+          .admin-table tbody td button:last-child { margin-right: 0 !important; }
+          table tbody td button svg,
+          .admin-table tbody td button svg,
+          .view-btn svg { margin: 0 !important; display: block !important; position: static !important; }
+          .view-btn { background-color: #f1f5f9 !important; color: #475569 !important; border: 1px solid #cbd5e1 !important; }
+        `}
+      </style>
 
-      {activeTab === 'patients' && (
-        <div className="admin-page-card">
-          <div className="admin-card-header"><h2 className="admin-card-title">Registered Residents ({barangayName})</h2></div>
-          <UserTable users={filteredUsers.filter(u => (u.role || u.userType) === 'patient' || (u.role || u.userType) === 'Patient')} onView={setViewingUser} searchBar={renderSearchBar()} />
-        </div>
-      )}
-
-      {(activeTab === 'tickets' || activeTab === 'history') && (
-        <div className="admin-page-card">
-          <div className="admin-card-header"><h2 className="admin-card-title">{activeTab === 'tickets' ? 'Active Consultation Tickets' : 'Consultation History'}</h2></div>
-          <div className="admin-toolbar">{renderSearchBar()}</div>
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Ticket ID</th>
-                <th>Patient Name</th>
-                <th>Service Type</th>
-                <th>Date Created</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(activeTab === 'tickets' ? activeTickets : historyTickets).length > 0 ? 
-                (activeTab === 'tickets' ? activeTickets : historyTickets).map(t => {
-                const statusLabel = String(t.status).toLowerCase();
-                let pillClass = 'status-pending';
-                if (statusLabel.includes('completed')) pillClass = 'status-completed';
-                if (statusLabel.includes('cancel')) pillClass = 'status-cancelled';
-                if (statusLabel.includes('processing')) pillClass = 'status-processing';
-                return (
-                  <tr key={t.id}>
-                    <td style={{fontWeight: 500}}>{t.ticketNumber || t.id}</td>
-                    <td>{t.patientName || 'Unknown'}</td>
-                    <td>{t.chiefComplaint || 'Consultation'}</td>
-                    <td>{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'N/A'}</td>
-                    <td><span className={`status-pill ${pillClass}`}>{t.status}</span></td>
-                    <td><button className="view-btn" onClick={() => setViewingTicket(t)}><FiEye style={{marginBottom: '-2px'}}/> View</button></td>
-                  </tr>
-                )
-              }) : <tr><td colSpan="6" style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>No records found in this category.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {activeTab === 'reports' && (
-         <div className="admin-page-card" style={{minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-           <div className="admin-empty-state" style={{border: 'none'}}>
-             <FiPieChart style={{fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px'}}/>
-             <h3 style={{margin: 0}}>Reports & Exports</h3>
-             <p style={{marginTop: '8px'}}>This module is temporarily unavailable per system requirements.</p>
-           </div>
-         </div>
-      )}
-
-      {viewingTicket && (
-        <Modal title={`Ticket Details: ${viewingTicket.ticketNumber || viewingTicket.id}`} onClose={() => setViewingTicket(null)}>
-           <div className="ticket-modal-grid">
-            <div className="ticket-section">
-              <h3>Consultation Details</h3>
-              <div className="ticket-row"><span className="ticket-label">Patient Name</span><span className="ticket-value">{viewingTicket.patientName || 'Unknown'}</span></div>
-              <div className="ticket-row"><span className="ticket-label">Complaint</span><span className="ticket-value">{viewingTicket.chiefComplaint || 'General'}</span></div>
-            </div>
+      <AdminLayout
+        title="Barangay Admin Dashboard"
+        subtitle={`Assigned Location: ${barangayName}`}
+        navLinks={navLinks}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        adminName="LGU Official"
+        adminRole="Barangay Admin"
+        adminAvatar={adminAvatar}
+        onLogout={handleLogout}
+        headerSearch={searchTerm}
+        setHeaderSearch={setSearchTerm}
+      >
+        {activeTab === 'dashboard' && (
+          <div className="metrics-grid">
+            <MetricCard title="Total Residents" value={users.filter(u => (u.role || u.userType) === 'patient' || (u.role || u.userType) === 'Patient').length || "0"} trendText="Registered" trendType="neutral" />
+            <MetricCard title="Active Consultations" value={activeTickets.length || "0"} trendText="Currently Ongoing" trendType="neutral" />
+            <MetricCard title="Local Nurses" value={users.filter(u => (u.role || u.userType) === 'nurse' || (u.role || u.userType) === 'Nurse').length || "0"} trendText="Active" trendType="neutral" />
           </div>
-          <button className="admin-modal-close-btn" onClick={() => setViewingTicket(null)}>Close</button>
-        </Modal>
-      )}
+        )}
 
-      {viewingUser && (
-        <Modal title="User Profile" onClose={() => setViewingUser(null)}>
-          <div style={{ marginBottom: '16px' }}><span style={{ color: '#64748b', fontSize: '0.85rem' }}>Full Name</span><p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>{viewingUser.firstName} {viewingUser.lastName}</p></div>
-          <div style={{ marginBottom: '16px' }}><span style={{ color: '#64748b', fontSize: '0.85rem' }}>Email Address</span><p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>{viewingUser.email}</p></div>
-          <button className="admin-modal-close-btn" onClick={() => setViewingUser(null)}>Close</button>
-        </Modal>
-      )}
-    </AdminLayout>
+        {activeTab === 'patients' && (
+          <div className="admin-page-card">
+            <div className="admin-card-header"><h2 className="admin-card-title">Registered Residents ({barangayName})</h2></div>
+            <UserTable users={filteredUsers.filter(u => (u.role || u.userType) === 'patient' || (u.role || u.userType) === 'Patient')} onView={setViewingUser} searchBar={renderSearchBar()} />
+          </div>
+        )}
+
+        {(activeTab === 'tickets' || activeTab === 'history') && (
+          <div className="admin-page-card">
+            <div className="admin-card-header"><h2 className="admin-card-title">{activeTab === 'tickets' ? 'Active Consultation Tickets' : 'Consultation History'}</h2></div>
+            <div className="admin-toolbar">{renderSearchBar()}</div>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Ticket ID</th>
+                  <th>Patient Name</th>
+                  <th>Service Type</th>
+                  <th>Date Created</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(activeTab === 'tickets' ? activeTickets : historyTickets).length > 0 ? 
+                  (activeTab === 'tickets' ? activeTickets : historyTickets).map(t => {
+                  const statusLabel = String(t.status).toLowerCase();
+                  let pillClass = 'status-pending';
+                  if (statusLabel.includes('completed')) pillClass = 'status-completed';
+                  if (statusLabel.includes('cancel')) pillClass = 'status-cancelled';
+                  if (statusLabel.includes('processing')) pillClass = 'status-processing';
+                  return (
+                    <tr key={t.id}>
+                      <td style={{fontWeight: 500}}>{t.ticketNumber || t.id}</td>
+                      <td>{t.patientName || 'Unknown'}</td>
+                      <td>{t.chiefComplaint || 'Consultation'}</td>
+                      <td>{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'N/A'}</td>
+                      <td><span className={`status-pill ${pillClass}`}>{t.status}</span></td>
+                      <td><button className="view-btn" onClick={() => setViewingTicket(t)}><FiEye size={16}/> View</button></td>
+                    </tr>
+                  )
+                }) : <tr><td colSpan="6" style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>No records found in this category.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'reports' && (
+           <div className="admin-page-card" style={{minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+             <div className="admin-empty-state" style={{border: 'none'}}>
+               <FiPieChart style={{fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px'}}/>
+               <h3 style={{margin: 0}}>Reports & Exports</h3>
+               <p style={{marginTop: '8px'}}>This module is temporarily unavailable per system requirements.</p>
+             </div>
+           </div>
+        )}
+
+        {viewingTicket && (
+          <Modal title={`Ticket Details: ${viewingTicket.ticketNumber || viewingTicket.id}`} onClose={() => setViewingTicket(null)}>
+             <div className="ticket-modal-grid">
+              <div className="ticket-section">
+                <h3>Consultation Details</h3>
+                <div className="ticket-row"><span className="ticket-label">Patient Name</span><span className="ticket-value">{viewingTicket.patientName || 'Unknown'}</span></div>
+                <div className="ticket-row"><span className="ticket-label">Complaint</span><span className="ticket-value">{viewingTicket.chiefComplaint || 'General'}</span></div>
+              </div>
+            </div>
+            <button className="admin-modal-close-btn" onClick={() => setViewingTicket(null)}>Close</button>
+          </Modal>
+        )}
+
+        {viewingUser && (
+          <Modal title="User Profile" onClose={() => setViewingUser(null)}>
+            <div style={{ marginBottom: '16px' }}><span style={{ color: '#64748b', fontSize: '0.85rem' }}>Full Name</span><p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>{viewingUser.firstName} {viewingUser.lastName}</p></div>
+            <div style={{ marginBottom: '16px' }}><span style={{ color: '#64748b', fontSize: '0.85rem' }}>Email Address</span><p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>{viewingUser.email}</p></div>
+            <button className="admin-modal-close-btn" onClick={() => setViewingUser(null)}>Close</button>
+          </Modal>
+        )}
+      </AdminLayout>
+    </>
   );
 };
 

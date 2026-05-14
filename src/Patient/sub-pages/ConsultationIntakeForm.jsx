@@ -298,15 +298,15 @@ export default function ConsultationIntakeForm({
 
     try {
       const channelMap = {
-        "Chat Consultation": "Chat",
-        "Voice Consultation": "Phone",
-        "Video Consultation": "Video",
-        "Physical Consultation": "Physical",
+        "Chat Consultation": "chat",
+        "Voice Consultation": "platform_call",
+        "Video Consultation": "viber_video",
+        "Physical Consultation": "platform_call", // Fallback for physical
       };
 
       const payload = {
         mainConcern: formData.mainConcern.trim(),
-        consultationChannel: channelMap[type] || "Video",
+        consultationChannel: channelMap[type] || "viber_video",
         symptoms: formData.symptoms,
         otherSymptoms: formData.otherSymptoms.trim(),
         durationValue: durationNum,

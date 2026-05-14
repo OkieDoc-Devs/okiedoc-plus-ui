@@ -532,7 +532,8 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
 
                 <div className="appt-card-actions">
                   <button
-                    className="appt-btn appt-btn-outline full-width"
+                    className="appt-btn appt-btn-outline"
+                    style={{ flex: 1 }}
                     onClick={() => {
                       window.history.pushState(
                         null,
@@ -543,6 +544,22 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                     }}
                   >
                     View Details
+                  </button>
+                  <button
+                    className="appt-btn appt-btn-outline"
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                    }}
+                    onClick={() => {
+                      window.location.hash = `#/Messages?ticket=${appt.ticketNumber}`;
+                      if (setActive) setActive("Messages");
+                    }}
+                  >
+                    <IconMessageCircle size={18} /> Message
                   </button>
                   {appt.status === "for_payment" && (
                     <button

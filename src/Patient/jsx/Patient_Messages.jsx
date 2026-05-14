@@ -44,7 +44,7 @@ const Patient_Messages = ({ setActive }) => {
   const {
     conversations,
     activeConversation,
-    messages,
+    messages: chatMessagesData,
     loading: chatLoading,
     error: chatError,
     typingUsers,
@@ -56,9 +56,12 @@ const Patient_Messages = ({ setActive }) => {
     startConversation,
     searchUsers,
     getAllUsers,
+    loadConversations, // Added this
     isCallActive,
     activeCallHost,
   } = useChat({ currentUserId, currentUserType: 'p' });
+
+  const messages = Array.isArray(chatMessagesData) ? chatMessagesData : (chatMessagesData?.messages || []);
 
   const CHARACTER_LIMIT = 500;
 
@@ -117,16 +120,34 @@ const Patient_Messages = ({ setActive }) => {
 
     setIsSendingMessage(true);
     try {
+      const convId = activeConversation.id || activeConversation.ticket?.id;
+      if (!convId) {
+        throw new Error('No active conversation ID found');
+      }
+
       if (uploadedFiles.length > 0) {
         for (const file of uploadedFiles) {
-          await uploadChatFile(activeConversation.id, file, { caption: newMessage.trim() });
+          await uploadChatFile(convId, file, newMessage.trim());
         }
         setUploadedFiles([]);
         setNewMessage('');
       } else {
-        await sendChatMessage(activeConversation.id, newMessage.trim());
+        await sendChatMessage(newMessage.trim());
         setNewMessage('');
       }
+      
+      // Auto-refresh chat window
+      const scrollTimeout = setTimeout(() => {
+        if (chatBottomRef.current) {
+          chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+
+      // In ticket-based chat, useChat's sendChatMessage already updates messages state
+      // but we call loadConversations to update the sidebar preview
+      await loadConversations();
+
+      return () => clearTimeout(scrollTimeout);
     } catch (err) {
       console.error('Failed to send message:', err);
     } finally {
@@ -168,9 +189,10 @@ const Patient_Messages = ({ setActive }) => {
   };
 
   const filteredConversations = conversations.filter(conv => {
-    const otherUser = conv.participants?.find(p => p.id !== currentUserId);
-    const name = `${otherUser?.firstName || ''} ${otherUser?.lastName || ''}`.toLowerCase();
-    return name.includes(searchQuery.toLowerCase());
+    const name = (conv.name || '').toLowerCase();
+    const ticketNumber = (conv.ticketNumber || '').toLowerCase();
+    const query = searchQuery.toLowerCase();
+    return name.includes(query) || ticketNumber.includes(query);
   });
 
   return (
@@ -206,9 +228,11 @@ const Patient_Messages = ({ setActive }) => {
               <div className="patient-no-conversations">No conversations found</div>
             ) : (
               filteredConversations.map(conv => {
-                const otherUser = conv.participants?.find(p => p.id !== currentUserId);
                 const isActive = activeConversation?.id === conv.id;
                 const isUnread = conv.unreadCount > 0;
+
+                // For ticket-based chats, the name is already the formatted name from backend
+                const displayName = conv.name || conv.ticketNumber || 'Consultation';
 
                 return (
                   <div 
@@ -217,24 +241,22 @@ const Patient_Messages = ({ setActive }) => {
                     onClick={() => openConversation(conv)}
                   >
                     <Avatar 
-                      profileImageUrl={otherUser?.profilePictureUrl} 
-                      firstName={otherUser?.firstName} 
-                      lastName={otherUser?.lastName}
+                      firstName={displayName}
                       size={48}
                     />
                     <div className="patient-conversation-info">
                       <div className="patient-conversation-top">
                         <span className="patient-conversation-name">
-                          {otherUser?.firstName} {otherUser?.lastName}
+                          {displayName}
                         </span>
-                        {conv.lastMessageAt && (
+                        {conv.rawCreatedAt && (
                           <span className="patient-conversation-time">
-                            {new Date(conv.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(conv.rawCreatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}
                       </div>
                       <p className="patient-conversation-last-msg">
-                        {conv.lastMessage?.content || (conv.lastMessage?.hasAttachments ? 'Sent an attachment' : 'No messages yet')}
+                        {conv.lastMessage || 'No messages yet'}
                       </p>
                     </div>
                     {isUnread && <div className="patient-unread-badge">{conv.unreadCount}</div>}
@@ -255,13 +277,13 @@ const Patient_Messages = ({ setActive }) => {
                   </button>
                   <Avatar 
                     profileImageUrl={activeConversation.participants?.find(p => p.id !== currentUserId)?.profilePictureUrl} 
-                    firstName={activeConversation.participants?.find(p => p.id !== currentUserId)?.firstName} 
+                    firstName={activeConversation.participants?.find(p => p.id !== currentUserId)?.firstName || activeConversation.role} 
                     lastName={activeConversation.participants?.find(p => p.id !== currentUserId)?.lastName}
                     size={40}
                   />
                   <div className="patient-chat-header-text">
                     <span className="patient-chat-name">
-                      {activeConversation.participants?.find(p => p.id !== currentUserId)?.firstName} {activeConversation.participants?.find(p => p.id !== currentUserId)?.lastName}
+                      {activeConversation.name || (activeConversation.participants?.find(p => p.id !== currentUserId) ? `${activeConversation.participants.find(p => p.id !== currentUserId).firstName} ${activeConversation.participants.find(p => p.id !== currentUserId).lastName}` : activeConversation.role)}
                     </span>
                     <span className="patient-chat-status">
                       {typingUsers.includes(activeConversation.participants?.find(p => p.id !== currentUserId)?.id) ? 'Typing...' : 'Online'}
@@ -280,14 +302,16 @@ const Patient_Messages = ({ setActive }) => {
 
               <div className="patient-chat-messages" ref={chatMessagesRef}>
                 {messages.map((msg, index) => {
-                  const isMe = msg.senderId === currentUserId;
+                  const isMe = Number(msg.senderId || msg.sender?.id) === Number(currentUserId);
+                  const sender = msg.sender || activeConversation.participants?.find(p => p.id === msg.senderId) || { firstName: (activeConversation.role || 'U'), lastName: '' };
+                  
                   return (
                     <div key={msg.id || index} className={`patient-message-row ${isMe ? 'sent' : 'received'}`}>
                       {!isMe && (
                         <Avatar 
-                          profileImageUrl={activeConversation.participants?.find(p => p.id === msg.senderId)?.profilePictureUrl} 
-                          firstName={activeConversation.participants?.find(p => p.id === msg.senderId)?.firstName} 
-                          lastName={activeConversation.participants?.find(p => p.id === msg.senderId)?.lastName}
+                          profileImageUrl={sender.profilePictureUrl} 
+                          firstName={sender.firstName || sender.name?.split(' ')[0] || sender.fullName?.split(' ')[0]} 
+                          lastName={sender.lastName || sender.name?.split(' ')[1] || sender.fullName?.split(' ')[1]}
                           size={32}
                         />
                       )}
@@ -304,9 +328,16 @@ const Patient_Messages = ({ setActive }) => {
                             )}
                           </div>
                         ))}
-                        {msg.content && <p className="patient-message-text">{msg.content}</p>}
+                        {!isMe && (
+                          <span className="patient-message-sender-name" style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '2px', color: '#4aa7ed', opacity: 0.8 }}>
+                            {sender.fullName || sender.name || `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || activeConversation.role}
+                          </span>
+                        )}
+                        {(msg.content || msg.text) && <p className="patient-message-text">{msg.content || msg.text}</p>}
                         <span className="patient-message-time">
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {msg.createdAt && !isNaN(new Date(msg.createdAt).getTime()) 
+                            ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            : ''}
                         </span>
                       </div>
                     </div>

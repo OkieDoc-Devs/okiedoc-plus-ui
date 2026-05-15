@@ -1994,9 +1994,19 @@ export default function Dashboard() {
         status: nextStatus,
       });
     } else {
-      await applyTicketPatch(selectedTicket.id, {
+      const patch = {
         status: mapTriageStatusToTicketStatus(nextStatus),
-      });
+      };
+
+      // If setting to triage (processing), assign the current nurse
+      if (nextStatus === 'in triage') {
+        const currentNurseId = localStorage.getItem('nurse.id');
+        if (currentNurseId) {
+          patch.nurse = Number(currentNurseId);
+        }
+      }
+
+      await applyTicketPatch(selectedTicket.id, patch);
     }
 
     setIsUpdatingStatus(false);

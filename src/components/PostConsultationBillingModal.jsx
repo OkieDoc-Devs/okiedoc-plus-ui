@@ -68,7 +68,9 @@ export default function PostConsultationBillingModal({
   );
 
   const subtotal = baseConsultationFee + additionalTotal + customTotal;
-  const discountAmount = discountType !== 'None' ? baseConsultationFee * 0.2 : 0;
+  const discountPercentage = ticket?.specialist?.discountPercentage || 20;
+  const discountAmount =
+    discountType !== 'None' ? baseConsultationFee * (discountPercentage / 100) : 0;
   const finalTotal = subtotal - discountAmount;
 
   if (!isOpen || !ticket) return null;
@@ -185,7 +187,7 @@ export default function PostConsultationBillingModal({
           </section>
 
           <section className='billing-section'>
-            <h3>Apply Discounts</h3>
+            <h3>Apply Discounts ({ticket?.specialist?.discountPercentage || 20}%)</h3>
             <div style={{ display: 'flex', gap: '24px', marginTop: '12px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                 <input

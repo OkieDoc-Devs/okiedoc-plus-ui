@@ -671,7 +671,7 @@ const SpecialistDashboard = () => {
   const [invoiceForm, setInvoiceForm] = useState({
     consultationType: "initial",
     includesCertificate: false,
-    isDiscounted: false,
+    discountType: "None",
   });
 
   const [cropperModalOpen, setCropperModalOpen] = useState(false);
@@ -2404,7 +2404,7 @@ const SpecialistDashboard = () => {
         ticketId: selectedTicketId,
         consultationType: invoiceForm.consultationType,
         includesCertificate: invoiceForm.includesCertificate,
-        isDiscounted: invoiceForm.isDiscounted,
+        discountType: invoiceForm.discountType,
       });
       alert("Invoice generated and ticket moved to For Payment!");
       setShowInvoiceModal(false);
@@ -6495,30 +6495,82 @@ const SpecialistDashboard = () => {
               </div>
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  marginTop: "1rem",
+                  marginTop: "1.5rem",
+                  borderTop: "1px solid #eee",
+                  paddingTop: "1rem",
                 }}
               >
-                <input
-                  type="checkbox"
-                  id="invoiceDiscount"
-                  style={{ width: "18px", height: "18px", margin: 0 }}
-                  checked={invoiceForm.isDiscounted}
-                  onChange={(e) =>
-                    setInvoiceForm((f) => ({
-                      ...f,
-                      isDiscounted: e.target.checked,
-                    }))
-                  }
-                />
-                <label
-                  htmlFor="invoiceDiscount"
-                  style={{ margin: 0, cursor: "pointer", fontWeight: 500 }}
-                >
-                  Apply Discount (Senior/PWD)
-                </label>
+                <p style={{ fontWeight: 600, marginBottom: "0.5rem" }}>
+                  Apply Discount ({profileData?.discountPercentage || 20}%)
+                </p>
+                <div style={{ display: "flex", gap: "20px" }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="discountType"
+                      value="Pwd"
+                      checked={invoiceForm.discountType === "Pwd"}
+                      onChange={(e) =>
+                        setInvoiceForm((f) => ({
+                          ...f,
+                          discountType:
+                            e.target.value === f.discountType
+                              ? "None"
+                              : e.target.value,
+                        }))
+                      }
+                      onClick={(e) => {
+                        if (invoiceForm.discountType === "Pwd") {
+                          setInvoiceForm((f) => ({
+                            ...f,
+                            discountType: "None",
+                          }));
+                        }
+                      }}
+                    />
+                    <span style={{ fontSize: "0.9rem" }}>PWD</span>
+                  </label>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="discountType"
+                      value="Senior"
+                      checked={invoiceForm.discountType === "Senior"}
+                      onChange={(e) =>
+                        setInvoiceForm((f) => ({
+                          ...f,
+                          discountType:
+                            e.target.value === f.discountType
+                              ? "None"
+                              : e.target.value,
+                        }))
+                      }
+                      onClick={(e) => {
+                        if (invoiceForm.discountType === "Senior") {
+                          setInvoiceForm((f) => ({
+                            ...f,
+                            discountType: "None",
+                          }));
+                        }
+                      }}
+                    />
+                    <span style={{ fontSize: "0.9rem" }}>Senior Citizen</span>
+                  </label>
+                </div>
               </div>
             </div>
             <div

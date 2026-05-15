@@ -153,11 +153,16 @@ export async function uploadNurseAvatar(file) {
       body: formData,
     });
 
-    if (data.success) {
-      return data.data;
-    } else {
-      throw new Error(data.message || "Failed to upload avatar");
+    if (data?.profileUrl || data?.avatarUrl) {
+      return { profileUrl: data.profileUrl || data.avatarUrl };
     }
+    if (data?.data?.profileUrl || data?.data?.avatarUrl) {
+      return { profileUrl: data.data.profileUrl || data.data.avatarUrl };
+    }
+    if (data?.success) {
+      return data.data || {};
+    }
+    throw new Error(data?.message || "Failed to upload avatar");
   } catch (error) {
     console.error("Error uploading nurse avatar:", error);
     throw error;

@@ -69,6 +69,10 @@ export default function MyAccount() {
 
         setUserData(profileData);
         setFormData(profileData);
+        if (profileData.profileImage) {
+          saveNurseProfileImage(profileData.profileImage);
+          setPreviewImage(profileData.profileImage);
+        }
         setError(null);
 
         if (profileData.firstName) {
@@ -202,6 +206,7 @@ export default function MyAccount() {
 
   const [previewImage, setPreviewImage] = useState("/account.svg");
   const [selectedFile, setSelectedFile] = useState(null);
+  const [fileStatus, setFileStatus] = useState("");
   const [uploadError, setUploadError] = useState("");
   const [uploadLoading, setUploadLoading] = useState(false);
 
@@ -223,8 +228,10 @@ export default function MyAccount() {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     setUploadError("");
+    setFileStatus("");
 
     if (file) {
+      setFileStatus(file.name);
       if (file.size > MAX_FILE_SIZE) {
         setUploadError(
           "File size exceeds 2MB limit. Please choose a smaller image."
@@ -251,10 +258,12 @@ export default function MyAccount() {
 
   const handleCropComplete = (croppedFile) => {
     setSelectedFile(croppedFile);
+    setFileStatus(croppedFile.name || "Selected image");
     const objectUrl = URL.createObjectURL(croppedFile);
     setPreviewImage(objectUrl);
     setCropperModalOpen(false);
     setSelectedImageSrc(null);
+    handleImageSave(croppedFile);
   };
 
   const handleCropCancel = () => {
@@ -264,8 +273,9 @@ export default function MyAccount() {
 
 
 
-  const handleImageSave = async () => {
-    if (!selectedFile) {
+  const handleImageSave = async (fileOverride = null) => {
+    const fileToUpload = fileOverride || selectedFile;
+    if (!fileToUpload) {
       alert("Please select an image first.");
       return;
     }
@@ -274,13 +284,15 @@ export default function MyAccount() {
     setUploadError("");
 
     try {
-      const response = await uploadNurseAvatar(selectedFile);
+      const response = await uploadNurseAvatar(fileToUpload);
 
-      if (response && response.avatarUrl) {
-        saveNurseProfileImage(response.avatarUrl);
-        setPreviewImage(response.avatarUrl);
+      if (response && response.profileUrl) {
+        saveNurseProfileImage(response.profileUrl);
+        setPreviewImage(response.profileUrl);
+        setFileStatus("Image saved");
       } else {
         saveNurseProfileImage(previewImage);
+        setFileStatus("Image saved");
       }
 
       setSelectedFile(null);
@@ -295,36 +307,6 @@ export default function MyAccount() {
     }
   };
 
-  const handleImageDelete = async () => {
-    if (previewImage === "/account.svg") {
-      alert("No profile picture to delete.");
-      return;
-    }
-
-    if (
-      !window.confirm("Are you sure you want to delete your profile picture?")
-    ) {
-      return;
-    }
-
-    setUploadLoading(true);
-    setUploadError("");
-
-    try {
-      await deleteNurseAvatar();
-      saveNurseProfileImage("/account.svg");
-      setPreviewImage("/account.svg");
-      setSelectedFile(null);
-      alert("Profile picture deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting avatar:", error);
-      setUploadError(
-        error.message || "Failed to delete avatar. Please try again."
-      );
-    } finally {
-      setUploadLoading(false);
-    }
-  };
 
   const renderProfileTab = () => (
     <div className="profile-section">
@@ -673,42 +655,28 @@ export default function MyAccount() {
           </div>
         )}
 
-        <div
-          className="upload-controls"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
+        <div className="upload-controls">
           <input
             type="file"
             id="nurseProfileImage"
             accept="image/*"
             onChange={handleImageUpload}
-            className="file-input"
-            style={{ alignSelf: "center" }}
+            className="file-input-hidden"
             disabled={uploadLoading}
           />
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              onClick={handleImageSave}
-              className="save-btn image-save-btn"
-              disabled={!selectedFile || uploadLoading}
-            >
-              {uploadLoading ? "Uploading..." : "Upload Image"}
-            </button>
-            {previewImage !== "/account.svg" && (
-              <button
-                onClick={handleImageDelete}
-                className="cancel-btn"
-                disabled={uploadLoading}
-                style={{ backgroundColor: "#dc3545", color: "white" }}
-              >
-                {uploadLoading ? "Deleting..." : "Delete Image"}
-              </button>
-            )}
+          <label
+            htmlFor="nurseProfileImage"
+            className={`file-input-label ${uploadLoading ? "disabled" : ""}`}
+          >
+            Choose Image
+          </label>
+          <div className="file-input-name" aria-live="polite">
+            {uploadLoading
+              ? "Uploading image..."
+              : fileStatus ||
+                (previewImage !== "/account.svg"
+                  ? "Image saved"
+                  : "No image selected")}
           </div>
         </div>
       </div>
@@ -808,7 +776,10 @@ export default function MyAccount() {
           className="back-btn"
           onClick={() => navigate("/nurse-dashboard")}
         >
-          ← Back to Dashboard
+          <span className="back-btn-icon" aria-hidden="true">
+            ←
+          </span>
+          <span>Back to Dashboard</span>
         </button>
         <h2>My Account</h2>
         <p>Manage your profile and security settings</p>

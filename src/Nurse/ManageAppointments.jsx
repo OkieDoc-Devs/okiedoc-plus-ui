@@ -398,6 +398,12 @@ function NurseCreateTicketWorkspace({ onBack, onTicketCreated, initialFormData =
     setFormError('');
 
     try {
+      const durationValue = formData.durationValue
+        ? Number(formData.durationValue)
+        : undefined;
+      const severityValue =
+        formData.severity === '' ? undefined : Number(formData.severity);
+
       const payload = {
         patientId: formData.patientId ? Number(formData.patientId) : undefined,
         patientName: formData.fullName.trim(),
@@ -422,9 +428,9 @@ function NurseCreateTicketWorkspace({ onBack, onTicketCreated, initialFormData =
         painAreas: formData.painAreas,
         selectedPainAreas: formData.painAreas,
         painMapView: formData.painMapView,
-        durationValue: formData.durationValue ? Number(formData.durationValue) : null,
+        durationValue: Number.isNaN(durationValue) ? undefined : durationValue,
         durationUnit: formData.durationUnit,
-        severity: Number(formData.severity) || null,
+        severity: Number.isNaN(severityValue) ? undefined : severityValue,
       };
 
       const createdTicket = await createTicket(payload);

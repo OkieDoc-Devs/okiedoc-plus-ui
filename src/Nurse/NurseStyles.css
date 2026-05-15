@@ -638,35 +638,44 @@ body::-webkit-scrollbar {
 .myaccount-container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 28px 32px 36px;
   background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(11, 83, 136, 0.1);
 }
 
 .myaccount-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  margin-bottom: 30px;
-  position: relative;
+  gap: 6px;
+  margin-bottom: 24px;
 }
 
-.back-btn {
-  position: absolute;
-  left: 0;
-  top: 0;
-  background-color: #f0f0f0;
-  color: #333;
-  border: 1px solid #ddd;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
+.myaccount-header .back-btn {
+  align-self: flex-start;
+  margin-bottom: 6px;
+  background: #f2f7fa;
+  color: #0b5388;
+  border: 1px solid #d6e4f2;
+  padding: 8px 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 0.9rem;
-  transition: all 0.2s;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(11, 83, 136, 0.08);
 }
 
-.back-btn:hover {
-  background-color: #e0e0e0;
-  border-color: #bbb;
+.myaccount-header .back-btn:hover {
+  background: #e7f1fb;
+  border-color: #bcd5f0;
+  color: #08416a;
+  transform: translateY(-1px);
 }
 
 .myaccount-header h2 {
@@ -682,7 +691,9 @@ body::-webkit-scrollbar {
 .myaccount-tabs {
   display: flex;
   border-bottom: 2px solid #eee;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
+  justify-content: center;
+  gap: 8px;
 }
 
 .tab-btn {
@@ -707,6 +718,96 @@ body::-webkit-scrollbar {
 
 .myaccount-content {
   min-height: 400px;
+}
+
+.image-section {
+  padding: 6px 0 10px;
+}
+
+.image-section h3 {
+  margin: 0 0 6px;
+  color: #0b5388;
+  font-size: 1.1rem;
+}
+
+.image-upload-container {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  background: #f8fafc;
+  border: 1px solid #e3ecf6;
+  border-radius: 16px;
+  gap: 16px;
+}
+
+.current-image {
+  margin-bottom: 6px;
+}
+
+.upload-controls {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.file-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.file-input-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid #cfe0f4;
+  background: #ffffff;
+  color: #0b5388;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(11, 83, 136, 0.08);
+}
+
+.file-input-label:hover {
+  border-color: #9ec1ea;
+  color: #08416a;
+}
+
+.file-input-label.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.file-input-name {
+  font-size: 0.9rem;
+  color: #4b5563;
+  text-align: center;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-controls .cancel-btn {
+  margin-top: 6px;
+}
+
+.upload-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .profile-section {
@@ -1773,7 +1874,7 @@ body::-webkit-scrollbar {
 
 .triage-grid {
   display: grid;
-  grid-template-columns: 296px 320px minmax(0, 1fr);
+  grid-template-columns: 340px 320px minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -2646,6 +2747,18 @@ body::-webkit-scrollbar {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  line-height: 1;
+}
+
+.myaccount-header .back-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  line-height: 1;
+  transform: translateY(-1px);
 }
 
 .triage-status-select svg {

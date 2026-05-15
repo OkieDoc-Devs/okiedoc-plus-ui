@@ -28,6 +28,7 @@ import PatientMedicalRecordsModal from '../components/MedicalRecords';
 import { disconnectSocket } from '../utils/socketClient';
 import { useChat } from './services/useChat.js';
 import { fetchCallbacks, updateCallbackStatus } from '../api/apiClient';
+import referredPainChart from '../assets/1506_Referred_Pain_Chart.jpg';
 import {
   Activity,
   AlertCircle,
@@ -3049,10 +3050,7 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {(!selectedPatient ||
-                (selectedPatientId &&
-                  selectedPatient.email &&
-                  selectedPatient.email !== 'N/A')) && (
+              {!isSelectedCallbackTicket && (
                 <div className='triage-snapshot-chat-dock'>
                   <article className='triage-chat-panel'>
                     <header>
@@ -3490,6 +3488,13 @@ export default function Dashboard() {
                             );
                           })}
                         </div>
+
+                        <figure className='triage-pain-reference-card'>
+                          <img
+                            src={referredPainChart}
+                            alt='Referred pain reference chart'
+                          />
+                        </figure>
 
                         <div className='triage-pain-map-selection'>
                           <div className='triage-pain-map-selection-title'>

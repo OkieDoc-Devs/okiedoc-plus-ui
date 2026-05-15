@@ -73,6 +73,7 @@ export function transformProfileFromAPI(apiProfile) {
     region: apiProfile.region || "",
     zipCode: apiProfile.zipCode || "",
     profileImage:
+      apiProfile.profileUrl ||
       apiProfile.profileImage ||
       apiProfile.profile_image ||
       apiProfile.Profile_Image_Data_URL ||

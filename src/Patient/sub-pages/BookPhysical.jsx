@@ -16,8 +16,6 @@ import {
   IconArrowRight,
 } from "@tabler/icons-react";
 import "../css/BookPhysical.css";
-
-// Assuming you have these hooks available based on your Registration.jsx
 import { useAuth } from "../../contexts/AuthContext";
 import { apiRequest } from "../../api/apiClient";
 
@@ -111,7 +109,6 @@ export default function BookPhysical({
   }, [user]);
 
   // --- DYNAMIC SCHEDULE GENERATOR ---
-  // Parses {"Monday": "09:00-17:00"} and generates 30-min slots
   const getAvailableTimeSlots = (selectedDate, scheduleObj) => {
     if (!selectedDate || !scheduleObj) return [];
 
@@ -155,7 +152,6 @@ export default function BookPhysical({
   // Update available slots whenever date or doctor changes
   useEffect(() => {
     if (date && doctor && doctor.schedules) {
-      // Assuming doctor.schedules is already parsed JSON. If it's a string, use JSON.parse(doctor.schedules)
       const slots = getAvailableTimeSlots(date, doctor.schedules);
       setAvailableSlots(slots);
       setTime(""); // Reset time if date changes
@@ -195,7 +191,6 @@ export default function BookPhysical({
     return true;
   };
 
-  // --- API INTEGRATION: Submit Ticket (Straight to Doctor) ---
   const handleConfirmAppointment = async () => {
     setIsSubmitting(true);
     try {
@@ -243,7 +238,6 @@ export default function BookPhysical({
       prev.includes(sym) ? prev.filter((s) => s !== sym) : [...prev, sym],
     );
 
-  // --- STRICT PHONE NUMBER FORMATTER ---
   const handlePhoneChange = (value) => {
     let digits = value.replace(/\D/g, "");
 
@@ -362,8 +356,7 @@ export default function BookPhysical({
               </div>
               <div className="bp-specialist-list">
                 {filteredDoctors.map((doc) => {
-                  const isAvailable = true; // Replace with actual DB logic if you track active/offline status
-                  // Fallback for initials if DB doesn't have it
+                  const isAvailable = true;
                   const initials = doc.name
                     ? doc.name
                         .split(" ")

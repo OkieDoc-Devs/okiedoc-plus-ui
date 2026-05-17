@@ -17,81 +17,31 @@ import {
   IconFilter,
   IconSortAscending,
   IconArrowRight,
+  IconUser,
+  IconPhone,
 } from "@tabler/icons-react";
 import "../css/BookSpecialist.css";
+import { useAuth } from "../../contexts/AuthContext";
+import { apiRequest } from "../../api/apiClient";
 
 const STEPS = [
   { label: "Specialist", icon: IconStethoscope },
   { label: "Payment", icon: IconCreditCard },
   { label: "Schedule", icon: IconCalendarEvent },
+  { label: "Patient Info", icon: IconUser },
   { label: "Details", icon: IconFileDescription },
   { label: "Review", icon: IconCircleCheck },
 ];
 
-const specialists = [
-  {
-    id: 1,
-    name: "Dr. Sofia Lim",
-    spec: "Cardiologist",
-    clinic: "OkieDoc+ Heart Center",
-    loc: "BGC, Taguig City",
-    exp: 20,
-    price: "₱1,500",
-    payments: ["Cash", "HMO", "PhilHealth"],
-    initials: "SL",
-    available: true,
-  },
-  {
-    id: 2,
-    name: "Dr. Carlos Torres",
-    spec: "Dermatologist",
-    clinic: "OkieDoc+ Skin Clinic",
-    loc: "Ortigas, Pasig City",
-    exp: 5,
-    price: "₱1,200",
-    payments: ["Cash"],
-    initials: "CT",
-    available: true,
-  },
-  {
-    id: 3,
-    name: "Dr. Anna Cruz",
-    spec: "Psychiatrist",
-    clinic: "OkieDoc+ Mental Health Center",
-    loc: "Manila",
-    exp: 18,
-    price: null,
-    payments: ["HMO"],
-    initials: "AC",
-    available: true,
-  },
-  {
-    id: 4,
-    name: "Dr. Miguel Garcia",
-    spec: "Orthopedic Surgeon",
-    clinic: "OkieDoc+ Orthopedic Center",
-    loc: "Makati City",
-    exp: 22,
-    price: null,
-    payments: ["PhilHealth"],
-    initials: "MG",
-    available: true,
-  },
-  {
-    id: 5,
-    name: "Dr. Ramon Santos",
-    spec: "Gastroenterologist",
-    clinic: "OkieDoc+ Digestive Health",
-    loc: "Makati City",
-    exp: 12,
-    price: "₱1,900",
-    payments: ["Cash", "HMO"],
-    initials: "RS",
-    available: true,
-  },
+const ALLOWED_SPECIALTIES = [
+  "cardiology",
+  "dermatology",
+  "psychiatry",
+  "endocrinology",
+  "gastroenterology",
+  "orthopedics",
 ];
 
-const UNIQUE_SPECS = [...new Set(specialists.map((s) => s.spec))];
 const symptomsList = [
   "Pain",
   "Swelling",
@@ -104,33 +54,25 @@ const symptomsList = [
   "Sleep Issues",
   "Anxiety",
 ];
-const timeSlots = [
-  "09:00 AM",
-  "09:30 AM",
-  "10:00 AM",
-  "10:30 AM",
-  "11:00 AM",
-  "11:30 AM",
-  "01:00 PM",
-  "01:30 PM",
-  "02:00 PM",
-  "02:30 PM",
-  "03:00 PM",
-  "03:30 PM",
-  "04:00 PM",
-  "04:30 PM",
-  "05:00 PM",
-];
-const CURRENT_DATE = new Date("2026-04-08T00:00:00");
+
+const CURRENT_DATE = new Date();
 
 export default function BookSpecialist({
   onGoBack,
   onGoToAppointments,
   onGoToDashboard,
 }) {
+  const { user } = useAuth();
+
   const [currentStep, setCurrentStep] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Database Data
+  const [specialistsData, setSpecialistsData] = useState([]);
+  const [uniqueSpecs, setUniqueSpecs] = useState([]);
+
+  // Form States
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [specFilter, setSpecFilter] = useState([]);
@@ -150,12 +92,119 @@ export default function BookSpecialist({
 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [availableSlots, setAvailableSlots] = useState([]);
+
+  const [patientName, setPatientName] = useState("");
+  const [patientAge, setPatientAge] = useState("");
+  const [patientGender, setPatientGender] = useState("");
+  const [patientContact, setPatientContact] = useState("");
+
   const [complaint, setComplaint] = useState("");
   const [symptoms, setSymptoms] = useState([]);
   const [notes, setNotes] = useState("");
 
+  // --- API FETCH & DATA MAPPING ---
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await apiRequest("/api/v1/booking-data-specialist", {
+          method: "GET",
+        });
+        if (res && res.doctors) {
+          const mappedDocs = res.doctors.map((doc) => {
+            const hmoAccepted = doc.hmos && doc.hmos.length > 0;
+            const formatCurrency = new Intl.NumberFormat("en-PH", {
+              style: "currency",
+              currency: "PHP",
+            }).format(doc.feeInitialWithoutCert);
+
+            return {
+              id: doc.id,
+              name: doc.name,
+              spec: doc.primarySpecialty,
+              clinic: "OkieDoc+ Virtual Clinic",
+              loc: "Online",
+              exp: doc.yearsExperience,
+              price: formatCurrency,
+              rawPrice: doc.feeInitialWithoutCert,
+              payments: hmoAccepted ? ["Cash", "HMO"] : ["Cash"],
+              initials: doc.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .substring(0, 2)
+                .toUpperCase(),
+              available: true,
+              schedules: doc.schedules,
+              hmosList: doc.hmos || [],
+            };
+          });
+
+          setSpecialistsData(mappedDocs);
+          setUniqueSpecs([...new Set(mappedDocs.map((s) => s.spec))]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch specialists:", error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // --- PATIENT AUTO-POPULATION ---
+  useEffect(() => {
+    if (user) {
+      setPatientName(`${user.firstName} ${user.lastName}`.trim());
+      setPatientGender(user.gender || "");
+      setPatientContact(user.mobileNumber || "");
+
+      if (user.birthday) {
+        const ageDifMs = Date.now() - new Date(user.birthday).getTime();
+        const ageDate = new Date(ageDifMs);
+        setPatientAge(Math.abs(ageDate.getUTCFullYear() - 1970).toString());
+      }
+    }
+  }, [user]);
+
+  // --- STRICT CONTACT NUMBER VALIDATION ---
+  const handlePhoneChange = (value) => {
+    let digits = value.replace(/\D/g, "");
+    if (digits.length === 0) {
+      setPatientContact("");
+      return;
+    }
+    if (digits.startsWith("0")) {
+      digits = "63" + digits.substring(1);
+    } else if (!digits.startsWith("63")) {
+      digits = digits === "6" ? "6" : "63" + digits;
+    }
+
+    digits = digits.substring(0, 12);
+    let formatted = "+";
+    if (digits.length <= 2) formatted += digits;
+    else if (digits.length <= 5)
+      formatted += digits.substring(0, 2) + " " + digits.substring(2);
+    else if (digits.length <= 8)
+      formatted +=
+        digits.substring(0, 2) +
+        " " +
+        digits.substring(2, 5) +
+        " " +
+        digits.substring(5);
+    else
+      formatted +=
+        digits.substring(0, 2) +
+        " " +
+        digits.substring(2, 5) +
+        " " +
+        digits.substring(5, 8) +
+        " " +
+        digits.substring(8);
+    setPatientContact(formatted);
+  };
+
   const isDateInvalid = date
-    ? new Date(date + "T00:00:00") < CURRENT_DATE
+    ? new Date(date + "T00:00:00") <
+      new Date(CURRENT_DATE.toISOString().split("T")[0] + "T00:00:00")
     : false;
 
   useEffect(() => {
@@ -167,21 +216,72 @@ export default function BookSpecialist({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // --- DYNAMIC TIME SLOTS ---
+  useEffect(() => {
+    if (date && specialist && specialist.schedules) {
+      const dateObj = new Date(date + "T00:00:00");
+      const dayOfWeek = dateObj.toLocaleDateString("en-US", {
+        weekday: "long",
+      });
+
+      const dayKey = Object.keys(specialist.schedules).find(
+        (k) => k.toLowerCase() === dayOfWeek.toLowerCase(),
+      );
+      if (!dayKey) {
+        setAvailableSlots([]);
+        setTime("");
+        return;
+      }
+
+      const [startStr, endStr] = specialist.schedules[dayKey].split("-");
+      const parseTime = (t) => {
+        const [h, m] = t.trim().split(":");
+        return parseInt(h) * 60 + parseInt(m);
+      };
+      const formatTime = (mins) => {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        const ampm = h >= 12 ? "PM" : "AM";
+        const h12 = h % 12 || 12;
+        return `${h12.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${ampm}`;
+      };
+
+      const slots = [];
+      let current = parseTime(startStr);
+      const end = parseTime(endStr);
+
+      while (current < end) {
+        slots.push(formatTime(current));
+        current += 30;
+      }
+      setAvailableSlots(slots);
+      setTime("");
+    } else {
+      setAvailableSlots([]);
+    }
+  }, [date, specialist]);
+
   const filteredSpecialists = useMemo(() => {
-    let result = specialists.filter((doc) => {
+    let result = specialistsData.filter((doc) => {
       const searchLower = searchQuery.toLowerCase();
+      const specLower = (doc.spec || "").toLowerCase();
+
       const matchesSearch =
         doc.name.toLowerCase().includes(searchLower) ||
-        doc.spec.toLowerCase().includes(searchLower) ||
+        specLower.includes(searchLower) ||
         doc.loc.toLowerCase().includes(searchLower);
+
       const matchesSpec =
         specFilter.length === 0 || specFilter.includes(doc.spec);
-      return matchesSearch && matchesSpec;
+      const isAllowedSpecialty = ALLOWED_SPECIALTIES.includes(specLower);
+
+      return matchesSearch && matchesSpec && isAllowedSpecialty;
     });
+
     if (expSort === "longest") result.sort((a, b) => b.exp - a.exp);
     if (expSort === "recent") result.sort((a, b) => a.exp - b.exp);
     return result;
-  }, [searchQuery, specFilter, expSort]);
+  }, [searchQuery, specFilter, expSort, specialistsData]);
 
   const toggleSpecFilter = (spec) =>
     setSpecFilter((prev) =>
@@ -195,6 +295,8 @@ export default function BookSpecialist({
   const handleSelectSpecialist = (doc) => {
     setSpecialist(doc);
     setPaymentMethod(null);
+    setHmoProvider("");
+    setHmoId("");
   };
 
   const handleHmoUpload = (e) => {
@@ -220,19 +322,88 @@ export default function BookSpecialist({
       return true;
     }
     if (currentStep === 2) return date !== "" && !isDateInvalid && time !== "";
-    if (currentStep === 3) return complaint.trim().length > 0;
+    if (currentStep === 3) return patientContact.trim().length > 0;
+    if (currentStep === 4) return complaint.trim().length > 0;
     return true;
+  };
+
+  // --- API INTEGRATION: Submit Ticket ---
+  const handleConfirmAppointment = async () => {
+    setIsSubmitting(true);
+    try {
+      await apiRequest("/api/v1/tickets", {
+        method: "POST",
+        body: JSON.stringify({
+          patientId: user?.id,
+          patient: user?.id,
+          specialist: specialist.id,
+          status: "pending",
+          consultationChannel: "Video",
+          preferredDate: date,
+          preferredTime: time,
+          chiefComplaint: complaint,
+          symptoms: symptoms.length > 0 ? symptoms.join(", ") : "None",
+          additionalDetails: notes,
+          isUsingHmo: paymentMethod === "hmo" ? true : false,
+          hmoProvider: paymentMethod === "hmo" ? hmoProvider : "",
+          hmoMemberId: paymentMethod === "hmo" ? hmoId : "",
+
+          targetSpecialty: specialist.spec,
+          doctorFee: specialist.rawPrice,
+        }),
+      });
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error("Failed to book appointment:", error);
+      alert("Failed to book appointment. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleNext = () => {
     if (!canProceed()) return;
-    if (currentStep === 4) setIsModalOpen(true);
+    if (currentStep === 5) handleConfirmAppointment();
     else setCurrentStep((c) => c + 1);
   };
 
   const handleBack = () => {
     if (currentStep === 0) onGoBack();
     else setCurrentStep((c) => c - 1);
+  };
+
+  // --- DYNAMIC SCHEDULE PILLS ---
+  const formatSchedulePills = (schedules) => {
+    if (!schedules) return null;
+
+    // Group days by their time string
+    const groupedSchedules = {};
+    Object.entries(schedules).forEach(([day, t]) => {
+      if (!groupedSchedules[t]) groupedSchedules[t] = [];
+      groupedSchedules[t].push(day.substring(0, 3));
+    });
+
+    return Object.entries(groupedSchedules).map(([t, days]) => {
+      let daysDisplay = "";
+      if (days.length === 1) {
+        daysDisplay = days[0];
+      } else if (
+        days.length === 5 &&
+        days.join(",") === "Mon,Tue,Wed,Thu,Fri"
+      ) {
+        daysDisplay = "Mon - Fri";
+      } else if (days.length === 7) {
+        daysDisplay = "Mon - Sun";
+      } else {
+        daysDisplay = days.join(", ");
+      }
+
+      return (
+        <span key={t + daysDisplay} className="bs-badge bs-badge-outline">
+          {daysDisplay} {t}
+        </span>
+      );
+    });
   };
 
   return (
@@ -358,7 +529,7 @@ export default function BookSpecialist({
 
                       <div className="bs-popover-title">Specialization</div>
                       <div className="bs-popover-options">
-                        {UNIQUE_SPECS.map((spec) => (
+                        {uniqueSpecs.map((spec) => (
                           <label key={spec} className="bs-popover-label">
                             <input
                               type="checkbox"
@@ -395,16 +566,13 @@ export default function BookSpecialist({
                         >
                           {doc.spec}
                         </p>
-                        <p className="bs-doc-meta">
-                          <IconMapPin size={14} /> {doc.clinic}
-                        </p>
-                        <p className="bs-doc-meta">
-                          <IconMapPin size={14} /> {doc.loc}
-                        </p>
-                        <p className="bs-doc-meta-last">
-                          <IconStethoscope size={14} /> {doc.exp} Years
-                          Experience
-                        </p>
+
+                        {doc.exp > 0 && (
+                          <p className="bs-doc-meta-last">
+                            <IconStethoscope size={14} /> {doc.exp} Years
+                            Experience
+                          </p>
+                        )}
 
                         <div className="bs-doc-badges">
                           {doc.price ? (
@@ -424,6 +592,9 @@ export default function BookSpecialist({
                               {b}
                             </span>
                           ))}
+
+                          {/* Dynamic Schedule Pills strictly using existing CSS classes */}
+                          {formatSchedulePills(doc.schedules)}
                         </div>
                       </div>
                     </div>
@@ -504,30 +675,6 @@ export default function BookSpecialist({
                     )}
                   </div>
                 )}
-
-                {specialist.payments.includes("PhilHealth") && (
-                  <div
-                    className={`bs-payment-card ${paymentMethod === "philhealth" ? "bs-payment-selected" : ""}`}
-                    onClick={() => setPaymentMethod("philhealth")}
-                  >
-                    <div className="bs-payment-info">
-                      <div className="bs-payment-icon bs-icon-green">
-                        <IconShield size={24} />
-                      </div>
-                      <div className="bs-payment-details">
-                        <h4 className="bs-payment-title">
-                          PhilHealth (with referral)
-                        </h4>
-                        <p className="bs-payment-desc">
-                          Use PhilHealth benefits for this consultation
-                        </p>
-                      </div>
-                    </div>
-                    {paymentMethod === "philhealth" && (
-                      <IconCheck size={20} className="bs-check-icon-green" />
-                    )}
-                  </div>
-                )}
               </div>
 
               {paymentMethod === "hmo" && (
@@ -546,9 +693,11 @@ export default function BookSpecialist({
                       <option value="" disabled>
                         Select your HMO provider
                       </option>
-                      <option value="Medicard">Medicard</option>
-                      <option value="Maxicare">Maxicare</option>
-                      <option value="Intellicare">Intellicare</option>
+                      {specialist.hmosList.map((hmo) => (
+                        <option key={hmo} value={hmo}>
+                          {hmo}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -574,9 +723,9 @@ export default function BookSpecialist({
                       <input
                         type="file"
                         ref={fileInputRef}
-                        style={{ display: "none" }}
                         accept="image/png, image/jpeg"
                         onChange={handleHmoUpload}
+                        style={{ display: "none" }}
                       />
                       <div className="bs-dropzone-icon bs-icon-yellow">
                         <IconUpload size={20} />
@@ -612,79 +761,6 @@ export default function BookSpecialist({
                   </div>
                 </div>
               )}
-
-              {paymentMethod === "philhealth" && (
-                <div className="bs-subform bs-subform-green">
-                  <div className="bs-subform-heading bs-heading-green">
-                    <IconShield size={18} /> <h4>PhilHealth Information</h4>
-                  </div>
-
-                  <div className="bs-form-group">
-                    <label className="bs-form-label">PhilHealth Number *</label>
-                    <input
-                      type="text"
-                      placeholder="Enter your PhilHealth number"
-                      value={philHealthId}
-                      onChange={(e) => setPhilHealthId(e.target.value)}
-                      className="bs-form-input"
-                    />
-                  </div>
-
-                  <div className="bs-form-group">
-                    <label className="bs-form-label">
-                      Do you have a valid referral?
-                    </label>
-                    <div className="bs-button-group">
-                      <button
-                        className={`bs-toggle-btn ${hasReferral === "yes" ? "bs-toggle-btn-green" : ""}`}
-                        onClick={() => setHasReferral("yes")}
-                      >
-                        Yes, I have a referral
-                      </button>
-                      <button
-                        className={`bs-toggle-btn ${hasReferral === "no" ? "bs-toggle-btn-dark" : ""}`}
-                        onClick={() => setHasReferral("no")}
-                      >
-                        No referral
-                      </button>
-                    </div>
-                  </div>
-
-                  {hasReferral === "yes" && (
-                    <div className="bs-banner bs-banner-green">
-                      <IconCheck size={20} className="bs-banner-icon-green" />
-                      <div className="bs-banner-content">
-                        <h4 className="bs-banner-title-green">
-                          PhilHealth Coverage Confirmed
-                        </h4>
-                        <p className="bs-banner-desc-green">
-                          Your consultation will be covered under PhilHealth
-                          with a valid referral. Please bring your PhilHealth ID
-                          and referral letter to your appointment.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {hasReferral === "no" && (
-                    <div className="bs-banner bs-banner-red">
-                      <IconAlertCircle
-                        size={20}
-                        className="bs-banner-icon-red"
-                      />
-                      <div className="bs-banner-content">
-                        <h4 className="bs-banner-title-red">
-                          Referral Required
-                        </h4>
-                        <p className="bs-banner-desc-red">
-                          A valid PhilHealth referral is required to proceed
-                          with specialist consultation coverage. Please obtain a
-                          referral from your primary care physician first.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
@@ -702,7 +778,6 @@ export default function BookSpecialist({
                   max="2030-12-31"
                   onChange={(e) => {
                     setDate(e.target.value);
-                    setTime("");
                   }}
                   className="bs-form-input"
                 />
@@ -718,41 +793,102 @@ export default function BookSpecialist({
                   </p>
 
                   <div className="bs-time-grid-extended">
-                    {timeSlots.map((t, i) => {
-                      const isUnavailable = i === 12 || i === 14;
-                      return (
+                    {availableSlots.length > 0 ? (
+                      availableSlots.map((t) => (
                         <button
                           key={t}
-                          disabled={isUnavailable}
-                          className={`bs-time-btn-extended ${time === t ? "selected" : ""} ${isUnavailable ? "unavailable" : "available"}`}
+                          className={`bs-time-btn-extended ${time === t ? "selected" : "available"}`}
                           onClick={() => setTime(t)}
                         >
                           <IconClock size={18} className="mb-8" />
                           {t}
                         </button>
-                      );
-                    })}
+                      ))
+                    ) : (
+                      <p className="bs-empty-state">
+                        The specialist is not scheduled on this day. Please
+                        select another date.
+                      </p>
+                    )}
                   </div>
 
-                  <div className="bs-time-legend">
-                    <span className="bs-legend-item">
-                      <div className="bs-legend-dot selected"></div> Selected
-                    </span>
-                    <span className="bs-legend-item">
-                      <div className="bs-legend-dot available"></div> Available
-                    </span>
-                    <span className="bs-legend-item">
-                      <div className="bs-legend-dot unavailable"></div>{" "}
-                      Unavailable
-                    </span>
-                  </div>
+                  {availableSlots.length > 0 && (
+                    <div className="bs-time-legend">
+                      <span className="bs-legend-item">
+                        <div className="bs-legend-dot selected"></div> Selected
+                      </span>
+                      <span className="bs-legend-item">
+                        <div className="bs-legend-dot available"></div>{" "}
+                        Available
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
 
-          {/* STEP 4: DETAILS */}
+          {/* STEP 4: PATIENT INFO */}
           {currentStep === 3 && (
+            <div className="bs-step-content">
+              <div className="bs-inner-card">
+                <div className="bs-section-heading text-violet mb-8">
+                  <IconUser size={20} /> <h3>Patient Details</h3>
+                </div>
+                <p className="bs-instruction-text">
+                  Your basic info is auto-filled. Please verify your contact
+                  number.
+                </p>
+
+                <div className="bs-form-group">
+                  <label className="bs-form-label">Full Name</label>
+                  <input
+                    type="text"
+                    value={patientName}
+                    className="bs-form-input"
+                    disabled
+                  />
+                </div>
+
+                <div className="bs-form-group">
+                  <label className="bs-form-label">Age</label>
+                  <input
+                    type="text"
+                    value={patientAge}
+                    className="bs-form-input"
+                    disabled
+                  />
+                </div>
+
+                <div className="bs-form-group">
+                  <label className="bs-form-label">Gender</label>
+                  <input
+                    type="text"
+                    value={patientGender}
+                    className="bs-form-input"
+                    disabled
+                  />
+                </div>
+
+                <div className="bs-form-group bs-margin-0">
+                  <label className="bs-form-label">Contact Number *</label>
+                  <div className="bs-search-box">
+                    <IconPhone size={16} className="bs-search-icon" />
+                    <input
+                      type="text"
+                      placeholder="+63 XXX XXX XXXX"
+                      value={patientContact}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      className="bs-form-input pl-36"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 5: DETAILS */}
+          {currentStep === 4 && (
             <div className="bs-step-content">
               <div className="bs-inner-card">
                 <div className="bs-section-heading text-violet mb-24">
@@ -808,18 +944,13 @@ export default function BookSpecialist({
             </div>
           )}
 
-          {/* STEP 5: REVIEW */}
-          {currentStep === 4 && (
+          {/* STEP 6: REVIEW */}
+          {currentStep === 5 && (
             <div className="bs-step-content">
               <div className="bs-review-header-wrapper">
                 <div className="bs-section-heading bs-margin-0 text-violet">
                   <IconCheck size={20} /> <h3>Review Your Booking</h3>
                 </div>
-                {paymentMethod === "philhealth" && (
-                  <span className="bs-badge-status bs-badge-green">
-                    <IconShield size={12} /> PhilHealth Covered
-                  </span>
-                )}
                 {paymentMethod === "hmo" && (
                   <span className="bs-badge-status bs-badge-yellow">
                     <IconAlertCircle size={12} /> HMO Pending Approval
@@ -865,20 +996,19 @@ export default function BookSpecialist({
               </div>
               <hr className="bs-divider" />
 
+              <p className="bs-review-label">Patient Information</p>
+              <h4 className="bs-review-value-bold">
+                {patientName}, {patientAge} yrs ({patientGender})
+              </h4>
+              <p className="bs-review-value-sub">{patientContact}</p>
+              <hr className="bs-divider" />
+
               <p className="bs-review-label">Payment Method</p>
               <h4 className="bs-review-value-bold">
-                {paymentMethod === "cash"
-                  ? "Cash"
-                  : paymentMethod === "hmo"
-                    ? "HMO Coverage"
-                    : "PhilHealth Covered"}
+                {paymentMethod === "cash" ? "Cash" : "HMO Coverage"}
               </h4>
               <p className="bs-review-value-sub">
-                {paymentMethod === "hmo"
-                  ? `Provider: ${hmoProvider}`
-                  : paymentMethod === "philhealth"
-                    ? "With valid referral"
-                    : ""}
+                {paymentMethod === "hmo" ? `Provider: ${hmoProvider}` : ""}
               </p>
               <hr className="bs-divider" />
 
@@ -903,26 +1033,6 @@ export default function BookSpecialist({
                 </div>
               )}
 
-              {paymentMethod === "philhealth" && (
-                <div className="bs-banner bs-banner-green">
-                  <IconShield
-                    size={20}
-                    className="bs-banner-icon-green bs-icon-top"
-                  />
-                  <div className="bs-banner-content">
-                    <h4 className="bs-banner-title-green">
-                      PhilHealth Coverage
-                    </h4>
-                    <ul className="bs-banner-list-green">
-                      <li>
-                        Please bring your PhilHealth ID to your appointment
-                      </li>
-                      <li>Bring your valid referral letter</li>
-                      <li>Arrive 15 minutes early for verification</li>
-                    </ul>
-                  </div>
-                </div>
-              )}
               {paymentMethod === "hmo" && (
                 <div className="bs-banner bs-banner-yellow">
                   <IconAlertCircle
@@ -952,21 +1062,21 @@ export default function BookSpecialist({
           <button
             className="bs-nav-btn bs-nav-btn-outline"
             onClick={handleBack}
-            disabled={currentStep === 0 && !onGoBack}
+            disabled={(currentStep === 0 && !onGoBack) || isSubmitting}
           >
             <IconChevronLeft size={16} /> Back
           </button>
           <button
-            className={`bs-nav-btn ${!canProceed() ? "bs-nav-btn-disabled" : "bs-nav-btn-primary"}`}
+            className={`bs-nav-btn ${!canProceed() || isSubmitting ? "bs-nav-btn-disabled" : "bs-nav-btn-primary"}`}
             onClick={handleNext}
-            disabled={!canProceed()}
+            disabled={!canProceed() || isSubmitting}
           >
-            {currentStep < 4 ? (
+            {currentStep < 5 ? (
               <>
                 Next <IconArrowRight size={16} />
               </>
-            ) : paymentMethod === "philhealth" ? (
-              "Confirm (Covered)"
+            ) : isSubmitting ? (
+              "Confirming..."
             ) : paymentMethod === "hmo" ? (
               "Submit for Approval"
             ) : (

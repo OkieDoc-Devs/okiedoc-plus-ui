@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   IconCheck,
   IconChevronLeft,
@@ -17,6 +17,10 @@ import {
 } from "@tabler/icons-react";
 import "../css/BookPhysical.css";
 
+// Assuming you have these hooks available based on your Registration.jsx
+import { useAuth } from "../../contexts/AuthContext";
+import { apiRequest } from "../../api/apiClient";
+
 const STEPS = [
   { label: "Doctor", icon: IconStethoscope },
   { label: "Facility", icon: IconBuildingHospital },
@@ -24,88 +28,6 @@ const STEPS = [
   { label: "Patient Info", icon: IconUser },
   { label: "Details", icon: IconFileDescription },
   { label: "Review", icon: IconCircleCheck },
-];
-
-const doctors = [
-  {
-    id: 1,
-    name: "Dr. Maria Santos",
-    spec: "General Practitioner",
-    clinic: "OkieDoc+ Makati Clinic",
-    loc: "Makati City",
-    exp: "15 years experience",
-    initials: "MS",
-    available: true,
-  },
-  {
-    id: 2,
-    name: "Dr. Juan Reyes",
-    spec: "Pediatrician",
-    clinic: "OkieDoc+ Quezon City Clinic",
-    loc: "Quezon City",
-    exp: "12 years experience",
-    initials: "JR",
-    available: true,
-  },
-  {
-    id: 3,
-    name: "Dr. Sofia Lim",
-    spec: "Cardiologist",
-    clinic: "OkieDoc+ BGC Clinic",
-    loc: "Taguig City",
-    exp: "20 years experience",
-    initials: "SL",
-    available: false,
-  },
-  {
-    id: 4,
-    name: "Dr. Carlos Torres",
-    spec: "Dermatologist",
-    clinic: "OkieDoc+ Skin Clinic",
-    loc: "Ortigas",
-    exp: "10 years experience",
-    initials: "CT",
-    available: true,
-  },
-];
-
-// Expanded facilities to match the doctors' locations
-const facilities = [
-  {
-    id: 1,
-    name: "OkieDoc+ Makati Clinic",
-    address: "123 Ayala Avenue, Makati City",
-    room: "Room 301 • 3rd Floor",
-    loc: "Makati City",
-  },
-  {
-    id: 2,
-    name: "OkieDoc+ Makati Annex",
-    address: "456 Makati Avenue, Makati City",
-    room: "Room 205 • 2nd Floor",
-    loc: "Makati City",
-  },
-  {
-    id: 3,
-    name: "OkieDoc+ Quezon City Clinic",
-    address: "789 Tomas Morato, Quezon City",
-    room: "Room 102 • 1st Floor",
-    loc: "Quezon City",
-  },
-  {
-    id: 4,
-    name: "OkieDoc+ BGC Clinic",
-    address: "One Bonifacio High Street, Taguig City",
-    room: "Suite 5A • 5th Floor",
-    loc: "Taguig City",
-  },
-  {
-    id: 5,
-    name: "OkieDoc+ Skin Clinic",
-    address: "Emerald Avenue, Ortigas",
-    room: "Room 404 • 4th Floor",
-    loc: "Ortigas",
-  },
 ];
 
 const symptomsList = [
@@ -123,39 +45,30 @@ const symptomsList = [
   "Loss of Appetite",
 ];
 
-const timeSlots = [
-  "09:00 AM",
-  "09:30 AM",
-  "10:00 AM",
-  "10:30 AM",
-  "11:00 AM",
-  "11:30 AM",
-  "01:00 PM",
-  "01:30 PM",
-  "02:00 PM",
-  "02:30 PM",
-  "03:00 PM",
-  "03:30 PM",
-  "04:00 PM",
-  "04:30 PM",
-  "05:00 PM",
-];
-
-const CURRENT_DATE = new Date("2026-04-08T00:00:00");
+const CURRENT_DATE = new Date();
 
 export default function BookPhysical({
   onGoBack,
   onGoToAppointments,
   onGoToDashboard,
 }) {
+  const { user } = useAuth();
+
   const [currentStep, setCurrentStep] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Data States
+  const [doctors, setDoctors] = useState([]);
+  const [facilities, setFacilities] = useState([]);
+
+  // Form States
   const [searchQuery, setSearchQuery] = useState("");
   const [doctor, setDoctor] = useState(null);
   const [facility, setFacility] = useState(null);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [availableSlots, setAvailableSlots] = useState([]);
 
   const [patientName, setPatientName] = useState("");
   const [patientAge, setPatientAge] = useState("");
@@ -166,20 +79,105 @@ export default function BookPhysical({
   const [symptoms, setSymptoms] = useState([]);
   const [notes, setNotes] = useState("");
 
+  // --- API INTEGRATION: Fetch Doctors & Facilities ---
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await apiRequest("/api/v1/booking-data", { method: "GET" });
+        if (res) {
+          setDoctors(res.doctors || []);
+          setFacilities(res.facilities || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch booking data:", error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // --- AUTO-POPULATE PATIENT DETAILS ---
+  useEffect(() => {
+    if (user) {
+      setPatientName(`${user.firstName} ${user.lastName}`.trim());
+      setPatientGender(user.gender || "");
+      setPatientContact(user.mobileNumber || "");
+
+      if (user.birthday) {
+        const ageDifMs = Date.now() - new Date(user.birthday).getTime();
+        const ageDate = new Date(ageDifMs);
+        setPatientAge(Math.abs(ageDate.getUTCFullYear() - 1970).toString());
+      }
+    }
+  }, [user]);
+
+  // --- DYNAMIC SCHEDULE GENERATOR ---
+  // Parses {"Monday": "09:00-17:00"} and generates 30-min slots
+  const getAvailableTimeSlots = (selectedDate, scheduleObj) => {
+    if (!selectedDate || !scheduleObj) return [];
+
+    // Get Day of Week (e.g., "Monday")
+    const dateObj = new Date(selectedDate + "T00:00:00");
+    const dayOfWeek = dateObj.toLocaleDateString("en-US", { weekday: "long" });
+
+    // Support case-insensitive key matching
+    const dayKey = Object.keys(scheduleObj).find(
+      (k) => k.toLowerCase() === dayOfWeek.toLowerCase(),
+    );
+    if (!dayKey) return []; // Doctor does not work on this day
+
+    const timeRange = scheduleObj[dayKey]; // e.g., "09:00-17:00"
+    const [startStr, endStr] = timeRange.split("-");
+    if (!startStr || !endStr) return [];
+
+    const parseTime = (t) => {
+      const [h, m] = t.trim().split(":");
+      return parseInt(h) * 60 + parseInt(m);
+    };
+    const formatTime = (mins) => {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      const ampm = h >= 12 ? "PM" : "AM";
+      const h12 = h % 12 || 12;
+      return `${h12.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${ampm}`;
+    };
+
+    const slots = [];
+    let current = parseTime(startStr);
+    const end = parseTime(endStr);
+
+    while (current < end) {
+      slots.push(formatTime(current));
+      current += 30; // 30-minute intervals
+    }
+    return slots;
+  };
+
+  // Update available slots whenever date or doctor changes
+  useEffect(() => {
+    if (date && doctor && doctor.schedules) {
+      // Assuming doctor.schedules is already parsed JSON. If it's a string, use JSON.parse(doctor.schedules)
+      const slots = getAvailableTimeSlots(date, doctor.schedules);
+      setAvailableSlots(slots);
+      setTime(""); // Reset time if date changes
+    } else {
+      setAvailableSlots([]);
+    }
+  }, [date, doctor]);
+
   const filteredDoctors = doctors.filter(
     (doc) =>
-      doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.spec.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.loc.toLowerCase().includes(searchQuery.toLowerCase()),
+      doc.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.primarySpecialty?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.hospitalName?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  // Dynamic filter: only show facilities matching the chosen doctor's location
   const availableFacilities = facilities.filter(
-    (fac) => fac.loc === doctor?.loc,
+    (fac) => fac.specialistId === doctor?.id,
   );
 
   const isDateInvalid = date
-    ? new Date(date + "T00:00:00") < CURRENT_DATE
+    ? new Date(date + "T00:00:00") <
+      new Date(CURRENT_DATE.toISOString().split("T")[0] + "T00:00:00")
     : false;
 
   const canProceed = () => {
@@ -197,10 +195,42 @@ export default function BookPhysical({
     return true;
   };
 
+  // --- API INTEGRATION: Submit Ticket (Straight to Doctor) ---
+  const handleConfirmAppointment = async () => {
+    setIsSubmitting(true);
+    try {
+      await apiRequest("/api/v1/tickets", {
+        method: "POST",
+        body: JSON.stringify({
+          patient: user?.id,
+          specialist: doctor.id,
+          nurse: null,
+          status: "pending",
+          consultationChannel: "Physical",
+          preferredDate: date,
+          preferredTime: time,
+          chiefComplaint: complaint,
+          symptoms: symptoms.join(", "),
+          additionalRemarks: notes,
+          hospitalName: facility.name,
+        }),
+      });
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error("Failed to book appointment:", error);
+      alert("Failed to book appointment. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleNext = () => {
     if (!canProceed()) return;
-    if (currentStep === 5) setIsModalOpen(true);
-    else setCurrentStep((c) => c + 1);
+    if (currentStep === 5) {
+      handleConfirmAppointment();
+    } else {
+      setCurrentStep((c) => c + 1);
+    }
   };
 
   const handleBack = () => {
@@ -331,51 +361,68 @@ export default function BookPhysical({
                 />
               </div>
               <div className="bp-specialist-list">
-                {filteredDoctors.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className={`bp-doc-card ${doctor?.id === doc.id ? "bp-doc-selected" : ""} ${!doc.available ? "bp-doc-disabled" : ""}`}
-                    onClick={() => {
-                      if (doc.available) {
-                        setDoctor(doc);
-                        setFacility(null); // Reset facility if doctor changes
-                      }
-                    }}
-                  >
-                    <div className="bp-doc-info-wrapper">
-                      <div
-                        className={`bp-doc-avatar ${doc.available ? "bp-avatar-active" : "bp-avatar-inactive"}`}
-                      >
-                        {doc.initials}
-                      </div>
-                      <div className="bp-doc-details">
-                        <h4 className="bp-doc-name">{doc.name}</h4>
-                        <p
-                          className={`bp-doc-spec ${doc.available ? "bp-spec-active" : "bp-spec-inactive"}`}
+                {filteredDoctors.map((doc) => {
+                  const isAvailable = true; // Replace with actual DB logic if you track active/offline status
+                  // Fallback for initials if DB doesn't have it
+                  const initials = doc.name
+                    ? doc.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .substring(0, 2)
+                        .toUpperCase()
+                    : "DR";
+
+                  return (
+                    <div
+                      key={doc.id}
+                      className={`bp-doc-card ${doctor?.id === doc.id ? "bp-doc-selected" : ""} ${!isAvailable ? "bp-doc-disabled" : ""}`}
+                      onClick={() => {
+                        if (isAvailable) {
+                          setDoctor(doc);
+                          setFacility(null);
+                        }
+                      }}
+                    >
+                      <div className="bp-doc-info-wrapper">
+                        <div
+                          className={`bp-doc-avatar ${isAvailable ? "bp-avatar-active" : "bp-avatar-inactive"}`}
                         >
-                          {doc.spec}
-                        </p>
-                        <p className="bp-doc-meta">
-                          <IconMapPin size={14} /> {doc.clinic}
-                        </p>
-                        <p className="bp-doc-meta-last">
-                          <IconStethoscope size={14} /> {doc.exp}
-                        </p>
+                          {initials}
+                        </div>
+                        <div className="bp-doc-details">
+                          <h4 className="bp-doc-name">{doc.name}</h4>
+                          <p
+                            className={`bp-doc-spec ${isAvailable ? "bp-spec-active" : "bp-spec-inactive"}`}
+                          >
+                            {doc.primarySpecialty}
+                          </p>
+                          <p className="bp-doc-meta">
+                            <IconMapPin size={14} /> {doc.hospitalName}
+                          </p>
+                          {/* REMOVE YEARS EXPERIENCE IF 0 OR MISSING */}
+                          {doc.yearsExperience > 0 && (
+                            <p className="bp-doc-meta-last">
+                              <IconStethoscope size={14} />{" "}
+                              {doc.yearsExperience} years experience
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="bp-doc-status-wrapper">
+                        {isAvailable ? (
+                          <span className="bp-status-pill bp-pill-available">
+                            Available
+                          </span>
+                        ) : (
+                          <span className="bp-status-pill bp-pill-unavailable">
+                            Unavailable
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div className="bp-doc-status-wrapper">
-                      {doc.available ? (
-                        <span className="bp-status-pill bp-pill-available">
-                          Available
-                        </span>
-                      ) : (
-                        <span className="bp-status-pill bp-pill-unavailable">
-                          Unavailable
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {filteredDoctors.length === 0 && (
                   <p className="bp-empty-state">
                     No doctors found matching your search.
@@ -392,7 +439,7 @@ export default function BookPhysical({
                 <IconMapPin size={20} /> <h3>Select Facility / Location</h3>
               </div>
               <p className="bp-instruction-text">
-                Available locations for {doctor?.name} ({doctor?.loc})
+                Available locations for {doctor?.name}
               </p>
 
               <div className="bp-specialist-list">
@@ -409,10 +456,10 @@ export default function BookPhysical({
                         </div>
                         <div className="bp-doc-details">
                           <h4 className="bp-doc-name">{fac.name}</h4>
-                          <p className="bp-doc-meta">
+                          <p className="bp-doc-meta-last fw-500">
                             <IconMapPin size={14} /> {fac.address}
                           </p>
-                          <p className="bp-doc-meta-last fw-500">{fac.room}</p>
+                          {/* ROOM/FLOOR REMOVED HERE AS REQUESTED */}
                         </div>
                       </div>
                       <IconCheck
@@ -447,7 +494,6 @@ export default function BookPhysical({
                   max="2030-12-31"
                   onChange={(e) => {
                     setDate(e.target.value);
-                    setTime("");
                   }}
                   className="bp-form-input"
                 />
@@ -463,34 +509,39 @@ export default function BookPhysical({
                   </p>
 
                   <div className="bp-time-grid-extended">
-                    {timeSlots.map((t, i) => {
-                      const isUnavailable = i === 12 || i === 14;
-                      return (
+                    {availableSlots.length > 0 ? (
+                      availableSlots.map((t) => (
                         <button
                           key={t}
-                          disabled={isUnavailable}
-                          className={`bp-time-btn-extended ${time === t ? "selected" : ""} ${isUnavailable ? "unavailable" : "available"}`}
+                          className={`bp-time-btn-extended ${time === t ? "selected" : "available"}`}
                           onClick={() => setTime(t)}
                         >
                           <IconClock size={18} className="mb-8" />
                           {t}
                         </button>
-                      );
-                    })}
+                      ))
+                    ) : (
+                      <p
+                        className="bp-empty-state"
+                        style={{ gridColumn: "1 / -1" }}
+                      >
+                        The doctor is not scheduled on this day. Please select
+                        another date.
+                      </p>
+                    )}
                   </div>
 
-                  <div className="bp-time-legend">
-                    <span className="bp-legend-item">
-                      <div className="bp-legend-dot selected"></div> Selected
-                    </span>
-                    <span className="bp-legend-item">
-                      <div className="bp-legend-dot available"></div> Available
-                    </span>
-                    <span className="bp-legend-item">
-                      <div className="bp-legend-dot unavailable"></div>{" "}
-                      Unavailable
-                    </span>
-                  </div>
+                  {availableSlots.length > 0 && (
+                    <div className="bp-time-legend">
+                      <span className="bp-legend-item">
+                        <div className="bp-legend-dot selected"></div> Selected
+                      </span>
+                      <span className="bp-legend-item">
+                        <div className="bp-legend-dot available"></div>{" "}
+                        Available
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -504,66 +555,56 @@ export default function BookPhysical({
                   <IconUser size={20} /> <h3>Patient Details</h3>
                 </div>
                 <p className="bp-instruction-text">
-                  Auto-filled from your profile
+                  Your basic info is auto-filled. Please verify your contact
+                  number.
                 </p>
 
                 <div className="bp-form-group">
-                  <label className="bp-form-label">Full Name *</label>
+                  <label className="bp-form-label">Full Name</label>
                   <input
                     type="text"
-                    placeholder="Enter full name"
-                    maxLength={50}
                     value={patientName}
-                    onChange={(e) => setPatientName(e.target.value)}
                     className="bp-form-input"
+                    disabled
+                    style={{
+                      backgroundColor: "#f1f5f9",
+                      cursor: "not-allowed",
+                    }}
                   />
-                  <p className="bp-char-count">{patientName.length}/50</p>
                 </div>
 
                 <div className="bp-form-group">
-                  <label className="bp-form-label">Age *</label>
+                  <label className="bp-form-label">Age</label>
                   <input
                     type="text"
-                    placeholder="e.g. 35"
-                    maxLength={3}
                     value={patientAge}
-                    onChange={(e) =>
-                      setPatientAge(e.target.value.replace(/\D/g, ""))
-                    }
                     className="bp-form-input"
+                    disabled
+                    style={{
+                      backgroundColor: "#f1f5f9",
+                      cursor: "not-allowed",
+                    }}
                   />
-                  <p className="bp-char-count">{patientAge.length}/3</p>
                 </div>
 
                 <div className="bp-form-group">
-                  <label className="bp-form-label">Gender *</label>
-                  <div className="bp-gender-group">
-                    <button
-                      className={`bp-gender-btn ${patientGender === "Male" ? "selected" : ""}`}
-                      onClick={() => setPatientGender("Male")}
-                    >
-                      Male
-                    </button>
-                    <button
-                      className={`bp-gender-btn ${patientGender === "Female" ? "selected" : ""}`}
-                      onClick={() => setPatientGender("Female")}
-                    >
-                      Female
-                    </button>
-                    <button
-                      className={`bp-gender-btn ${patientGender === "Other" ? "selected" : ""}`}
-                      onClick={() => setPatientGender("Other")}
-                    >
-                      Other
-                    </button>
-                  </div>
+                  <label className="bp-form-label">Gender</label>
+                  <input
+                    type="text"
+                    value={patientGender}
+                    className="bp-form-input"
+                    disabled
+                    style={{
+                      backgroundColor: "#f1f5f9",
+                      cursor: "not-allowed",
+                    }}
+                  />
                 </div>
 
                 <div className="bp-form-group bp-margin-0">
                   <label className="bp-form-label">Contact Number *</label>
                   <div className="bp-input-with-icon">
                     <IconPhone size={16} className="bp-inner-icon" />
-                    {/* UPDATED INPUT WITH HANDLEPHONECHANGE */}
                     <input
                       type="text"
                       placeholder="+63 XXX XXX XXXX"
@@ -643,12 +684,19 @@ export default function BookPhysical({
               <p className="bp-review-label">Doctor & Facility</p>
               <div className="bp-review-doctor-row">
                 <div className="bp-review-avatar bg-cyan">
-                  {doctor.initials}
+                  {doctor.name
+                    ? doctor.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .substring(0, 2)
+                        .toUpperCase()
+                    : "DR"}
                 </div>
                 <div className="bp-review-doctor-info">
                   <h4 className="bp-review-doctor-name">{doctor.name}</h4>
                   <p className="bp-review-doctor-spec text-cyan">
-                    {doctor.spec} • {facility.name}
+                    {doctor.primarySpecialty} • {facility.name}
                   </p>
                 </div>
               </div>
@@ -736,19 +784,21 @@ export default function BookPhysical({
           <button
             className="bp-nav-btn bp-nav-btn-outline"
             onClick={handleBack}
-            disabled={currentStep === 0 && !onGoBack}
+            disabled={(currentStep === 0 && !onGoBack) || isSubmitting}
           >
             <IconChevronLeft size={16} /> Back
           </button>
           <button
-            className={`bp-nav-btn ${!canProceed() ? "bp-nav-btn-disabled" : "bp-nav-btn-primary"}`}
+            className={`bp-nav-btn ${!canProceed() || isSubmitting ? "bp-nav-btn-disabled" : "bp-nav-btn-primary"}`}
             onClick={handleNext}
-            disabled={!canProceed()}
+            disabled={!canProceed() || isSubmitting}
           >
             {currentStep < 5 ? (
               <>
                 Next <IconArrowRight size={16} />
               </>
+            ) : isSubmitting ? (
+              "Confirming..."
             ) : (
               "Confirm Appointment"
             )}

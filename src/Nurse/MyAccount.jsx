@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import ReactCrop from "react-image-crop";
-import "react-image-crop/dist/ReactCrop.css";
+import ImageCropperModal from "../components/ImageCropperModal";
+import Avatar from "../components/Avatar";
 import "../App.css";
 import "./NurseStyles.css";
 import {
@@ -14,6 +14,7 @@ import {
   uploadNurseAvatar,
   deleteNurseAvatar,
 } from "./services/apiService.js";
+import { usePSGC } from "../hooks/usePSGC";
 import {
   transformProfileFromAPI,
   transformProfileToAPI,
@@ -22,6 +23,7 @@ import {
 
 export default function MyAccount() {
   const navigate = useNavigate();
+  const { regions, provinces, cities, barangays, fetchProvinces, fetchCities, fetchBarangays } = usePSGC();
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -44,6 +46,14 @@ export default function MyAccount() {
     licenseNumber: "",
     experience: "",
     department: "",
+    prcExpiryDate: "",
+    addressLine1: "",
+    addressLine2: "",
+    barangay: "",
+    city: "",
+    province: "",
+    region: "",
+    zipCode: "",
   });
 
   const [formData, setFormData] = useState({ ...userData });
@@ -52,13 +62,17 @@ export default function MyAccount() {
     const loadProfile = async () => {
       try {
         setLoading(true);
-        console.log("Loading nurse profile from API...");
+        // console.log("Loading nurse profile from API...");
 
         const nurse = await fetchNurseProfile();
         const profileData = transformProfileFromAPI(nurse);
 
         setUserData(profileData);
         setFormData(profileData);
+        if (profileData.profileImage) {
+          saveNurseProfileImage(profileData.profileImage);
+          setPreviewImage(profileData.profileImage);
+        }
         setError(null);
 
         if (profileData.firstName) {
@@ -68,8 +82,8 @@ export default function MyAccount() {
           localStorage.setItem("nurse.lastName", profileData.lastName);
         }
 
-        console.log("Profile loaded successfully:", profileData);
-        console.log("Updated localStorage with nurse name");
+        // console.log("Profile loaded successfully:", profileData);
+        // console.log("Updated localStorage with nurse name");
       } catch (error) {
         console.error("Error loading profile from API:", error);
         setError(error.message);
@@ -81,6 +95,34 @@ export default function MyAccount() {
     loadProfile();
   }, []);
 
+  // Cascading Address Effects
+  useEffect(() => {
+    if (isEditing && formData.region && regions.length > 0) {
+      const region = regions.find(r => r.name === formData.region);
+      if (region) {
+        fetchProvinces(region.code);
+      }
+    }
+  }, [isEditing, formData.region, regions, fetchProvinces]);
+
+  useEffect(() => {
+    if (isEditing && formData.province && provinces.length > 0) {
+      const province = provinces.find(p => p.name === formData.province);
+      if (province) {
+        fetchCities(province.code);
+      }
+    }
+  }, [isEditing, formData.province, provinces, fetchCities]);
+
+  useEffect(() => {
+    if (isEditing && formData.city && cities.length > 0) {
+      const city = cities.find(c => c.name === formData.city);
+      if (city) {
+        fetchBarangays(city.code);
+      }
+    }
+  }, [isEditing, formData.city, cities, fetchBarangays]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -91,14 +133,14 @@ export default function MyAccount() {
 
   const handleSave = async () => {
     try {
-      console.log("Saving profile data to API...");
+      // console.log("Saving profile data to API...");
 
       const profileUpdateData = transformProfileToAPI(formData);
       await updateNurseProfile(profileUpdateData);
 
       setUserData(formData);
       setIsEditing(false);
-      console.log("Profile updated successfully");
+      // console.log("Profile updated successfully");
 
       alert("Profile updated successfully!");
     } catch (error) {
@@ -164,14 +206,12 @@ export default function MyAccount() {
 
   const [previewImage, setPreviewImage] = useState("/account.svg");
   const [selectedFile, setSelectedFile] = useState(null);
+  const [fileStatus, setFileStatus] = useState("");
   const [uploadError, setUploadError] = useState("");
   const [uploadLoading, setUploadLoading] = useState(false);
 
-  const [showCropModal, setShowCropModal] = useState(false);
-  const [imageToCrop, setImageToCrop] = useState(null);
-  const [crop, setCrop] = useState(undefined);
-  const [completedCrop, setCompletedCrop] = useState(null);
-  const imgRef = useRef(null);
+  const [cropperModalOpen, setCropperModalOpen] = useState(false);
+  const [selectedImageSrc, setSelectedImageSrc] = useState(null);
 
   const MAX_FILE_SIZE = 2 * 1024 * 1024;
   const CROP_SIZE = 500;
@@ -183,50 +223,15 @@ export default function MyAccount() {
     }
   }, []);
 
-  const getCroppedImage = useCallback(() => {
-    if (!imgRef.current || !completedCrop) return null;
 
-    const image = imgRef.current;
-    const canvas = document.createElement("canvas");
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-
-    canvas.width = CROP_SIZE;
-    canvas.height = CROP_SIZE;
-    const ctx = canvas.getContext("2d");
-
-    ctx.drawImage(
-      image,
-      completedCrop.x * scaleX,
-      completedCrop.y * scaleY,
-      completedCrop.width * scaleX,
-      completedCrop.height * scaleY,
-      0,
-      0,
-      CROP_SIZE,
-      CROP_SIZE
-    );
-
-    return canvas.toDataURL("image/jpeg", 0.9);
-  }, [completedCrop]);
-
-  const dataURLtoFile = (dataUrl, filename) => {
-    const arr = dataUrl.split(",");
-    const mime = arr[0].match(/:(.*?);/)[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new File([u8arr], filename, { type: mime });
-  };
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     setUploadError("");
+    setFileStatus("");
 
     if (file) {
+      setFileStatus(file.name);
       if (file.size > MAX_FILE_SIZE) {
         setUploadError(
           "File size exceeds 2MB limit. Please choose a smaller image."
@@ -243,54 +248,34 @@ export default function MyAccount() {
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImageToCrop(reader.result);
-        setShowCropModal(true);
-        setCrop(undefined);
-        setCompletedCrop(null);
+        setSelectedImageSrc(reader.result);
+        setCropperModalOpen(true);
       };
       reader.readAsDataURL(file);
     }
+    e.target.value = "";
   };
 
-  const handleCropComplete = () => {
-    const croppedImageData = getCroppedImage();
-    if (croppedImageData) {
-      setPreviewImage(croppedImageData);
-      const croppedFile = dataURLtoFile(croppedImageData, "avatar.jpg");
-      setSelectedFile(croppedFile);
-    }
-    setShowCropModal(false);
-    setImageToCrop(null);
+  const handleCropComplete = (croppedFile) => {
+    setSelectedFile(croppedFile);
+    setFileStatus(croppedFile.name || "Selected image");
+    const objectUrl = URL.createObjectURL(croppedFile);
+    setPreviewImage(objectUrl);
+    setCropperModalOpen(false);
+    setSelectedImageSrc(null);
+    handleImageSave(croppedFile);
   };
 
   const handleCropCancel = () => {
-    setShowCropModal(false);
-    setImageToCrop(null);
-    setCompletedCrop(null);
-    const fileInput = document.getElementById("nurseProfileImage");
-    if (fileInput) fileInput.value = "";
+    setCropperModalOpen(false);
+    setSelectedImageSrc(null);
   };
 
-  const onImageLoad = useCallback((e) => {
-    const { width, height } = e.currentTarget;
-    const cropSize = Math.min(width, height) * 0.9;
-    const x = (width - cropSize) / 2;
-    const y = (height - cropSize) / 2;
 
-    const newCrop = {
-      unit: "px",
-      width: cropSize,
-      height: cropSize,
-      x,
-      y,
-    };
 
-    setCrop(newCrop);
-    setCompletedCrop(newCrop);
-  }, []);
-
-  const handleImageSave = async () => {
-    if (!selectedFile) {
+  const handleImageSave = async (fileOverride = null) => {
+    const fileToUpload = fileOverride || selectedFile;
+    if (!fileToUpload) {
       alert("Please select an image first.");
       return;
     }
@@ -299,13 +284,15 @@ export default function MyAccount() {
     setUploadError("");
 
     try {
-      const response = await uploadNurseAvatar(selectedFile);
+      const response = await uploadNurseAvatar(fileToUpload);
 
-      if (response && response.avatarUrl) {
-        saveNurseProfileImage(response.avatarUrl);
-        setPreviewImage(response.avatarUrl);
+      if (response && response.profileUrl) {
+        saveNurseProfileImage(response.profileUrl);
+        setPreviewImage(response.profileUrl);
+        setFileStatus("Image saved");
       } else {
         saveNurseProfileImage(previewImage);
+        setFileStatus("Image saved");
       }
 
       setSelectedFile(null);
@@ -320,36 +307,6 @@ export default function MyAccount() {
     }
   };
 
-  const handleImageDelete = async () => {
-    if (previewImage === "/account.svg") {
-      alert("No profile picture to delete.");
-      return;
-    }
-
-    if (
-      !window.confirm("Are you sure you want to delete your profile picture?")
-    ) {
-      return;
-    }
-
-    setUploadLoading(true);
-    setUploadError("");
-
-    try {
-      await deleteNurseAvatar();
-      saveNurseProfileImage("/account.svg");
-      setPreviewImage("/account.svg");
-      setSelectedFile(null);
-      alert("Profile picture deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting avatar:", error);
-      setUploadError(
-        error.message || "Failed to delete avatar. Please try again."
-      );
-    } finally {
-      setUploadLoading(false);
-    }
-  };
 
   const renderProfileTab = () => (
     <div className="profile-section">
@@ -430,17 +387,214 @@ export default function MyAccount() {
 
         <div className="profile-row">
           <label>License Number:</label>
-          <span>{userData.licenseNumber}</span>
+          {isEditing ? (
+            <input
+              type="text"
+              name="licenseNumber"
+              value={formData.licenseNumber}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.licenseNumber}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>PRC Expiry Date:</label>
+          {isEditing ? (
+            <input
+              type="date"
+              name="prcExpiryDate"
+              value={formData.prcExpiryDate ? formData.prcExpiryDate.split('T')[0] : ''}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>
+              {userData.prcExpiryDate
+                ? new Date(userData.prcExpiryDate).toLocaleDateString()
+                : "Not set"}
+            </span>
+          )}
         </div>
 
         <div className="profile-row">
           <label>Experience:</label>
-          <span>{userData.experience}</span>
+          {isEditing ? (
+            <input
+              type="text"
+              name="experience"
+              value={formData.experience}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.experience}</span>
+          )}
         </div>
 
         <div className="profile-row">
           <label>Department:</label>
-          <span>{userData.department}</span>
+          {isEditing ? (
+            <input
+              type="text"
+              name="department"
+              value={formData.department}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.department}</span>
+          )}
+        </div>
+
+        {/* Address Fields */}
+        <div className="profile-row">
+          <label>Region:</label>
+          {isEditing ? (
+            <select
+              name="region"
+              value={formData.region}
+              onChange={(e) => {
+                const selectedRegion = regions.find(r => r.name === e.target.value);
+                handleInputChange(e);
+                fetchProvinces(selectedRegion?.code);
+                setFormData(prev => ({ ...prev, province: "", city: "", barangay: "" }));
+              }}
+              className="profile-input"
+            >
+              <option value="">Select Region</option>
+              {regions.map((r) => (
+                <option key={r.code} value={r.name}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span>{userData.region}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>Province:</label>
+          {isEditing ? (
+            <select
+              name="province"
+              value={formData.province}
+              onChange={(e) => {
+                const selectedProvince = provinces.find(p => p.name === e.target.value);
+                handleInputChange(e);
+                fetchCities(selectedProvince?.code);
+                setFormData(prev => ({ ...prev, city: "", barangay: "" }));
+              }}
+              className="profile-input"
+              disabled={!formData.region}
+            >
+              <option value="">Select Province</option>
+              {provinces.map((p) => (
+                <option key={p.code} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span>{userData.province}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>City / Municipality:</label>
+          {isEditing ? (
+            <select
+              name="city"
+              value={formData.city}
+              onChange={(e) => {
+                const selectedCity = cities.find(c => c.name === e.target.value);
+                handleInputChange(e);
+                fetchBarangays(selectedCity?.code);
+                setFormData(prev => ({ ...prev, barangay: "" }));
+              }}
+              className="profile-input"
+              disabled={!formData.province}
+            >
+              <option value="">Select City / Municipality</option>
+              {cities.map((c) => (
+                <option key={c.code} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span>{userData.city}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>Barangay:</label>
+          {isEditing ? (
+            <select
+              name="barangay"
+              value={formData.barangay}
+              onChange={handleInputChange}
+              className="profile-input"
+              disabled={!formData.city}
+            >
+              <option value="">Select Barangay</option>
+              {barangays.map((b) => (
+                <option key={b.code} value={b.name}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span>{userData.barangay}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>Zip Code:</label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="zipCode"
+              value={formData.zipCode}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.zipCode}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>Address Line 1:</label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="addressLine1"
+              value={formData.addressLine1}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.addressLine1}</span>
+          )}
+        </div>
+
+        <div className="profile-row">
+          <label>Address Line 2:</label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="addressLine2"
+              value={formData.addressLine2}
+              onChange={handleInputChange}
+              className="profile-input"
+            />
+          ) : (
+            <span>{userData.addressLine2}</span>
+          )}
         </div>
       </div>
 
@@ -473,7 +627,14 @@ export default function MyAccount() {
         }}
       >
         <div className="current-image" style={{ textAlign: "center" }}>
-          <img src={previewImage} alt="Profile" />
+          <Avatar
+            profileImageUrl={previewImage !== "/account.svg" ? previewImage : null}
+            firstName={localStorage.getItem('nurse.firstName') || ''}
+            lastName={localStorage.getItem('nurse.lastName') || ''}
+            userType='nurse'
+            size={120}
+            alt='Profile'
+          />
         </div>
 
         {uploadError && (
@@ -494,144 +655,38 @@ export default function MyAccount() {
           </div>
         )}
 
-        <div
-          className="upload-controls"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
+        <div className="upload-controls">
           <input
             type="file"
             id="nurseProfileImage"
             accept="image/*"
             onChange={handleImageUpload}
-            className="file-input"
-            style={{ alignSelf: "center" }}
+            className="file-input-hidden"
             disabled={uploadLoading}
           />
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              onClick={handleImageSave}
-              className="save-btn image-save-btn"
-              disabled={!selectedFile || uploadLoading}
-            >
-              {uploadLoading ? "Uploading..." : "Upload Image"}
-            </button>
-            {previewImage !== "/account.svg" && (
-              <button
-                onClick={handleImageDelete}
-                className="cancel-btn"
-                disabled={uploadLoading}
-                style={{ backgroundColor: "#dc3545", color: "white" }}
-              >
-                {uploadLoading ? "Deleting..." : "Delete Image"}
-              </button>
-            )}
+          <label
+            htmlFor="nurseProfileImage"
+            className={`file-input-label ${uploadLoading ? "disabled" : ""}`}
+          >
+            Choose Image
+          </label>
+          <div className="file-input-name" aria-live="polite">
+            {uploadLoading
+              ? "Uploading image..."
+              : fileStatus ||
+                (previewImage !== "/account.svg"
+                  ? "Image saved"
+                  : "No image selected")}
           </div>
         </div>
       </div>
 
-      {showCropModal && imageToCrop && (
-        <div
-          className="crop-modal-overlay"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            className="crop-modal"
-            style={{
-              backgroundColor: "white",
-              borderRadius: "12px",
-              padding: "24px",
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-              overflow: "auto",
-              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
-            }}
-          >
-            <h3
-              style={{
-                marginTop: 0,
-                marginBottom: "16px",
-                textAlign: "center",
-              }}
-            >
-              Crop Your Image
-            </h3>
-            <p
-              style={{
-                color: "#666",
-                fontSize: "14px",
-                textAlign: "center",
-                marginBottom: "16px",
-              }}
-            >
-              Drag to adjust the crop area. The image will be resized to 500x500
-              pixels.
-            </p>
-            <div
-              style={{
-                maxWidth: "500px",
-                maxHeight: "500px",
-                margin: "0 auto",
-              }}
-            >
-              <ReactCrop
-                crop={crop}
-                onChange={(c) => setCrop(c)}
-                onComplete={(c) => setCompletedCrop(c)}
-                aspect={1}
-                circularCrop={false}
-              >
-                <img
-                  ref={imgRef}
-                  src={imageToCrop}
-                  alt="Crop preview"
-                  onLoad={onImageLoad}
-                  style={{ maxWidth: "100%", maxHeight: "60vh" }}
-                />
-              </ReactCrop>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: "12px",
-                marginTop: "20px",
-              }}
-            >
-              <button
-                onClick={handleCropComplete}
-                className="save-btn"
-                disabled={!completedCrop}
-                style={{ padding: "10px 24px" }}
-              >
-                Apply Crop
-              </button>
-              <button
-                onClick={handleCropCancel}
-                className="cancel-btn"
-                style={{ padding: "10px 24px" }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ImageCropperModal
+        isOpen={cropperModalOpen}
+        imageSrc={selectedImageSrc}
+        onCropComplete={handleCropComplete}
+        onCancel={handleCropCancel}
+      />
     </div>
   );
 
@@ -721,7 +776,10 @@ export default function MyAccount() {
           className="back-btn"
           onClick={() => navigate("/nurse-dashboard")}
         >
-          ← Back to Dashboard
+          <span className="back-btn-icon" aria-hidden="true">
+            ←
+          </span>
+          <span>Back to Dashboard</span>
         </button>
         <h2>My Account</h2>
         <p>Manage your profile and security settings</p>

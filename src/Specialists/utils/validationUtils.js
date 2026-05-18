@@ -1,14 +1,10 @@
 // Validation utility functions for specialists
-
-/**
- * Email validation regex
- */
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/**
- * Phone number validation regex (Philippines format)
- */
-const PHONE_REGEX = /^(\+63|0)[0-9]{10}$/;
+import {
+  isValidEmail as sharedIsValidEmail,
+  isValidPhone as sharedIsValidPhone,
+  validatePasswordStrength,
+  validateFileUploadBase
+} from '../../utils/validation';
 
 /**
  * PRC license number validation regex
@@ -20,9 +16,7 @@ const PRC_LICENSE_REGEX = /^[A-Z0-9]{6,10}$/;
  * @param {string} email - Email to validate
  * @returns {boolean} True if valid
  */
-export const validateEmail = (email) => {
-  return EMAIL_REGEX.test(email);
-};
+export const validateEmail = sharedIsValidEmail;
 
 /**
  * Validate password strength
@@ -30,23 +24,7 @@ export const validateEmail = (email) => {
  * @returns {Object} Validation result
  */
 export const validatePassword = (password) => {
-  const errors = [];
-  
-  if (!password) {
-    errors.push("Password is required");
-  } else {
-    if (password.length < 6) {
-      errors.push("Password must be at least 6 characters long");
-    }
-    if (password.length > 50) {
-      errors.push("Password must be less than 50 characters");
-    }
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
+  return validatePasswordStrength(password, { minLength: 6, maxLength: 50 });
 };
 
 /**
@@ -56,14 +34,11 @@ export const validatePassword = (password) => {
  */
 export const validatePhone = (phone) => {
   const errors = [];
-  
+
   if (!phone) {
     errors.push("Phone number is required");
-  } else {
-    const cleanPhone = phone.replace(/\s+/g, '');
-    if (!PHONE_REGEX.test(cleanPhone)) {
-      errors.push("Please enter a valid Philippine phone number");
-    }
+  } else if (!sharedIsValidPhone(phone, true)) {
+    errors.push("Please enter a valid Philippine phone number");
   }
 
   return {
@@ -79,7 +54,7 @@ export const validatePhone = (phone) => {
  */
 export const validatePRCLicense = (licenseNumber) => {
   const errors = [];
-  
+
   if (!licenseNumber) {
     errors.push("PRC license number is required");
   } else {
@@ -294,7 +269,7 @@ export const validateMedicalHistoryRequest = (mhData) => {
   if (mhData.from && mhData.to) {
     const fromDate = new Date(mhData.from);
     const toDate = new Date(mhData.to);
-    
+
     if (fromDate > toDate) {
       errors.dateRange = "From date cannot be after to date";
     }
@@ -317,7 +292,7 @@ export const validateMedicalHistoryRequest = (mhData) => {
  */
 export const sanitizeInput = (input) => {
   if (typeof input !== 'string') return input;
-  
+
   return input
     .trim()
     .replace(/[<>]/g, '') // Remove potential HTML tags
@@ -332,33 +307,5 @@ export const sanitizeInput = (input) => {
  * @returns {Object} Validation result
  */
 export const validateFileUpload = (file, options = {}) => {
-  const {
-    maxSize = 5 * 1024 * 1024, // 5MB default
-    allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
-    required = false
-  } = options;
-
-  const errors = [];
-
-  if (!file && required) {
-    errors.push("File is required");
-    return { isValid: false, errors };
-  }
-
-  if (!file) {
-    return { isValid: true, errors: [] };
-  }
-
-  if (file.size > maxSize) {
-    errors.push(`File size must be less than ${Math.round(maxSize / 1024 / 1024)}MB`);
-  }
-
-  if (!allowedTypes.includes(file.type)) {
-    errors.push(`File type must be one of: ${allowedTypes.join(', ')}`);
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
+  return validateFileUploadBase(file, options);
 };

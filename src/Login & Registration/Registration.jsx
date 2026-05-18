@@ -1,134 +1,224 @@
-import "./auth.css";
-import { useNavigate } from "react-router";
-import { useState } from "react";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { FiUpload } from "react-icons/fi";
+//import './auth.css';
+import './Registration.css';
+import { useNavigate } from 'react-router';
+import { useState, useEffect, useRef } from 'react';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { usePSGC } from '../hooks/usePSGC';
+import { Lock } from 'lucide-react';
+import RegistrationHeader from './RegistrationHeader';
+import { useAuth } from '../contexts/AuthContext';
 
-const registerPatient = async (formData, files) => {
-  const data = {
-    firstName: formData.firstName,
-    lastName: formData.lastName,
-    email: formData.email,
-    password: formData.password,
-    birthday: formData.birthday,
-    gender: formData.gender,
-    mobileNumber: formData.mobileNumber,
-    philHealthNumber: formData.philHealthNumber || null,
-  };
+import { apiRequest } from '../api/apiClient';
 
-  // Convert files to base64
-  if (files.philHealthId) {
-    const base64 = await fileToBase64(files.philHealthId);
-    data.philHealthIdImage = base64;
-  }
-  if (files.seniorCitizenId) {
-    const base64 = await fileToBase64(files.seniorCitizenId);
-    data.seniorCitizenIdImage = base64;
-  }
-  if (files.pwdId) {
-    const base64 = await fileToBase64(files.pwdId);
-    data.pwdIdImage = base64;
-  }
+const registerPatient = async (formData) => {
+  // Define the default values that we want to treat as "not set" if unchanged
+  const defaultRegion = 'Bicol Region';
+  const defaultProvince = 'Camarines Sur';
+  const defaultCity = 'City of Naga';
 
-  const response = await fetch("http://localhost:1337/api/auth/register", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-
-  const res = await response.json();
-  if (!response.ok) throw new Error(res.message || "Registration failed");
-  return res;
-};
-
-const fileToBase64 = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsArrayBuffer(file);
-    reader.onload = () => {
-      const bytes = new Uint8Array(reader.result);
-      const binary = bytes.reduce((acc, byte) => acc + String.fromCharCode(byte), "");
-      const base64 = btoa(binary);
-      resolve(base64);
-    };
-    reader.onerror = reject;
+  return await apiRequest('/api/v1/auth/register', {
+    method: 'POST',
+    disableAuthRedirect: true,
+    body: JSON.stringify({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      middleName: formData.middleName || '',
+      email: formData.email,
+      password: formData.password,
+      birthday: formData.birthday,
+      gender: formData.gender || undefined,
+      mobileNumber: formData.mobileNumber,
+      // Only send address if it's been modified from the default
+      barangay: formData.barangay,
+      city: formData.city === defaultCity ? '' : formData.city,
+      province: formData.province === defaultProvince ? '' : formData.province,
+      region: formData.region === defaultRegion ? '' : formData.region,
+      zipCode: formData.zipCode,
+      addressLine1: formData.addressLine1,
+      addressLine2: formData.addressLine2,
+      isPhilHealthMember: formData.isPhilHealthMember,
+      philHealthNumber: formData.isPhilHealthMember ? formData.philHealthNumber : '',
+      emergencyFullName: formData.emergencyFullName,
+      emergencyRelationship: formData.emergencyRelationship,
+      emergencyPhoneNumber: formData.emergencyPhoneNumber,
+    }),
   });
 };
 
 export default function Registration() {
   const navigate = useNavigate();
+  const { refreshSession, getRedirectPathForRole } = useAuth();
+  const {
+    regions,
+    provinces,
+    cities,
+    barangays,
+    fetchProvinces,
+    fetchCities,
+    fetchBarangays,
+  } = usePSGC();
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    birthday: "",
-    gender: "",
-    mobileNumber: "",
-    philHealthNumber: "",
+    firstName: '',
+    lastName: '',
+    middleName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    birthday: '',
+    gender: '',
+    mobileNumber: '',
+    barangay: '',
+    city: '',
+    province: '',
+    region: '',
+    zipCode: '',
+    addressLine1: '',
+    addressLine2: '',
+    isPhilHealthMember: false,
+    philHealthNumber: '',
+    emergencyFullName: '',
+    emergencyRelationship: '',
+    emergencyPhoneNumber: '',
   });
-  const [success, setSuccess] = useState("");
+  
+  const formRef = useRef(null);
+  
+  const [success, setSuccess] = useState('');
   const [errors, setErrors] = useState({});
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState({
-    philHealthId: null,
-    seniorCitizenId: null,
-    pwdId: null,
-  });
+  const [showDeliveryAddress, setShowDeliveryAddress] = useState(false);
+  const [showEmergencyContact, setShowEmergencyContact] = useState(false);
+
+  // Initialize defaults for Bicol Region, Camarines Sur, and Naga
+  useEffect(() => {
+    if (regions.length > 0 && formData.region === '') {
+      const bicolRegion = regions.find((r) => r.name === 'Bicol Region');
+      if (bicolRegion) {
+        setFormData((prev) => ({ ...prev, region: bicolRegion.name }));
+        fetchProvinces(bicolRegion.code);
+      }
+    }
+  }, [regions, formData.region, fetchProvinces]);
+
+  // Set province to Camarines Sur after regions are loaded
+  useEffect(() => {
+    if (
+      provinces.length > 0 &&
+      formData.region === 'Bicol Region' &&
+      formData.province === ''
+    ) {
+      const camarineSur = provinces.find((p) => p.name === 'Camarines Sur');
+      if (camarineSur) {
+        setFormData((prev) => ({ ...prev, province: camarineSur.name }));
+        fetchCities(camarineSur.code);
+      }
+    }
+  }, [provinces, formData.region, formData.province, fetchCities]);
+
+  // Set city to Naga after provinces are loaded
+  useEffect(() => {
+    if (
+      cities.length > 0 &&
+      formData.province === 'Camarines Sur' &&
+      formData.city === ''
+    ) {
+      const nagaCity = cities.find(
+        (c) => c.name === 'City of Naga' || c.name === 'City of Naga',
+      );
+      if (nagaCity) {
+        setFormData((prev) => ({ ...prev, city: nagaCity.name }));
+        fetchBarangays(nagaCity.code);
+      }
+    }
+  }, [cities, formData.province, formData.city, fetchBarangays]);
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
+    let filteredValue = value;
+
+    // Apply character restrictions
+    if (['firstName', 'lastName', 'middleName'].includes(id)) {
+      filteredValue = value.replace(/[^a-zA-Z\s-]/g, '');
+    } else if (id === 'mobileNumber' || id === 'emergencyPhoneNumber') {
+      // Ensure only + and numbers are entered, and max length for +639XXXXXXXXX (13 chars)
+      filteredValue = value.replace(/[^0-9+]/g, '').slice(0, 13);
+    } else if (id === 'philHealthNumber') {
+      // Numbers only, then format as XX-XXXXXXXXX-X (12 digits total)
+      const digits = value.replace(/[^0-9]/g, '').slice(0, 12);
+      filteredValue = digits;
+      if (digits.length > 2) {
+        filteredValue = digits.slice(0, 2) + '-' + digits.slice(2);
+      }
+      if (digits.length > 11) {
+        filteredValue =
+          digits.slice(0, 2) + '-' + digits.slice(2, 11) + '-' + digits.slice(11);
+      }
+    } else if (id === 'zipCode') {
+      filteredValue = value.replace(/[^0-9]/g, '').slice(0, 4);
+    } else if (['addressLine1', 'addressLine2'].includes(id)) {
+      filteredValue = value.replace(/[^a-zA-Z0-9\s,]/g, '');
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [id]: value,
+      [id]: filteredValue,
     }));
 
     if (errors[id]) {
       setErrors((prev) => ({
         ...prev,
-        [id]: "",
+        [id]: '',
       }));
     }
   };
 
-  const handlePhilHealthChange = (e) => {
-    let value = e.target.value.replace(/[^0-9]/g, "");
-    
-    if (value.length > 12) {
-      value = value.slice(0, 12);
-    }
-    
-    let formatted = value;
-    if (value.length > 2) {
-      formatted = value.slice(0, 2) + "-" + value.slice(2);
-    }
-    if (value.length > 11) {
-      formatted = value.slice(0, 2) + "-" + value.slice(2, 11) + "-" + value.slice(11);
-    }
-    
+  const handleRegionChange = (e) => {
+    const selectedRegion = regions.find((r) => r.name === e.target.value);
     setFormData((prev) => ({
       ...prev,
-      philHealthNumber: formatted,
+      region: e.target.value,
+      province: '',
+      city: '',
+      barangay: '',
     }));
-
-    if (errors.philHealthNumber) {
-      setErrors((prev) => ({
-        ...prev,
-        philHealthNumber: "",
-      }));
+    if (selectedRegion) {
+      fetchProvinces(selectedRegion.code);
     }
   };
 
-  const isValidPhilHealthNumber = (number) => {
-    if (!number || number.trim() === "") return true;
-    const pattern = /^\d{2}-\d{9}-\d{1}$/;
-    return pattern.test(number);
+  const handleProvinceChange = (e) => {
+    const selectedProvince = provinces.find((p) => p.name === e.target.value);
+    setFormData((prev) => ({
+      ...prev,
+      province: e.target.value,
+      city: '',
+      barangay: '',
+    }));
+    if (selectedProvince) {
+      fetchCities(selectedProvince.code);
+    }
+  };
+
+  const handleCityChange = (e) => {
+    const selectedCity = cities.find((c) => c.name === e.target.value);
+    setFormData((prev) => ({
+      ...prev,
+      city: e.target.value,
+      barangay: '',
+    }));
+    if (selectedCity) {
+      fetchBarangays(selectedCity.code);
+    }
+  };
+
+  const handleBarangayChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      barangay: e.target.value,
+    }));
   };
 
   const handleCheckboxChange = (e) => {
@@ -136,7 +226,7 @@ export default function Registration() {
     if (errors.terms) {
       setErrors((prev) => ({
         ...prev,
-        terms: "",
+        terms: '',
       }));
     }
   };
@@ -146,7 +236,7 @@ export default function Registration() {
     if (errors.privacy) {
       setErrors((prev) => ({
         ...prev,
-        privacy: "",
+        privacy: '',
       }));
     }
   };
@@ -159,512 +249,725 @@ export default function Registration() {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
-  const handleFileUpload = (e, idType) => {
-    const file = e.target.files[0];
-    if (file) {
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      const allowedTypes = ["image/png", "image/jpeg", "image/jpg"];
-      
-      if (!allowedTypes.includes(file.type)) {
-        setErrors((prev) => ({
-          ...prev,
-          [idType]: "Only PNG, JPEG, and JPG files are allowed",
-        }));
-        return;
-      }
-      
-      if (file.size > maxSize) {
-        setErrors((prev) => ({
-          ...prev,
-          [idType]: "File size must be less than 5MB",
-        }));
-        return;
-      }
-      
-      setUploadedFiles((prev) => ({
-        ...prev,
-        [idType]: file,
-      }));
-      
-      if (errors[idType]) {
-        setErrors((prev) => ({
-          ...prev,
-          [idType]: "",
-        }));
-      }
-    }
-  };
-
   const isPasswordValid = (password) => {
-    return password.length > 0;
+    return (
+      password.length >= 8 &&
+      /[A-Z]/.test(password) &&
+      /[0-9]/.test(password) &&
+      /[^A-Za-z0-9]/.test(password)
+    );
   };
 
   const getPasswordRequirements = (password) => {
-    return [];
+    return [
+      { label: 'At least 8 characters', met: password.length >= 8 },
+      { label: 'One uppercase letter', met: /[A-Z]/.test(password) },
+      { label: 'One number', met: /[0-9]/.test(password) },
+      { label: 'One special character', met: /[^A-Za-z0-9]/.test(password) },
+    ];
   };
 
-  const shouldShowRequirements = () => {
-    return false;
+  const shouldShowRequirements = (password) => {
+    return password.length > 0 && !isPasswordValid(password);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     setErrors({});
-    setSuccess("");
+    setSuccess('');
     const newErrors = {};
 
     if (!formData.firstName.trim())
-      newErrors.firstName = "First name is required";
-    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
+      newErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = 'Please enter a valid email address';
     }
-    if (formData.philHealthNumber && !isValidPhilHealthNumber(formData.philHealthNumber)) {
-      newErrors.philHealthNumber = "Invalid PhilHealth number format. Must be XX-XXXXXXXXX-X";
+
+    if (!formData.birthday) {
+      newErrors.birthday = 'Birthday is required';
+    } else {
+      const birthDate = new Date(formData.birthday);
+      if (birthDate > new Date()) {
+        newErrors.birthday = 'Birthday cannot be in the future';
+      } else {
+        // Confirm if 18
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        if (age < 18) {
+          newErrors.birthday = 'You must be at least 18 years old to register';
+        }
+
+        // Year bug: 5-digit year
+        if (birthDate.getFullYear() > 9999) {
+          newErrors.birthday = 'Invalid year in birthday';
+        }
+      }
     }
-    if (!formData.password) newErrors.password = "Password is required";
+
+    if (formData.isPhilHealthMember) {
+      if (!formData.philHealthNumber.trim()) {
+        newErrors.philHealthNumber = 'PhilHealth number is required';
+      } else {
+        const philRegex = /^\d{2}-\d{9}-\d$/;
+        if (!philRegex.test(formData.philHealthNumber)) {
+          newErrors.philHealthNumber = 'Invalid PhilHealth format (XX-XXXXXXXXX-X)';
+        }
+      }
+    }
+
+    if (showDeliveryAddress) {
+      if (!formData.addressLine1.trim()) newErrors.addressLine1 = 'Street address is required';
+      if (!formData.region) newErrors.region = 'Region is required';
+      if (!formData.province) newErrors.province = 'Province is required';
+      if (!formData.city) newErrors.city = 'City is required';
+      if (!formData.barangay) newErrors.barangay = 'Barangay is required';
+      if (!formData.zipCode.trim()) newErrors.zipCode = 'Zip code is required';
+    }
+
+    if (showEmergencyContact) {
+      if (!formData.emergencyFullName.trim()) newErrors.emergencyFullName = 'Full name is required';
+      if (!formData.emergencyRelationship.trim()) newErrors.emergencyRelationship = 'Relationship is required';
+      if (!formData.emergencyPhoneNumber.trim()) {
+        newErrors.emergencyPhoneNumber = 'Phone number is required';
+      }
+    }
+
+    if (!formData.gender) {
+      newErrors.gender = 'Gender is required';
+    }
+
+    if (!formData.mobileNumber.trim()) {
+      newErrors.mobileNumber = 'Mobile number is required';
+    } else {
+      // Philippine mobile number filter: starts with +639 followed by 9 digits
+      const mobileRegex = /^\+639\d{9}$/;
+      if (!mobileRegex.test(formData.mobileNumber.trim())) {
+        newErrors.mobileNumber =
+          'Must be a valid PH number starting with +639 (e.g., +639123456789)';
+      }
+    }
+
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (!isPasswordValid(formData.password)) {
+      newErrors.password =
+        'Password must be at least 8 characters and include an uppercase letter, a number, and a special character';
+    }
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
+      newErrors.confirmPassword = 'Please confirm your password';
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = 'Passwords do not match';
     }
     if (!termsAccepted)
-      newErrors.terms = "You must accept the terms and conditions";
+      newErrors.terms = 'You must accept the terms and conditions';
     if (!privacyAccepted)
-      newErrors.privacy = "You must accept the privacy policy";
+      newErrors.privacy = 'You must accept the privacy policy';
+
+    if (formData.emergencyPhoneNumber && formData.emergencyPhoneNumber.trim()) {
+      const mobileRegex = /^\+639\d{9}$/;
+      if (!mobileRegex.test(formData.emergencyPhoneNumber.trim())) {
+        newErrors.emergencyPhoneNumber =
+          'Must be a valid PH number starting with +639 (e.g., +639123456789)';
+      }
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      
+      if (Object.keys(newErrors).length === 1) {
+        // If only one error, scroll to that specific field
+        const firstErrorKey = Object.keys(newErrors)[0];
+        const element = document.getElementById(firstErrorKey);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } else {
+        // If multiple errors, scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       return;
     }
 
     try {
-      const result = await registerPatient(formData, uploadedFiles);
-      if (result.success) {
-        setSuccess("Registration successful! Redirecting to login...");
-        const userData = {
-          id: result.user.id,
-          email: result.user.email,
-          userType: result.user.userType,
-          globalId: result.user.globalId,
-        };
-        localStorage.setItem("currentUser", JSON.stringify(userData));
-        setFormData({
-          firstName: "",
-          lastName: "",
-          email: "",
-          password: "",
-          confirmPassword: "",
-          birthday: "",
-          gender: "",
-          mobileNumber: "",
-          philHealthNumber: "",
-        });
-        setUploadedFiles({
-          philHealthId: null,
-          seniorCitizenId: null,
-          pwdId: null,
-        });
-        setTimeout(() => navigate("/login"), 2000);
+      const result = await registerPatient(formData);
+      if (result.message || result.success) {
+        // Automatically sync session
+        await refreshSession();
+        setSuccess(
+          'Your account has been successfully created. Welcome to OkieDoc+!',
+        );
+        window.scrollTo(0, 0);
       }
     } catch (error) {
-      console.error("Registration failed:", error);
-      setErrors({ email: error.message || "Registration failed." });
+      console.error('Registration failed:', error);
+      
+      const newErrors = {};
+      
+      if (error && typeof error === 'object') {
+        if (error.emailAlreadyInUse) {
+          newErrors.email = error.emailAlreadyInUse.message || 'Email already in use';
+        } else if (error.mobileNumberAlreadyInUse) {
+          newErrors.mobileNumber = error.mobileNumberAlreadyInUse.message || 'Mobile number already in use';
+        } else if (error.message) {
+          newErrors.email = error.message;
+        } else {
+          newErrors.email = 'Registration failed. Please try again.';
+        }
+      } else {
+        newErrors.email = typeof error === 'string' ? error : 'Registration failed.';
+      }
+      
+      setErrors(newErrors);
+      
+      if (Object.keys(newErrors).length === 1) {
+        // If only one error, scroll to that specific field
+        const firstErrorKey = Object.keys(newErrors)[0];
+        const element = document.getElementById(firstErrorKey);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } else {
+        // If multiple errors, scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   };
 
   return (
     <>
-      <div className="login-page-wrapper">
-        <div className="login-container">
-          <div className="header-inside-container">
+      <RegistrationHeader backLabel='Back to Home' backPath='/' />
+
+      {success && (
+        <div className='modal-overlay'>
+          <div className='modal-content'>
+            <div className='modal-success-icon'>✓</div>
+            <h3 className='modal-title'>Registration Successful</h3>
+            <p className='modal-description'>{success}</p>
             <button
-              className="back-btn login-back-btn"
-              onClick={() => navigate("/")}
+              className='login-btn'
+              style={{ margin: 0, width: '100%' }}
+              onClick={() => {
+                const redirectPath = getRedirectPathForRole('patient');
+                navigate(redirectPath);
+              }}
             >
-              <span className="material-symbols-outlined">arrow_back_2</span>
+              Navigate to dashboard
             </button>
-            <img
-              src="/okie-doc-logo.png"
-              alt="OkieDoc+"
-              className="logo-image"
-            />
-            <div style={{ width: "2.5rem" }}></div>
           </div>
-          <h2 className="login-title">Register</h2>
-          <p className="login-subtitle">
-            Create your OkieDoc+ account in a few steps.
-          </p>
-          <form className="login-form" onSubmit={handleSubmit}>
-            {success && (
-              <p className="auth-alert auth-alert--success">{success}</p>
-            )}
-
-            <label className="login-label" htmlFor="firstName">
-              First Name
-            </label>
-            <input
-              className={`login-input ${errors.firstName ? "error" : ""}`}
-              id="firstName"
-              type="text"
-              placeholder="Enter your first name"
-              value={formData.firstName}
-              onChange={handleInputChange}
-            />
-            {errors.firstName && (
-              <span className="error-message">{errors.firstName}</span>
-            )}
-
-            <label className="login-label" htmlFor="lastName">
-              Last Name
-            </label>
-            <input
-              className={`login-input ${errors.lastName ? "error" : ""}`}
-              id="lastName"
-              type="text"
-              placeholder="Enter your last name"
-              value={formData.lastName}
-              onChange={handleInputChange}
-            />
-            {errors.lastName && (
-              <span className="error-message">{errors.lastName}</span>
-            )}
-
-            <label className="login-label" htmlFor="email">
-              Email address
-            </label>
-            <input
-              className={`login-input ${errors.email ? "error" : ""}`}
-              id="email"
-              type="email"
-              placeholder="Enter your email address"
-              value={formData.email}
-              onChange={handleInputChange}
-            />
-            {errors.email && (
-              <span className="error-message">{errors.email}</span>
-            )}
-
-            <label className="login-label" htmlFor="birthday">
-              Birthday
-            </label>
-            <input
-              className={`login-input ${errors.birthday ? "error" : ""}`}
-              id="birthday"
-              type="date"
-              value={formData.birthday}
-              onChange={handleInputChange}
-            />
-            {errors.birthday && (
-              <span className="error-message">{errors.birthday}</span>
-            )}
-
-            <label className="login-label" htmlFor="gender">
-              Gender
-            </label>
-            <select
-              className={`login-input ${errors.gender ? "error" : ""}`}
-              id="gender"
-              value={formData.gender}
-              onChange={handleInputChange}
-            >
-              <option value="">Select your gender</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-              <option value="Prefer-not-to-say">Prefer not to say</option>
-            </select>
-            {errors.gender && (
-              <span className="error-message">{errors.gender}</span>
-            )}
-
-            <label className="login-label" htmlFor="mobileNumber">
-              Mobile Number
-            </label>
-            <input
-              className={`login-input ${errors.mobileNumber ? "error" : ""}`}
-              id="mobileNumber"
-              type="tel"
-              placeholder="+63 912 345 6789"
-              value={formData.mobileNumber}
-              onChange={handleInputChange}
-            />
-            {errors.mobileNumber && (
-              <span className="error-message">{errors.mobileNumber}</span>
-            )}
-
-            <label style={{marginBottom:"0%"}} className="login-label" htmlFor="philHealthNumber">
-              PhilHealth Number <span style={{ color: "#999", fontSize: "0.9em" }}>(Optional)</span>
-            </label>
-            <div>
-              <p style={{color: "#999", fontSize: "0.9em", margin:"0%" }}>
-                PhilHealth ID information is subject to verification and approval
-              </p>
-            </div>
-            <input
-              className={`login-input ${errors.philHealthNumber ? "error" : ""}`}
-              id="philHealthNumber"
-              type="text"
-              placeholder="PhilHealth ID Number"
-              value={formData.philHealthNumber}
-              onChange={handlePhilHealthChange}
-              maxLength="14"
-            />
-            {errors.philHealthNumber && (
-              <span className="error-message">{errors.philHealthNumber}</span>
-            )}
-
-            <div style={{ marginTop: "5px", marginBottom: "16px" }}>
-              <h3 style={{ fontSize: "1.1em", marginBottom: "12px", color: "#333" }}>
-                Upload ID Documents
-              </h3>
-              
-              <label style={{
-                display: "inline-block",
-                width: "100%",
-                marginBottom: "12px"
-              }}>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg"
-                  onChange={(e) => handleFileUpload(e, "philHealthId")}
-                  style={{ display: "none" }}
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.previousElementSibling.click();
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "14px",
-                    backgroundColor: "#42a5f5",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "1em",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-start",
-                    gap: "8px",
-                    transition: "background-color 0.3s"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1e88e5"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#42a5f5"}
-                >
-                  <FiUpload size={20} />
-                  <span>Upload PhilHealth ID</span>
-                </button>
-              </label>
-              {uploadedFiles.philHealthId && (
-                <p style={{ color: "#4caf50", fontSize: "0.9em", margin: "4px 0" }}>
-                  ✓ {uploadedFiles.philHealthId.name}
-                </p>
-              )}
-              {errors.philHealthId && (
-                <span className="error-message">{errors.philHealthId}</span>
-              )}
-
-              <label style={{
-                display: "inline-block",
-                width: "100%",
-                marginBottom: "12px"
-              }}>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg"
-                  onChange={(e) => handleFileUpload(e, "seniorCitizenId")}
-                  style={{ display: "none" }}
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.previousElementSibling.click();
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "14px",
-                    backgroundColor: "#42a5f5",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "1em",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-start",
-                    gap: "8px",
-                    transition: "background-color 0.3s"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1e88e5"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#42a5f5"}
-                >
-                  <FiUpload size={20} />
-                  <span>Upload Senior Citizen ID</span>
-                </button>
-              </label>
-              {uploadedFiles.seniorCitizenId && (
-                <p style={{ color: "#4caf50", fontSize: "0.9em", margin: "4px 0" }}>
-                  ✓ {uploadedFiles.seniorCitizenId.name}
-                </p>
-              )}
-              {errors.seniorCitizenId && (
-                <span className="error-message">{errors.seniorCitizenId}</span>
-              )}
-
-              <label style={{
-                display: "inline-block",
-                width: "100%",
-                marginBottom: "12px"
-              }}>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg"
-                  onChange={(e) => handleFileUpload(e, "pwdId")}
-                  style={{ display: "none" }}
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.previousElementSibling.click();
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "14px",
-                    backgroundColor: "#42a5f5",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "1em",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-start",
-                    gap: "8px",
-                    transition: "background-color 0.3s"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1e88e5"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#42a5f5"}
-                >
-                  <FiUpload size={20} />
-                  <span>Upload PWD ID</span>
-                </button>
-              </label>
-              {uploadedFiles.pwdId && (
-                <p style={{ color: "#4caf50", fontSize: "0.9em", margin: "4px 0" }}>
-                  ✓ {uploadedFiles.pwdId.name}
-                </p>
-              )}
-              {errors.pwdId && (
-                <span className="error-message">{errors.pwdId}</span>
-              )}
-            </div>
-
-            <label className="login-label" htmlFor="password">
-              Password
-            </label>
-            <div className="login-password">
-              <input
-                className={`login-input ${errors.password ? "error" : ""}`}
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={handleInputChange}
-              />
-              <button
-                type="button"
-                className={`password-toggle ${showPassword ? "visible" : "hidden"}`}
-                onClick={togglePasswordVisibility}
-              >
-                {showPassword ? <FaEye /> : <FaEyeSlash />}
-              </button>
-            </div>
-            {errors.password && (
-              <span className="error-message">{errors.password}</span>
-            )}
-
-            <label className="login-label" htmlFor="confirmPassword">
-              Confirm Password
-            </label>
-            <div className="login-password">
-              <input
-                className={`login-input ${errors.confirmPassword ? "error" : ""}`}
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Confirm your password"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-              />
-              <button
-                type="button"
-                className={`password-toggle ${showConfirmPassword ? "visible" : "hidden"}`}
-                onClick={toggleConfirmPasswordVisibility}
-              >
-                {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
-              </button>
-            </div>
-            {errors.confirmPassword && (
-              <span className="error-message">{errors.confirmPassword}</span>
-            )}
-
-            <div className="terms-container">
-              <label className="terms-checkbox">
-                <input
-                  type="checkbox"
-                  checked={termsAccepted}
-                  onChange={handleCheckboxChange}
-                />
-                <span className="checkmark"></span>I agree to the{" "}
-                <a href="#" className="terms-link">
-                  Terms and Conditions
-                </a>
-              </label>
-              {errors.terms && (
-                <span className="error-message">{errors.terms}</span>
-              )}
-            </div>
-
-            <div className="terms-container">
-              <label className="terms-checkbox">
-                <input
-                  type="checkbox"
-                  checked={privacyAccepted}
-                  onChange={handlePrivacyChange}
-                />
-                <span className="checkmark"></span>I agree to the{" "}
-                <a href="#" className="terms-link">
-                  Privacy Policy
-                </a>
-              </label>
-              {errors.privacy && (
-                <span className="error-message">{errors.privacy}</span>
-              )}
-            </div>
-
-            <button className="login-btn" type="submit">
-              Register
-            </button>
-            <p className="login-text">
-              Already have an Okie-Doc+ account? <a href="/login">Login</a>
+        </div>
+      )}
+      <div className='login-page-wrapper' style={{ backgroundColor: '#f1f5f9', minHeight: 'calc(100vh - 65px)', padding: '0 0 1.5rem', fontFamily: 'Inter, sans-serif' }}>
+        <div className='registration-container'>
+          <div className='registration-header-section'>
+            <h2 className='registration-title'>Create Your Account</h2>
+            <p className='registration-subtitle'>
+              Join OkieDoc+ and access quality healthcare from home
             </p>
-            <p className="login-text">
-              Are you a specialist?{" "}
-              <a href="/login?register=true&specialist=true">
-                Register as a specialist
-              </a>
-            </p>
-          </form>
+          </div>
+
+          <div className='registration-card'>
+            <h3 className='registration-section-title'>Personal Information</h3>
+            
+            <form className='registration-form' onSubmit={handleSubmit}>
+              <div className='registration-field'>
+                <label className='registration-label' htmlFor='firstName'>
+                  First Name <span className='required'>*</span>
+                </label>
+                <input
+                  className={`registration-input ${errors.firstName ? 'error' : ''}`}
+                  id='firstName'
+                  type='text'
+                  placeholder='Juan'
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  maxLength={150}
+                />
+                {errors.firstName && (
+                  <span className='registration-error-text'>{errors.firstName}</span>
+                )}
+              </div>
+
+              <div className='registration-field'>
+                <label className='registration-label' htmlFor='lastName'>
+                  Last Name <span className='required'>*</span>
+                </label>
+                <input
+                  className={`registration-input ${errors.lastName ? 'error' : ''}`}
+                  id='lastName'
+                  type='text'
+                  placeholder='Dela Cruz'
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  maxLength={150}
+                />
+                {errors.lastName && (
+                  <span className='registration-error-text'>{errors.lastName}</span>
+                )}
+              </div>
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                <label className='registration-label' htmlFor='email'>
+                  Email Address <span className='required'>*</span>
+                </label>
+                <input
+                  className={`registration-input ${errors.email ? 'error' : ''}`}
+                  id='email'
+                  type='email'
+                  placeholder='juan.delacruz@email.com'
+                  value={formData.email}
+                  onChange={handleInputChange}
+                />
+                {errors.email && (
+                  <span className='registration-error-text'>{errors.email}</span>
+                )}
+              </div>
+
+              <div className='registration-field full-width'>
+                <label className='registration-label' htmlFor='mobileNumber'>
+                  Mobile Number <span className='required'>*</span>
+                </label>
+                <input
+                  className={`registration-input ${errors.mobileNumber ? 'error' : ''}`}
+                  id='mobileNumber'
+                  type='tel'
+                  placeholder='+63 912 345 6789'
+                  value={formData.mobileNumber}
+                  onChange={handleInputChange}
+                  maxLength={13}
+                />
+                {errors.mobileNumber && (
+                  <span className='registration-error-text'>{errors.mobileNumber}</span>
+                )}
+              </div>
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                <label className='registration-label' htmlFor='password'>
+                  Password <span className='required'>*</span>
+                </label>
+                <div className='registration-password-wrapper'>
+                  <input
+                    className={`registration-input ${errors.password ? 'error' : ''}`}
+                    id='password'
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder='Enter a strong password'
+                    value={formData.password}
+                    onChange={handleInputChange}
+                  />
+                  <button
+                    type='button'
+                    className='registration-password-toggle'
+                    onClick={togglePasswordVisibility}
+                  >
+                    {showPassword ? <FaEye size={20} /> : <FaEyeSlash size={20} />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <span className='registration-error-text'>{errors.password}</span>
+                )}
+              </div>
+
+              <div className='registration-field full-width'>
+                <label className='registration-label' htmlFor='confirmPassword'>
+                  Confirm Password <span className='required'>*</span>
+                </label>
+                <div className='registration-password-wrapper'>
+                  <input
+                    className={`registration-input ${errors.confirmPassword ? 'error' : ''}`}
+                    id='confirmPassword'
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder='Re-enter your password'
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                  />
+                  <button
+                    type='button'
+                    className='registration-password-toggle'
+                    onClick={toggleConfirmPasswordVisibility}
+                  >
+                    {showConfirmPassword ? <FaEye size={20} /> : <FaEyeSlash size={20} />}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <span className='registration-error-text'>{errors.confirmPassword}</span>
+                )}
+              </div>
+
+              <div className='registration-field'>
+                <label className='registration-label'>
+                  Date of Birth <span className='required'>*</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id='birthday'
+                    type="date"
+                    className={`registration-input ${errors.birthday ? 'error' : ''}`}
+                    value={formData.birthday || ''}
+                    onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+                    style={{ color: '#64748b', cursor: 'pointer' }}
+                  />
+                  {errors.birthday && (
+                      <div className='registration-error-popup'>
+                        {errors.birthday}
+                      </div>
+                  )}
+                </div>
+              </div>
+
+              <div className='registration-field'>
+                <label className='registration-label' htmlFor='gender'>
+                  Gender <span className='required'>*</span>
+                </label>
+                <select
+                  id='gender'
+                  className={`registration-select ${errors.gender ? 'input-error' : ''}`}
+                  value={formData.gender}
+                  onChange={handleInputChange}
+                  style={{ color: '#64748b' }}
+                >
+                  <option value=''>Select gender</option>
+                  <option value='Male'>Male</option>
+                  <option value='Female'>Female</option>
+                  <option value='Other'>Other</option>
+                </select>
+                {errors.gender && (
+                  <span className='registration-error-text'>{errors.gender}</span>
+                )}
+              </div>
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                <div style={{ backgroundColor: '#f8fafc', padding: '1.25rem 1.5rem', borderRadius: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                <input 
+                  type='checkbox' 
+                  className='registration-checkbox' 
+                  style={{ accentColor: '#2563eb' }} 
+                  checked={formData.isPhilHealthMember}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setFormData({ 
+                      ...formData, 
+                      isPhilHealthMember: checked,
+                      philHealthNumber: checked ? formData.philHealthNumber : ''
+                    });
+                  }}
+                />
+                <div>
+                  <div style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '1.1rem' }}>I am a PhilHealth Member</div>
+                  <div style={{ color: '#3b82f6', fontSize: '0.95rem', marginTop: '0.25rem' }}>PhilHealth coverage helps reduce your consultation costs</div>
+                </div>
+                </div>
+              </div>
+
+              {formData.isPhilHealthMember && (
+                <div className='registration-field full-width'>
+                  <label className='registration-label' htmlFor='philHealthNumber'>
+                    PhilHealth Number <span className='required'>*</span>
+                  </label>
+                  <input
+                    className={`registration-input ${errors.philHealthNumber ? 'error' : ''}`}
+                    id='philHealthNumber'
+                    type='text'
+                    placeholder='17-13245678-0'
+                    value={formData.philHealthNumber}
+                    onChange={handleInputChange}
+                    maxLength={14}
+                  />
+                  {errors.philHealthNumber && (
+                    <span className='registration-error-text'>{errors.philHealthNumber}</span>
+                  )}
+                </div>
+              )}
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                <button
+                  type='button'
+                  onClick={() => {
+                    const newShow = !showDeliveryAddress;
+                    setShowDeliveryAddress(newShow);
+                    if (!newShow) {
+                      setFormData(prev => ({
+                        ...prev,
+                        barangay: '',
+                        city: '',
+                        province: '',
+                        region: '',
+                        zipCode: '',
+                        addressLine1: '',
+                        addressLine2: ''
+                      }));
+                      // Clear errors for these fields
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        ['barangay', 'city', 'province', 'region', 'zipCode', 'addressLine1', 'addressLine2'].forEach(k => delete newErrors[k]);
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: '#2563eb', fontWeight: 600, fontSize: '1.05rem', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
+                >
+                  <span style={{ fontSize: '1.5rem', marginRight: '0.75rem', lineHeight: 1 }}>{showDeliveryAddress ? '−' : '+'}</span>
+                  {showDeliveryAddress ? 'Hide Delivery Address (Optional)' : 'Add Delivery Address (Optional)'}
+                </button>
+                {showDeliveryAddress && (
+                  <div className="registration-optional-section">
+                    <p className="registration-optional-description">Add your address for pharmacy delivery services</p>
+
+                    <div className="registration-field">
+                      <label className='registration-label'>Street Address</label>
+                      <input
+                        id='addressLine1'
+                        className={`registration-input ${errors.addressLine1 ? 'error' : ''}`}
+                        type='text'
+                        placeholder='123 Main Street, Unit 456'
+                        value={formData.addressLine1}
+                        onChange={handleInputChange}
+                        style={{ backgroundColor: '#fff' }}
+                      />
+                      {errors.addressLine1 && (
+                        <span className='registration-error-text'>{errors.addressLine1}</span>
+                      )}
+                    </div>
+
+                    <div className="registration-grid-2">
+                       <div className='registration-field'>
+                        <label className='registration-label'>Region</label>
+                        <select
+                          id='region'
+                          className={`registration-select ${errors.region ? 'input-error' : ''}`}
+                          value={formData.region}
+                          onChange={handleRegionChange}
+                          style={{ backgroundColor: '#fff' }}
+                        >
+                          <option value=''>Select Region</option>
+                          {regions.map((region) => (
+                            <option key={region.code} value={region.name}>
+                              {region.name}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.region && (
+                          <span className='registration-error-text'>{errors.region}</span>
+                        )}
+                      </div>
+                      <div className='registration-field'>
+                        <label className='registration-label'>Province</label>
+                        <select
+                          id='province'
+                          className={`registration-select ${errors.province ? 'input-error' : ''}`}
+                          value={formData.province}
+                          onChange={handleProvinceChange}
+                          style={{ backgroundColor: '#fff' }}
+                          disabled={!formData.region}
+                        >
+                          <option value=''>Select Province</option>
+                          {provinces.map((province) => (
+                            <option key={province.code} value={province.name}>
+                              {province.name}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.province && (
+                          <span className='registration-error-text'>{errors.province}</span>
+                        )}
+                      </div>
+                      <div className='registration-field'>
+                        <label className='registration-label'>City/Municipality</label>
+                        <select
+                          id='city'
+                          className={`registration-select ${errors.city ? 'input-error' : ''}`}
+                          value={formData.city}
+                          onChange={handleCityChange}
+                          style={{ backgroundColor: '#fff' }}
+                          disabled={!formData.province}
+                        >
+                          <option value=''>Select City/Municipality</option>
+                          {cities.map((city) => (
+                            <option key={city.code} value={city.name}>
+                              {city.name}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.city && (
+                          <span className='registration-error-text'>{errors.city}</span>
+                        )}
+                      </div>
+                      <div className='registration-field'>
+                        <label className='registration-label'>Barangay</label>
+                        <select
+                          id='barangay'
+                          className={`registration-select ${errors.barangay ? 'input-error' : ''}`}
+                          value={formData.barangay}
+                          onChange={handleBarangayChange}
+                          style={{ backgroundColor: '#fff' }}
+                          disabled={!formData.city}
+                        >
+                          <option value=''>Select Barangay</option>
+                          {barangays.map((barangay) => (
+                            <option key={barangay.code} value={barangay.name}>
+                              {barangay.name}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.barangay && (
+                          <span className='registration-error-text'>{errors.barangay}</span>
+                        )}
+                      </div>
+                      <div className='registration-field'>
+                        <label className='registration-label'>Zip Code</label>
+                        <input
+                          id='zipCode'
+                          className={`registration-input ${errors.zipCode ? 'error' : ''}`}
+                          type='text'
+                          placeholder='1000'
+                          value={formData.zipCode}
+                          onChange={handleInputChange}
+                          style={{ backgroundColor: '#fff' }}
+                        />
+                         {errors.zipCode && (
+                          <span className='registration-error-text'>{errors.zipCode}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem' }}>
+                <button
+                  type='button'
+                  onClick={() => {
+                    const newShow = !showEmergencyContact;
+                    setShowEmergencyContact(newShow);
+                    if (!newShow) {
+                      setFormData(prev => ({
+                        ...prev,
+                        emergencyFullName: '',
+                        emergencyRelationship: '',
+                        emergencyPhoneNumber: ''
+                      }));
+                      // Clear errors for these fields
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        ['emergencyFullName', 'emergencyRelationship', 'emergencyPhoneNumber'].forEach(k => delete newErrors[k]);
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: '#2563eb', fontWeight: 600, fontSize: '1.05rem', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
+                >
+                  <span style={{ fontSize: '1.5rem', marginRight: '0.75rem', lineHeight: 1 }}>{showEmergencyContact ? '−' : '+'}</span>
+                  {showEmergencyContact ? 'Hide Emergency Contact (Optional)' : 'Add Emergency Contact (Optional)'}
+                </button>
+                {showEmergencyContact && (
+                  <div className="registration-optional-section">
+                    <p className="registration-optional-description">Person to contact in case of emergency</p>
+
+                    <div className="registration-field">
+                      <label className='registration-label'>Full Name</label>
+                      <input
+                        id='emergencyFullName'
+                        className={`registration-input ${errors.emergencyFullName ? 'error' : ''}`}
+                        type='text'
+                        placeholder='Maria Dela Cruz'
+                        value={formData.emergencyFullName || ''}
+                        onChange={handleInputChange}
+                        style={{ backgroundColor: '#fff' }}
+                      />
+                      {errors.emergencyFullName && (
+                        <span className='registration-error-text'>{errors.emergencyFullName}</span>
+                      )}
+                    </div>
+
+                    <div className="registration-grid-2">
+                      <div className='registration-field'>
+                        <label className='registration-label'>Relationship</label>
+                        <input
+                          id='emergencyRelationship'
+                          className={`registration-input ${errors.emergencyRelationship ? 'error' : ''}`}
+                          type='text'
+                          placeholder='Mother, Spouse, etc.'
+                          value={formData.emergencyRelationship || ''}
+                          onChange={handleInputChange}
+                          style={{ backgroundColor: '#fff' }}
+                        />
+                         {errors.emergencyRelationship && (
+                          <span className='registration-error-text'>{errors.emergencyRelationship}</span>
+                        )}
+                      </div>
+                      <div className='registration-field' style={{ position: 'relative' }}>
+                        <label className='registration-label'>Phone Number</label>
+                        <input
+                          id='emergencyPhoneNumber'
+                          className={`registration-input ${errors.emergencyPhoneNumber ? 'error' : ''}`}
+                          type='tel'
+                          placeholder='+63 912 345 6789'
+                          value={formData.emergencyPhoneNumber || ''}
+                          onChange={handleInputChange}
+                          style={{ backgroundColor: '#fff' }}
+                        />
+                        {errors.emergencyPhoneNumber && (
+                          <div className='registration-error-popup'>
+                            {errors.emergencyPhoneNumber}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                <div style={{ backgroundColor: '#eff6ff', padding: '1.25rem 1.5rem', borderRadius: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                <input 
+                  type='checkbox' 
+                  className={`registration-checkbox ${errors.terms || errors.privacy ? 'error' : ''}`} 
+                  style={{ accentColor: '#2563eb' }} 
+                  checked={termsAccepted && privacyAccepted}
+                  onChange={(e) => {
+                    setTermsAccepted(e.target.checked);
+                    setPrivacyAccepted(e.target.checked);
+                  }}
+                />
+                <div>
+                  <div style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '1.1rem' }}>
+                    I agree to the <span style={{ color: '#2563eb', cursor: 'pointer', textDecoration: 'underline' }}>Terms of Service</span> and <span style={{ color: '#2563eb', cursor: 'pointer', textDecoration: 'underline' }}>Privacy Policy</span> <span className='required'>*</span>
+                  </div>
+                  { (errors.terms || errors.privacy) && (
+                    <div className='registration-error-text' style={{ marginTop: '0.25rem' }}>{errors.terms || errors.privacy}</div>
+                  )}
+                  <div style={{ color: '#3b82f6', fontSize: '0.95rem', marginTop: '0.25rem' }}>Your data is protected and used only for healthcare services</div>
+                </div>
+                </div>
+              </div>
+
+              <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', marginTop: '0.5rem', paddingTop: '1.5rem' }}>
+                <button 
+                  className='registration-submit-btn' 
+                  type='submit' 
+                >
+                  Create Account
+                </button>
+                <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '1rem', color: '#64748b' }}>
+                  Already have an account? <span style={{ color: '#2563eb', fontWeight: 600, cursor: 'pointer' }} onClick={() => navigate('/login')}>Login</span>
+                </p>
+              </div>
+            </form>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#94a3b8', fontSize: '1rem' }}>
+            <Lock size={18} /> Your information is secure and encrypted
+          </div>
         </div>
       </div>
     </>

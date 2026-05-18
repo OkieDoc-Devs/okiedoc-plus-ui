@@ -11,6 +11,7 @@ import {
   FaUser,
   FaUserMd,
 } from "react-icons/fa";
+import socket from "../utils/socketClient";
 
 /**
  * Specialist Call/Video Call Component
@@ -45,6 +46,15 @@ const SpecialistCall = ({
   const ringTimeoutRef = useRef(null);
   const callEndRef = useRef(false);
 
+  // WebRTC refs
+  const peerConnectionRef = useRef(null);
+  const ICE_SERVERS = {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+    ],
+  };
+
   useEffect(() => {
     if (isOpen) {
       callEndRef.current = false;
@@ -73,8 +83,48 @@ const SpecialistCall = ({
         clearInterval(callTimerRef.current);
       }
       stopMedia();
+      cleanupWebRTC();
     };
   }, [isOpen]);
+
+  // Setup WebRTC Signal Listeners
+  useEffect(() => {
+    if (!isOpen || !patient?.ticketId) return;
+
+    const handleOffer = async (data) => {
+      if (data.senderId === currentUser?.id) return;
+      console.log("Received WebRTC Offer", data);
+      await createPeerConnection();
+      await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.offer));
+      const answer = await peerConnectionRef.current.createAnswer();
+      await peerConnectionRef.current.setLocalDescription(answer);
+      socket.post("/api/v1/webrtc/answer", { ticketId: patient.ticketId.toString(), answer });
+    };
+
+    const handleAnswer = async (data) => {
+      if (data.senderId === currentUser?.id) return;
+      console.log("Received WebRTC Answer", data);
+      await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+    };
+
+    const handleIceCandidate = async (data) => {
+      if (data.senderId === currentUser?.id) return;
+      console.log("Received WebRTC ICE Candidate", data);
+      if (data.candidate && peerConnectionRef.current) {
+        await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+    };
+
+    socket.on("webrtc_offer", handleOffer);
+    socket.on("webrtc_answer", handleAnswer);
+    socket.on("webrtc_ice_candidate", handleIceCandidate);
+
+    return () => {
+      socket.off("webrtc_offer", handleOffer);
+      socket.off("webrtc_answer", handleAnswer);
+      socket.off("webrtc_ice_candidate", handleIceCandidate);
+    };
+  }, [isOpen, patient?.ticketId, currentUser?.id]);
 
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -134,9 +184,67 @@ const SpecialistCall = ({
       if (localVideoRef.current && callType === "video" && !isVideoOff) {
         localVideoRef.current.srcObject = stream;
       }
+
+      await initiateWebRTCCall(stream);
     } catch (error) {
       console.error("Error accessing media devices:", error);
       alert("Unable to access camera/microphone. Please check permissions.");
+    }
+  };
+
+  const createPeerConnection = async (stream) => {
+    if (peerConnectionRef.current) return;
+
+    peerConnectionRef.current = new RTCPeerConnection(ICE_SERVERS);
+
+    peerConnectionRef.current.onicecandidate = (event) => {
+      if (event.candidate && patient?.ticketId) {
+        socket.post("/api/v1/webrtc/ice-candidate", {
+          ticketId: patient.ticketId.toString(),
+          candidate: event.candidate,
+        });
+      }
+    };
+
+    peerConnectionRef.current.ontrack = (event) => {
+      console.log("Received remote track:", event.streams[0]);
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0];
+      }
+    };
+
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        peerConnectionRef.current.addTrack(track, stream);
+      });
+    }
+  };
+
+  const initiateWebRTCCall = async (stream) => {
+    if (!patient?.ticketId) return;
+    await createPeerConnection(stream);
+
+    // Create an offer to start the call
+    const offer = await peerConnectionRef.current.createOffer();
+    await peerConnectionRef.current.setLocalDescription(offer);
+
+    socket.post("/api/v1/webrtc/offer", {
+      ticketId: patient.ticketId.toString(),
+      offer: offer
+    }, (resData, jwres) => {
+      if (jwres.statusCode !== 200) {
+        console.error("Failed to send WebRTC offer via sockets", jwres);
+      }
+    });
+  };
+
+  const cleanupWebRTC = () => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
     }
   };
 
@@ -157,6 +265,7 @@ const SpecialistCall = ({
 
     setLocalStream(null);
     setIsSpeaking(false);
+    cleanupWebRTC();
   };
 
   const startAudioMeter = (stream) => {
@@ -414,9 +523,8 @@ const SpecialistCall = ({
                 )}
                 {localStream && localStream.getAudioTracks().length > 0 && (
                   <div
-                    className={`specialist-mic-indicator ${
-                      isMuted ? "muted" : isSpeaking ? "speaking" : ""
-                    }`}
+                    className={`specialist-mic-indicator ${isMuted ? "muted" : isSpeaking ? "speaking" : ""
+                      }`}
                     title={
                       isMuted
                         ? "Microphone muted"
@@ -455,9 +563,8 @@ const SpecialistCall = ({
               <div className="specialist-call-audio-pulse"></div>
               {localStream && localStream.getAudioTracks().length > 0 && (
                 <div
-                  className={`specialist-mic-indicator audio ${
-                    isMuted ? "muted" : isSpeaking ? "speaking" : ""
-                  }`}
+                  className={`specialist-mic-indicator audio ${isMuted ? "muted" : isSpeaking ? "speaking" : ""
+                    }`}
                   title={
                     isMuted
                       ? "Microphone muted"
@@ -515,9 +622,8 @@ const SpecialistCall = ({
           {callStatus === "active" && (
             <div className="specialist-call-controls">
               <button
-                className={`specialist-call-control-btn ${
-                  isMuted ? "active" : ""
-                }`}
+                className={`specialist-call-control-btn ${isMuted ? "active" : ""
+                  }`}
                 onClick={handleMuteToggle}
                 title={isMuted ? "Unmute" : "Mute"}
               >
@@ -526,9 +632,8 @@ const SpecialistCall = ({
 
               {callType === "video" && (
                 <button
-                  className={`specialist-call-control-btn ${
-                    isVideoOff ? "active" : ""
-                  }`}
+                  className={`specialist-call-control-btn ${isVideoOff ? "active" : ""
+                    }`}
                   onClick={handleVideoToggle}
                   title={isVideoOff ? "Turn On Camera" : "Turn Off Camera"}
                 >
@@ -537,9 +642,8 @@ const SpecialistCall = ({
               )}
 
               <button
-                className={`specialist-call-control-btn ${
-                  !isSpeakerOn ? "active" : ""
-                }`}
+                className={`specialist-call-control-btn ${!isSpeakerOn ? "active" : ""
+                  }`}
                 onClick={handleSpeakerToggle}
                 title={isSpeakerOn ? "Turn Off Speaker" : "Turn On Speaker"}
               >

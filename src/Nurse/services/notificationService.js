@@ -15,48 +15,7 @@ import { generateNotificationId } from "./idGenerator.js";
  * @returns {Array} Array of fallback notifications
  */
 export function getFallbackNotifications() {
-  return [
-    {
-      id: 1,
-      type: "New Ticket",
-      message: "New ticket T005 submitted by Alex Brown",
-      timeRelative: "5 mins ago",
-      time: "5 mins ago",
-      unread: true,
-    },
-    {
-      id: 2,
-      type: "Payment Confirmation",
-      message: "Payment confirmed for appointment #A123",
-      timeRelative: "15 mins ago",
-      time: "15 mins ago",
-      unread: true,
-    },
-    {
-      id: 3,
-      type: "Chat Notification",
-      message: "New message from Dr. Smith",
-      timeRelative: "30 mins ago",
-      time: "30 mins ago",
-      unread: false,
-    },
-    {
-      id: 4,
-      type: "Upload Files",
-      message: "Patient uploaded medical records",
-      timeRelative: "1 hour ago",
-      time: "1 hour ago",
-      unread: false,
-    },
-    {
-      id: 5,
-      type: "HMO Notification",
-      message: "HMO approval received for patient ID P001",
-      timeRelative: "2 hours ago",
-      time: "2 hours ago",
-      unread: false,
-    },
-  ];
+  return [];
 }
 
 /**

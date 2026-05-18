@@ -191,6 +191,15 @@ export const saveMedicalHistoryData = (ticketId, mhData) => {
  * @returns {string|null} Current user email or null
  */
 export const getCurrentUserEmail = () => {
+  try {
+    const stored = localStorage.getItem("okiedoc_specialist_user");
+    if (stored) {
+      const user = JSON.parse(stored);
+      return user.email;
+    }
+  } catch (error) {
+    console.error("Error parsing current user email:", error);
+  }
   return localStorage.getItem("currentSpecialistEmail");
 };
 

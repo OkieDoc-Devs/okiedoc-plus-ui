@@ -10,7 +10,7 @@
 }
 
 .user-table .btn-view {
-  background-color: var(--primary-blue, #4AA7ED);
+  background-color: var(--primary-blue, #4aa7ed);
   color: white;
 }
 .user-table .btn-edit {
@@ -30,7 +30,6 @@
   color: white;
 }
 
-
 .editable-row td {
   padding-top: 12px;
   padding-bottom: 12px;
@@ -47,6 +46,100 @@
 
 .editable-row input:focus {
   outline: none;
-  border-color: var(--primary-blue, #4AA7ED);
+  border-color: var(--primary-blue, #4aa7ed);
   box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.2);
+}
+
+.staff-modal-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 15px 5px;
+  box-sizing: border-box;
+}
+
+.staff-modal-form .input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.staff-modal-form .full-width {
+  grid-column: 1 / -1;
+}
+
+.staff-modal-form .input-group label {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+
+.staff-modal-form .input-group input,
+.staff-modal-form .input-group select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #495057;
+  background-color: #fff;
+  transition:
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
+}
+
+.staff-modal-form .input-group input:focus,
+.staff-modal-form .input-group select:focus {
+  border-color: var(--primary-blue, #4aa7ed);
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.15);
+}
+
+.staff-modal-form h3 {
+  color: #1a4f8a;
+  border-bottom: 1px solid #eaeaea;
+  padding-bottom: 8px;
+  margin-top: 15px;
+  margin-bottom: 5px;
+}
+
+.staff-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  margin-right: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #eaeaea;
+}
+
+.staff-modal-actions button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.staff-modal-actions button:hover {
+  opacity: 0.9;
+}
+
+.staff-modal-actions .btn-cancel {
+  background-color: #f8f9fa;
+  color: #495057;
+  border: 1px solid #ced4da;
+}
+
+.staff-modal-actions .btn-cancel:hover {
+  background-color: #e2e6ea;
+}
+
+.staff-modal-actions .btn-submit {
+  background-color: var(--primary-blue, #4aa7ed);
+  color: white;
 }

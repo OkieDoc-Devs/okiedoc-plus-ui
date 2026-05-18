@@ -58,7 +58,7 @@ export function initializeInvoice() {
 export function calculateInvoiceTotal(invoiceData) {
   const itemsTotal = invoiceData.items.reduce(
     (sum, it) => sum + Number(it.amount || 0) * Number(it.quantity || 0),
-    0
+    0,
   );
   return (
     itemsTotal +
@@ -146,6 +146,152 @@ export async function generateInvoicePDF(invoiceData, invoiceTicket) {
 }
 
 /**
+ * Generate post-consultation billing PDF
+ * @param {Object} billingData - Billing pane data
+ * @returns {Promise<void>}
+ */
+export async function generatePostConsultationBillingPDF(billingData) {
+  if (!billingData) return;
+
+  const { default: jsPDF } = await import("jspdf");
+  const pdf = new jsPDF();
+
+  const logoUrl = "/okie-doc-logo.png";
+
+  const drawContent = (pdfDoc) => {
+    // Shifted text down to make room for the logo at the top
+    pdfDoc.setFont("helvetica", "bold");
+    pdfDoc.setFontSize(16);
+
+    pdfDoc.setFontSize(11);
+    pdfDoc.setFont("helvetica", "normal");
+
+    // Patient Name explicitly removed
+    pdfDoc.text(`Ticket ID: ${billingData.ticketId || "N/A"}`, 20, 47);
+    pdfDoc.text(
+      `Consultation Type: ${billingData.consultationType || "N/A"}`,
+      20,
+      54,
+    );
+    pdfDoc.text(
+      `Assigned Doctor: ${billingData.assignedDoctor || "N/A"}`,
+      20,
+      61,
+    );
+    pdfDoc.text(
+      `Payment Type: ${billingData.paymentType || "Online Gateway"}`,
+      20,
+      68,
+    );
+    pdfDoc.text(
+      `Payment Status: ${billingData.paymentStatus || "Pending"}`,
+      20,
+      75,
+    );
+
+    let yPosition = 90;
+    pdfDoc.setFont("helvetica", "bold");
+    pdfDoc.setFontSize(13);
+    pdfDoc.text("Final Billing Summary", 20, yPosition);
+
+    yPosition += 8;
+    pdfDoc.setFont("helvetica", "normal");
+    pdfDoc.setFontSize(11);
+    pdfDoc.line(20, yPosition, 190, yPosition);
+
+    yPosition += 10;
+    pdfDoc.text("Consultation Fee", 20, yPosition);
+    pdfDoc.text(
+      `PHP ${Number(billingData.baseConsultationFee || 0).toFixed(2)}`,
+      180,
+      yPosition,
+      {
+        align: "right",
+      },
+    );
+
+    const customServices = billingData.customServices || [];
+
+    // Dynamically print extra fees (Processing, Convenience, Discounts) if they exist
+    if (customServices.length > 0) {
+      customServices.forEach((service) => {
+        yPosition += 8;
+        pdfDoc.text(service.label, 20, yPosition);
+        pdfDoc.text(
+          `PHP ${Number(service.amount || 0).toFixed(2)}`,
+          180,
+          yPosition,
+          {
+            align: "right",
+          },
+        );
+      });
+    }
+
+    yPosition += 10;
+    pdfDoc.line(20, yPosition, 190, yPosition);
+    yPosition += 8;
+
+    pdfDoc.setFont("helvetica", "bold");
+    pdfDoc.text("Subtotal", 20, yPosition);
+    pdfDoc.text(
+      `PHP ${Number(billingData.subtotal || 0).toFixed(2)}`,
+      180,
+      yPosition,
+      {
+        align: "right",
+      },
+    );
+
+    yPosition += 8;
+    pdfDoc.text("Final Total", 20, yPosition);
+    pdfDoc.text(
+      `PHP ${Number(billingData.finalTotal || 0).toFixed(2)}`,
+      180,
+      yPosition,
+      {
+        align: "right",
+      },
+    );
+
+    yPosition += 20;
+    pdfDoc.setFont("helvetica", "normal");
+    pdfDoc.setFontSize(10);
+
+    pdfDoc.save(`OKDOC_Invoice_${billingData.ticketId || "Ticket"}.pdf`);
+  };
+
+  try {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+
+    let displayWidth = 40;
+    let displayHeight = displayWidth / (1839 / 544);
+
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0, img.width, img.height);
+
+      const logoBase64 = canvas.toDataURL("image/png");
+      pdf.addImage(logoBase64, "PNG", 20, 12, displayWidth, displayHeight);
+
+      drawContent(pdf);
+    };
+
+    img.onerror = () => {
+      // If the logo fails to load, still draw the PDF text
+      drawContent(pdf);
+    };
+
+    img.src = logoUrl;
+  } catch (err) {
+    drawContent(pdf);
+  }
+}
+
+/**
  * Generate PDF content (internal helper)
  * @param {Object} pdf - jsPDF instance
  * @param {Object} invoiceData - Invoice data
@@ -164,10 +310,10 @@ function generatePDFContent(pdf, invoiceData, invoiceTicket) {
   yPosition += 6;
   pdf.text(
     `Date of Consultation: ${formatInvoiceDate(
-      invoiceTicket.preferredDate
+      invoiceTicket.preferredDate,
     )} ${formatInvoiceTime(invoiceTicket.preferredTime)}`,
     20,
-    yPosition
+    yPosition,
   );
 
   yPosition += 15;
@@ -234,9 +380,6 @@ function generatePDFContent(pdf, invoiceData, invoiceTicket) {
   pdf.line(20, yPosition, 180, yPosition);
   yPosition += 10;
   pdf.setFontSize(10);
-  pdf.text("This is a system-generated invoice.", 105, yPosition, {
-    align: "center",
-  });
 
   yPosition += 8;
   pdf.text(
@@ -245,7 +388,7 @@ function generatePDFContent(pdf, invoiceData, invoiceTicket) {
     yPosition,
     {
       align: "center",
-    }
+    },
   );
 
   pdf.save(`Invoice_${invoiceData.invoiceNumber || "OkieDoc"}.pdf`);

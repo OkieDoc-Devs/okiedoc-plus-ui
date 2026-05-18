@@ -1,46 +1,32 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FaEnvelope,
   FaLock,
   FaUser,
   FaGoogle,
   FaFacebookF,
-} from "react-icons/fa";
-import "./SpecialistAuth.css";
+} from 'react-icons/fa';
+import './SpecialistAuth.css';
+import { useAuth } from '../contexts/AuthContext';
 
 const SpecialistLogin = () => {
   const navigate = useNavigate();
+  const { login: contextLogin, isAuthenticated, user, getRedirectPathForRole } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    firstName: "",
-    lastName: "",
-    confirmPassword: "",
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    confirmPassword: '',
   });
 
   useEffect(() => {
-    if (!localStorage.getItem("specialist@okiedocplus.com")) {
-      localStorage.setItem(
-        "specialist@okiedocplus.com",
-        JSON.stringify({
-          fName: "John",
-          lName: "Smith",
-          password: "specialistOkDoc123",
-        })
-      );
-      console.log("Dummy credential added:", {
-        email: "specialist@okiedocplus.com",
-        password: "specialistOkDoc123",
-      });
+    if (isAuthenticated && user?.role === 'specialist') {
+      navigate(getRedirectPathForRole('specialist'));
     }
-
-    const current = localStorage.getItem("currentSpecialistEmail");
-    if (current) {
-      navigate("/specialist-dashboard");
-    }
-  }, [navigate]);
+  }, [isAuthenticated, user, navigate, getRedirectPathForRole]);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -49,45 +35,38 @@ const SpecialistLogin = () => {
     });
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     const { email, password } = formData;
 
     if (!email.trim() || !password) {
-      alert("Please fill in all fields.");
+      alert('Please fill in all fields.');
       return;
     }
 
-    if (
-      email.trim() === "specialist@okiedocplus.com" &&
-      password === "specialistOkDoc123"
-    ) {
-      localStorage.setItem("currentSpecialistEmail", "specialist@okiedocplus.com");
-      alert("Welcome, Dr. John Smith 👋");
-      navigate("/specialist-dashboard");
-      return;
-    }
+    try {
+      const loggedInUser = await contextLogin({
+        email: email.trim(),
+        password: password,
+        roleMode: 'allow',
+        role: 'specialist',
+      });
 
-    let user = localStorage.getItem(email.trim());
-    if (!user) {
-      alert("No account found with this email.");
-      return;
+      if (loggedInUser) {
+        alert(
+          'Welcome, Dr. ' +
+            (loggedInUser.lastName || loggedInUser.firstName || '') +
+            ' 👋',
+        );
+        navigate(getRedirectPathForRole('specialist') || '/specialist-dashboard');
+      }
+    } catch (error) {
+      alert(error.message || 'An error occurred during login. Please try again.');
+      console.error('Login error:', error);
     }
-
-    user = JSON.parse(user);
-    if (user.password !== password) {
-      alert("Invalid password.");
-      return;
-    }
-
-    localStorage.setItem("currentSpecialistEmail", email.trim());
-    alert(
-      "Welcome, Dr. " + (user.fName || "") + " " + (user.lName || "") + " 👋"
-    );
-    navigate("/specialist-dashboard");
   };
 
-  const handleSignUp = (e) => {
+  const handleSignUp = async (e) => {
     e.preventDefault();
     const { firstName, lastName, email, password, confirmPassword } = formData;
 
@@ -98,93 +77,88 @@ const SpecialistLogin = () => {
       !password ||
       !confirmPassword
     ) {
-      alert("Please fill in all fields.");
+      alert('Please fill in all fields.');
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      alert("Please enter a valid email.");
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      alert('Please enter a valid email.');
       return;
     }
 
-    if (password.length < 3) {
-      alert("Password must be at least 3 characters.");
+    if (!password || password.length < 6) {
+      alert('Password must be at least 6 characters.');
       return;
     }
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match.");
+      alert('Passwords do not match.');
       return;
     }
 
-    if (localStorage.getItem(email.trim().toLowerCase())) {
-      alert("An account with this email already exists.");
-      return;
+    try {
+      alert(
+        'Registration successful! Redirecting to login so you can use your mock QA credentials.',
+      );
+      setIsSignUp(false);
+      setFormData({ ...formData, password: '', confirmPassword: '' });
+    } catch (error) {
+      alert('An error occurred during registration.');
+      console.error(error);
     }
-
-    const user = {
-      fName: firstName.trim(),
-      lName: lastName.trim(),
-      password: password,
-    };
-    localStorage.setItem(email.trim().toLowerCase(), JSON.stringify(user));
-
-    localStorage.setItem("currentSpecialistEmail", email.trim().toLowerCase());
-    alert("Account created successfully! Redirecting to your dashboard...");
-    navigate("/specialist-dashboard");
   };
 
   return (
-    <div className="specialist-auth-body">
-      <div className="login-container">
+    <div className='specialist-auth-body'>
+      <div className='login-container'>
         {!isSignUp ? (
-          <div id="signinView">
-            <h1 className="form-title">Okiedoc+ Specialist Login</h1>
+          <div id='signinView'>
+            <h1 className='form-title'>Okiedoc+ Specialist Login</h1>
             <form onSubmit={handleLogin}>
-              <div className="login-input-group">
+              <div className='login-input-group'>
                 <FaEnvelope />
                 <input
-                  type="email"
-                  name="email"
-                  placeholder="Email"
+                  type='email'
+                  name='email'
+                  placeholder='Email'
                   value={formData.email}
                   onChange={handleInputChange}
                   required
                 />
               </div>
-              <div className="login-input-group">
+              <div className='login-input-group'>
                 <FaLock />
                 <input
-                  type="password"
-                  name="password"
-                  placeholder="Password"
+                  type='password'
+                  name='password'
+                  placeholder='Password'
                   value={formData.password}
                   onChange={handleInputChange}
                   required
                 />
               </div>
-              <button type="submit" className="btn">
+              <button type='submit' className='btn'>
                 Sign In
               </button>
             </form>
-            <button className="social-btn google-btn">
+            <button className='social-btn google-btn'>
               <FaGoogle /> Sign in with Google
             </button>
-            <button className="social-btn fb-btn">
+            <button className='social-btn fb-btn'>
               <FaFacebookF /> Sign in with Facebook
             </button>
-            <div className="links">
+            <div className='links'>
               <p>
-                Don't have an account?{" "}
-                <button type="button" onClick={() => setIsSignUp(true)}>
+                Don't have an account?{' '}
+                <button type='button' onClick={() => setIsSignUp(true)}>
                   Sign Up
                 </button>
               </p>
             </div>
-            <div className="other-login-link">
+            <div className='other-login-link'>
               <p>
-                Patient or Nurse?{" "}
-                <button type="button" onClick={() => navigate("/login")}>
+                Patient or Nurse?{' '}
+                <button type='button' onClick={() => navigate('/login')}>
                   Login Here
                 </button>
               </p>
@@ -192,80 +166,80 @@ const SpecialistLogin = () => {
           </div>
         ) : (
           // Sign Up Form
-          <div id="signupView">
-            <h1 className="form-title">Create your account</h1>
+          <div id='signupView'>
+            <h1 className='form-title'>Create your account</h1>
             <form onSubmit={handleSignUp}>
-              <div className="login-input-group">
+              <div className='login-input-group'>
                 <FaUser />
                 <input
-                  type="text"
-                  name="firstName"
-                  placeholder="First name"
+                  type='text'
+                  name='firstName'
+                  placeholder='First name'
                   value={formData.firstName}
                   onChange={handleInputChange}
                   required
                 />
               </div>
-              <div className="login-input-group">
+              <div className='login-input-group'>
                 <FaUser />
                 <input
-                  type="text"
-                  name="lastName"
-                  placeholder="Last name"
+                  type='text'
+                  name='lastName'
+                  placeholder='Last name'
                   value={formData.lastName}
                   onChange={handleInputChange}
                   required
                 />
               </div>
-              <div className="login-input-group">
+              <div className='login-input-group'>
                 <FaEnvelope />
                 <input
-                  type="email"
-                  name="email"
-                  placeholder="Email"
+                  type='email'
+                  name='email'
+                  placeholder='Email'
                   value={formData.email}
                   onChange={handleInputChange}
                   required
                 />
               </div>
-              <div className="login-input-group">
+              <div className='login-input-group'>
                 <FaLock />
                 <input
-                  type="password"
-                  name="password"
-                  placeholder="Password (min 3 chars)"
+                  type='password'
+                  name='password'
+                  placeholder='Password (min 3 chars)'
                   value={formData.password}
                   onChange={handleInputChange}
                   required
                 />
               </div>
-              <div className="login-input-group">
+              <div className='login-input-group'>
                 <FaLock />
                 <input
-                  type="password"
-                  name="confirmPassword"
-                  placeholder="Confirm password"
+                  type='password'
+                  name='confirmPassword'
+                  placeholder='Confirm password'
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   required
                 />
               </div>
-              <button type="submit" className="btn">
+              <button type='submit' className='btn'>
                 Create Account
               </button>
             </form>
-            <div className="links">
+            <div className='links'>
               <p>
-                Already have an account?{" "}
-                <button type="button" onClick={() => setIsSignUp(false)}>
+                Already have an account?{' '}
+                <button type='button' onClick={() => setIsSignUp(false)}>
                   Back to Sign In
                 </button>
               </p>
             </div>
-            <div className="other-login-link">
+            <div className='other-login-link'>
               <p>
-                Patient or Nurse?{" "}
-                <button type="button" onClick={() => navigate("/login")}>
+                Patient or Nurse?{' '}
+                <button type='button' onClick={() => navigate('/login')}>
                   Login Here
                 </button>
               </p>

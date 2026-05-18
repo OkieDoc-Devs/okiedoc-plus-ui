@@ -1,11 +1,43 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router";
-import { FaUpload, FaTimes } from "react-icons/fa";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
+import { createPortal } from "react-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  FaUpload,
+  FaTimes,
+  FaRegComment,
+  FaPaperPlane,
+  FaPrescriptionBottleAlt,
+  FaFlask,
+  FaFileMedical,
+  FaRegUser,
+  FaStethoscope,
+  FaClock,
+  FaVideo,
+  FaPhone,
+  FaBuilding,
+  FaComments,
+} from "react-icons/fa";
+import jsPDF from "jspdf";
 import "./SpecialistDashboard.css";
 import authService from "./authService";
 import * as specialistApi from "./services/apiService";
-import SpecialistCall from "./SpecialistCall";
+import { API_BASE_URL } from "../api/apiClient";
+import { getConversations as fetchChatConversations } from "../Nurse/services/chatService.js";
+import JitsiMeetCall from "../components/VideoCall/JitsiMeetCall";
 import Messages from "./Messages";
+import ImageCropperModal from "../components/ImageCropperModal";
+import PatientMedicalRecordsModal from "../components/MedicalRecords";
+import PainMapSection from "../components/PainMap/PainMap.jsx";
+import { PAIN_MAP_VIEWS } from "../components/PainMap/painMapConstants.js";
+import ICDCodeSelector from "./components/ICDCodeSelector";
+import Avatar from "../components/Avatar";
+import { usePSGC } from "../hooks/usePSGC";
 import {
   formatDateLabel,
   getDaysInMonth,
@@ -59,7 +91,6 @@ import {
   exportTransactionsToCSV,
   generateMedicalHistoryHTML,
   openPrintWindow,
-  downloadMedicalHistoryPDF,
   generateEncounterSummaryHTML,
   downloadEncounterSummaryPDF,
   exportToJSON,
@@ -73,14 +104,504 @@ import {
   validateAccountDetails,
   validateScheduleData,
   validateMedicalHistoryRequest,
-  sanitizeInput,
-  validateFileUpload,
+  ICD11_CHAPTERS,
+  parseICDCode,
 } from "./utils";
 
+const TICKET_REFRESH_INTERVAL_MS = 15000;
+
+const normalizePainMapAreas = (ticket) => {
+  const rawAreas = Array.isArray(ticket?.selectedPainAreas)
+    ? ticket.selectedPainAreas
+    : Array.isArray(ticket?.painMap)
+      ? ticket.painMap
+      : [];
+
+  return rawAreas
+    .map((area, index) => {
+      if (typeof area === "string") {
+        const stringMatch = area.match(/^(front|back):(.+)$/i);
+        if (stringMatch) {
+          const view = stringMatch[1].toLowerCase();
+          const key = stringMatch[2];
+          return {
+            id: `${view}:${key}`,
+            view,
+            key,
+            label: key,
+          };
+        }
+
+        return {
+          id: `front:${area}:${index}`,
+          view: "front",
+          key: area,
+          label: area,
+        };
+      }
+
+      const idMatch =
+        typeof area?.id === "string"
+          ? area.id.match(/^(front|back):(.+)$/i)
+          : null;
+      const parsedView = idMatch ? idMatch[1].toLowerCase() : null;
+      const parsedKey = idMatch ? idMatch[2] : null;
+      const view = PAIN_MAP_VIEWS.includes(area?.view)
+        ? area.view
+        : PAIN_MAP_VIEWS.includes(parsedView)
+          ? parsedView
+          : "front";
+      const key = area?.key || parsedKey || area?.id || `area-${index}`;
+      const label =
+        area?.label ||
+        area?.name ||
+        area?.bodyPart ||
+        area?.value ||
+        "Pain area";
+
+      return {
+        id: area?.id || `${view}:${key}`,
+        view,
+        key,
+        label,
+      };
+    })
+    .filter((area) => area.id && area.key && area.label);
+};
+
+const getPainMapView = (ticket, areas) => {
+  const savedView = ticket?.painMapView;
+  if (PAIN_MAP_VIEWS.includes(savedView)) {
+    return savedView;
+  }
+
+  if (!areas.length) {
+    return "front";
+  }
+
+  const frontCount = areas.filter((area) => area.view === "front").length;
+  const backCount = areas.filter((area) => area.view === "back").length;
+
+  if (backCount > frontCount) {
+    return "back";
+  }
+
+  if (frontCount > 0) {
+    return "front";
+  }
+
+  return areas[0]?.view || "front";
+};
+
+const toStringList = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    return trimmed
+      .split(/\n|,|;/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const buildTriageNotes = (ticket) =>
+  String(ticket?.additionalRemarks || "").trim();
+
+const COMMON_LAB_TESTS = [
+  "Complete Blood Count (CBC)",
+  "Lipid Profile",
+  "HbA1c",
+  "Kidney Function Test (KFT)",
+  "Chest X-Ray",
+  "Ultrasound",
+  "Hepatitis B Surface Antigen",
+  "Pregnancy Test",
+  "Urinalysis",
+  "Blood Glucose (FBS)",
+  "Liver Function Test (LFT)",
+  "Thyroid Function Test",
+  "ECG (Electrocardiogram)",
+  "COVID-19 RT-PCR",
+  "Stool Examination",
+];
+
+const normalizeStatus = (status) =>
+  String(status || "")
+    .trim()
+    .toLowerCase();
+const isCompletedStatus = (status) => normalizeStatus(status) === "completed";
+
+const formatEmrTicketId = (t) => {
+  if (!t || t.id == null) return "T-—";
+  const id = t.id;
+  if (
+    typeof id === "number" ||
+    (typeof id === "string" && /^\d+$/.test(String(id)))
+  ) {
+    return `T-${String(Number(id)).padStart(3, "0")}`;
+  }
+  return `T-${String(id)}`;
+};
+
+const getEmrTicketComplaint = (t) =>
+  t?.chiefComplaint ||
+  t?.clinicalChiefComplaint ||
+  t?.patientSubmittedConcern ||
+  t?.symptoms ||
+  t?.service ||
+  "No complaint recorded";
+
+const getEmrTriagedTime = (t) => {
+  const raw = t?.rawTicket?.createdAt || t?.createdAt;
+  if (!raw) return "";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
+
+/** YYYY-MM-DD in local timezone (for date input min/max) */
+const getLocalDateString = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const getPatientAvatarNames = (t) => {
+  const p = t?.rawTicket?.patient;
+  const full = t?.patientFullName || t?.patient || "";
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  if (p?.firstName || p?.lastName) {
+    return {
+      firstName: p.firstName || parts[0] || "",
+      lastName: p.lastName || parts.slice(1).join(" ") || "",
+    };
+  }
+  if (parts.length >= 2) {
+    return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+  }
+  return { firstName: parts[0] || "Patient", lastName: "" };
+};
+
+const getChannelDetails = (channel) => {
+  const c = String(channel || "").toLowerCase();
+  if (c.includes("video"))
+    return { label: "Video Consultation", icon: FaVideo, type: "video" };
+  if (c.includes("phone"))
+    return { label: "Phone Consultation", icon: FaPhone, type: "phone" };
+  if (c.includes("chat") || c.includes("message"))
+    return { label: "Chat Consultation", icon: FaComments, type: "chat" };
+  if (c.includes("physical") || c.includes("in-person") || c.includes("clinic"))
+    return { label: "Physical Visit", icon: FaBuilding, type: "physical" };
+
+  return { label: "Consultation", icon: FaStethoscope, type: "default" }; // Fallback
+};
+
+const formatPatientNameFromPatientObj = (p) => {
+  if (!p) return "Unknown";
+  const fName = p.firstName || "";
+  const lName = p.lastName || "";
+  if (!fName && !lName) return p.patientName || "Unknown";
+  const lastInitial = lName ? ` ${lName.charAt(0)}.` : "";
+  return `${fName}${lastInitial}`;
+};
+
+const mapApiTicketToDashboardShape = (ticket) => {
+  if (!ticket) return null;
+  return {
+    ...ticket,
+    id: ticket.id,
+    patient: ticket.patientName
+      ? ticket.patientName
+      : ticket.patient
+        ? formatPatientNameFromPatientObj(ticket.patient)
+        : "Walk-in Patient",
+    patientFullName:
+      ticket.patientName ||
+      (ticket.patient
+        ? `${ticket.patient.firstName || ""} ${ticket.patient.lastName || ""}`.trim()
+        : "") ||
+      "Walk-in Patient",
+    service:
+      ticket.clinicalChiefComplaint || ticket.chiefComplaint || "Consultation",
+    chiefComplaint: ticket.chiefComplaint || "",
+    clinicalChiefComplaint: ticket.clinicalChiefComplaint || "",
+    patientSubmittedConcern:
+      ticket.patientSubmittedConcern || ticket.submittedConcern || "",
+    submittedConcern:
+      ticket.submittedConcern || ticket.patientSubmittedConcern || "",
+    symptoms: ticket.symptoms || "",
+    bloodPressure: ticket.bloodPressure || "",
+    heartRate: ticket.heartRate || "",
+    temperature: ticket.temperature || "",
+    oxygenSaturation: ticket.oxygenSaturation || "",
+    selectedPainAreas: ticket.selectedPainAreas || ticket.painAreas || [],
+    painMapView: ticket.painMapView || "front",
+    selectedSymptomPills: ticket.selectedSymptomPills || [],
+    selectedRosItems: ticket.selectedRosItems || [],
+    durationValue: ticket.durationValue || "",
+    durationUnit: ticket.durationUnit || "",
+    severity: ticket.severity || "",
+    urgencyLevel: ticket.urgencyLevel || ticket.urgency || "",
+    transferReason: ticket.transferReason || "",
+    preferredDate: ticket.preferredDate,
+    preferredTime: ticket.preferredTime,
+    consultationChannel: ticket.consultationChannel,
+    barangay: ticket.barangay,
+    patientBirthdate: ticket.patientBirthdate || "",
+    gender: ticket.patientGender || "",
+    mobile: ticket.mobile || ticket.patientMobile || "",
+    email: ticket.email || ticket.patientEmail || "",
+    when:
+      ticket.preferredDate && ticket.preferredTime
+        ? `${new Date(ticket.preferredDate).toLocaleDateString()} ${ticket.preferredTime}`
+        : ticket.createdAt
+          ? new Date(ticket.createdAt).toLocaleString("en-US", {
+              month: "numeric",
+              day: "numeric",
+              year: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            })
+          : "TBD",
+    status:
+      ticket.status === "confirmed"
+        ? "Awaiting"
+        : ticket.status === "active"
+          ? "In Consultation"
+          : ticket.status === "completed"
+            ? "Completed"
+            : ticket.status === "processing"
+              ? "Triage Complete"
+              : ticket.status || "Awaiting",
+    rawTicket: ticket,
+  };
+};
+
+const parseConsultJsonArray = (raw) => {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const encounterSnapshotFromRawTicket = (rt) => {
+  if (!rt) {
+    return { medicines: [], labRequests: [], labInstructions: "" };
+  }
+  const medicines = Array.isArray(rt.medicines)
+    ? rt.medicines
+    : parseConsultJsonArray(
+        rt.prescription ?? rt.Prescription ?? rt.consultationPrescription,
+      );
+  const labRequests = Array.isArray(rt.labRequests)
+    ? rt.labRequests
+    : parseConsultJsonArray(
+        rt.laboratoryRequest ?? rt.laboratoryRequests ?? rt.labRequest,
+      );
+  return {
+    medicines,
+    labRequests,
+    labInstructions:
+      typeof rt.labInstructions === "string"
+        ? rt.labInstructions
+        : typeof rt.labInstructionsText === "string"
+          ? rt.labInstructionsText
+          : "",
+  };
+};
+
+const MEDCERT_STORAGE_KEY = (ticketId) =>
+  ticketId != null && ticketId !== "" ? `specialist-medcert:${ticketId}` : null;
+
+const mergeEncounterSnapshotsForModal = (rt, ticketId) => {
+  const api = encounterSnapshotFromRawTicket(rt);
+  let local = null;
+  if (ticketId != null && ticketId !== "") {
+    try {
+      local = loadEncounterData(ticketId);
+    } catch {
+      local = null;
+    }
+  }
+  const localMeds = Array.isArray(local?.medicines) ? local.medicines : [];
+  const localLabs = Array.isArray(local?.labRequests) ? local.labRequests : [];
+  return {
+    medicines: api.medicines.length > 0 ? api.medicines : localMeds,
+    labRequests: api.labRequests.length > 0 ? api.labRequests : localLabs,
+    labInstructions: api.labInstructions || local?.labInstructions || "",
+  };
+};
+
+const certificateSnapshotFromRawTicket = (rt, serviceLabel) => {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    diagnosisReason:
+      rt?.diagnosisReason ||
+      rt?.certificateDiagnosis ||
+      rt?.chiefComplaint ||
+      rt?.clinicalChiefComplaint ||
+      serviceLabel ||
+      "",
+    dateIssued:
+      String(
+        rt?.certificateDateIssued ||
+          rt?.dateIssued ||
+          rt?.medCertDateIssued ||
+          "",
+      ).slice(0, 10) || today,
+    restStartDate:
+      String(
+        rt?.restStartDate ||
+          rt?.certificateRestStart ||
+          rt?.medCertRestStart ||
+          "",
+      ).slice(0, 10) || today,
+    restEndDate: String(
+      rt?.restEndDate || rt?.certificateRestEnd || rt?.medCertRestEnd || "",
+    ).slice(0, 10),
+    additionalRemarks:
+      rt?.certificateRemarks ||
+      rt?.medCertRemarks ||
+      rt?.additionalRemarks ||
+      "",
+  };
+};
+
+const mergeCertificateSnapshotForModal = (rt, serviceLabel, ticketId) => {
+  const base = certificateSnapshotFromRawTicket(rt, serviceLabel);
+  const key = MEDCERT_STORAGE_KEY(ticketId);
+  if (!key) return base;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return base;
+    const local = JSON.parse(raw);
+    if (!local || typeof local !== "object") return base;
+    return {
+      diagnosisReason: local.diagnosisReason || base.diagnosisReason,
+      dateIssued: local.dateIssued || base.dateIssued,
+      restStartDate: local.restStartDate || base.restStartDate,
+      restEndDate: local.restEndDate || base.restEndDate,
+      additionalRemarks: local.additionalRemarks || base.additionalRemarks,
+    };
+  } catch {
+    return base;
+  }
+};
+
+const formatDisplayDate = (dateValue) => {
+  if (!dateValue) return "";
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return dateValue;
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+const formatShortDisplayDate = (dateValue) => {
+  if (!dateValue) return "";
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return dateValue;
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+};
+
+const calculateAgeFromBirthdate = (birthdate) => {
+  if (!birthdate) return "N/A";
+
+  const birth = new Date(birthdate);
+  if (Number.isNaN(birth.getTime())) return "N/A";
+
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+
+  return age >= 0 ? age : "N/A";
+};
+
+const buildMedicalRecordPatient = (ticket) => {
+  const rawPatient =
+    ticket?.rawTicket?.patient && typeof ticket.rawTicket.patient === "object"
+      ? ticket.rawTicket.patient
+      : null;
+
+  const patientId =
+    rawPatient?.id ||
+    rawPatient?.patientId ||
+    rawPatient?.userId ||
+    rawPatient?.user?.id ||
+    ticket?.rawTicket?.patientId ||
+    ticket?.patientId ||
+    null;
+
+  const fullName =
+    rawPatient?.fullName ||
+    [rawPatient?.firstName, rawPatient?.lastName]
+      .filter(Boolean)
+      .join(" ")
+      .trim() ||
+    ticket?.patientFullName ||
+    ticket?.patient ||
+    "Patient";
+
+  return {
+    ...(rawPatient || {}),
+    id: patientId,
+    fullName,
+    age:
+      rawPatient?.age ||
+      ticket?.age ||
+      ticket?.patientAge ||
+      calculateAgeFromBirthdate(
+        ticket?.patientBirthdate || rawPatient?.birthdate,
+      ),
+    gender: rawPatient?.gender || ticket?.gender || "Unknown",
+  };
+};
+
 const SpecialistDashboard = () => {
+  const buildMedicalHistoryForSpecialist = (ticket) => {
+    const triageHistory = toStringList(ticket?.triageMedicalHistory);
+    if (triageHistory.length > 0) {
+      return triageHistory;
+    }
+    return toStringList(ticket?.medicalHistory);
+  };
+
   const navigate = useNavigate();
+  const location = useLocation();
+  const {
+    regions,
+    provinces,
+    cities,
+    barangays,
+    fetchProvinces,
+    fetchCities,
+    fetchBarangays,
+  } = usePSGC();
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [pageTitle, setPageTitle] = useState("Dashboard");
   const [currentUser, setCurrentUser] = useState(null);
   const [userInitials, setUserInitials] = useState("DR");
 
@@ -95,18 +616,20 @@ const SpecialistDashboard = () => {
     bio: "Board-certified specialist with years of experience.",
     prcImage: "",
     profileImage: "",
-  });
-
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
+    addressLine1: "",
+    addressLine2: "",
+    region: "",
+    province: "",
+    city: "",
+    barangay: "",
+    zipCode: "",
   });
 
   const [services, setServices] = useState({
-    Consultation: 100,
-    "Medical Certificate": 25,
-    "Medical Clearance": 75,
+    feeInitialWithoutCert: 0,
+    feeInitialWithCert: 0,
+    feeFollowUpWithoutCert: 0,
+    feeFollowUpWithCert: 0,
   });
 
   const [accountDetails, setAccountDetails] = useState({
@@ -131,11 +654,28 @@ const SpecialistDashboard = () => {
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketFilter, setTicketFilter] = useState("All");
+  const [patientChatDraft, setPatientChatDraft] = useState("");
+  const [patientChatThreads, setPatientChatThreads] = useState({});
 
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [editingService, setEditingService] = useState({ name: "", fee: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showMedicalRecords, setShowMedicalRecords] = useState(false);
+  const selectedPatientMedicalRecord =
+    buildMedicalRecordPatient(selectedTicket);
+
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState({
+    consultationType: "initial",
+    includesCertificate: false,
+    discountType: "None",
+  });
+
+  const [cropperModalOpen, setCropperModalOpen] = useState(false);
+  const [selectedImageSrc, setSelectedImageSrc] = useState(null);
 
   const [callState, setCallState] = useState({
     isOpen: false,
@@ -146,20 +686,39 @@ const SpecialistDashboard = () => {
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [encounter, setEncounter] = useState(createDefaultEncounter());
 
-  const [medForm, setMedForm] = useState(createDefaultMedicineForm());
+  const [medForm, setMedForm] = useState(null);
 
-  const [labForm, setLabForm] = useState(createDefaultLabForm());
-
-  const [mhRequests, setMhRequests] = useState([]);
-  const [mhModal, setMhModal] = useState({
-    open: false,
-    reason: "",
-    from: "",
-    to: "",
-    consent: false,
+  const [labForm, setLabForm] = useState(null);
+  const [selectedLabTests, setSelectedLabTests] = useState([]);
+  const [labCustomTestName, setLabCustomTestName] = useState("");
+  const [labInstructions, setLabInstructions] = useState("");
+  const [certificateForm, setCertificateForm] = useState({
+    diagnosisReason: "",
+    dateIssued: new Date().toISOString().slice(0, 10),
+    restStartDate: new Date().toISOString().slice(0, 10),
+    restEndDate: "",
+    additionalRemarks: "",
   });
 
+  const [mhRequests, setMhRequests] = useState([]);
+  const [selectedMedicalEntry, setSelectedMedicalEntry] = useState(null);
+  const [soapModalType, setSoapModalType] = useState(null);
+  const [soapModalValue, setSoapModalValue] = useState("");
+  const [soapModalIcdCode, setSoapModalIcdCode] = useState("");
+
   const [centerTab, setCenterTab] = useState("medicine");
+  const [completedConsultations, setCompletedConsultations] = useState([]);
+  const [completedConsultationsLoading, setCompletedConsultationsLoading] =
+    useState(false);
+  const [completedConsultationsError, setCompletedConsultationsError] =
+    useState("");
+
+  const [completedDetailOpen, setCompletedDetailOpen] = useState(false);
+  const [completedDetailLoading, setCompletedDetailLoading] = useState(false);
+  const [completedDetailTicket, setCompletedDetailTicket] = useState(null);
+  const [completedDetailTab, setCompletedDetailTab] = useState("patient");
+  const [hasSharedAccess, setHasSharedAccess] = useState(false);
+  const [sharedMedicalData, setSharedMedicalData] = useState(null);
 
   const [dashboardStats, setDashboardStats] = useState({
     totalPatients: 0,
@@ -167,26 +726,356 @@ const SpecialistDashboard = () => {
     completedToday: 0,
     upcomingAppointments: 0,
   });
+  const patientChatMessagesRef = useRef(null);
+  const soapPanelRef = useRef(null);
 
-  const [apiError, setApiError] = useState(null);
+  const createPatientChatMessages = useCallback((ticket) => {
+    const patientName =
+      ticket?.patientFullName || ticket?.patient || "the patient";
+    const startedAt =
+      ticket?.consultationStartedAt ||
+      ticket?.startedAt ||
+      ticket?.createdAt ||
+      "";
+    const startedTime = startedAt
+      ? new Date(startedAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "16:50";
+
+    return [
+      {
+        id: `${ticket?.id || "ticket"}-system`,
+        sender: "system",
+        text: `Started consultation with ${patientName}`,
+        subtext: startedTime,
+        timestamp: startedTime,
+      },
+    ];
+  }, []);
 
   const loadTicketsData = useCallback(async () => {
     console.log("[SpecialistDashboard] Loading tickets from API...");
     try {
-      const response = await specialistApi.fetchTickets();
-      console.log("[SpecialistDashboard] API response:", response);
-      if (response.success && response.tickets) {
+      const [activeResponse, availableResponse] = await Promise.all([
+        specialistApi.fetchMyActiveTickets().catch((e) => {
+          console.error("Error fetching active tickets:", e);
+          return { success: false, activeTickets: [] };
+        }),
+        specialistApi.fetchAvailableTickets().catch((e) => {
+          console.error("Error fetching available tickets:", e);
+          return { success: false, data: [] };
+        }),
+      ]);
+
+      let allMappedTickets = [];
+
+      const formatPatientName = (p) => {
+        if (!p) return "Unknown";
+        const fName = p.firstName || "";
+        const lName = p.lastName || "";
+        if (!fName && !lName) return p.patientName || "Unknown";
+        const lastInitial = lName ? ` ${lName.charAt(0)}.` : "";
+        return `${fName}${lastInitial}`;
+      };
+
+      const mapDbTicketToDashboard = (ticket) => ({
+        ...ticket,
+        id: ticket.id,
+        patient: ticket.patientName
+          ? ticket.patientName
+          : ticket.patient
+            ? formatPatientName(ticket.patient)
+            : "Walk-in Patient",
+        patientFullName:
+          ticket.patientName ||
+          (ticket.patient
+            ? `${ticket.patient.firstName || ""} ${ticket.patient.lastName || ""}`.trim()
+            : "") ||
+          "Walk-in Patient",
+        service:
+          ticket.clinicalChiefComplaint ||
+          ticket.chiefComplaint ||
+          "Consultation",
+        chiefComplaint: ticket.chiefComplaint || "",
+        clinicalChiefComplaint: ticket.clinicalChiefComplaint || "",
+        patientSubmittedConcern:
+          ticket.patientSubmittedConcern || ticket.submittedConcern || "",
+        submittedConcern:
+          ticket.submittedConcern || ticket.patientSubmittedConcern || "",
+        symptoms: ticket.symptoms || "",
+        medicalHistory: buildMedicalHistoryForSpecialist(ticket),
+        triageMedicalHistory: ticket.triageMedicalHistory || "",
+        additionalRemarks: ticket.additionalRemarks || "",
+        triageNotes: buildTriageNotes(ticket) || ticket.nurseRemarks || "",
+        bloodPressure: ticket.bloodPressure || "",
+        heartRate: ticket.heartRate || "",
+        temperature: ticket.temperature || "",
+        oxygenSaturation: ticket.oxygenSaturation || "",
+        selectedPainAreas: ticket.selectedPainAreas || ticket.painAreas || [],
+        painMapView: ticket.painMapView || "front",
+        selectedSymptomPills: ticket.selectedSymptomPills || [],
+        selectedRosItems: ticket.selectedRosItems || [],
+        durationValue: ticket.durationValue || "",
+        durationUnit: ticket.durationUnit || "",
+        severity: ticket.severity || "",
+        urgencyLevel: ticket.urgencyLevel || ticket.urgency || "",
+        transferReason: ticket.transferReason || "",
+        preferredDate: ticket.preferredDate,
+        preferredTime: ticket.preferredTime,
+        consultationChannel: ticket.consultationChannel,
+        barangay: ticket.barangay,
+        patientBirthdate: ticket.patientBirthdate || "",
+        gender: ticket.patientGender || "",
+        mobile: ticket.mobile || ticket.patientMobile || "",
+        email: ticket.email || ticket.patientEmail || "",
+        when:
+          ticket.preferredDate && ticket.preferredTime
+            ? `${new Date(ticket.preferredDate).toLocaleDateString()} ${ticket.preferredTime}`
+            : ticket.createdAt
+              ? new Date(ticket.createdAt).toLocaleString("en-US", {
+                  month: "numeric",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  hour12: true,
+                })
+              : "TBD",
+        status:
+          ticket.status === "confirmed"
+            ? "Awaiting"
+            : ticket.status === "active"
+              ? "In Consultation"
+              : ticket.status === "completed"
+                ? "Completed"
+                : ticket.status === "processing"
+                  ? "Triage Complete"
+                  : ticket.status || "Awaiting",
+        rawTicket: ticket,
+      });
+
+      if (activeResponse.success && activeResponse.activeTickets) {
         console.log(
-          `[SpecialistDashboard] Loaded ${response.tickets.length} tickets from API`,
+          `[SpecialistDashboard] Loaded ${activeResponse.activeTickets.length} active tickets from API`,
         );
-        setTickets(response.tickets);
+        const mappedActive = activeResponse.activeTickets.map((t) => ({
+          ...t,
+          id: t.id,
+          patient: formatPatientName(t.rawTicket?.patient || t),
+          patientFullName:
+            t.patientName || t.rawTicket?.patientName || "Walk-in Patient",
+          service:
+            t.clinicalChiefComplaint || t.chiefComplaint || "Consultation",
+          chiefComplaint: t.chiefComplaint || "",
+          clinicalChiefComplaint: t.clinicalChiefComplaint || "",
+          patientSubmittedConcern:
+            t.patientSubmittedConcern || t.submittedConcern || "",
+          submittedConcern:
+            t.submittedConcern || t.patientSubmittedConcern || "",
+          symptoms: t.symptoms || "",
+          medicalHistory: buildMedicalHistoryForSpecialist(t.rawTicket || t),
+          triageMedicalHistory:
+            t.triageMedicalHistory || t.rawTicket?.triageMedicalHistory || "",
+          additionalRemarks:
+            t.additionalRemarks || t.rawTicket?.additionalRemarks || "",
+          triageNotes:
+            buildTriageNotes(t.rawTicket || t) || t.nurseRemarks || "",
+          bloodPressure: t.rawTicket?.bloodPressure || "",
+          heartRate: t.rawTicket?.heartRate || "",
+          temperature: t.rawTicket?.temperature || "",
+          oxygenSaturation: t.rawTicket?.oxygenSaturation || "",
+          selectedPainAreas:
+            t.rawTicket?.selectedPainAreas || t.rawTicket?.painAreas || [],
+          painMapView: t.rawTicket?.painMapView || "front",
+          selectedSymptomPills:
+            t.selectedSymptomPills || t.rawTicket?.selectedSymptomPills || [],
+          selectedRosItems:
+            t.selectedRosItems || t.rawTicket?.selectedRosItems || [],
+          durationValue: t.durationValue || t.rawTicket?.durationValue || "",
+          durationUnit: t.durationUnit || t.rawTicket?.durationUnit || "",
+          severity: t.severity || t.rawTicket?.severity || "",
+          urgencyLevel:
+            t.urgencyLevel || t.rawTicket?.urgencyLevel || t.urgency || "",
+          transferReason: t.transferReason || t.rawTicket?.transferReason || "",
+          preferredDate: t.preferredDate,
+          preferredTime: t.preferredTime,
+          consultationChannel: t.consultationChannel,
+          barangay: t.barangay,
+          patientBirthdate:
+            t.patientBirthdate || t.rawTicket?.patientBirthdate || "",
+          gender: t.patientGender || t.rawTicket?.patientGender || "",
+          mobile:
+            t.mobile || t.patientMobile || t.rawTicket?.patientMobile || "",
+          email: t.email || t.patientEmail || t.rawTicket?.patientEmail || "",
+          when:
+            t.preferredDate && t.preferredTime
+              ? `${new Date(t.preferredDate).toLocaleDateString()} ${t.preferredTime}`
+              : t.createdAt
+                ? new Date(t.createdAt).toLocaleString("en-US", {
+                    month: "numeric",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  })
+                : "TBD",
+          status:
+            t.status === "confirmed"
+              ? "Awaiting"
+              : t.status === "active"
+                ? "In Consultation"
+                : t.status === "completed"
+                  ? "Completed"
+                  : t.status === "processing"
+                    ? "Triage Complete"
+                    : t.status,
+          rawTicket: t.rawTicket || t,
+        }));
+        allMappedTickets = [...allMappedTickets, ...mappedActive];
+      }
+
+      if (availableResponse.success && availableResponse.data) {
+        console.log(
+          `[SpecialistDashboard] Loaded ${availableResponse.data.length} available tickets from API`,
+        );
+        const mappedAvailable = availableResponse.data.map((t) => ({
+          ...t,
+          id: t.id,
+          patient: t.patientName || formatPatientName(t.patient || t),
+          patientFullName:
+            t.patientName ||
+            (t.patient
+              ? `${t.patient.firstName || ""} ${t.patient.lastName || ""}`.trim()
+              : "") ||
+            "Walk-in Patient",
+          service:
+            t.clinicalChiefComplaint || t.chiefComplaint || "Consultation",
+          chiefComplaint: t.chiefComplaint || "",
+          clinicalChiefComplaint: t.clinicalChiefComplaint || "",
+          patientSubmittedConcern:
+            t.patientSubmittedConcern || t.submittedConcern || "",
+          submittedConcern:
+            t.submittedConcern || t.patientSubmittedConcern || "",
+          symptoms: t.symptoms || "",
+          medicalHistory: buildMedicalHistoryForSpecialist(t),
+          triageMedicalHistory: t.triageMedicalHistory || "",
+          additionalRemarks: t.additionalRemarks || "",
+          triageNotes: buildTriageNotes(t) || t.nurseRemarks || "",
+          bloodPressure: t.bloodPressure || "",
+          heartRate: t.heartRate || "",
+          temperature: t.temperature || "",
+          oxygenSaturation: t.oxygenSaturation || "",
+          selectedPainAreas: t.selectedPainAreas || t.painAreas || [],
+          painMapView: t.painMapView || "front",
+          selectedSymptomPills: t.selectedSymptomPills || [],
+          selectedRosItems: t.selectedRosItems || [],
+          durationValue: t.durationValue || "",
+          durationUnit: t.durationUnit || "",
+          severity: t.severity || "",
+          urgencyLevel: t.urgencyLevel || t.urgency || "",
+          transferReason: t.transferReason || "",
+          preferredDate: t.preferredDate,
+          preferredTime: t.preferredTime,
+          consultationChannel: t.consultationChannel,
+          barangay: t.barangay,
+          patientBirthdate:
+            t.patientBirthdate || t.rawTicket?.patientBirthdate || "",
+          gender: t.patientGender || t.rawTicket?.patientGender || "",
+          mobile:
+            t.mobile || t.patientMobile || t.rawTicket?.patientMobile || "",
+          email: t.email || t.patientEmail || t.rawTicket?.patientEmail || "",
+          when:
+            t.preferredDate && t.preferredTime
+              ? `${new Date(t.preferredDate).toLocaleDateString()} ${t.preferredTime}`
+              : t.createdAt
+                ? new Date(t.createdAt).toLocaleString("en-US", {
+                    month: "numeric",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  })
+                : "TBD",
+          status: "Available",
+          rawTicket: t,
+        }));
+        allMappedTickets = [...allMappedTickets, ...mappedAvailable];
+      }
+
+      try {
+        const conversations = await fetchChatConversations();
+        const conversationTickets = Array.isArray(conversations)
+          ? conversations
+              .filter((conversation) => conversation?.id)
+              .filter(
+                (conversation) =>
+                  !allMappedTickets.some(
+                    (ticket) => String(ticket.id) === String(conversation.id),
+                  ),
+              )
+          : [];
+
+        if (conversationTickets.length > 0) {
+          const mappedConversationTickets = await Promise.all(
+            conversationTickets.map(async (conversation) => {
+              try {
+                const fullTicket = await specialistApi.fetchTicket(
+                  conversation.id,
+                );
+                if (fullTicket) {
+                  return mapDbTicketToDashboard(fullTicket);
+                }
+              } catch (error) {
+                console.warn(
+                  "[SpecialistDashboard] Could not fetch ticket from conversation:",
+                  conversation.id,
+                  error,
+                );
+              }
+
+              const fallbackTicket = {
+                ...(conversation.ticket || {}),
+                id: conversation.id,
+                ticketNumber: conversation.ticketNumber,
+                patientName:
+                  conversation.ticket?.patientName ||
+                  (conversation.name || "").split(" - ").slice(1).join(" - ") ||
+                  "Walk-in Patient",
+                status: conversation.ticket?.status || "confirmed",
+              };
+              return mapDbTicketToDashboard(fallbackTicket);
+            }),
+          );
+
+          allMappedTickets = [
+            ...allMappedTickets,
+            ...mappedConversationTickets.filter(Boolean),
+          ];
+        }
+      } catch (conversationError) {
+        console.warn(
+          "[SpecialistDashboard] Failed to load tickets from chat conversations:",
+          conversationError,
+        );
+      }
+
+      if (
+        allMappedTickets.length > 0 ||
+        activeResponse.success ||
+        availableResponse.success
+      ) {
+        setTickets(allMappedTickets);
         setApiError(null);
-        saveTickets(response.tickets);
+        saveTickets(allMappedTickets);
         return;
       } else {
         console.warn(
-          "[SpecialistDashboard] API response missing tickets:",
-          response,
+          "[SpecialistDashboard] API response missing activeTickets array:",
+          activeResponse,
         );
       }
     } catch (error) {
@@ -211,23 +1100,73 @@ const SpecialistDashboard = () => {
         {
           id: "TKT-001",
           patient: "John Doe",
-          service: "Consultation",
+          patientFullName: "John Doe",
+          service: "General Checkup",
+          chiefComplaint: "Fever and persistent cough for 3 days",
           when: formatDateLabel(plusDays(0), "10:30 AM"),
           status: "Confirmed",
+          consultationChannel: "Video",
+          mobile: "+63 917 123 4567",
+          gender: "Male",
+          patientBirthdate: "1990-05-15",
+          bloodType: "O+",
+          allergies: ["Peanuts", "Dust"],
+          medicalHistory: ["Asthma diagnosed in childhood"],
+          triageNotes:
+            "BP 120/80, HR 85, Temp 38.2C. Patient appears fatigued.",
         },
         {
           id: "TKT-002",
           patient: "Jane Smith",
+          patientFullName: "Jane Smith",
           service: "Medical Certificate",
+          chiefComplaint: "Needs fit-to-work clearance after viral infection",
           when: formatDateLabel(plusDays(1), "2:15 PM"),
-          status: "Pending",
+          status: "Confirmed",
+          consultationChannel: "Physical",
+          mobile: "+63 918 987 6543",
+          gender: "Female",
+          patientBirthdate: "1985-11-20",
+          bloodType: "A+",
+          allergies: ["None"],
+          medicalHistory: ["No significant past medical history"],
+          triageNotes:
+            "BP 110/70, HR 72, Temp 36.5C. Ready for physical assessment.",
         },
         {
           id: "TKT-003",
           patient: "Robert Johnson",
-          service: "Medical Clearance",
+          patientFullName: "Robert Johnson",
+          service: "Follow-up",
+          chiefComplaint: "Review of hypertension medication efficacy",
           when: formatDateLabel(plusDays(2), "9:00 AM"),
           status: "Confirmed",
+          consultationChannel: "Phone",
+          mobile: "+63 922 333 4444",
+          gender: "Male",
+          patientBirthdate: "1978-02-10",
+          bloodType: "B+",
+          allergies: ["Penicillin"],
+          medicalHistory: ["Hypertension (Diagnosed 2021)"],
+          triageNotes:
+            "Patient requested a phone call. Vitals self-reported: BP 130/85.",
+        },
+        {
+          id: "TKT-004",
+          patient: "Maria Clara",
+          patientFullName: "Maria Clara",
+          service: "Dermatology Consult",
+          chiefComplaint: "Spreading red rash on left arm",
+          when: formatDateLabel(plusDays(0), "1:00 PM"),
+          status: "Confirmed",
+          consultationChannel: "Chat",
+          mobile: "+63 999 888 7777",
+          gender: "Female",
+          patientBirthdate: "2000-08-08",
+          bloodType: "AB+",
+          allergies: ["Seafood"],
+          medicalHistory: ["Mild Eczema"],
+          triageNotes: "Patient uploaded 2 images of the rash via chat portal.",
         },
       ];
 
@@ -241,8 +1180,9 @@ const SpecialistDashboard = () => {
   const loadDashboardData = useCallback(async () => {
     try {
       const response = await specialistApi.fetchDashboard();
+      console.log("[SpecialistDashboard] Dashboard response:", response);
       if (response.success) {
-        setDashboardStats(response.stats || dashboardStats);
+        setDashboardStats((prev) => response.stats || prev);
         if (response.specialist) {
           setProfileData((prev) => ({
             ...prev,
@@ -253,72 +1193,76 @@ const SpecialistDashboard = () => {
               response.specialist.specialization || prev.specialization,
             subSpecialization:
               response.specialist.subSpecialization || prev.subSpecialization,
-            profileImage: response.specialist.profileImage || prev.profileImage,
+            profileUrl: response.specialist.profileUrl || prev.profileUrl,
             prcNumber: response.specialist.prcNumber || prev.prcNumber,
+            addressLine1: response.specialist.addressLine1 || prev.addressLine1,
+            addressLine2: response.specialist.addressLine2 || prev.addressLine2,
+            barangay: response.specialist.barangay || prev.barangay,
+            city: response.specialist.city || prev.city,
+            province: response.specialist.province || prev.province,
+            region: response.specialist.region || prev.region,
+            zipCode: response.specialist.zipCode || prev.zipCode,
           }));
 
           setCurrentUser((prev) => ({
             ...prev,
-            firstName:
-              response.specialist.firstName || prev?.firstName || prev?.fName,
-            lastName:
-              response.specialist.lastName || prev?.lastName || prev?.lName,
-            fName: response.specialist.firstName || prev?.fName,
-            lName: response.specialist.lastName || prev?.lName,
+            firstName: response.specialist.firstName || prev?.firstName,
+            lastName: response.specialist.lastName || prev?.lastName,
             email: response.specialist.email || prev?.email,
             specialization:
               response.specialist.specialization || prev?.specialization,
-            profileImage:
-              response.specialist.profileImage || prev?.profileImage,
+            profileUrl: response.specialist.profileUrl || prev?.profileUrl,
           }));
 
-          const firstName =
-            response.specialist.firstName || response.specialist.fName;
-          const lastName =
-            response.specialist.lastName || response.specialist.lName;
-          if (firstName || lastName) {
-            const initials = generateUserInitials(firstName, lastName);
-            setUserInitials(initials);
-          }
+          const initials = generateUserInitials(
+            response.specialist.firstName,
+            response.specialist.lastName,
+          );
+          setUserInitials(initials);
         }
       }
 
       try {
         const profileResponse = await specialistApi.fetchProfile();
+        console.log(
+          "[SpecialistDashboard] Profile fetch success:",
+          profileResponse,
+        );
+
         if (profileResponse) {
-          setCurrentUser((prev) => ({
+          setProfileData((prev) => ({
             ...prev,
-            firstName:
-              profileResponse.firstName ||
-              profileResponse.fName ||
-              prev?.firstName ||
-              prev?.fName,
-            lastName:
-              profileResponse.lastName ||
-              profileResponse.lName ||
-              prev?.lastName ||
-              prev?.lName,
-            fName:
-              profileResponse.firstName || profileResponse.fName || prev?.fName,
-            lName:
-              profileResponse.lastName || profileResponse.lName || prev?.lName,
-            email: profileResponse.email || prev?.email,
+            firstName: profileResponse.firstName || prev.firstName,
+            lastName: profileResponse.lastName || prev.lastName,
+            email: profileResponse.email || prev.email,
+            phone:
+              profileResponse.phone ||
+              profileResponse.mobileNumber ||
+              prev.phone,
+            prcNumber: profileResponse.prcNumber || prev.prcNumber,
             specialization:
-              profileResponse.specialization || prev?.specialization,
-            profileImage: profileResponse.profileImage || prev?.profileImage,
+              profileResponse.specialization || prev.specialization,
+            subSpecialization:
+              profileResponse.subSpecialization || prev.subSpecialization,
+            bio: profileResponse.bio || prev.bio,
+            prcImage: profileResponse.prcImage || prev.prcImage,
+            profileUrl: profileResponse.profileUrl || prev.profileUrl,
+            addressLine1: profileResponse.addressLine1 || prev.addressLine1,
+            addressLine2: profileResponse.addressLine2 || prev.addressLine2,
+            barangay: profileResponse.barangay || prev.barangay,
+            city: profileResponse.city || prev.city,
+            province: profileResponse.province || prev.province,
+            region: profileResponse.region || prev.region,
+            zipCode: profileResponse.zipCode || prev.zipCode,
           }));
 
-          const profileFirstName =
-            profileResponse.firstName || profileResponse.fName;
-          const profileLastName =
-            profileResponse.lastName || profileResponse.lName;
-          if (profileFirstName || profileLastName) {
-            const initials = generateUserInitials(
-              profileFirstName,
-              profileLastName,
-            );
-            setUserInitials(initials);
-          }
+          const fees = {
+            feeInitialWithoutCert: profileResponse.feeInitialWithoutCert || 0,
+            feeInitialWithCert: profileResponse.feeInitialWithCert || 0,
+            feeFollowUpWithoutCert: profileResponse.feeFollowUpWithoutCert || 0,
+            feeFollowUpWithCert: profileResponse.feeFollowUpWithCert || 0,
+          };
+          setServices(fees);
         }
       } catch (profileError) {
         console.warn("Failed to fetch profile from API:", profileError);
@@ -328,8 +1272,79 @@ const SpecialistDashboard = () => {
     }
   }, []);
 
+  const loadCompletedConsultations = useCallback(async () => {
+    setCompletedConsultationsLoading(true);
+    setCompletedConsultationsError("");
+
+    try {
+      const response = await specialistApi.fetchCompletedConsultations();
+      const items = Array.isArray(response?.completedConsultations)
+        ? response.completedConsultations
+        : Array.isArray(response?.consultations)
+          ? response.consultations
+          : Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response)
+              ? response
+              : [];
+
+      setCompletedConsultations(items);
+    } catch (error) {
+      console.warn("Failed to fetch completed consultations:", error);
+      setCompletedConsultations([]);
+      setCompletedConsultationsError(
+        error?.message || "Failed to load completed consultations.",
+      );
+    } finally {
+      setCompletedConsultationsLoading(false);
+    }
+  }, []);
+
+  const openCompletedConsultDetailModal = async (consultation) => {
+    const id = consultation?.id;
+    if (!id) return;
+    setCompletedDetailOpen(true);
+    setCompletedDetailLoading(true);
+    setCompletedDetailTab("patient");
+    setCompletedDetailTicket(null);
+    try {
+      const ticket = await specialistApi.fetchTicket(id);
+      if (!ticket) return;
+      const mapped = mapApiTicketToDashboardShape(ticket);
+      const enriched = {
+        ...mapped,
+        medicalHistory: buildMedicalHistoryForSpecialist(ticket),
+        triageMedicalHistory: ticket.triageMedicalHistory || "",
+        additionalRemarks: ticket.additionalRemarks || "",
+        triageNotes: buildTriageNotes(ticket) || ticket.nurseRemarks || "",
+        allergies: ticket.allergies ?? ticket.patient?.allergies,
+        bloodType: ticket.bloodType ?? ticket.patient?.bloodType,
+      };
+      setCompletedDetailTicket(enriched);
+    } catch (error) {
+      console.warn("Failed to load consultation detail:", error);
+      setCompletedDetailTicket(null);
+    } finally {
+      setCompletedDetailLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (ticketFilter === "Completed") {
+      setTicketFilter("All");
+    }
+  }, [ticketFilter]);
+
+  useEffect(() => {
+    if (centerTab === "completed") {
+      setCenterTab("medicine");
+    }
+  }, [centerTab]);
+
   useEffect(() => {
     document.body.classList.add("specialist-dashboard-body");
+    const onboardingOverride =
+      new URLSearchParams(location.search).get("onboarding") === "1";
 
     const currentUser = authService.getCurrentUser();
 
@@ -338,8 +1353,23 @@ const SpecialistDashboard = () => {
       return;
     }
 
+    if (
+      currentUser.user.applicationStatus === "pending" &&
+      !onboardingOverride
+    ) {
+      navigate("/specialist-pending");
+      return;
+    } else if (currentUser.user.applicationStatus === "denied") {
+      navigate("/specialist-denied");
+      return;
+    }
+
     setCurrentUser(currentUser.user);
     setIsLoading(false);
+
+    if (onboardingOverride) {
+      window.history.replaceState(null, "", "/specialist-dashboard");
+    }
 
     const initials = generateUserInitials(
       currentUser.user.firstName || currentUser.user.fName,
@@ -358,14 +1388,17 @@ const SpecialistDashboard = () => {
       specialization:
         profile.specialization || currentUser.user.specialty || "",
       subSpecialization: profile.subSpecialization || "",
-      bio:
-        profile.bio || "Board-certified specialist with years of experience.",
+      bio: profile.bio || "",
       prcImage: profile.prcImage || "",
       profileImage: profile.profileImage || "",
+      addressLine1: profile.addressLine1 || "",
+      addressLine2: profile.addressLine2 || "",
+      barangay: profile.barangay || "",
+      city: profile.city || "",
+      province: profile.province || "",
+      region: profile.region || "",
+      zipCode: profile.zipCode || "",
     }));
-
-    const savedServices = loadServicesData(currentUser.user.email);
-    setServices((prev) => ({ ...prev, ...savedServices }));
 
     const savedAccount = loadAccountData(currentUser.user.email);
     setAccountDetails((prev) => ({ ...prev, ...savedAccount }));
@@ -375,17 +1408,18 @@ const SpecialistDashboard = () => {
 
     loadTicketsData();
     loadDashboardData();
+    loadCompletedConsultations();
 
     return () => {
       document.body.classList.remove("specialist-dashboard-body");
     };
-  }, [navigate, loadTicketsData, loadDashboardData]);
-
-  useEffect(() => {
-    if (tickets.length > 0 && !selectedTicketId) {
-      setSelectedTicketId(tickets[0].id);
-    }
-  }, [tickets, selectedTicketId]);
+  }, [
+    navigate,
+    loadTicketsData,
+    loadDashboardData,
+    loadCompletedConsultations,
+    location.search,
+  ]);
 
   useEffect(() => {
     if (activeTab === "dashboard") {
@@ -397,20 +1431,180 @@ const SpecialistDashboard = () => {
   }, [activeTab, loadTicketsData]);
 
   useEffect(() => {
-    if (selectedTicketId) {
-      const data = loadEncounterData(selectedTicketId);
-      if (data) {
-        setEncounter(data);
-      } else {
-        setEncounter(createDefaultEncounter());
-      }
-      setMhRequests(loadMedicalHistoryData(selectedTicketId));
+    if (activeTab === "completed-consultations") {
+      loadCompletedConsultations();
     }
-  }, [selectedTicketId]);
+  }, [activeTab, loadCompletedConsultations]);
+
+  useEffect(() => {
+    if (activeTab !== "dashboard") {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      loadTicketsData();
+    }, TICKET_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [activeTab, loadTicketsData]);
+
+  useEffect(() => {
+    const checkRecordAccess = async () => {
+      if (!selectedTicketId) {
+        setHasSharedAccess(false);
+        setSharedMedicalData(null);
+        return;
+      }
+
+      const activeTicket = tickets.find(
+        (t) => String(t.id) === String(selectedTicketId),
+      );
+      const patientId =
+        activeTicket?.rawTicket?.patient?.id ||
+        activeTicket?.patientId ||
+        activeTicket?.rawTicket?.patientId;
+
+      if (!patientId) return;
+
+      try {
+        const response = await specialistApi.fetchSharedRecords(patientId);
+        setHasSharedAccess(true);
+        setSharedMedicalData(response.data);
+        setMhRequests([{ label: "Shared via System" }]); // Tricks the UI to show the 'Shared' pill
+      } catch (error) {
+        setHasSharedAccess(false);
+        setSharedMedicalData(null);
+        setMhRequests([]);
+      }
+    };
+
+    checkRecordAccess();
+  }, [selectedTicketId, tickets]);
+
+  useEffect(() => {
+    const savedLabRequests = Array.isArray(encounter?.labRequests)
+      ? encounter.labRequests
+      : [];
+    setSelectedLabTests(
+      savedLabRequests.map((request, index) => {
+        const isCustom = request?.test === "Custom Test";
+        const label = isCustom
+          ? (request?.customTestName || "").trim() || "Custom Test"
+          : (request?.test || "").trim();
+
+        return {
+          id:
+            request?.id ||
+            `${isCustom ? "custom" : "common"}-${label || "lab"}-${index}`,
+          test: request?.test || "",
+          customTestName: request?.customTestName || "",
+          remarks: request?.remarks || "",
+          label,
+          isCustom,
+        };
+      }),
+    );
+    setLabInstructions(encounter?.labInstructions || "");
+  }, [encounter?.labInstructions, encounter?.labRequests]);
+
+  useEffect(() => {
+    if (!selectedTicketId) return;
+
+    const activeTicket = tickets.find(
+      (ticket) => String(ticket.id) === String(selectedTicketId),
+    );
+    const today = getLocalDateString();
+    const key = MEDCERT_STORAGE_KEY(selectedTicketId);
+    let stored = null;
+    if (key) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) stored = JSON.parse(raw);
+      } catch {
+        stored = null;
+      }
+    }
+
+    const nextForm =
+      stored && typeof stored === "object"
+        ? {
+            diagnosisReason:
+              stored.diagnosisReason ||
+              activeTicket?.service ||
+              activeTicket?.chiefComplaint ||
+              "",
+            dateIssued: stored.dateIssued || today,
+            restStartDate: stored.restStartDate || today,
+            restEndDate: stored.restEndDate || "",
+            additionalRemarks: stored.additionalRemarks || "",
+          }
+        : {
+            diagnosisReason:
+              activeTicket?.service || activeTicket?.chiefComplaint || "",
+            dateIssued: today,
+            restStartDate: today,
+            restEndDate: "",
+            additionalRemarks: "",
+          };
+
+    if (nextForm.restStartDate && nextForm.restStartDate < today) {
+      nextForm.restStartDate = today;
+    }
+    const minRestEnd =
+      nextForm.restStartDate && nextForm.restStartDate >= today
+        ? nextForm.restStartDate
+        : today;
+    if (nextForm.restEndDate && nextForm.restEndDate < minRestEnd) {
+      nextForm.restEndDate = minRestEnd;
+    }
+
+    setCertificateForm(nextForm);
+    if (key) {
+      try {
+        localStorage.setItem(key, JSON.stringify(nextForm));
+      } catch (e) {
+        console.warn("Failed to persist med cert draft:", e);
+      }
+    }
+  }, [selectedTicketId, tickets]);
+
+  useEffect(() => {
+    if (!selectedTicketId) return;
+
+    const selectedTicketForChat = tickets.find(
+      (ticket) => String(ticket.id) === String(selectedTicketId),
+    );
+
+    setPatientChatThreads((prev) => {
+      if (prev[selectedTicketId]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [selectedTicketId]: createPatientChatMessages(selectedTicketForChat),
+      };
+    });
+
+    setPatientChatDraft("");
+  }, [selectedTicketId, tickets, createPatientChatMessages]);
+
+  useEffect(() => {
+    if (soapPanelRef.current) {
+      soapPanelRef.current.scrollTop = 0;
+    }
+  }, [centerTab]);
+
+  useEffect(() => {
+    const messagePanel = patientChatMessagesRef.current;
+    if (!messagePanel) return;
+    messagePanel.scrollTop = messagePanel.scrollHeight;
+  }, [selectedTicketId, patientChatThreads]);
 
   const handleNavigation = (target, title) => {
     setActiveTab(target);
-    setPageTitle(title);
     if (target === "dashboard") {
       loadTicketsData();
     }
@@ -418,33 +1612,14 @@ const SpecialistDashboard = () => {
 
   const handleLogout = async () => {
     if (window.confirm("Are you sure you want to logout?")) {
-      await authService.logout();
-      navigate("/");
+      try {
+        await authService.logout();
+        navigate("/");
+      } catch (error) {
+        console.error("Logout error:", error);
+        window.location.href = "/";
+      }
     }
-  };
-
-  const handleStartCall = (conversation) => {
-    setCallState({
-      isOpen: true,
-      callType: "audio",
-      patient: {
-        name: conversation.name,
-        avatar: conversation.avatar,
-        id: conversation.id,
-      },
-    });
-  };
-
-  const handleStartVideoCall = (conversation) => {
-    setCallState({
-      isOpen: true,
-      callType: "video",
-      patient: {
-        name: conversation.name,
-        avatar: conversation.avatar,
-        id: conversation.id,
-      },
-    });
   };
 
   const handleCloseCall = () => {
@@ -455,22 +1630,139 @@ const SpecialistDashboard = () => {
     });
   };
 
+  const selectedTicketForEmr = useMemo(
+    () =>
+      tickets.find((x) => String(x.id) === String(selectedTicketId)) || null,
+    [tickets, selectedTicketId],
+  );
+
+  const consultationStartedAtMs = useMemo(() => {
+    const t = selectedTicketForEmr;
+    if (!t) return null;
+    const rt = t.rawTicket || {};
+    const started = rt.consultationStartedAt || rt.startedAt;
+    if (started) {
+      const ms = new Date(started).getTime();
+      if (!Number.isNaN(ms)) return ms;
+    }
+    const st = normalizeStatus(t.status);
+    if (st === "in consultation" || st === "active") {
+      const c = rt.createdAt || t.createdAt;
+      if (c) {
+        const ms = new Date(c).getTime();
+        if (!Number.isNaN(ms)) return ms;
+      }
+    }
+    return null;
+  }, [selectedTicketForEmr]);
+
+  const [consultationElapsedSec, setConsultationElapsedSec] = useState(0);
+
+  useEffect(() => {
+    if (consultationStartedAtMs == null) {
+      setConsultationElapsedSec(0);
+      return undefined;
+    }
+    const tick = () => {
+      setConsultationElapsedSec(
+        Math.max(0, Math.floor((Date.now() - consultationStartedAtMs) / 1000)),
+      );
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [consultationStartedAtMs]);
+
+  useEffect(() => {
+    const checkRecordAccess = async () => {
+      if (!selectedTicketId) {
+        setHasSharedAccess(false);
+        setSharedMedicalData(null);
+        return;
+      }
+      const activeTicket = tickets.find(
+        (t) => String(t.id) === String(selectedTicketId),
+      );
+      const patientId =
+        activeTicket?.rawTicket?.patient?.id || activeTicket?.patientId;
+
+      if (!patientId) return;
+
+      try {
+        // Ask the Bouncer route!
+        const response = await specialistApi.fetchSharedRecords(patientId);
+
+        setHasSharedAccess(true);
+        setSharedMedicalData(response.data);
+
+        setMhRequests([{ label: "Shared via System" }]);
+      } catch (error) {
+        setHasSharedAccess(false);
+        setSharedMedicalData(null);
+        setMhRequests([]); // Clear the dummy requests
+      }
+    };
+
+    checkRecordAccess();
+  }, [selectedTicketId, tickets]);
+
+  const formatConsultationDuration = useCallback((totalSec) => {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }, []);
+
+  const handleStartVideoCall = useCallback(() => {
+    const ticket = tickets.find(
+      (x) => String(x.id) === String(selectedTicketId),
+    );
+    if (!ticket) return;
+    const p = ticket.rawTicket?.patient;
+    const rawImg = p?.profileUrl || p?.profileImage || p?.avatar;
+    let avatar = null;
+    if (rawImg) {
+      avatar =
+        rawImg.startsWith("http") || rawImg.startsWith("data:")
+          ? rawImg
+          : `${API_BASE_URL}${rawImg}`;
+    }
+    setCallState({
+      isOpen: true,
+      callType: "video",
+      patient: {
+        ticketId: ticket.id,
+        name: ticket.patientFullName || ticket.patient || "Patient",
+        avatar,
+      },
+    });
+  }, [tickets, selectedTicketId]);
+
+  const handleEmrTicketToggle = useCallback((ticketId) => {
+    setSelectedTicketId((prev) =>
+      prev != null && String(prev) === String(ticketId) ? null : ticketId,
+    );
+  }, []);
+
   const handleProfileChange = (field, value) => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handlePasswordChange = (field, value) => {
-    setPasswordData((prev) => ({ ...prev, [field]: value }));
-  };
-
   const saveProfile = async () => {
-    const email = getCurrentUserEmail();
-    if (!email) return;
+    console.log("saveProfile triggered. Email check:");
+    const email = profileData.email;
+    console.log("Current Email:", email);
+    if (!email) {
+      console.warn("saveProfile aborted: No email found in profileData!");
+      setApiError("Session missing. Please refresh the page.");
+      return;
+    }
 
+    console.log("Running validations on:", profileData);
     const validation = validateSpecialistProfile(profileData);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
-      alert(firstError);
+      console.warn("Validation failed:", firstError);
+      setApiError(firstError);
       return;
     }
 
@@ -482,86 +1774,52 @@ const SpecialistDashboard = () => {
         specialization: profileData.specialization,
         subSpecialization: profileData.subSpecialization,
         bio: profileData.bio,
+        addressLine1: profileData.addressLine1,
+        addressLine2: profileData.addressLine2,
+        region: profileData.region,
+        province: profileData.province,
+        city: profileData.city,
+        barangay: profileData.barangay,
+        zipCode: profileData.zipCode,
       });
 
       authService.updateCurrentUser(updatedProfile);
       setApiError(null);
+
+      const user = JSON.parse(localStorage.getItem(email) || "{}");
+      user.fName = profileData.firstName || user.fName;
+      user.lName = profileData.lastName || user.lName;
+      localStorage.setItem(email, JSON.stringify(user));
+
+      const profile = {
+        phone: profileData.phone,
+        prcNumber: profileData.prcNumber,
+        specialization: profileData.specialization,
+        subSpecialization: profileData.subSpecialization,
+        bio: profileData.bio,
+        prcImage: profileData.prcImage,
+        profileImage: profileData.profileImage,
+        addressLine1: profileData.addressLine1,
+        addressLine2: profileData.addressLine2,
+        barangay: profileData.barangay,
+        city: profileData.city,
+        province: profileData.province,
+        region: profileData.region,
+        zipCode: profileData.zipCode,
+      };
+      saveProfileData(email, profile);
+
+      setCurrentUser(user);
+      const initials = generateUserInitials(user.fName, user.lName);
+      setUserInitials(initials);
+
+      setShowSuccessModal(true);
     } catch (error) {
-      console.warn("Failed to save profile to API, saving locally:", error);
-      setApiError("Could not save to server. Saved locally.");
+      console.warn("Failed to save profile to API:", error);
+      setApiError(
+        error.message || "Could not save to server. Please try again.",
+      );
     }
-
-    const user = JSON.parse(localStorage.getItem(email) || "{}");
-    user.fName = profileData.firstName || user.fName;
-    user.lName = profileData.lastName || user.lName;
-    localStorage.setItem(email, JSON.stringify(user));
-
-    const profile = {
-      phone: profileData.phone,
-      prcNumber: profileData.prcNumber,
-      specialization: profileData.specialization,
-      subSpecialization: profileData.subSpecialization,
-      bio: profileData.bio,
-      prcImage: profileData.prcImage,
-      profileImage: profileData.profileImage,
-    };
-    saveProfileData(email, profile);
-
-    setCurrentUser(user);
-    const initials = generateUserInitials(user.fName, user.lName);
-    setUserInitials(initials);
-
-    alert("Profile saved successfully.");
-  };
-
-  const updatePassword = async () => {
-    const email = getCurrentUserEmail();
-    if (!email) return;
-
-    const validation = validatePasswordChange(passwordData);
-    if (!validation.isValid) {
-      const firstError = Object.values(validation.errors)[0];
-      alert(firstError);
-      return;
-    }
-
-    const { currentPassword, newPassword } = passwordData;
-
-    try {
-      await specialistApi.changePassword(currentPassword, newPassword);
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-      alert("Password updated successfully.");
-      return;
-    } catch (error) {
-      console.warn("Failed to change password via API:", error);
-      if (
-        error.message.includes("incorrect") ||
-        error.message.includes("Invalid")
-      ) {
-        alert(error.message);
-        return;
-      }
-    }
-
-    const user = JSON.parse(localStorage.getItem(email) || "{}");
-    if (!user || user.password !== currentPassword) {
-      alert("Current password is incorrect.");
-      return;
-    }
-
-    user.password = newPassword;
-    localStorage.setItem(email, JSON.stringify(user));
-
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
-    alert("Password updated successfully.");
   };
 
   const openEditServiceModal = (name, fee) => {
@@ -570,30 +1828,28 @@ const SpecialistDashboard = () => {
   };
 
   const updateServiceFee = async () => {
-    const validation = validateServiceFee(editingService);
-    if (!validation.isValid) {
-      const firstError = Object.values(validation.errors)[0];
-      alert(firstError);
+    const rawFee = parseFloat(editingService.fee);
+    if (isNaN(rawFee) || rawFee < 0) {
+      alert("Please enter a valid positive number for the fee.");
       return;
     }
 
     try {
-      await specialistApi.updateService(
-        editingService.name,
-        parseFloat(editingService.fee),
-      );
+      const updatedServicesTemp = {
+        ...services,
+        [editingService.name]: rawFee,
+      };
+
+      await specialistApi.updateFees(updatedServicesTemp);
+
+      setServices(updatedServicesTemp);
+      setShowEditServiceModal(false);
+
+      setShowSuccessModal(true);
     } catch (error) {
       console.warn("Failed to update service fee via API:", error);
+      alert(error.message || "Failed to save fees. Please try again.");
     }
-
-    const email = getCurrentUserEmail();
-    const updatedServices = {
-      ...services,
-      [editingService.name]: parseFloat(editingService.fee),
-    };
-    setServices(updatedServices);
-    saveServicesData(email, updatedServices);
-    setShowEditServiceModal(false);
   };
 
   const saveAccountDetails = async () => {
@@ -619,7 +1875,80 @@ const SpecialistDashboard = () => {
     try {
       const ticket = await specialistApi.fetchTicket(ticketId);
       if (ticket) {
-        setSelectedTicket(ticket);
+        const mapped = {
+          id: ticket.id,
+          patient: ticket.patientName
+            ? ticket.patientName
+            : ticket.patient
+              ? `${ticket.patient.firstName || ""} ${ticket.patient.lastName ? ticket.patient.lastName.charAt(0) + "." : ""}`
+              : "Walk-in Patient",
+          patientFullName: ticket.patientName
+            ? ticket.patientName
+            : ticket.patient
+              ? `${ticket.patient.firstName || ""} ${ticket.patient.lastName || ""}`.trim()
+              : "Walk-in Patient",
+          service:
+            ticket.clinicalChiefComplaint ||
+            ticket.chiefComplaint ||
+            "Consultation",
+          chiefComplaint: ticket.chiefComplaint,
+          clinicalChiefComplaint: ticket.clinicalChiefComplaint || "",
+          patientSubmittedConcern:
+            ticket.patientSubmittedConcern || ticket.submittedConcern || "",
+          submittedConcern:
+            ticket.submittedConcern || ticket.patientSubmittedConcern || "",
+          symptoms: ticket.symptoms || "",
+          medicalHistory: buildMedicalHistoryForSpecialist(ticket),
+          triageMedicalHistory: ticket.triageMedicalHistory || "",
+          additionalRemarks: ticket.additionalRemarks || "",
+          triageNotes: buildTriageNotes(ticket) || ticket.nurseRemarks || "",
+          bloodPressure: ticket.bloodPressure || "",
+          heartRate: ticket.heartRate || "",
+          temperature: ticket.temperature || "",
+          oxygenSaturation: ticket.oxygenSaturation || "",
+          selectedPainAreas: ticket.selectedPainAreas || ticket.painAreas || [],
+          painMapView: ticket.painMapView || "front",
+          selectedSymptomPills: ticket.selectedSymptomPills || [],
+          selectedRosItems: ticket.selectedRosItems || [],
+          durationValue: ticket.durationValue || "",
+          durationUnit: ticket.durationUnit || "",
+          severity: ticket.severity || "",
+          urgencyLevel: ticket.urgencyLevel || ticket.urgency || "",
+          transferReason: ticket.transferReason || "",
+          preferredDate: ticket.preferredDate,
+          preferredTime: ticket.preferredTime,
+          consultationChannel: ticket.consultationChannel,
+          barangay: ticket.barangay,
+          patientBirthdate: ticket.patientBirthdate || "",
+          gender: ticket.patientGender || "",
+          mobile: ticket.mobile || ticket.patientMobile || "",
+          email: ticket.email || ticket.patientEmail || "",
+          when:
+            ticket.preferredDate && ticket.preferredTime
+              ? `${new Date(ticket.preferredDate).toLocaleDateString()} ${ticket.preferredTime}`
+              : ticket.createdAt
+                ? new Date(ticket.createdAt).toLocaleString("en-US", {
+                    month: "numeric",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  })
+                : "TBD",
+          status:
+            ticket.status === "confirmed"
+              ? "Awaiting"
+              : ticket.status === "active"
+                ? "In Progress"
+                : ticket.status === "completed"
+                  ? "Completed"
+                  : ticket.status === "processing"
+                    ? "Triage Complete"
+                    : ticket.status,
+          rawTicket: ticket,
+        };
+        setSelectedTicket(mapped);
         setShowTicketModal(true);
         return;
       }
@@ -635,23 +1964,153 @@ const SpecialistDashboard = () => {
   };
 
   const updateTicketStatus = async (newStatus) => {
-    if (!selectedTicket) return;
+    if (!selectedTicketId) return;
 
     try {
-      await specialistApi.updateTicket(selectedTicket.id, {
+      await specialistApi.updateTicket(selectedTicketId, {
         status: newStatus,
       });
+      await loadTicketsData();
     } catch (error) {
       console.warn("Failed to update ticket via API:", error);
     }
-
-    const updatedTickets = tickets.map((t) =>
-      t.id === selectedTicket.id ? { ...t, status: newStatus } : t,
-    );
-    setTickets(updatedTickets);
-    saveTickets(updatedTickets);
-    setSelectedTicket({ ...selectedTicket, status: newStatus });
   };
+
+  const handleStartConsultation = async () => {
+    if (!selectedTicketId) return;
+    try {
+      setIsLoading(true);
+      await specialistApi.startConsultation(selectedTicketId);
+      alert("Consultation started!");
+      await loadTicketsData();
+    } catch (error) {
+      console.error("Failed to start consultation:", error);
+      alert(error.message || "Failed to start consultation.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCompleteConsultation = async () => {
+    if (!selectedTicketId) return;
+    const ticketRow = tickets.find(
+      (x) => String(x.id) === String(selectedTicketId),
+    );
+    const dbStatus = String(ticketRow?.rawTicket?.status || "").toLowerCase();
+    try {
+      setIsLoading(true);
+      if (dbStatus === "confirmed" || dbStatus === "processing") {
+        try {
+          await specialistApi.startConsultation(selectedTicketId);
+        } catch (startErr) {
+          const msg = String(startErr?.message || "");
+          const alreadyStarted =
+            /confirmed or processing tickets can be started/i.test(msg);
+          if (!alreadyStarted) {
+            throw startErr;
+          }
+        }
+        await loadTicketsData();
+      }
+      await specialistApi.completeConsultation({
+        ticketId: selectedTicketId,
+        subjective: encounter.subjective,
+        objective: encounter.objective,
+        assessment: encounter.assessment,
+        plan: encounter.plan,
+        icd10Code: encounter.icd10,
+      });
+      alert("Consultation completed!");
+      setSelectedTicketId(null);
+      await loadTicketsData();
+      await loadDashboardData();
+      await loadCompletedConsultations();
+    } catch (error) {
+      console.error("Failed to complete consultation:", error);
+      alert(error.message || "Failed to complete consultation.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePatientChatSend = async (e) => {
+    e.preventDefault();
+
+    const trimmedMessage = patientChatDraft.trim();
+    if (!trimmedMessage || !selectedTicketId) return;
+    const activeTicket = tickets.find(
+      (ticket) => String(ticket.id) === String(selectedTicketId),
+    );
+
+    const newMessage = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      sender: "specialist",
+      message: trimmedMessage,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    setPatientChatThreads((prev) => ({
+      ...prev,
+      [selectedTicketId]: [
+        ...(prev[selectedTicketId] || createPatientChatMessages(activeTicket)),
+        newMessage,
+      ],
+    }));
+    setPatientChatDraft("");
+
+    // TODO: wire up real message sending API call when available.
+    // await specialistApi.sendMessageToPatient(selectedTicketId, trimmedMessage);
+  };
+
+  const handleCropComplete = async (croppedFile) => {
+    setCropperModalOpen(false);
+    setSelectedImageSrc(null);
+    try {
+      const formData = new FormData();
+      formData.append("photo", croppedFile);
+      const response = await specialistApi.uploadProfilePicture(formData);
+
+      const newUrl = `${response.profileUrl}?t=${new Date().getTime()}`;
+      handleProfileChange("profileUrl", newUrl);
+      setCurrentUser((prev) => ({ ...prev, profileUrl: newUrl }));
+      alert("Profile picture uploaded successfully!");
+    } catch (error) {
+      alert(error.message || "Failed to upload profile picture.");
+    }
+  };
+
+  const handleCropCancel = () => {
+    setCropperModalOpen(false);
+    setSelectedImageSrc(null);
+  };
+
+  React.useEffect(() => {
+    if (activeTab === "profile" && profileData.region && regions.length > 0) {
+      const region = regions.find((r) => r.name === profileData.region);
+      if (region) fetchProvinces(region.code);
+    }
+  }, [activeTab, profileData.region, regions, fetchProvinces]);
+
+  React.useEffect(() => {
+    if (
+      activeTab === "profile" &&
+      profileData.province &&
+      provinces.length > 0
+    ) {
+      const province = provinces.find((p) => p.name === profileData.province);
+      if (province) fetchCities(province.code);
+    }
+  }, [activeTab, profileData.province, provinces, fetchCities]);
+
+  React.useEffect(() => {
+    if (activeTab === "profile" && profileData.city && cities.length > 0) {
+      const city = cities.find((c) => c.name === profileData.city);
+      if (city) fetchBarangays(city.code);
+    }
+  }, [activeTab, profileData.city, cities, fetchBarangays]);
 
   const saveEncounter = async (updated) => {
     const next = { ...encounter, ...(updated || {}) };
@@ -660,6 +2119,15 @@ const SpecialistDashboard = () => {
       saveEncounterData(selectedTicketId, next);
 
       try {
+        await specialistApi.updateEMR({
+          ticketId: selectedTicketId,
+          subjective: next.subjective || "",
+          objective: next.objective || "",
+          assessment: next.assessment || "",
+          plan: next.plan || "",
+          icd10Code: next.icd10 || "",
+        });
+
         const assessment = next.assessment || "";
         const prescription = JSON.stringify(next.medicines || []);
         const laboratoryRequest = JSON.stringify(next.labRequests || []);
@@ -672,6 +2140,282 @@ const SpecialistDashboard = () => {
       } catch (error) {
         console.warn("Failed to save consultation data to API:", error);
       }
+    }
+  };
+
+  const syncLabSelections = (
+    nextSelections,
+    nextInstructions = labInstructions,
+  ) => {
+    setSelectedLabTests(nextSelections);
+    saveEncounter({
+      labRequests: nextSelections.map((item) => ({
+        test: item.test,
+        customTestName: item.customTestName || "",
+        remarks: item.remarks || "",
+      })),
+      labInstructions: nextInstructions,
+    });
+  };
+
+  const toggleCommonLabTest = (testName) => {
+    const exists = selectedLabTests.some(
+      (item) => !item.isCustom && item.test === testName,
+    );
+    if (exists) {
+      syncLabSelections(
+        selectedLabTests.filter(
+          (item) => !(item.test === testName && !item.isCustom),
+        ),
+      );
+      return;
+    }
+
+    syncLabSelections([
+      ...selectedLabTests,
+      {
+        id: `common-${testName}`,
+        test: testName,
+        customTestName: "",
+        remarks: "",
+        label: testName,
+        isCustom: false,
+      },
+    ]);
+  };
+
+  const addCustomLabTest = () => {
+    const trimmedName = labCustomTestName.trim();
+    if (!trimmedName) return;
+
+    syncLabSelections([
+      ...selectedLabTests,
+      {
+        id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        test: "Custom Test",
+        customTestName: trimmedName,
+        remarks: "",
+        label: trimmedName,
+        isCustom: true,
+      },
+    ]);
+    setLabCustomTestName("");
+  };
+
+  const removeSelectedLabTest = (itemId) => {
+    syncLabSelections(selectedLabTests.filter((item) => item.id !== itemId));
+  };
+
+  const handleLabInstructionsChange = (value) => {
+    setLabInstructions(value);
+    saveEncounter({
+      labInstructions: value,
+      labRequests: selectedLabTests.map((item) => ({
+        test: item.test,
+        customTestName: item.customTestName || "",
+        remarks: item.remarks || "",
+      })),
+    });
+  };
+
+  const handleCertificateChange = (field, value) => {
+    setCertificateForm((prev) => {
+      const today = getLocalDateString();
+      let next = { ...prev, [field]: value };
+
+      if (field === "restStartDate") {
+        if (value && value < today) {
+          next.restStartDate = today;
+        }
+        const start = next.restStartDate;
+        if (start && next.restEndDate && next.restEndDate < start) {
+          next.restEndDate = start;
+        }
+      }
+      if (field === "restEndDate") {
+        const start = prev.restStartDate;
+        const minEnd = start && start >= today ? start : today;
+        if (value && value < minEnd) {
+          next.restEndDate = minEnd;
+        }
+      }
+
+      if (selectedTicketId) {
+        const key = MEDCERT_STORAGE_KEY(selectedTicketId);
+        if (key) {
+          try {
+            localStorage.setItem(key, JSON.stringify(next));
+          } catch (e) {
+            console.warn("Failed to persist med cert draft:", e);
+          }
+        }
+      }
+      return next;
+    });
+  };
+
+  const printCertificate = () => {
+    const activeTicket = tickets.find(
+      (ticket) => String(ticket.id) === String(selectedTicketId),
+    );
+    const patientName =
+      activeTicket?.patientFullName || activeTicket?.patient || "Patient";
+    const clinicName = "Healthcare Clinic";
+    const clinicAddress = "123 Medical Center, Manila, Philippines";
+    const clinicPhone = "Tel: +63 2 1234 5678";
+    const doctorName =
+      [profileData.firstName, profileData.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim() ||
+      currentUser?.fullName ||
+      currentUser?.name ||
+      "Attending Physician";
+    const licenseNumber =
+      profileData.prcNumber || currentUser?.licenseNumber || "";
+
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 18;
+    const centerX = pageWidth / 2;
+    let y = 24;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("MEDICAL CERTIFICATE", centerX, y, { align: "center" });
+
+    y += 8;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(clinicName, centerX, y, { align: "center" });
+    y += 6;
+    doc.text(clinicAddress, centerX, y, { align: "center" });
+    y += 6;
+    doc.text(clinicPhone, centerX, y, { align: "center" });
+
+    y += 14;
+    doc.setFontSize(11);
+    doc.text(
+      `Date Issued: ${formatShortDisplayDate(certificateForm.dateIssued)}`,
+      margin,
+      y,
+    );
+    y += 12;
+    doc.text("This is to certify that:", margin, y);
+    y += 12;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(patientName, centerX, y, { align: "center" });
+    y += 10;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text(
+      "was examined and treated at this clinic and is diagnosed with:",
+      margin,
+      y,
+      {
+        maxWidth: pageWidth - margin * 2,
+      },
+    );
+
+    y += 14;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text(
+      certificateForm.diagnosisReason || "________________",
+      centerX,
+      y,
+      {
+        align: "center",
+      },
+    );
+
+    y += 22;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text(
+      `Rest period: ${formatShortDisplayDate(certificateForm.restStartDate) || "____/__/____"} to ${
+        formatShortDisplayDate(certificateForm.restEndDate) || "____/__/____"
+      }`,
+      margin,
+      y,
+      { maxWidth: pageWidth - margin * 2 },
+    );
+
+    y += 12;
+    if (certificateForm.additionalRemarks) {
+      doc.text(`Remarks: ${certificateForm.additionalRemarks}`, margin, y, {
+        maxWidth: pageWidth - margin * 2,
+      });
+      y += 14;
+    }
+
+    y = Math.max(y, 235);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text("________________", pageWidth - margin, y, { align: "right" });
+    y += 6;
+    doc.text(doctorName || "Attending Physician", pageWidth - margin, y, {
+      align: "right",
+    });
+    y += 6;
+    doc.setFontSize(10);
+    doc.text(
+      `License No. ${licenseNumber || "__________"}`,
+      pageWidth - margin,
+      y,
+      {
+        align: "right",
+      },
+    );
+
+    doc.save(`medical-certificate-${selectedTicketId || "patient"}.pdf`);
+  };
+
+  const openSoapModal = (section) => {
+    setSoapModalType(section);
+    setSoapModalValue(encounter?.[section] || "");
+    setSoapModalIcdCode(encounter?.icd10 || "");
+  };
+
+  const closeSoapModal = () => {
+    setSoapModalType(null);
+    setSoapModalValue("");
+    setSoapModalIcdCode("");
+  };
+
+  const saveSoapModal = async () => {
+    if (!soapModalType) return;
+
+    const payload = { [soapModalType]: soapModalValue };
+    if (soapModalType === "assessment") {
+      payload.icd10 = soapModalIcdCode;
+    }
+
+    await saveEncounter(payload);
+    closeSoapModal();
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!selectedTicketId) return;
+    try {
+      setIsLoading(true);
+      await specialistApi.generateInvoice({
+        ticketId: selectedTicketId,
+        consultationType: invoiceForm.consultationType,
+        includesCertificate: invoiceForm.includesCertificate,
+        discountType: invoiceForm.discountType,
+      });
+      alert("Invoice generated and ticket moved to For Payment!");
+      setShowInvoiceModal(false);
+      setShowTicketModal(false);
+      await loadTicketsData();
+      await loadDashboardData();
+    } catch (error) {
+      console.error("Failed to generate invoice:", error);
+      alert(error.message || "Failed to generate invoice.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -709,38 +2453,50 @@ const SpecialistDashboard = () => {
     saveEncounter({ labRequests: updatedEncounter.labRequests });
   };
 
-  const openMhModal = () => {
-    setMhModal({ open: true, reason: "", from: "", to: "", consent: false });
+  const openMedicineDetails = (medicine, index) => {
+    setSelectedMedicalEntry({
+      type: "medicine",
+      title: "Prescription",
+      data: medicine,
+      summary: formatMedicineDisplay(medicine) || "No summary available",
+    });
   };
 
-  const submitMh = () => {
+  const openLabRequestDetails = (labRequest, index) => {
+    setSelectedMedicalEntry({
+      type: "lab",
+      title: "Laboratory Request",
+      data: labRequest,
+      summary: formatLabRequestDisplay(labRequest) || "No summary available",
+    });
+  };
+
+  const closeMedicalEntryDetails = () => setSelectedMedicalEntry(null);
+
+  const requestPatientRecords = () => {
+    if (!selectedTicketId) {
+      alert("Please select a patient ticket first.");
+      return;
+    }
+
     try {
-      const item = createMedicalHistoryRequest(mhModal);
-      const list = loadMedicalHistoryData(selectedTicketId).concat([item]);
+      const item = createMedicalHistoryRequest({
+        reason: "Medical records requested by specialist",
+        from: "",
+        to: "",
+        consent: true,
+      });
+      const list = mhRequests.concat([item]);
       saveMedicalHistoryData(selectedTicketId, list);
       setMhRequests(list);
-      setMhModal({ open: false, reason: "", from: "", to: "", consent: false });
-      downloadMhPdf(item);
     } catch (error) {
       alert(error.message);
     }
   };
 
-  const updateMhStatus = (id, status) => {
-    const list = loadMedicalHistoryData(selectedTicketId).map((x) =>
-      updateMedicalHistoryStatus(x, status),
-    );
-    saveMedicalHistoryData(selectedTicketId, list);
-    setMhRequests(list);
-  };
-
-  const downloadMhPdf = (item) => {
-    const t = tickets.find((x) => x.id === selectedTicketId) || {};
-    downloadMedicalHistoryPDF(item, t);
-  };
-
   const filteredTickets = useMemo(() => {
-    return filterTicketsByStatus(tickets, ticketFilter);
+    const incomplete = tickets.filter((t) => !isCompletedStatus(t?.status));
+    return filterTicketsByStatus(incomplete, ticketFilter);
   }, [tickets, ticketFilter]);
 
   const addSchedule = async () => {
@@ -816,7 +2572,6 @@ const SpecialistDashboard = () => {
     const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
     const days = [];
     const today = new Date();
-    const isCurrentMonth = isToday(currentYear, currentMonth, today.getDate());
 
     for (let i = 0; i < firstDay; i++) {
       days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
@@ -1049,596 +2804,2191 @@ const SpecialistDashboard = () => {
     ));
   };
 
-  const renderDashboard = () => (
-    <div className="dashboard-content">
-      <div className="chart-layout">
-        <div className="panel">
-          <div className="left-col-header">
-            <div style={{ fontWeight: 700 }}>Tickets</div>
+  const renderCompletedConsultations = () => {
+    return (
+      <div className="dashboard-content completed-consultations-page">
+        <div className="completed-consultations-header">
+          <div>
+            <h2>Completed Consultations</h2>
+            <p>Finished visits and locked consultation summaries.</p>
           </div>
-          <div style={{ padding: "12px 10px" }}>
-            <div className="filters two-col" style={{ marginRight: "0" }}>
-              {[
-                "All Tickets",
-                "Pending",
-                "Confirmed",
-                "Processing",
-                "Completed",
-              ].map((label) => (
-                <div
-                  key={label}
-                  className={`filter-item ${
-                    ticketFilter === (label === "All Tickets" ? "All" : label)
-                      ? "active"
-                      : ""
-                  }`}
-                  onClick={() =>
-                    setTicketFilter(label === "All Tickets" ? "All" : label)
-                  }
-                >
-                  {label}
-                </div>
-              ))}
-            </div>
+          <div className="completed-consultations-pill">
+            {completedConsultations.length} completed
+          </div>
+        </div>
+
+        <div className="completed-consultations-table-container">
+          <table className="completed-consultations-table">
+            <thead>
+              <tr>
+                <th>TICKET ID</th>
+                <th>PATIENT NAME</th>
+                <th>CONTACT NUMBER</th>
+                <th>CONTACT METHOD</th>
+                <th>REQUEST TIME</th>
+                <th>CHIEF COMPLAINT</th>
+                <th>STATUS</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {completedConsultationsLoading ? (
+                <tr>
+                  <td colSpan="8" className="completed-table-empty">
+                    Loading completed consultations...
+                  </td>
+                </tr>
+              ) : completedConsultationsError ? (
+                <tr>
+                  <td colSpan="8" className="completed-table-empty">
+                    {completedConsultationsError}
+                  </td>
+                </tr>
+              ) : completedConsultations.length > 0 ? (
+                completedConsultations.map((consultation, index) => {
+                  const patientName =
+                    consultation?.patientName ||
+                    consultation?.patient ||
+                    consultation?.fullName ||
+                    "Unknown Patient";
+                  const contactNumber =
+                    consultation?.mobile ||
+                    consultation?.patientMobile ||
+                    consultation?.contactNumber ||
+                    "N/A";
+                  const contactMethod =
+                    consultation?.consultationChannel ||
+                    consultation?.contactMethod ||
+                    "Not specified";
+                  const requestTimeRaw =
+                    consultation?.preferredDate && consultation?.preferredTime
+                      ? `${consultation.preferredDate} ${consultation.preferredTime}`
+                      : consultation?.createdAt || "";
+                  const requestTime = requestTimeRaw
+                    ? new Date(requestTimeRaw).toLocaleString([], {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "Date unavailable";
+                  const chiefComplaint =
+                    consultation?.clinicalChiefComplaint ||
+                    consultation?.chiefComplaint ||
+                    consultation?.submittedConcern ||
+                    "Consultation";
+
+                  return (
+                    <tr key={consultation?.id || `${patientName}-${index}`}>
+                      <td className="completed-ticket-id">
+                        {consultation?.ticketNumber ||
+                          consultation?.id ||
+                          "N/A"}
+                      </td>
+                      <td className="completed-ticket-name">{patientName}</td>
+                      <td>{contactNumber}</td>
+                      <td>{contactMethod}</td>
+                      <td>{requestTime}</td>
+                      <td className="completed-ticket-complaint">
+                        {chiefComplaint}
+                      </td>
+                      <td>
+                        <span className="status-badge status-completed">
+                          Completed
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="completed-view-btn"
+                          onClick={() =>
+                            openCompletedConsultDetailModal(consultation)
+                          }
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="8" className="completed-table-empty">
+                    No completed consultations found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDashboard = () => {
+    const selectedTicket = tickets.find(
+      (x) => String(x.id) === String(selectedTicketId),
+    );
+    const displayStatusNorm = normalizeStatus(selectedTicket?.status);
+    const isUnclaimedAvailable = displayStatusNorm === "available";
+    const canCompleteConsultation =
+      Boolean(selectedTicket) &&
+      !isCompletedStatus(selectedTicket?.status) &&
+      !isUnclaimedAvailable;
+    const parsedIcd = parseICDCode(encounter.icd10);
+    const chapterData = parsedIcd.chapter
+      ? ICD11_CHAPTERS[parsedIcd.chapter]
+      : null;
+    const blockData = chapterData?.blocks?.[parsedIcd.block] || null;
+    const categoryData = blockData?.categories?.[parsedIcd.category] || null;
+    const selectedCodeValue =
+      parsedIcd.subcategory ||
+      parsedIcd.category ||
+      parsedIcd.block ||
+      parsedIcd.chapter ||
+      "";
+    const selectedCodeLabel = categoryData
+      ? `${categoryData.code} - ${categoryData.label}`
+      : "Not selected";
+
+    const formatBirthday = (dateStr) => {
+      if (!dateStr) return "Not provided";
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+      } catch {
+        return dateStr;
+      }
+    };
+
+    const getAgeText = (t) => {
+      if (!t) return "";
+      if (t.age) return `${t.age} years old`;
+      if (t.patientBirthdate) {
+        const birth = new Date(t.patientBirthdate);
+        const diff = Date.now() - birth.getTime();
+        const age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+        return `${age} years old`;
+      }
+      return "Not provided";
+    };
+
+    const selectedPatient = selectedTicket || null;
+    const patientStatus = selectedPatient?.status || "Unknown";
+    const selectedPatientAllergies = toStringList(selectedPatient?.allergies);
+    const selectedPatientMedicalHistory = toStringList(
+      selectedPatient?.medicalHistory,
+    );
+    const painMapAreas = normalizePainMapAreas(selectedPatient);
+    const painMapView = getPainMapView(selectedPatient, painMapAreas);
+
+    const patientChatMessages = selectedPatient
+      ? patientChatThreads[selectedTicketId] ||
+        createPatientChatMessages(selectedPatient)
+      : [];
+    const isStarterThread =
+      patientChatMessages.length === 1 &&
+      patientChatMessages[0]?.sender === "system";
+
+    const emrDepartmentLabel =
+      profileData?.specialization ||
+      profileData?.subSpecialization ||
+      "General";
+
+    const selectedChannelRaw =
+      selectedPatient?.consultationChannel ||
+      selectedPatient?.rawTicket?.consultationChannel ||
+      "default";
+    const selectedChannel = getChannelDetails(selectedChannelRaw);
+    const SelectedChannelIcon = selectedChannel.icon;
+
+    const headerAvatarNames = selectedPatient
+      ? getPatientAvatarNames(selectedPatient)
+      : { firstName: "", lastName: "" };
+
+    return (
+      <div className="dashboard-content dashboard-1to1 emr-dash-layout">
+        <div className="assigned-patients-panel emr-dash-panel emr-dash-panel--left">
+          <div className="panel-header emr-assigned-panel-header">
+            <FaRegUser
+              className="emr-assigned-panel-header__icon"
+              aria-hidden
+            />
+            <h3 className="emr-assigned-panel-header__title">
+              Assigned Patients
+            </h3>
+          </div>
+
+          <div className="status-filter-container">
+            <select
+              value={ticketFilter === "All" ? "All Tickets" : ticketFilter}
+              onChange={(e) =>
+                setTicketFilter(
+                  e.target.value === "All Tickets" ? "All" : e.target.value,
+                )
+              }
+              className="input-sm status-filter-dropdown"
+            >
+              {["All Tickets", "Available", "Awaiting", "In Consultation"].map(
+                (label) => (
+                  <option key={label} value={label}>
+                    {label}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+
+          <div className="patient-list emr-patient-list">
             {filteredTickets.length === 0 ? (
-              <div style={{ padding: "1rem", color: "#7A7A7A" }}>
-                No tickets found.
-              </div>
+              <div className="no-patient-text">No patients assigned.</div>
             ) : (
-              filteredTickets.map((t) => (
-                <div
-                  key={t.id}
-                  className={`sidebar-ticket ${
-                    selectedTicketId === t.id ? "active" : ""
-                  }`}
-                  onClick={() => setSelectedTicketId(t.id)}
-                >
-                  <div className="name">{t.patient}</div>
-                  <div className="meta">
-                    {t.id} • {t.service}
-                  </div>
-                  <div className="meta">{t.when}</div>
+              filteredTickets.map((t) => {
+                const { firstName, lastName } = getPatientAvatarNames(t);
+                const triaged = getEmrTriagedTime(t);
+                return (
                   <div
-                    style={{
-                      marginTop: 8,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
+                    key={t.id}
+                    className={`emr-patient-card ${String(selectedTicketId) === String(t.id) ? "emr-patient-card--active" : ""}`}
+                    onClick={() => handleEmrTicketToggle(t.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleEmrTicketToggle(t.id);
+                      }
                     }}
                   >
-                    <span
-                      className={`status-badge ${getStatusBadgeClass(
-                        t.status,
-                      )}`}
-                    >
-                      {t.status}
-                    </span>
-                    <button
-                      className="edit-btn small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        viewTicket(t.id);
-                      }}
-                    >
-                      Details
-                    </button>
+                    <div className="emr-patient-card__top">
+                      <div className="emr-patient-card__avatar">
+                        <Avatar
+                          profileImageUrl={
+                            t.rawTicket?.patient?.profileUrl ||
+                            t.rawTicket?.patient?.profileImage
+                          }
+                          firstName={firstName}
+                          lastName={lastName}
+                          userType="patient"
+                          size={40}
+                          alt=""
+                          className="emr-patient-card__avatar-inner"
+                        />
+                      </div>
+                      <div className="emr-patient-card__ticket-col">
+                        <div className="emr-patient-card__ticket">
+                          {formatEmrTicketId(t)}
+                        </div>
+                      </div>
+                      <div className="emr-patient-card__name-row">
+                        <div className="emr-patient-card__name">
+                          {t.patientFullName || t.patient || "Unknown"}
+                        </div>
+                        <span
+                          className={`emr-patient-card__badge status-badge ${getStatusBadgeClass(t.status)}`}
+                        >
+                          {t.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="emr-patient-card__meta">
+                      <span className="emr-patient-card__meta-line">
+                        <FaStethoscope aria-hidden />
+                        {emrDepartmentLabel}
+                      </span>
+                      {(() => {
+                        const channelRaw =
+                          t.consultationChannel ||
+                          t.rawTicket?.consultationChannel ||
+                          "default";
+                        const channelDetails = getChannelDetails(channelRaw);
+                        const ChannelIcon = channelDetails.icon;
+                        return (
+                          <span
+                            className="emr-patient-card__meta-line"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              color: "#0b5388",
+                              fontWeight: "600",
+                            }}
+                          >
+                            <ChannelIcon aria-hidden />
+                            {channelDetails.label}
+                          </span>
+                        );
+                      })()}
+                      <span className="emr-patient-card__meta-line">
+                        <FaClock aria-hidden />
+                        Triaged: {triaged || "—"}
+                      </span>
+                    </div>
+                    <div className="emr-patient-card__complaint">
+                      <strong>Complaint:</strong> {getEmrTicketComplaint(t)}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
 
-        <div className="panel">
-          <div className="panel-body">
-            {(() => {
-              const t = tickets.find((x) => x.id === selectedTicketId);
-              if (!t)
-                return (
-                  <div style={{ color: "#7A7A7A" }}>
-                    Select a ticket to start.
+        <div className="patient-details-panel emr-dash-panel emr-dash-panel--center">
+          {selectedPatient ? (
+            <>
+              <div className="patient-details-emr-head">
+                <div className="patient-details-header-emr">
+                  <div className="patient-details-header-emr__left">
+                    <Avatar
+                      profileImageUrl={
+                        selectedPatient.rawTicket?.patient?.profileUrl ||
+                        selectedPatient.rawTicket?.patient?.profileImage
+                      }
+                      firstName={headerAvatarNames.firstName}
+                      lastName={headerAvatarNames.lastName}
+                      userType="patient"
+                      size={48}
+                      alt=""
+                      className="patient-details-header-emr__avatar"
+                    />
+                    <div className="patient-details-header-emr__text">
+                      <div className="patient-details-header-emr__title-row">
+                        <h2 className="patient-details-header-emr__name">
+                          {selectedPatient.patientFullName ||
+                            selectedPatient.patient ||
+                            "Patient"}
+                        </h2>
+                        <span
+                          className={`patient-details-header-emr__status status-badge ${getStatusBadgeClass(selectedPatient.status)}`}
+                        >
+                          {selectedPatient.status}
+                        </span>
+                      </div>
+                      <p className="patient-details-header-emr__sub">
+                        {emrDepartmentLabel}
+                        <span className="patient-details-header-emr__sub-sep">
+                          •
+                        </span>
+                        <SelectedChannelIcon
+                          className="patient-details-header-emr__video-ic"
+                          aria-hidden
+                          style={{ marginRight: "4px" }}
+                        />
+                        {selectedChannel.label}
+                      </p>
+                    </div>
                   </div>
-                );
-
-              const formatBirthday = (dateStr) => {
-                if (!dateStr) return "Not provided";
-                try {
-                  const date = new Date(dateStr);
-                  return date.toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  });
-                } catch {
-                  return dateStr;
-                }
-              };
-
-              return (
-                <div>
-                  <div
-                    style={{
-                      fontWeight: 700,
-                      fontSize: "18px",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    Name: {t.patient || t.patientName || "Unknown"}
-                  </div>
-                  <div style={{ marginBottom: "6px" }}>
-                    Birthday: {formatBirthday(t.patientBirthdate)}{" "}
-                    {t.age ? `(${t.age} years old)` : ""}
-                  </div>
-                  <div style={{ marginBottom: "6px" }}>
-                    Mobile Number: {t.mobile || "Not provided"}
-                  </div>
-                  <div style={{ marginBottom: "14px" }}>
-                    Email Address: {t.email || "Not provided"}
-                  </div>
-                  <div style={{ fontWeight: 700, marginBottom: "12px" }}>
-                    Chief Complaint: {t.chiefComplaint || "Not specified"}
-                  </div>
-                  <div>
-                    <div className="tabbar" style={{ marginBottom: "12px" }}>
-                      <button
-                        className={centerTab === "medicine" ? "active" : ""}
-                        onClick={() => setCenterTab("medicine")}
-                      >
-                        Medicine
-                      </button>
-                      <button
-                        className={centerTab === "lab" ? "active" : ""}
-                        onClick={() => setCenterTab("lab")}
-                      >
-                        Lab Request
-                      </button>
-                      <div style={{ marginLeft: "auto" }}>
-                        <button className="request-btn" onClick={openMhModal}>
-                          Request Medical History
-                        </button>
+                  <div className="patient-details-header-emr__right">
+                    <div
+                      className="consultation-duration-emr"
+                      aria-live="polite"
+                    >
+                      <FaClock
+                        className="consultation-duration-emr__icon"
+                        aria-hidden
+                      />
+                      <div className="consultation-duration-emr__text">
+                        <span className="consultation-duration-emr__label">
+                          Duration
+                        </span>
+                        <span className="consultation-duration-emr__value">
+                          {formatConsultationDuration(consultationElapsedSec)}
+                        </span>
                       </div>
                     </div>
-                    {centerTab === "medicine" ? (
-                      <div>
-                        <div className="grid-2">
-                          <div>
-                            <div style={{ fontWeight: 600 }}>Brand</div>
-                            <input
-                              className="input-sm pill"
-                              value={medForm.brand}
-                              onChange={(e) =>
-                                setMedForm((m) => ({
-                                  ...m,
-                                  brand: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>Generic</div>
-                            <input
-                              className="input-sm pill"
-                              value={medForm.generic}
-                              onChange={(e) =>
-                                setMedForm((m) => ({
-                                  ...m,
-                                  generic: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>Dosage</div>
-                            <input
-                              className="input-sm pill"
-                              value={medForm.dosage}
-                              onChange={(e) =>
-                                setMedForm((m) => ({
-                                  ...m,
-                                  dosage: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>Form</div>
-                            <input
-                              className="input-sm pill"
-                              value={medForm.form}
-                              onChange={(e) =>
-                                setMedForm((m) => ({
-                                  ...m,
-                                  form: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>Quantity</div>
-                            <input
-                              className="input-sm pill"
-                              value={medForm.quantity}
-                              onChange={(e) =>
-                                setMedForm((m) => ({
-                                  ...m,
-                                  quantity: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>Instructions</div>
-                            <input
-                              className="input-sm pill"
-                              value={medForm.instructions}
-                              onChange={(e) =>
-                                setMedForm((m) => ({
-                                  ...m,
-                                  instructions: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "flex-end",
-                            marginTop: "10px",
-                          }}
-                        >
-                          <button
-                            className="tiny-btn plus-black"
-                            title="Add medicine"
-                            onClick={addMedicine}
-                          >
-                            +
-                          </button>
-                        </div>
-                        <div className="prescription-list">
-                          {(encounter.medicines || []).length === 0 ? (
-                            <div style={{ color: "#555" }}>
-                              No medicines added yet.
-                            </div>
-                          ) : (
-                            <ol className="rx-list">
-                              {(encounter.medicines || []).map((m, idx) => (
-                                <li key={idx} className="prescription-item">
-                                  <div className="rx-item-title">
-                                    {formatMedicineDisplay(m)}
-                                  </div>
-                                  <div className="rx-sig">
-                                    Sig: {m.instructions}
-                                  </div>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      justifyContent: "flex-end",
-                                    }}
-                                  >
-                                    <button
-                                      className="edit-btn"
-                                      onClick={() => removeMedicine(idx)}
-                                    >
-                                      Remove
-                                    </button>
-                                  </div>
-                                </li>
-                              ))}
-                            </ol>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="grid-2">
-                          <div>
-                            <div style={{ fontWeight: 600 }}>Lab Test</div>
-                            <input
-                              className="input-sm pill"
-                              value={labForm.test}
-                              onChange={(e) =>
-                                setLabForm((f) => ({
-                                  ...f,
-                                  test: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>Remarks</div>
-                            <input
-                              className="input-sm pill"
-                              value={labForm.remarks}
-                              onChange={(e) =>
-                                setLabForm((f) => ({
-                                  ...f,
-                                  remarks: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "flex-end",
-                            marginTop: "10px",
-                          }}
-                        >
-                          <button
-                            className="tiny-btn plus-black"
-                            title="Add lab request"
-                            onClick={addLab}
-                          >
-                            +
-                          </button>
-                        </div>
-                        <div className="prescription-list">
-                          {(encounter.labRequests || []).length === 0 ? (
-                            <div style={{ color: "#555" }}>
-                              No lab requests added yet.
-                            </div>
-                          ) : (
-                            <ol className="lab-list">
-                              {(encounter.labRequests || []).map((l, idx) => (
-                                <li className="prescription-item" key={idx}>
-                                  <div className="rx-item-title">
-                                    {formatLabRequestDisplay(l)}
-                                  </div>
-                                  <div className="rx-sig">
-                                    Remarks: {l.remarks || "N/A"}
-                                  </div>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      justifyContent: "flex-end",
-                                    }}
-                                  >
-                                    <button
-                                      className="edit-btn"
-                                      onClick={() => removeLab(idx)}
-                                    >
-                                      Remove
-                                    </button>
-                                  </div>
-                                </li>
-                              ))}
-                            </ol>
-                          )}
-                        </div>
+                    {selectedChannel.type === "video" && (
+                      <button
+                        type="button"
+                        className="start-video-call-btn"
+                        onClick={handleStartVideoCall}
+                        disabled={!selectedPatient || isUnclaimedAvailable}
+                        title={
+                          isUnclaimedAvailable
+                            ? "Claim this ticket before starting a video call"
+                            : "Start video call with patient"
+                        }
+                      >
+                        <FaVideo aria-hidden />
+                        Start Video Call
+                      </button>
+                    )}
+
+                    {selectedChannel.type === "phone" && (
+                      <button
+                        type="button"
+                        className="start-video-call-btn"
+                        style={{
+                          backgroundColor: "#10b981",
+                          borderColor: "#10b981",
+                          color: "white",
+                        }}
+                        onClick={() =>
+                          alert(
+                            `Dialing patient at: ${selectedPatient?.mobile || "No number on file"}`,
+                          )
+                        }
+                        disabled={!selectedPatient || isUnclaimedAvailable}
+                        title={
+                          isUnclaimedAvailable
+                            ? "Claim this ticket before calling"
+                            : "Call patient"
+                        }
+                      >
+                        <FaPhone aria-hidden />
+                        Call Patient
+                      </button>
+                    )}
+
+                    {selectedChannel.type === "chat" && (
+                      <button
+                        type="button"
+                        className="start-video-call-btn"
+                        style={{
+                          backgroundColor: "#8b5cf6",
+                          borderColor: "#8b5cf6",
+                          color: "white",
+                        }}
+                        onClick={() => {
+                          if (patientChatMessagesRef.current) {
+                            patientChatMessagesRef.current.scrollIntoView({
+                              behavior: "smooth",
+                              block: "center",
+                            });
+                          }
+                        }}
+                        disabled={!selectedPatient || isUnclaimedAvailable}
+                        title="Jump to Chat Panel"
+                      >
+                        <FaComments aria-hidden />
+                        Open Chat
+                      </button>
+                    )}
+
+                    {selectedChannel.type === "physical" && (
+                      <div
+                        className="clinic-address-badge"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          padding: "10px 16px",
+                          backgroundColor: "#f3f4f6",
+                          borderRadius: "8px",
+                          border: "1px solid #d1d5db",
+                          color: "#374151",
+                          fontSize: "0.9rem",
+                        }}
+                      >
+                        <FaBuilding style={{ color: "#6b7280" }} />
+                        <span>
+                          <strong>Clinic Location:</strong>{" "}
+                          {profileData.addressLine1 ||
+                            profileData.city ||
+                            "Address not configured in profile"}
+                        </span>
                       </div>
                     )}
                   </div>
                 </div>
-              );
-            })()}
-          </div>
+              </div>
+
+              <div className="patient-details-panel">
+                <div className="patient-details-header">
+                  <div>
+                    <h2>
+                      {selectedPatient.patientFullName ||
+                        selectedPatient.patient ||
+                        "Patient"}
+                    </h2>
+                    <p className="patient-specialization">
+                      {selectedPatient.service || "Consultation"}
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    {selectedPatient?.rawTicket?.status !== "completed" &&
+                      selectedPatient?.rawTicket?.status !== "for_payment" && (
+                        <button
+                          className="btn-primary generate-invoice-btn"
+                          style={{
+                            backgroundColor: "#10b981",
+                            borderColor: "#10b981",
+                          }}
+                          onClick={() => {
+                            setSelectedTicketId(selectedPatient.id);
+                            setShowInvoiceModal(true);
+                          }}
+                        >
+                          Generate Invoice
+                        </button>
+                      )}
+                    <button
+                      className="btn-primary complete-consultation"
+                      onClick={handleCompleteConsultation}
+                      disabled={
+                        !selectedPatient || patientStatus === "Completed"
+                      }
+                    >
+                      {patientStatus === "Completed"
+                        ? "Completed"
+                        : "Complete Consultation"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="patient-details-scroll">
+                  <div className="patient-info-card">
+                    <div className="section-title-small">
+                      Patient Information
+                    </div>
+                    <div className="patient-info-grid">
+                      <div className="info-item">
+                        <span className="info-label">Age</span>
+                        <span className="info-value">
+                          {selectedPatient
+                            ? getAgeText(selectedPatient)
+                            : "Unknown"}
+                        </span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">Gender</span>
+                        <span className="info-value">
+                          {selectedPatient?.gender || "Not provided"}
+                        </span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">Blood Type</span>
+                        <span className="info-value">
+                          {selectedPatient?.bloodType || "Not provided"}
+                        </span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">Contact</span>
+                        <span className="info-value">
+                          {selectedPatient?.mobile ||
+                            selectedPatient?.contact ||
+                            "Not provided"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="info-card">
+                    <div className="info-card-title">Allergies</div>
+                    <div className="info-card-body">
+                      {selectedPatientAllergies.length > 0 ? (
+                        selectedPatientAllergies.map((a) => (
+                          <span key={a} className="pill">
+                            {a}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="info-placeholder">
+                          No known allergies
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="info-card">
+                    <div className="info-card-title">Medical History</div>
+                    <div className="info-card-body">
+                      {selectedPatientMedicalHistory.length > 0 ? (
+                        <ul className="history-list">
+                          {selectedPatientMedicalHistory.map((item, idx) => (
+                            <li key={idx}>{item}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="info-placeholder">
+                          No history available
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="info-card">
+                    <div className="info-card-title">
+                      Triage Notes (From Nurse)
+                    </div>
+                    <div className="info-card-body">
+                      {selectedPatient?.triageNotes ||
+                        "Vital signs not yet provided."}
+                    </div>
+                  </div>
+
+                  <div className="info-card specialist-medical-history-card">
+                    <button
+                      type="button"
+                      className="specialist-medical-history-btn"
+                      onClick={() => setShowMedicalRecords(true)}
+                      disabled={!selectedTicket || !hasSharedAccess} // <-- CHANGED
+                      title={
+                        !hasSharedAccess
+                          ? "The patient must share their records first."
+                          : ""
+                      }
+                    >
+                      <span className="specialist-medical-history-icon">
+                        <FaFileMedical size={17} />
+                      </span>
+                      <span className="specialist-medical-history-copy">
+                        <span className="specialist-medical-history-title">
+                          View Complete Medical History
+                        </span>
+                        <span className="specialist-medical-history-subtitle">
+                          Past consultations, treatments & records
+                        </span>
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="info-card">
+                    <div className="info-card-title">
+                      Vital Signs (From Nurse)
+                    </div>
+                    <div className="patient-info-grid">
+                      <div className="info-item">
+                        <span className="info-label">Blood Pressure</span>
+                        <span className="info-value">
+                          {selectedPatient?.bloodPressure || "N/A"}
+                        </span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">Heart Rate</span>
+                        <span className="info-value">
+                          {selectedPatient?.heartRate
+                            ? `${selectedPatient.heartRate} bpm`
+                            : "N/A"}
+                        </span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">Temperature</span>
+                        <span className="info-value">
+                          {selectedPatient?.temperature
+                            ? `${selectedPatient.temperature} C`
+                            : "N/A"}
+                        </span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">Oxygen Saturation</span>
+                        <span className="info-value">
+                          {selectedPatient?.oxygenSaturation
+                            ? `${selectedPatient.oxygenSaturation}%`
+                            : "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <PainMapSection
+                    className="specialist-pain-map-section"
+                    view={painMapView}
+                    selectedAreas={painMapAreas}
+                    readOnly
+                  />
+
+                  <div className="soap-panel">
+                    <div className="soap-header">
+                      <h3>SOAP Notes</h3>
+                      <p>Document your clinical findings and treatment plan</p>
+                    </div>
+                    <div className="soap-card soap-card--subjective">
+                      <div className="soap-card-title">S - Subjective</div>
+                      <textarea
+                        value={encounter.subjective || ""}
+                        readOnly
+                        onClick={() => openSoapModal("subjective")}
+                        placeholder="Patient reports experiencing..."
+                        className="soap-card-textarea soap-card-textarea--display"
+                        aria-label="Open subjective SOAP editor"
+                      />
+                    </div>
+                    <div className="soap-card soap-card--objective">
+                      <div className="soap-card-title">O - Objective</div>
+                      <textarea
+                        value={encounter.objective || ""}
+                        readOnly
+                        onClick={() => openSoapModal("objective")}
+                        placeholder="Physical examination reveals..."
+                        className="soap-card-textarea soap-card-textarea--display"
+                        aria-label="Open objective SOAP editor"
+                      />
+                    </div>
+                    <div className="soap-card soap-card--assessment">
+                      <div className="soap-card-title">A - Assessment</div>
+                      <textarea
+                        value={encounter.assessment || ""}
+                        readOnly
+                        onClick={() => openSoapModal("assessment")}
+                        placeholder="Diagnosis: ..."
+                        className="soap-card-textarea soap-card-textarea--display"
+                        aria-label="Open assessment SOAP editor"
+                      />
+                      <div className="soap-card-icd-summary">
+                        {!chapterData ? (
+                          <div className="soap-card-icd-summary__empty">
+                            ICD Codes
+                          </div>
+                        ) : (
+                          <>
+                            <div className="soap-card-icd-summary__field">
+                              <span>CHAPTER</span>
+                              <div className="soap-card-icd-summary__value">
+                                {chapterData
+                                  ? `${chapterData.code} - ${chapterData.label}`
+                                  : "Not selected"}
+                              </div>
+                            </div>
+                            <div className="soap-card-icd-summary__field">
+                              <span>BLOCK</span>
+                              <div className="soap-card-icd-summary__value">
+                                {blockData
+                                  ? `${blockData.code} - ${blockData.label}`
+                                  : "Not selected"}
+                              </div>
+                            </div>
+                            <div className="soap-card-icd-summary__field">
+                              <span>CATEGORY</span>
+                              <div className="soap-card-icd-summary__value">
+                                {categoryData
+                                  ? `${categoryData.code} - ${categoryData.label}`
+                                  : "Not selected"}
+                              </div>
+                            </div>
+                            <div className="soap-card-icd-summary__details">
+                              <div className="soap-card-icd-summary__details-label">
+                                Selected Code:
+                              </div>
+                              <div className="soap-card-icd-summary__details-value">
+                                {selectedCodeValue || "Not selected"}
+                              </div>
+                              <div className="soap-card-icd-summary__details-desc">
+                                <strong>Description:</strong>{" "}
+                                {categoryData?.description || "Not selected"}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="soap-card soap-card--plan">
+                      <div className="soap-card-title">P - Plan</div>
+                      <textarea
+                        value={encounter.plan || ""}
+                        readOnly
+                        onClick={() => openSoapModal("plan")}
+                        placeholder="Treatment plan includes..."
+                        className="soap-card-textarea soap-card-textarea--display"
+                        aria-label="Open plan SOAP editor"
+                      />
+                    </div>
+                    <div className="soap-card medical-records-access-card">
+                      <div className="medical-records-header">
+                        <div>
+                          <div className="soap-card-title">
+                            Medical Records Access
+                          </div>
+                          <p className="medical-records-description">
+                            Patient record permissions and shared details.
+                          </p>
+                        </div>
+                        {hasSharedAccess && (
+                          <span className="status-pill status-pill--shared">
+                            Shared
+                          </span>
+                        )}
+                      </div>
+
+                      {!hasSharedAccess ? (
+                        <div className="medical-records-empty">
+                          <div className="medical-records-icon">🔒</div>
+                          <div className="medical-records-empty-text">
+                            No medical records shared yet
+                          </div>
+                          <p
+                            style={{
+                              color: "#66788d",
+                              fontSize: "0.87rem",
+                              margin: "8px 0 0 0",
+                              textAlign: "center",
+                            }}
+                          >
+                            The patient must grant you access from their
+                            dashboard.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="medical-records-list">
+                          <div className="medical-records-item">
+                            <span className="medical-records-item-icon">
+                              📄
+                            </span>
+                            <span className="medical-records-item-label">
+                              Consultations (
+                              {sharedMedicalData?.certificates?.length || 0})
+                            </span>
+                          </div>
+                          <div className="medical-records-item">
+                            <span className="medical-records-item-icon">
+                              💊
+                            </span>
+                            <span className="medical-records-item-label">
+                              Prescriptions (
+                              {sharedMedicalData?.prescriptions?.length || 0})
+                            </span>
+                          </div>
+                          <div className="medical-records-item">
+                            <span className="medical-records-item-icon">
+                              🧪
+                            </span>
+                            <span className="medical-records-item-label">
+                              Lab Results (
+                              {sharedMedicalData?.labRequests?.length || 0})
+                            </span>
+                          </div>
+                          <div className="medical-records-item">
+                            <span className="medical-records-item-icon">
+                              🩺
+                            </span>
+                            <span className="medical-records-item-label">
+                              Treatment Plans (
+                              {sharedMedicalData?.treatmentPlans?.length || 0})
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {selectedPatient?.rawTicket?.patient &&
+                  selectedPatient?.email && (
+                    <div className="patient-chat-panel">
+                      <div className="patient-chat-header">
+                        <div className="patient-chat-title-row">
+                          <FaRegComment className="patient-chat-title-icon" />
+                          <div className="patient-chat-title">
+                            Patient Communication
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`patient-chat-messages ${
+                          isStarterThread
+                            ? "patient-chat-messages--centered"
+                            : ""
+                        }`}
+                        ref={patientChatMessagesRef}
+                      >
+                        {patientChatMessages.map((message) => (
+                          <div
+                            key={message.id}
+                            className={`patient-chat-message ${
+                              message.sender === "system"
+                                ? "patient-chat-message--system"
+                                : message.sender === "specialist"
+                                  ? "patient-chat-message--own"
+                                  : "patient-chat-message--patient"
+                            }`}
+                          >
+                            <div className="patient-chat-bubble">
+                              {message.sender === "system" ? (
+                                <>
+                                  <p>{message.text}</p>
+                                  <span>
+                                    {message.subtext || message.timestamp}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <p>{message.message}</p>
+                                  <span>{message.timestamp}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <form
+                        className="patient-chat-form"
+                        onSubmit={handlePatientChatSend}
+                      >
+                        <input
+                          type="text"
+                          value={patientChatDraft}
+                          onChange={(e) => setPatientChatDraft(e.target.value)}
+                          placeholder="Type a message..."
+                          className="patient-chat-input"
+                        />
+                        <button
+                          type="submit"
+                          className="patient-chat-send-btn"
+                          aria-label="Send message"
+                        >
+                          <FaPaperPlane />
+                        </button>
+                      </form>
+                    </div>
+                  )}
+              </div>
+            </>
+          ) : (
+            <div className="emr-panel-empty-state emr-panel-empty-state--fill">
+              <p className="emr-panel-empty-state__text">
+                No ticket is selected
+              </p>
+            </div>
+          )}
         </div>
 
-        <div className="panel">
-          <div className="panel-body soap-section">
-            <div className="soap-header">
-              <div className="soap-title">SOAP Notes</div>
-              <div className="soap-subtitle">
-                Document the encounter summary and next steps
-              </div>
-            </div>
-            <div className="soap-grid">
-              <label className="soap-field">
-                <span className="soap-label">Subjective</span>
-                <textarea
-                  className="input-lg soap-textarea"
-                  value={encounter.subjective}
-                  onChange={(e) =>
-                    saveEncounter({ subjective: e.target.value })
-                  }
-                ></textarea>
-              </label>
-              <label className="soap-field">
-                <span className="soap-label">Objective</span>
-                <textarea
-                  className="input-lg soap-textarea"
-                  value={encounter.objective}
-                  onChange={(e) => saveEncounter({ objective: e.target.value })}
-                ></textarea>
-              </label>
-              <label className="soap-field">
-                <span className="soap-label">Assessment</span>
-                <textarea
-                  className="input-lg soap-textarea"
-                  value={encounter.assessment}
-                  onChange={(e) =>
-                    saveEncounter({ assessment: e.target.value })
-                  }
-                ></textarea>
-              </label>
-              <label className="soap-field">
-                <span className="soap-label">Plan</span>
-                <textarea
-                  className="input-lg soap-textarea"
-                  value={encounter.plan}
-                  onChange={(e) => saveEncounter({ plan: e.target.value })}
-                ></textarea>
-              </label>
-              <label className="soap-field soap-field--wide">
-                <span className="soap-label">Referral</span>
-                <textarea
-                  className="input-lg soap-textarea"
-                  value={encounter.referral}
-                  onChange={(e) => saveEncounter({ referral: e.target.value })}
-                ></textarea>
-              </label>
-            </div>
-            <div className="soap-actions">
-              <label className="soap-followup">
-                <input
-                  type="checkbox"
-                  className="soap-followup-checkbox"
-                  checked={!!encounter.followUp}
-                  onChange={(e) =>
-                    saveEncounter({ followUp: e.target.checked })
-                  }
-                />
-                <span>Follow up</span>
-              </label>
-              <div className="soap-buttons">
+        <div
+          className="soap-panel emr-dash-panel emr-dash-panel--right"
+          ref={soapPanelRef}
+        >
+          {selectedPatient ? (
+            <>
+              <div
+                className="clinical-tabs"
+                role="tablist"
+                aria-label="Clinical tools"
+              >
                 <button
-                  className="btn-primary soap-save"
-                  onClick={async () => {
-                    await saveEncounter({});
-                    alert("Encounter saved.");
+                  type="button"
+                  className={`clinical-tab ${centerTab === "medicine" ? "active" : ""}`}
+                  onClick={() => setCenterTab("medicine")}
+                  role="tab"
+                  aria-selected={centerTab === "medicine"}
+                >
+                  <FaPrescriptionBottleAlt />
+                  <span>Prescription</span>
+                </button>
+                <button
+                  type="button"
+                  className={`clinical-tab ${centerTab === "lab" ? "active" : ""}`}
+                  onClick={() => setCenterTab("lab")}
+                  role="tab"
+                  aria-selected={centerTab === "lab"}
+                >
+                  <FaFlask />
+                  <span>Lab Requests</span>
+                </button>
+                <button
+                  type="button"
+                  className={`clinical-tab ${centerTab === "certificate" ? "active" : ""}`}
+                  onClick={() => setCenterTab("certificate")}
+                  role="tab"
+                  aria-selected={centerTab === "certificate"}
+                >
+                  <FaFileMedical />
+                  <span>Med Certificate</span>
+                </button>
+              </div>
+
+              <div className="clinical-content">
+                <div
+                  className="info-card"
+                  style={{
+                    display: centerTab === "medicine" ? "block" : "none",
                   }}
                 >
-                  Save Encounter
-                </button>
-                {(() => {
-                  const t = tickets.find((x) => x.id === selectedTicketId);
-                  const status = t?.status || t?.Status || "";
-                  const isDisabled =
-                    status === "Completed" || status === "Processing";
-
-                  return (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    <div>
+                      <div
+                        className="info-card-title"
+                        style={{ marginBottom: "2px" }}
+                      >
+                        Prescription
+                      </div>
+                      <p
+                        style={{
+                          color: "#66788d",
+                          fontSize: "0.87rem",
+                          margin: 0,
+                        }}
+                      >
+                        Add medications for the patient
+                      </p>
+                    </div>
                     <button
-                      className={`btn-secondary soap-passback${
-                        isDisabled ? " is-disabled" : ""
-                      }`}
-                      disabled={isDisabled}
-                      onClick={async () => {
-                        if (!selectedTicketId) return;
-
-                        const ticket = tickets.find(
-                          (x) => x.id === selectedTicketId,
-                        );
-                        const ticketStatus =
-                          ticket?.status || ticket?.Status || "";
-
-                        console.log("[Pass Back] Ticket:", ticket);
-                        console.log("[Pass Back] Status:", ticketStatus);
-
-                        if (ticketStatus === "Completed") {
-                          alert("Cannot pass back a completed ticket.");
-                          return;
-                        }
-                        if (ticketStatus === "Processing") {
-                          alert(
-                            "This ticket has already been passed back to the nurse.",
-                          );
-                          return;
-                        }
-
-                        const notes = prompt(
-                          "Add notes (optional) when passing back to nurse:",
-                        );
-                        if (notes === null) return;
-
-                        try {
-                          await saveEncounter({});
-
-                          await specialistApi.passTicketBackToNurse(
-                            selectedTicketId,
-                            notes || "",
-                          );
-                          alert("Ticket passed back to nurse successfully!");
-
-                          await loadTicketsData();
-                          await loadDashboardData();
-                          setSelectedTicket(null);
-                          setSelectedTicketId(null);
-                          setShowTicketModal(false);
-                        } catch (error) {
-                          console.error("Error passing ticket back:", error);
-                          alert(
-                            error.message ||
-                              "Failed to pass ticket back to nurse. Please try again.",
-                          );
-                        }
+                      onClick={() => setMedForm(createDefaultMedicineForm())}
+                      style={{
+                        background: "#0d6efd",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "8px 16px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        fontSize: "0.9rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
                       }}
                     >
-                      Pass Back to Nurse {isDisabled ? `(${status})` : ""}
+                      + Add Medication
                     </button>
-                  );
-                })()}
+                  </div>
+
+                  {encounter?.medicines && encounter.medicines.length > 0 ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "12px",
+                      }}
+                    >
+                      {encounter.medicines.map((med, idx) => (
+                        <div
+                          key={idx}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openMedicineDetails(med, idx)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openMedicineDetails(med, idx);
+                            }
+                          }}
+                          style={{
+                            border: "1px solid #e2eaf6",
+                            borderRadius: "8px",
+                            padding: "12px",
+                            backgroundColor: "#fbfdff",
+                            position: "relative",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "start",
+                              marginBottom: "12px",
+                              gap: "12px",
+                            }}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <div
+                                style={{
+                                  color: "#111827",
+                                  fontWeight: "500",
+                                  fontSize: "0.92rem",
+                                  lineHeight: 1.25,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {med.name || "N/A"}
+                              </div>
+                              <div
+                                style={{
+                                  color: "#6b7280",
+                                  fontSize: "0.78rem",
+                                  marginTop: "2px",
+                                }}
+                              >
+                                {med.dosage || "N/A"}
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeMedicine(idx);
+                              }}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                color: "#d32f2f",
+                                cursor: "pointer",
+                                fontSize: "1.2rem",
+                                padding: "0",
+                              }}
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {!medForm &&
+                    (!encounter?.medicines ||
+                      encounter.medicines.length === 0) && (
+                      <div
+                        style={{
+                          textAlign: "center",
+                          padding: "24px 12px",
+                          backgroundColor: "#f9fafb",
+                          borderRadius: "8px",
+                          border: "1px solid #e5e7eb",
+                        }}
+                      >
+                        <p
+                          style={{
+                            color: "#d17171",
+                            margin: "0 0 6px 0",
+                            fontSize: "0.95rem",
+                          }}
+                        >
+                          No medications prescribed yet
+                        </p>
+                        <p
+                          style={{
+                            color: "#9ca3af",
+                            margin: 0,
+                            fontSize: "0.85rem",
+                          }}
+                        >
+                          Click "Add Medication" to start
+                        </p>
+                      </div>
+                    )}
+
+                  {medForm && (
+                    <div
+                      style={{
+                        border: "1px solid #e2eaf6",
+                        borderRadius: "8px",
+                        padding: "12px",
+                        backgroundColor: "#fbfdff",
+                        marginTop: "12px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "start",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            color: "#0b5388",
+                            fontWeight: "600",
+                            fontSize: "0.95rem",
+                          }}
+                        >
+                          Medication #{(encounter?.medicines?.length || 0) + 1}
+                        </div>
+                        <button
+                          onClick={() => setMedForm(null)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#d32f2f",
+                            cursor: "pointer",
+                            fontSize: "1.2rem",
+                            padding: "0",
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "12px",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        <div>
+                          <label
+                            style={{
+                              display: "block",
+                              fontWeight: "600",
+                              fontSize: "0.85rem",
+                              marginBottom: "4px",
+                              color: "#111827",
+                            }}
+                          >
+                            Medication Name
+                          </label>
+                          <input
+                            type="text"
+                            value={medForm.name || ""}
+                            onChange={(e) =>
+                              setMedForm({ ...medForm, name: e.target.value })
+                            }
+                            placeholder="e.g., Amoxicillin"
+                            style={{
+                              width: "100%",
+                              padding: "8px 10px",
+                              borderRadius: "6px",
+                              border: "1px solid #c7d9ee",
+                              backgroundColor: "#fff",
+                              fontSize: "0.9rem",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            style={{
+                              display: "block",
+                              fontWeight: "600",
+                              fontSize: "0.85rem",
+                              marginBottom: "4px",
+                              color: "#111827",
+                            }}
+                          >
+                            Dosage
+                          </label>
+                          <input
+                            type="text"
+                            value={medForm.dosage || ""}
+                            onChange={(e) =>
+                              setMedForm({ ...medForm, dosage: e.target.value })
+                            }
+                            placeholder="e.g., 500mg"
+                            style={{
+                              width: "100%",
+                              padding: "8px 10px",
+                              borderRadius: "6px",
+                              border: "1px solid #c7d9ee",
+                              backgroundColor: "#fff",
+                              fontSize: "0.9rem",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            style={{
+                              display: "block",
+                              fontWeight: "600",
+                              fontSize: "0.85rem",
+                              marginBottom: "4px",
+                              color: "#111827",
+                            }}
+                          >
+                            Frequency
+                          </label>
+                          <select
+                            value={medForm.frequency || ""}
+                            onChange={(e) =>
+                              setMedForm({
+                                ...medForm,
+                                frequency: e.target.value,
+                              })
+                            }
+                            style={{
+                              width: "100%",
+                              padding: "8px 10px",
+                              borderRadius: "6px",
+                              border: "1px solid #c7d9ee",
+                              backgroundColor: "#fff",
+                              fontSize: "0.9rem",
+                              boxSizing: "border-box",
+                            }}
+                          >
+                            <option value="">Select frequency</option>
+                            <option value="Once daily">Once daily</option>
+                            <option value="Twice daily">Twice daily</option>
+                            <option value="Three times daily">
+                              Three times daily
+                            </option>
+                            <option value="Four times daily">
+                              Four times daily
+                            </option>
+                            <option value="Every 4 hours">Every 4 hours</option>
+                            <option value="Every 6 hours">Every 6 hours</option>
+                            <option value="Every 8 hours">Every 8 hours</option>
+                            <option value="Every 12 hours">
+                              Every 12 hours
+                            </option>
+                          </select>
+                        </div>
+                        <div>
+                          <label
+                            style={{
+                              display: "block",
+                              fontWeight: "600",
+                              fontSize: "0.85rem",
+                              marginBottom: "4px",
+                              color: "#111827",
+                            }}
+                          >
+                            Duration
+                          </label>
+                          <input
+                            type="text"
+                            value={medForm.duration || ""}
+                            onChange={(e) =>
+                              setMedForm({
+                                ...medForm,
+                                duration: e.target.value,
+                              })
+                            }
+                            placeholder="e.g., 7 days"
+                            style={{
+                              width: "100%",
+                              padding: "8px 10px",
+                              borderRadius: "6px",
+                              border: "1px solid #c7d9ee",
+                              backgroundColor: "#fff",
+                              fontSize: "0.9rem",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div style={{ marginBottom: "12px" }}>
+                        <label
+                          style={{
+                            display: "block",
+                            fontWeight: "600",
+                            fontSize: "0.85rem",
+                            marginBottom: "4px",
+                            color: "#111827",
+                          }}
+                        >
+                          Special Instructions
+                        </label>
+                        <input
+                          type="text"
+                          value={medForm.specialInstructions || ""}
+                          onChange={(e) =>
+                            setMedForm({
+                              ...medForm,
+                              specialInstructions: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., Take with food"
+                          style={{
+                            width: "100%",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            border: "1px solid #c7d9ee",
+                            backgroundColor: "#fff",
+                            fontSize: "0.9rem",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <button
+                          onClick={() => setMedForm(null)}
+                          style={{
+                            background: "#f3f4f6",
+                            color: "#374151",
+                            border: "1px solid #d1d5db",
+                            borderRadius: "6px",
+                            padding: "8px 16px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={addMedicine}
+                          style={{
+                            background: "#0d6efd",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "8px 16px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          Add Medication
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {centerTab === "lab" && (
+                  <div className="info-card">
+                    <div className="lab-request-page">
+                      <div className="lab-request-header">
+                        <div
+                          className="info-card-title"
+                          style={{ marginBottom: "2px" }}
+                        >
+                          Laboratory Requests
+                        </div>
+                        <p className="lab-request-subtitle">
+                          Select tests to be performed
+                        </p>
+                      </div>
+
+                      <section className="lab-section-card">
+                        <div className="lab-section-title">
+                          <FaFlask />
+                          <span>Common Laboratory Tests</span>
+                        </div>
+                        <div className="lab-tests-grid">
+                          {COMMON_LAB_TESTS.map((testName) => {
+                            const checked = selectedLabTests.some(
+                              (item) =>
+                                !item.isCustom && item.test === testName,
+                            );
+
+                            return (
+                              <label key={testName} className="lab-test-option">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleCommonLabTest(testName)}
+                                />
+                                <span>{testName}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </section>
+
+                      <section className="lab-section-card">
+                        <div className="lab-section-title">Add Custom Test</div>
+                        <div className="lab-custom-row">
+                          <input
+                            type="text"
+                            value={labCustomTestName}
+                            onChange={(e) =>
+                              setLabCustomTestName(e.target.value)
+                            }
+                            placeholder="Enter custom test name"
+                            className="lab-custom-input"
+                          />
+                          <button
+                            type="button"
+                            className="lab-add-btn"
+                            onClick={addCustomLabTest}
+                          >
+                            + Add
+                          </button>
+                        </div>
+                      </section>
+
+                      <section className="lab-section-card">
+                        <div className="lab-section-title">Selected Tests</div>
+                        {selectedLabTests.length > 0 ? (
+                          <div className="lab-selected-list">
+                            {selectedLabTests.map((item) => (
+                              <div key={item.id} className="lab-selected-item">
+                                <span className="lab-selected-label">
+                                  {item.label}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="lab-remove-btn"
+                                  onClick={() => removeSelectedLabTest(item.id)}
+                                  aria-label={`Remove ${item.label}`}
+                                >
+                                  <FaTimes />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="lab-empty-state">
+                            No selected tests yet
+                          </div>
+                        )}
+                      </section>
+
+                      <section className="lab-section-card lab-instructions-card">
+                        <div className="lab-section-title">
+                          Additional Instructions
+                        </div>
+                        <textarea
+                          value={labInstructions}
+                          onChange={(e) =>
+                            handleLabInstructionsChange(e.target.value)
+                          }
+                          placeholder="Add any special instructions for the laboratory..."
+                        />
+                      </section>
+                    </div>
+                  </div>
+                )}
+
+                <div className="info-card" style={{ display: "none" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "16px",
+                    }}
+                  >
+                    <div>
+                      <div
+                        className="info-card-title"
+                        style={{ marginBottom: "2px" }}
+                      >
+                        Laboratory Requests
+                      </div>
+                      <p
+                        style={{
+                          color: "#66788d",
+                          fontSize: "0.87rem",
+                          margin: 0,
+                        }}
+                      >
+                        Select tests to be performed
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setLabForm(createDefaultLabForm())}
+                      style={{
+                        background: "#0d6efd",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "8px 16px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        fontSize: "0.9rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      + Add Test
+                    </button>
+                  </div>
+
+                  {encounter?.labRequests &&
+                  encounter.labRequests.length > 0 ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "12px",
+                      }}
+                    >
+                      {encounter.labRequests.map((lab, idx) => (
+                        <div
+                          key={idx}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openLabRequestDetails(lab, idx)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openLabRequestDetails(lab, idx);
+                            }
+                          }}
+                          style={{
+                            border: "1px solid #e2eaf6",
+                            borderRadius: "8px",
+                            padding: "12px",
+                            backgroundColor: "#fbfdff",
+                            position: "relative",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "flex-start",
+                              gap: "12px",
+                            }}
+                          >
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div
+                                style={{
+                                  color: "#111827",
+                                  fontWeight: "500",
+                                  fontSize: "0.92rem",
+                                  lineHeight: 1.25,
+                                }}
+                              >
+                                {lab.test === "Custom Test"
+                                  ? lab.customTestName || "Custom Test"
+                                  : lab.test || "N/A"}
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeLab(idx);
+                              }}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                color: "#d32f2f",
+                                cursor: "pointer",
+                                fontSize: "1rem",
+                                padding: "0",
+                                lineHeight: 1,
+                              }}
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                          <div style={{ display: "none" }}>
+                            <div>
+                              <label
+                                style={{
+                                  display: "block",
+                                  fontWeight: "600",
+                                  fontSize: "0.85rem",
+                                  marginBottom: "4px",
+                                  color: "#111827",
+                                }}
+                              >
+                                Test Name
+                              </label>
+                              <div
+                                style={{
+                                  backgroundColor: "#f3f4f6",
+                                  padding: "8px 10px",
+                                  borderRadius: "6px",
+                                  fontSize: "0.9rem",
+                                  color: "#666",
+                                }}
+                              >
+                                {lab.test === "Custom Test" &&
+                                (lab.customTestName || "").trim()
+                                  ? (lab.customTestName || "").trim()
+                                  : lab.test || "N/A"}
+                              </div>
+                              {lab.test === "Custom Test" &&
+                                !(lab.customTestName || "").trim() && (
+                                  <div
+                                    style={{
+                                      marginTop: "6px",
+                                      color: "#111827",
+                                      fontWeight: "600",
+                                      fontSize: "0.9rem",
+                                    }}
+                                  >
+                                    Enter custom test name
+                                  </div>
+                                )}
+                            </div>
+                            <div>
+                              <label
+                                style={{
+                                  display: "block",
+                                  fontWeight: "600",
+                                  fontSize: "0.85rem",
+                                  marginBottom: "4px",
+                                  color: "#111827",
+                                }}
+                              >
+                                Remarks
+                              </label>
+                              <div
+                                style={{
+                                  backgroundColor: "#f3f4f6",
+                                  padding: "8px 10px",
+                                  borderRadius: "6px",
+                                  fontSize: "0.9rem",
+                                  color: "#666",
+                                }}
+                              >
+                                {lab.remarks || "N/A"}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {!labForm &&
+                    (!encounter?.labRequests ||
+                      encounter.labRequests.length === 0) && (
+                      <div
+                        style={{
+                          textAlign: "center",
+                          padding: "24px 12px",
+                          backgroundColor: "#f9fafb",
+                          borderRadius: "8px",
+                          border: "1px solid #e5e7eb",
+                        }}
+                      >
+                        <p
+                          style={{
+                            color: "#d17171",
+                            margin: "0 0 6px 0",
+                            fontSize: "0.95rem",
+                          }}
+                        >
+                          No laboratory tests requested yet
+                        </p>
+                        <p
+                          style={{
+                            color: "#9ca3af",
+                            margin: 0,
+                            fontSize: "0.85rem",
+                          }}
+                        >
+                          Click "Add Test" to start
+                        </p>
+                      </div>
+                    )}
+
+                  {labForm && (
+                    <div
+                      style={{
+                        border: "1px solid #e2eaf6",
+                        borderRadius: "8px",
+                        padding: "12px",
+                        backgroundColor: "#fbfdff",
+                        marginTop: "12px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "start",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            color: "#0b5388",
+                            fontWeight: "600",
+                            fontSize: "0.95rem",
+                          }}
+                        >
+                          Test #{(encounter?.labRequests?.length || 0) + 1}
+                        </div>
+                        <button
+                          onClick={() => setLabForm(null)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#d32f2f",
+                            cursor: "pointer",
+                            fontSize: "1.2rem",
+                            padding: "0",
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+
+                      <div style={{ marginBottom: "12px" }}>
+                        <label
+                          style={{
+                            display: "block",
+                            fontWeight: "600",
+                            fontSize: "0.85rem",
+                            marginBottom: "4px",
+                            color: "#111827",
+                          }}
+                        >
+                          Common Laboratory Tests
+                        </label>
+                        <select
+                          value={labForm.test || ""}
+                          onChange={(e) =>
+                            setLabForm((prev) => ({
+                              ...prev,
+                              test: e.target.value,
+                              customTestName:
+                                e.target.value === "Custom Test"
+                                  ? prev.customTestName
+                                  : "",
+                            }))
+                          }
+                          style={{
+                            width: "100%",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            border: "1px solid #c7d9ee",
+                            backgroundColor: "#fff",
+                            fontSize: "0.9rem",
+                            boxSizing: "border-box",
+                          }}
+                        >
+                          <option value="">Select a test</option>
+                          <option value="Complete Blood Count (CBC)">
+                            Complete Blood Count (CBC)
+                          </option>
+                          <option value="Lipid Profile">Lipid Profile</option>
+                          <option value="HbA1c">HbA1c</option>
+                          <option value="Kidney Function Test (KFT)">
+                            Kidney Function Test (KFT)
+                          </option>
+                          <option value="Chest X-Ray">Chest X-Ray</option>
+                          <option value="Ultrasound">Ultrasound</option>
+                          <option value="Hepatitis B Surface Antigen">
+                            Hepatitis B Surface Antigen
+                          </option>
+                          <option value="Pregnancy Test">Pregnancy Test</option>
+                          <option value="Urinalysis">Urinalysis</option>
+                          <option value="Blood Glucose (FBS)">
+                            Blood Glucose (FBS)
+                          </option>
+                          <option value="Liver Function Test (LFT)">
+                            Liver Function Test (LFT)
+                          </option>
+                          <option value="Thyroid Function Test">
+                            Thyroid Function Test
+                          </option>
+                          <option value="ECG (Electrocardiogram)">
+                            ECG (Electrocardiogram)
+                          </option>
+                          <option value="COVID-19 RT-PCR">
+                            COVID-19 RT-PCR
+                          </option>
+                          <option value="Stool Examination">
+                            Stool Examination
+                          </option>
+                          <option value="Custom Test">Custom Test</option>
+                        </select>
+                      </div>
+
+                      {labForm.test === "Custom Test" && (
+                        <div style={{ marginBottom: "12px" }}>
+                          <label
+                            style={{
+                              display: "block",
+                              fontWeight: "600",
+                              fontSize: "0.85rem",
+                              marginBottom: "4px",
+                              color: "#111827",
+                            }}
+                          >
+                            Add Custom Test
+                          </label>
+                          <input
+                            type="text"
+                            value={labForm.customTestName || ""}
+                            onChange={(e) =>
+                              setLabForm((prev) => ({
+                                ...prev,
+                                customTestName: e.target.value,
+                              }))
+                            }
+                            placeholder="Enter custom test name"
+                            style={{
+                              width: "100%",
+                              padding: "8px 10px",
+                              borderRadius: "6px",
+                              border: "1px solid #c7d9ee",
+                              backgroundColor: "#fff",
+                              fontSize: "0.9rem",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      <div style={{ marginBottom: "12px" }}>
+                        <label
+                          style={{
+                            display: "block",
+                            fontWeight: "600",
+                            fontSize: "0.85rem",
+                            marginBottom: "4px",
+                            color: "#111827",
+                          }}
+                        >
+                          Remarks
+                        </label>
+                        <input
+                          type="text"
+                          value={labForm.remarks || ""}
+                          onChange={(e) =>
+                            setLabForm({ ...labForm, remarks: e.target.value })
+                          }
+                          placeholder="e.g., Fasting required"
+                          style={{
+                            width: "100%",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            border: "1px solid #c7d9ee",
+                            backgroundColor: "#fff",
+                            fontSize: "0.9rem",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <button
+                          onClick={() => setLabForm(null)}
+                          style={{
+                            background: "#f3f4f6",
+                            color: "#374151",
+                            border: "1px solid #d1d5db",
+                            borderRadius: "6px",
+                            padding: "8px 16px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={addLab}
+                          style={{
+                            background: "#0d6efd",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "8px 16px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          Add Test
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {centerTab === "certificate" && (
+                  <div className="certificate-panel">
+                    <div className="certificate-header">
+                      <div>
+                        <div
+                          className="info-card-title"
+                          style={{ marginBottom: "2px" }}
+                        >
+                          Medical Certificate
+                        </div>
+                        <p className="certificate-subtitle">
+                          Issue medical certificate for{" "}
+                          {selectedPatient?.patientFullName ||
+                            selectedPatient?.patient ||
+                            "Patient"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="certificate-print-btn"
+                        onClick={printCertificate}
+                      >
+                        <FaFileMedical />
+                        <span>Print Certificate</span>
+                      </button>
+                    </div>
+
+                    <section className="certificate-form-card">
+                      <div className="certificate-field">
+                        <label>Diagnosis / Reason</label>
+                        <input
+                          type="text"
+                          value={certificateForm.diagnosisReason}
+                          onChange={(e) =>
+                            handleCertificateChange(
+                              "diagnosisReason",
+                              e.target.value,
+                            )
+                          }
+                          placeholder="e.g., Acute Upper Respiratory Tract Infection"
+                        />
+                      </div>
+
+                      <div className="certificate-field">
+                        <label>Date Issued</label>
+                        <input
+                          type="date"
+                          value={certificateForm.dateIssued}
+                          onChange={(e) =>
+                            handleCertificateChange(
+                              "dateIssued",
+                              e.target.value,
+                            )
+                          }
+                        />
+                      </div>
+
+                      <div className="certificate-grid">
+                        <div className="certificate-field">
+                          <label>Rest Period Start Date</label>
+                          <input
+                            type="date"
+                            min={getLocalDateString()}
+                            value={certificateForm.restStartDate}
+                            onChange={(e) =>
+                              handleCertificateChange(
+                                "restStartDate",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="certificate-field">
+                          <label>Rest Period End Date</label>
+                          <input
+                            type="date"
+                            min={
+                              certificateForm.restStartDate &&
+                              certificateForm.restStartDate >=
+                                getLocalDateString()
+                                ? certificateForm.restStartDate
+                                : getLocalDateString()
+                            }
+                            value={certificateForm.restEndDate}
+                            onChange={(e) =>
+                              handleCertificateChange(
+                                "restEndDate",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div className="certificate-field">
+                        <label>Additional Remarks</label>
+                        <textarea
+                          value={certificateForm.additionalRemarks}
+                          onChange={(e) =>
+                            handleCertificateChange(
+                              "additionalRemarks",
+                              e.target.value,
+                            )
+                          }
+                          placeholder="Any additional notes or instructions..."
+                        />
+                      </div>
+                    </section>
+
+                    <section
+                      className="certificate-preview-card"
+                      id="medical-certificate-preview"
+                    >
+                      <div className="certificate-preview-title">
+                        MEDICAL CERTIFICATE
+                      </div>
+                      <div className="certificate-preview-clinic">
+                        Healthcare Clinic
+                      </div>
+                      <div className="certificate-preview-clinic">
+                        123 Medical Center, Manila, Philippines
+                      </div>
+                      <div className="certificate-preview-clinic">
+                        Tel: +63 2 1234 5678
+                      </div>
+
+                      <div className="certificate-preview-meta">
+                        <FaFileMedical />
+                        <span>
+                          Date Issued:{" "}
+                          {formatDisplayDate(certificateForm.dateIssued) ||
+                            "____________"}
+                        </span>
+                      </div>
+
+                      <div className="certificate-preview-body">
+                        <p>This is to certify that:</p>
+                        <div className="certificate-preview-patient">
+                          {selectedPatient?.patientFullName ||
+                            selectedPatient?.patient ||
+                            "Patient"}
+                        </div>
+                        <p className="certificate-preview-text">
+                          was examined and treated at this clinic and is
+                          diagnosed with:
+                        </p>
+                        <div className="certificate-preview-diagnosis">
+                          {certificateForm.diagnosisReason ||
+                            "________________"}
+                        </div>
+                        <div className="certificate-preview-rest">
+                          Rest period:{" "}
+                          {formatDisplayDate(certificateForm.restStartDate) ||
+                            "____________"}{" "}
+                          to{" "}
+                          {formatDisplayDate(certificateForm.restEndDate) ||
+                            "____________"}
+                        </div>
+                        {certificateForm.additionalRemarks ? (
+                          <div className="certificate-preview-remarks">
+                            <span>Additional Remarks:</span>
+                            <p>{certificateForm.additionalRemarks}</p>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="certificate-signature">
+                        <div className="certificate-signature-line">
+                          ________________
+                        </div>
+                        <div className="certificate-signature-name">
+                          {[profileData.firstName, profileData.lastName]
+                            .filter(Boolean)
+                            .join(" ")
+                            .trim() ||
+                            currentUser?.fullName ||
+                            currentUser?.name ||
+                            "Attending Physician"}
+                        </div>
+                        <div className="certificate-signature-license">
+                          License No.{" "}
+                          {profileData.prcNumber ||
+                            currentUser?.licenseNumber ||
+                            "__________"}
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                )}
               </div>
+            </>
+          ) : (
+            <div className="emr-panel-empty-state emr-panel-empty-state--fill">
+              <p className="emr-panel-empty-state__text">
+                No ticket is selected
+              </p>
             </div>
-          </div>
+          )}
         </div>
       </div>
-
-      <div className="prescription-list" style={{ marginTop: "16px" }}>
-        <h4 style={{ marginBottom: "8px" }}>Medical History Requests</h4>
-        {mhRequests.length === 0 ? (
-          <div style={{ color: "#555" }}>No requests yet.</div>
-        ) : (
-          <div className="lab-list">
-            {mhRequests.map((r, index) => (
-              <div
-                key={r.id}
-                className="prescription-item"
-                style={{
-                  border: "1px solid #ddd",
-                  borderRadius: "8px",
-                  padding: "12px",
-                  marginBottom: "12px",
-                  backgroundColor: "#fff",
-                }}
-              >
-                <div className="rx-item-title" style={{ marginBottom: "8px" }}>
-                  {index + 1}. {new Date(r.createdAt).toLocaleDateString()} —{" "}
-                  {r.status}
-                </div>
-                {r.reason && (
-                  <div className="rx-sig" style={{ marginBottom: "4px" }}>
-                    Reason: {r.reason}
-                  </div>
-                )}
-                {(r.from || r.to) && (
-                  <div className="rx-sig" style={{ marginBottom: "8px" }}>
-                    Range: {r.from || "—"} to {r.to || "—"}
-                  </div>
-                )}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "8px",
-                    justifyContent: "flex-end",
-                  }}
-                >
-                  {r.status !== "Fulfilled" && r.status !== "Cancelled" && (
-                    <button
-                      className="btn-primary"
-                      onClick={() => updateMhStatus(r.id, "Fulfilled")}
-                    >
-                      Mark Fulfilled
-                    </button>
-                  )}
-                  <button className="edit-btn" onClick={() => downloadMhPdf(r)}>
-                    Download PDF
-                  </button>
-                  {r.status !== "Cancelled" && (
-                    <button
-                      className="edit-btn"
-                      onClick={() => updateMhStatus(r.id, "Cancelled")}
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderProfile = () => (
     <div className="dashboard-content">
       <div className="profile-section">
         <h2 className="section-title">Personal Information</h2>
         <div className="profile-image-upload">
-          <img
-            src={profileData.profileImage || "/placeholder-avatar.png"}
+          <Avatar
+            profileImageUrl={profileData.profileUrl}
+            firstName={profileData.firstName}
+            lastName={profileData.lastName}
+            userType="specialist"
+            size={80}
             alt="Profile"
             className="profile-img"
           />
@@ -1649,16 +4999,18 @@ const SpecialistDashboard = () => {
             <input
               id="profile-photo-upload"
               type="file"
-              accept="image/*"
+              accept="image/png, image/jpeg"
               onChange={(e) => {
                 const file = e.target.files[0];
                 if (file) {
                   const reader = new FileReader();
-                  reader.onload = (e) => {
-                    handleProfileChange("profileImage", e.target.result);
+                  reader.onload = (evt) => {
+                    setSelectedImageSrc(evt.target.result);
+                    setCropperModalOpen(true);
                   };
                   reader.readAsDataURL(file);
                 }
+                e.target.value = null;
               }}
               style={{ display: "none" }}
             />
@@ -1766,6 +5118,119 @@ const SpecialistDashboard = () => {
               )}
             </select>
           </div>
+          <div className="input-group">
+            <label>Region</label>
+            <select
+              value={profileData.region}
+              onChange={(e) => {
+                const selectedRegion = regions.find(
+                  (r) => r.name === e.target.value,
+                );
+                handleProfileChange("region", e.target.value);
+                fetchProvinces(selectedRegion?.code);
+                setProfileData((prev) => ({
+                  ...prev,
+                  province: "",
+                  city: "",
+                  barangay: "",
+                }));
+              }}
+            >
+              <option value="">Select Region</option>
+              {regions.map((r) => (
+                <option key={r.code} value={r.name}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="input-group">
+            <label>Province</label>
+            <select
+              value={profileData.province}
+              onChange={(e) => {
+                const selectedProvince = provinces.find(
+                  (p) => p.name === e.target.value,
+                );
+                handleProfileChange("province", e.target.value);
+                fetchCities(selectedProvince?.code);
+                setProfileData((prev) => ({ ...prev, city: "", barangay: "" }));
+              }}
+              disabled={!profileData.region}
+            >
+              <option value="">Select Province</option>
+              {provinces.map((p) => (
+                <option key={p.code} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="input-group">
+            <label>City / Municipality</label>
+            <select
+              value={profileData.city}
+              onChange={(e) => {
+                const selectedCity = cities.find(
+                  (c) => c.name === e.target.value,
+                );
+                handleProfileChange("city", e.target.value);
+                fetchBarangays(selectedCity?.code);
+                setProfileData((prev) => ({ ...prev, barangay: "" }));
+              }}
+              disabled={!profileData.province}
+            >
+              <option value="">Select City / Municipality</option>
+              {cities.map((c) => (
+                <option key={c.code} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="input-group">
+            <label>Barangay</label>
+            <select
+              value={profileData.barangay}
+              onChange={(e) => handleProfileChange("barangay", e.target.value)}
+              disabled={!profileData.city}
+            >
+              <option value="">Select Barangay</option>
+              {barangays.map((b) => (
+                <option key={b.code} value={b.name}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="input-group">
+            <label>Address Line 1</label>
+            <input
+              type="text"
+              value={profileData.addressLine1}
+              onChange={(e) =>
+                handleProfileChange("addressLine1", e.target.value)
+              }
+            />
+          </div>
+          <div className="input-group">
+            <label>Address Line 2</label>
+            <input
+              type="text"
+              value={profileData.addressLine2}
+              onChange={(e) =>
+                handleProfileChange("addressLine2", e.target.value)
+              }
+            />
+          </div>
+          <div className="input-group">
+            <label>Zip Code</label>
+            <input
+              type="text"
+              value={profileData.zipCode}
+              onChange={(e) => handleProfileChange("zipCode", e.target.value)}
+            />
+          </div>
           <div className="input-group full-width">
             <label>Bio</label>
             <textarea
@@ -1774,54 +5239,17 @@ const SpecialistDashboard = () => {
               onChange={(e) => handleProfileChange("bio", e.target.value)}
             />
           </div>
+          {apiError && (
+            <div
+              className="error-message"
+              style={{ color: "red", marginBottom: "10px", width: "100%" }}
+            >
+              {apiError}
+            </div>
+          )}
           <div className="full-width">
             <button type="button" className="btn-primary" onClick={saveProfile}>
               Save Changes
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="profile-section" style={{ marginTop: "2rem" }}>
-        <h2 className="section-title">Change Password</h2>
-        <div className="form-grid">
-          <div className="input-group">
-            <label>Current Password</label>
-            <input
-              type="password"
-              value={passwordData.currentPassword}
-              onChange={(e) =>
-                handlePasswordChange("currentPassword", e.target.value)
-              }
-            />
-          </div>
-          <div className="input-group">
-            <label>New Password</label>
-            <input
-              type="password"
-              value={passwordData.newPassword}
-              onChange={(e) =>
-                handlePasswordChange("newPassword", e.target.value)
-              }
-            />
-          </div>
-          <div className="input-group">
-            <label>Confirm New Password</label>
-            <input
-              type="password"
-              value={passwordData.confirmPassword}
-              onChange={(e) =>
-                handlePasswordChange("confirmPassword", e.target.value)
-              }
-            />
-          </div>
-          <div className="full-width">
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={updatePassword}
-            >
-              Update Password
             </button>
           </div>
         </div>
@@ -1834,15 +5262,22 @@ const SpecialistDashboard = () => {
       <div className="services-container">
         <h2 className="section-title">Professional Fees</h2>
         <div>
-          {Object.entries(services).map(([name, fee]) => (
-            <div key={name} className="service-item">
+          {Object.entries({
+            feeInitialWithoutCert: "Initial Consultation (No Med Cert)",
+            feeInitialWithCert: "Initial Consultation (With Med Cert)",
+            feeFollowUpWithoutCert: "Follow-up Consultation (No Med Cert)",
+            feeFollowUpWithCert: "Follow-up Consultation (With Med Cert)",
+          }).map(([key, label]) => (
+            <div key={key} className="service-item">
               <div className="service-info">
-                <div className="service-name">{name}</div>
-                <div className="service-fee">₱{Number(fee).toFixed(2)}</div>
+                <div className="service-name">{label}</div>
+                <div className="service-fee">
+                  ₱{Number(services[key] || 0).toFixed(2)}
+                </div>
               </div>
               <button
                 className="edit-btn"
-                onClick={() => openEditServiceModal(name, fee)}
+                onClick={() => openEditServiceModal(key, services[key] || 0)}
               >
                 Edit
               </button>
@@ -2055,29 +5490,17 @@ const SpecialistDashboard = () => {
         </div>
         <h3 className="dashboard-title">Specialist Dashboard</h3>
         <div className="user-account">
-          {profileData.profileImage ? (
-            <img
-              src={profileData.profileImage}
-              alt="Account"
-              className="account-icon"
-            />
-          ) : (
-            <div
-              className="account-icon"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "1.2rem",
-                fontWeight: "bold",
-                color: "#0b5388",
-              }}
-            >
-              {userInitials}
-            </div>
-          )}
+          <Avatar
+            profileImageUrl={profileData.profileUrl}
+            firstName={profileData.firstName}
+            lastName={profileData.lastName}
+            userType="specialist"
+            size={40}
+            alt="Account"
+            className="account-icon"
+          />
           <span className="account-name">
-            Dr. {currentUser?.firstName || currentUser?.fName || "Specialist"}{" "}
+            {currentUser?.firstName || currentUser?.fName || "Specialist"}{" "}
             {currentUser?.lastName || currentUser?.lName || ""}
           </span>
           <div className="account-dropdown">
@@ -2101,6 +5524,17 @@ const SpecialistDashboard = () => {
             onClick={() => handleNavigation("dashboard", "Dashboard")}
           >
             Dashboard
+          </button>
+          <button
+            className={`nav-tab ${activeTab === "completed-consultations" ? "active" : ""}`}
+            onClick={() =>
+              handleNavigation(
+                "completed-consultations",
+                "Completed Consultations",
+              )
+            }
+          >
+            Completed Consultations
           </button>
           <button
             className={`nav-tab ${activeTab === "messages" ? "active" : ""}`}
@@ -2131,6 +5565,8 @@ const SpecialistDashboard = () => {
 
       <div className="main-content">
         {activeTab === "dashboard" && renderDashboard()}
+        {activeTab === "completed-consultations" &&
+          renderCompletedConsultations()}
         {activeTab === "messages" && <Messages currentUser={currentUser} />}
         {activeTab === "profile" && renderProfile()}
         {activeTab === "schedule" && renderSchedules()}
@@ -2140,45 +5576,664 @@ const SpecialistDashboard = () => {
 
       {showEditServiceModal && (
         <div
-          className="modal"
-          onClick={(e) =>
-            e.target.className === "modal" && setShowEditServiceModal(false)
-          }
+          onClick={() => setShowEditServiceModal(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
         >
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Edit Service Fee</h2>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              width: "90%",
+              maxWidth: "450px",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: "#0ea5e9",
+                color: "white",
+                padding: "20px 24px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: "1.25rem",
+                  fontWeight: "600",
+                  color: "white",
+                }}
+              >
+                Edit Service Fee
+              </h2>
               <span
-                className="close-modal"
                 onClick={() => setShowEditServiceModal(false)}
+                style={{ cursor: "pointer", fontSize: "1.25rem", opacity: 0.8 }}
               >
                 <FaTimes />
               </span>
             </div>
-            <div className="input-group">
-              <label>Service Name</label>
-              <input type="text" value={editingService.name} readOnly />
+
+            <div style={{ padding: "24px" }}>
+              <div className="input-group" style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    color: "#4b5563",
+                    fontWeight: "500",
+                  }}
+                >
+                  Service Type
+                </label>
+                <input
+                  type="text"
+                  value={
+                    {
+                      feeInitialWithoutCert:
+                        "Initial Consultation (No Med Cert)",
+                      feeInitialWithCert:
+                        "Initial Consultation (With Med Cert)",
+                      feeFollowUpWithoutCert:
+                        "Follow-up Consultation (No Med Cert)",
+                      feeFollowUpWithCert:
+                        "Follow-up Consultation (With Med Cert)",
+                    }[editingService.name] || editingService.name
+                  }
+                  readOnly
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    backgroundColor: "#f3f4f6",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    color: "#6b7280",
+                  }}
+                />
+              </div>
+
+              <div className="input-group" style={{ marginBottom: "24px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    color: "#4b5563",
+                    fontWeight: "500",
+                  }}
+                >
+                  Professional Fee (₱)
+                </label>
+                <input
+                  type="number"
+                  value={editingService.fee}
+                  onChange={(e) =>
+                    setEditingService((prev) => ({
+                      ...prev,
+                      fee: e.target.value,
+                    }))
+                  }
+                  min="0"
+                  step="0.01"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "1rem",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  className="btn-primary"
+                  onClick={updateServiceFee}
+                  style={{
+                    padding: "10px 24px",
+                    backgroundColor: "#0ea5e9",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                  }}
+                >
+                  Update Fee
+                </button>
+              </div>
             </div>
-            <div className="input-group">
-              <label>Professional Fee (₱)</label>
-              <input
-                type="number"
-                value={editingService.fee}
-                onChange={(e) =>
-                  setEditingService((prev) => ({
-                    ...prev,
-                    fee: e.target.value,
-                  }))
-                }
-                min="0"
-                step="0.01"
-              />
+          </div>
+        </div>
+      )}
+
+      {completedDetailOpen && (
+        <div
+          className="modal completed-consult-detail-modal"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setCompletedDetailOpen(false);
+            }
+          }}
+        >
+          <div
+            className="modal-content completed-consult-detail-modal__content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2>Consultation summary</h2>
+              <span
+                className="close-modal"
+                onClick={() => setCompletedDetailOpen(false)}
+                role="presentation"
+              >
+                <FaTimes />
+              </span>
             </div>
-            <div style={{ marginTop: "1.5rem" }}>
-              <button className="btn-primary" onClick={updateServiceFee}>
-                Update Fee
-              </button>
-            </div>
+
+            {completedDetailLoading ? (
+              <div className="completed-consult-detail-modal__body">
+                <p style={{ color: "#66788d", margin: 0 }}>
+                  Loading consultation...
+                </p>
+              </div>
+            ) : !completedDetailTicket ? (
+              <div className="completed-consult-detail-modal__body">
+                <p style={{ color: "#b42318", margin: "0 0 12px" }}>
+                  Could not load this consultation.
+                </p>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => setCompletedDetailOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <div
+                  className="clinical-tabs completed-consult-detail-modal__tabs"
+                  role="tablist"
+                  aria-label="Consultation summary sections"
+                >
+                  <button
+                    type="button"
+                    className={`clinical-tab ${completedDetailTab === "patient" ? "active" : ""}`}
+                    onClick={() => setCompletedDetailTab("patient")}
+                    role="tab"
+                  >
+                    Patient details
+                  </button>
+                  <button
+                    type="button"
+                    className={`clinical-tab ${completedDetailTab === "medicine" ? "active" : ""}`}
+                    onClick={() => setCompletedDetailTab("medicine")}
+                    role="tab"
+                  >
+                    <FaPrescriptionBottleAlt />
+                    <span>Prescription</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`clinical-tab ${completedDetailTab === "lab" ? "active" : ""}`}
+                    onClick={() => setCompletedDetailTab("lab")}
+                    role="tab"
+                  >
+                    <FaFlask />
+                    <span>Lab requests</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`clinical-tab ${completedDetailTab === "certificate" ? "active" : ""}`}
+                    onClick={() => setCompletedDetailTab("certificate")}
+                    role="tab"
+                  >
+                    <FaFileMedical />
+                    <span>Med certificate</span>
+                  </button>
+                </div>
+                <div className="completed-consult-detail-modal__body">
+                  {(() => {
+                    const d = completedDetailTicket;
+                    const rt = d.rawTicket;
+                    const enc = mergeEncounterSnapshotsForModal(rt, d.id);
+                    const cert = mergeCertificateSnapshotForModal(
+                      rt,
+                      d.service,
+                      d.id,
+                    );
+                    const detailAllergies = toStringList(d.allergies);
+                    const detailMedHist = Array.isArray(d.medicalHistory)
+                      ? d.medicalHistory
+                      : toStringList(d.medicalHistory);
+                    let detailAge = "Not provided";
+                    if (d.age != null && d.age !== "") {
+                      detailAge = `${d.age} years old`;
+                    } else if (d.patientBirthdate) {
+                      const birth = new Date(d.patientBirthdate);
+                      if (!Number.isNaN(birth.getTime())) {
+                        const ageYears = Math.floor(
+                          (Date.now() - birth.getTime()) /
+                            (1000 * 60 * 60 * 24 * 365.25),
+                        );
+                        detailAge = `${ageYears} years old`;
+                      }
+                    }
+                    const detailPainAreas = normalizePainMapAreas(d);
+                    const detailPainView = getPainMapView(d, detailPainAreas);
+                    let encLocalForSoap = null;
+                    try {
+                      encLocalForSoap = loadEncounterData(d.id);
+                    } catch {
+                      encLocalForSoap = null;
+                    }
+                    const soapSubjective =
+                      rt?.subjective || encLocalForSoap?.subjective || "";
+                    const soapObjective =
+                      rt?.objective || encLocalForSoap?.objective || "";
+                    const soapAssessment =
+                      rt?.assessment || encLocalForSoap?.assessment || "";
+                    const soapPlan = rt?.plan || encLocalForSoap?.plan || "";
+                    const soapIcdRaw =
+                      rt?.icd10Code ||
+                      rt?.icd10 ||
+                      encLocalForSoap?.icd10 ||
+                      "";
+
+                    return (
+                      <>
+                        {completedDetailTab === "patient" && (
+                          <div className="completed-consult-detail-modal__scroll">
+                            <div className="patient-info-card">
+                              <div className="section-title-small">
+                                Patient information
+                              </div>
+                              <div className="patient-info-grid">
+                                <div className="info-item">
+                                  <span className="info-label">Age</span>
+                                  <span className="info-value">
+                                    {detailAge}
+                                  </span>
+                                </div>
+                                <div className="info-item">
+                                  <span className="info-label">Gender</span>
+                                  <span className="info-value">
+                                    {d.gender || "Not provided"}
+                                  </span>
+                                </div>
+                                <div className="info-item">
+                                  <span className="info-label">Blood type</span>
+                                  <span className="info-value">
+                                    {d.bloodType || "Not provided"}
+                                  </span>
+                                </div>
+                                <div className="info-item">
+                                  <span className="info-label">Contact</span>
+                                  <span className="info-value">
+                                    {d.mobile || d.contact || "Not provided"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="info-card">
+                              <div className="info-card-title">Allergies</div>
+                              <div className="info-card-body">
+                                {detailAllergies.length > 0 ? (
+                                  detailAllergies.map((a) => (
+                                    <span key={a} className="pill">
+                                      {a}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="info-placeholder">
+                                    No known allergies
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="info-card">
+                              <div className="info-card-title">
+                                Medical history
+                              </div>
+                              <div className="info-card-body">
+                                {detailMedHist.length > 0 ? (
+                                  <ul className="history-list">
+                                    {detailMedHist.map((item, idx) => (
+                                      <li key={idx}>{item}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <span className="info-placeholder">
+                                    No history available
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="info-card">
+                              <div className="info-card-title">
+                                Triage notes (from nurse)
+                              </div>
+                              <div className="info-card-body">
+                                {d.triageNotes ||
+                                  "Vital signs not yet provided."}
+                              </div>
+                            </div>
+                            <div className="info-card">
+                              <div className="info-card-title">
+                                Vital signs (from nurse)
+                              </div>
+                              <div className="patient-info-grid">
+                                <div className="info-item">
+                                  <span className="info-label">
+                                    Blood pressure
+                                  </span>
+                                  <span className="info-value">
+                                    {d.bloodPressure || "N/A"}
+                                  </span>
+                                </div>
+                                <div className="info-item">
+                                  <span className="info-label">Heart rate</span>
+                                  <span className="info-value">
+                                    {d.heartRate ? `${d.heartRate} bpm` : "N/A"}
+                                  </span>
+                                </div>
+                                <div className="info-item">
+                                  <span className="info-label">
+                                    Temperature
+                                  </span>
+                                  <span className="info-value">
+                                    {d.temperature
+                                      ? `${d.temperature} C`
+                                      : "N/A"}
+                                  </span>
+                                </div>
+                                <div className="info-item">
+                                  <span className="info-label">
+                                    Oxygen saturation
+                                  </span>
+                                  <span className="info-value">
+                                    {d.oxygenSaturation
+                                      ? `${d.oxygenSaturation}%`
+                                      : "N/A"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <PainMapSection
+                              className="specialist-pain-map-section"
+                              view={detailPainView}
+                              selectedAreas={detailPainAreas}
+                              readOnly
+                            />
+                            <div className="completed-consult-detail-soap completed-consult-detail-soap--inline">
+                              <div className="section-title-small">
+                                SOAP notes
+                              </div>
+                              <div className="info-card">
+                                <div className="info-card-title">
+                                  S — Subjective
+                                </div>
+                                <div className="info-card-body completed-consult-soap-text">
+                                  {soapSubjective.trim() || (
+                                    <span className="info-placeholder">
+                                      None recorded
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="info-card">
+                                <div className="info-card-title">
+                                  O — Objective
+                                </div>
+                                <div className="info-card-body completed-consult-soap-text">
+                                  {soapObjective.trim() || (
+                                    <span className="info-placeholder">
+                                      None recorded
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="info-card">
+                                <div className="info-card-title">
+                                  A — Assessment
+                                </div>
+                                <div className="info-card-body completed-consult-soap-text">
+                                  {soapAssessment.trim() || (
+                                    <span className="info-placeholder">
+                                      None recorded
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="info-card">
+                                <div className="info-card-title">P — Plan</div>
+                                <div className="info-card-body completed-consult-soap-text">
+                                  {soapPlan.trim() || (
+                                    <span className="info-placeholder">
+                                      None recorded
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="info-card">
+                                <div className="info-card-title">
+                                  ICD-10 / coding
+                                </div>
+                                <div className="info-card-body completed-consult-soap-text">
+                                  {soapIcdRaw.trim() || (
+                                    <span className="info-placeholder">
+                                      Not recorded
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {completedDetailTab === "medicine" && (
+                          <div className="completed-consult-detail-modal__scroll">
+                            <div className="info-card">
+                              <div className="info-card-title">
+                                Prescription
+                              </div>
+                              <div className="info-card-body">
+                                {enc.medicines && enc.medicines.length > 0 ? (
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: "12px",
+                                    }}
+                                  >
+                                    {enc.medicines.map((med, idx) => (
+                                      <div
+                                        key={idx}
+                                        style={{
+                                          border: "1px solid #e2eaf6",
+                                          borderRadius: "8px",
+                                          padding: "12px",
+                                          backgroundColor: "#fbfdff",
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            fontWeight: 600,
+                                            color: "#111827",
+                                            marginBottom: "4px",
+                                          }}
+                                        >
+                                          {med.name || "Medication"}
+                                        </div>
+                                        <div
+                                          style={{
+                                            color: "#6b7280",
+                                            fontSize: "0.88rem",
+                                          }}
+                                        >
+                                          {med.dosage || "No dosage recorded"}
+                                        </div>
+                                        {med.instructions ? (
+                                          <div
+                                            style={{
+                                              marginTop: "8px",
+                                              fontSize: "0.85rem",
+                                              color: "#374151",
+                                            }}
+                                          >
+                                            {med.instructions}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="info-placeholder">
+                                    No medications recorded for this visit.
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {completedDetailTab === "lab" && (
+                          <div className="completed-consult-detail-modal__scroll">
+                            <div className="info-card">
+                              <div className="info-card-title">
+                                Laboratory requests
+                              </div>
+                              <div className="info-card-body">
+                                {enc.labRequests &&
+                                enc.labRequests.length > 0 ? (
+                                  <ul className="history-list">
+                                    {enc.labRequests.map((lab, idx) => (
+                                      <li key={idx}>
+                                        {lab.test === "Custom Test"
+                                          ? lab.customTestName || "Custom test"
+                                          : lab.test || "Test"}
+                                        {lab.remarks ? ` — ${lab.remarks}` : ""}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <span className="info-placeholder">
+                                    No lab requests recorded.
+                                  </span>
+                                )}
+                                {enc.labInstructions ? (
+                                  <p
+                                    style={{
+                                      marginTop: "12px",
+                                      color: "#374151",
+                                      fontSize: "0.9rem",
+                                    }}
+                                  >
+                                    <strong>Instructions:</strong>{" "}
+                                    {enc.labInstructions}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {completedDetailTab === "certificate" && (
+                          <div className="completed-consult-detail-modal__scroll">
+                            <section className="certificate-preview-card">
+                              <div className="certificate-preview-title">
+                                MEDICAL CERTIFICATE
+                              </div>
+                              <div className="certificate-preview-clinic">
+                                Healthcare Clinic
+                              </div>
+                              <div className="certificate-preview-clinic">
+                                123 Medical Center, Manila, Philippines
+                              </div>
+                              <div className="certificate-preview-clinic">
+                                Tel: +63 2 1234 5678
+                              </div>
+                              <div className="certificate-preview-meta">
+                                <FaFileMedical />
+                                <span>
+                                  Date Issued:{" "}
+                                  {formatDisplayDate(cert.dateIssued) ||
+                                    "____________"}
+                                </span>
+                              </div>
+                              <div className="certificate-preview-body">
+                                <p>This is to certify that:</p>
+                                <div className="certificate-preview-patient">
+                                  {d.patientFullName || d.patient || "Patient"}
+                                </div>
+                                <p className="certificate-preview-text">
+                                  was examined and treated at this clinic and is
+                                  diagnosed with:
+                                </p>
+                                <div className="certificate-preview-diagnosis">
+                                  {cert.diagnosisReason || "________________"}
+                                </div>
+                                <div className="certificate-preview-rest">
+                                  Rest period:{" "}
+                                  {formatDisplayDate(cert.restStartDate) ||
+                                    "____________"}{" "}
+                                  to{" "}
+                                  {formatDisplayDate(cert.restEndDate) ||
+                                    "____________"}
+                                </div>
+                                {cert.additionalRemarks ? (
+                                  <div className="certificate-preview-remarks">
+                                    <span>Additional Remarks:</span>
+                                    <p>{cert.additionalRemarks}</p>
+                                  </div>
+                                ) : null}
+                              </div>
+                              <div className="certificate-signature">
+                                <div className="certificate-signature-line">
+                                  ________________
+                                </div>
+                                <div className="certificate-signature-name">
+                                  {[profileData.firstName, profileData.lastName]
+                                    .filter(Boolean)
+                                    .join(" ")
+                                    .trim() ||
+                                    currentUser?.fullName ||
+                                    currentUser?.name ||
+                                    "Attending Physician"}
+                                </div>
+                                <div className="certificate-signature-license">
+                                  License No.{" "}
+                                  {profileData.prcNumber ||
+                                    currentUser?.licenseNumber ||
+                                    "__________"}
+                                </div>
+                              </div>
+                            </section>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -2206,11 +6261,47 @@ const SpecialistDashboard = () => {
             </div>
             <div className="input-group">
               <label>Patient</label>
-              <input value={selectedTicket.patient} readOnly />
+              <input value={selectedTicket.patientFullName} readOnly />
             </div>
             <div className="input-group">
-              <label>Service</label>
-              <input value={selectedTicket.service} readOnly />
+              <label>Barangay</label>
+              <input
+                value={
+                  selectedTicket.barangay ||
+                  selectedTicket.rawTicket?.barangay ||
+                  "Not provided"
+                }
+                readOnly
+              />
+            </div>
+            <div className="input-group">
+              <label>Chief Complaint</label>
+              <input
+                value={selectedTicket.service || selectedTicket.chiefComplaint}
+                readOnly
+              />
+            </div>
+            <div className="input-group">
+              <label>Symptoms</label>
+              <textarea
+                value={selectedTicket.symptoms || "None specified"}
+                readOnly
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--light-gray)",
+                  minHeight: "80px",
+                  background: "#f9fafb",
+                }}
+              />
+            </div>
+            <div className="input-group">
+              <label>Consultation Channel</label>
+              <input
+                value={selectedTicket.consultationChannel || "Not specified"}
+                readOnly
+              />
             </div>
             <div className="input-group">
               <label>Date & Time</label>
@@ -2220,19 +6311,45 @@ const SpecialistDashboard = () => {
               <label>Status</label>
               <input value={selectedTicket.status} readOnly />
             </div>
-            <div style={{ marginTop: "1.2rem", display: "flex", gap: "10px" }}>
-              <button
-                className="btn-primary"
-                onClick={() => updateTicketStatus("Confirmed")}
-              >
-                Mark Confirmed
-              </button>
-              <button
-                className="edit-btn"
-                onClick={() => updateTicketStatus("Completed")}
-              >
-                Mark Completed
-              </button>
+            <div className="modal-actions">
+              {(() => {
+                const s = (selectedTicket.status || "").toLowerCase();
+                const isTriage = s === "processing" || s === "triage complete";
+                const isCompleted = s === "completed";
+
+                return (
+                  <>
+                    {!isCompleted && !isTriage && (
+                      <button
+                        className="btn-primary"
+                        onClick={() => updateTicketStatus("Confirmed")}
+                      >
+                        Mark Confirmed
+                      </button>
+                    )}
+                    {!isTriage && !isCompleted && (
+                      <button
+                        className="edit-btn"
+                        onClick={() => updateTicketStatus("Completed")}
+                      >
+                        Mark Completed
+                      </button>
+                    )}
+                    {isTriage && (
+                      <button
+                        className="btn-primary"
+                        style={{ backgroundColor: "#10b981" }}
+                        onClick={() => {
+                          setSelectedTicketId(selectedTicket.id);
+                          setShowInvoiceModal(true);
+                        }}
+                      >
+                        Generate Invoice
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -2320,126 +6437,448 @@ const SpecialistDashboard = () => {
         </div>
       )}
 
-      {mhModal.open && (
-        <div
-          className="modal"
-          style={{
-            display: "flex",
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-          onClick={(e) => {
-            if (e.target.classList.contains("modal"))
-              setMhModal({
-                open: false,
-                reason: "",
-                from: "",
-                to: "",
-                consent: false,
-              });
-          }}
-        >
-          <div
-            className="modal-content"
-            style={{
-              background: "#fff",
-              padding: "1.6rem",
-              borderRadius: "12px",
-              width: "90%",
-              maxWidth: "520px",
-            }}
-          >
-            <h3 style={{ marginBottom: "1rem" }}>Request Medical History</h3>
-            <div className="input-group">
-              <label>Reason</label>
-              <textarea
-                rows="3"
-                value={mhModal.reason}
-                onChange={(e) =>
-                  setMhModal((m) => ({ ...m, reason: e.target.value }))
-                }
-              ></textarea>
+      {/* Generate Invoice Modal */}
+      {showInvoiceModal && (
+        <div className="modal" onClick={() => setShowInvoiceModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Generate Invoice</h3>
+              <button
+                className="close-modal"
+                onClick={() => setShowInvoiceModal(false)}
+              >
+                &times;
+              </button>
             </div>
-            <div className="form-grid">
-              <div className="input-group">
-                <label>From</label>
-                <input
-                  type="date"
-                  value={mhModal.from}
+            <div style={{ padding: "1.5rem" }}>
+              <div className="input-group full-width">
+                <label>Consultation Type</label>
+                <select
+                  value={invoiceForm.consultationType}
                   onChange={(e) =>
-                    setMhModal((m) => ({ ...m, from: e.target.value }))
+                    setInvoiceForm((f) => ({
+                      ...f,
+                      consultationType: e.target.value,
+                    }))
                   }
-                />
+                >
+                  <option value="initial">Initial</option>
+                  <option value="follow-up">Follow-up</option>
+                </select>
               </div>
-              <div className="input-group">
-                <label>To</label>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  marginTop: "1.5rem",
+                }}
+              >
                 <input
-                  type="date"
-                  value={mhModal.to}
+                  type="checkbox"
+                  id="invoiceCert"
+                  style={{ width: "18px", height: "18px", margin: 0 }}
+                  checked={invoiceForm.includesCertificate}
                   onChange={(e) =>
-                    setMhModal((m) => ({ ...m, to: e.target.value }))
+                    setInvoiceForm((f) => ({
+                      ...f,
+                      includesCertificate: e.target.checked,
+                    }))
                   }
                 />
+                <label
+                  htmlFor="invoiceCert"
+                  style={{ margin: 0, cursor: "pointer", fontWeight: 500 }}
+                >
+                  Includes Medical Certificate
+                </label>
+              </div>
+              <div
+                style={{
+                  marginTop: "1.5rem",
+                  borderTop: "1px solid #eee",
+                  paddingTop: "1rem",
+                }}
+              >
+                <p style={{ fontWeight: 600, marginBottom: "0.5rem" }}>
+                  Apply Discount ({profileData?.discountPercentage || 20}%)
+                </p>
+                <div style={{ display: "flex", gap: "20px" }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="discountType"
+                      value="Pwd"
+                      checked={invoiceForm.discountType === "Pwd"}
+                      onChange={(e) =>
+                        setInvoiceForm((f) => ({
+                          ...f,
+                          discountType:
+                            e.target.value === f.discountType
+                              ? "None"
+                              : e.target.value,
+                        }))
+                      }
+                      onClick={(e) => {
+                        if (invoiceForm.discountType === "Pwd") {
+                          setInvoiceForm((f) => ({
+                            ...f,
+                            discountType: "None",
+                          }));
+                        }
+                      }}
+                    />
+                    <span style={{ fontSize: "0.9rem" }}>PWD</span>
+                  </label>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="discountType"
+                      value="Senior"
+                      checked={invoiceForm.discountType === "Senior"}
+                      onChange={(e) =>
+                        setInvoiceForm((f) => ({
+                          ...f,
+                          discountType:
+                            e.target.value === f.discountType
+                              ? "None"
+                              : e.target.value,
+                        }))
+                      }
+                      onClick={(e) => {
+                        if (invoiceForm.discountType === "Senior") {
+                          setInvoiceForm((f) => ({
+                            ...f,
+                            discountType: "None",
+                          }));
+                        }
+                      }}
+                    />
+                    <span style={{ fontSize: "0.9rem" }}>Senior Citizen</span>
+                  </label>
+                </div>
               </div>
             </div>
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                margin: "8px 0 16px",
-              }}
-            >
-              <input
-                id="mhConsent"
-                type="checkbox"
-                checked={mhModal.consent}
-                onChange={(e) =>
-                  setMhModal((m) => ({ ...m, consent: e.target.checked }))
-                }
-              />
-              <label htmlFor="mhConsent">I have the patient's consent</label>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: "10px",
                 justifyContent: "flex-end",
+                gap: "10px",
+                padding: "0 1.5rem 1.5rem",
               }}
             >
               <button
                 className="edit-btn"
-                onClick={() =>
-                  setMhModal({
-                    open: false,
-                    reason: "",
-                    from: "",
-                    to: "",
-                    consent: false,
-                  })
-                }
+                onClick={() => setShowInvoiceModal(false)}
+                disabled={isLoading}
               >
                 Cancel
               </button>
-              <button className="btn-primary" onClick={submitMh}>
-                Submit Request
+              <button
+                className="btn-primary"
+                style={{ marginTop: 0 }}
+                onClick={handleGenerateInvoice}
+                disabled={isLoading}
+              >
+                {isLoading ? "Generating..." : "Generate Invoice"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Call/Video Call Component */}
-      <SpecialistCall
+      {/* 8x8 Jitsi Video Call Overlay */}
+      <JitsiMeetCall
         isOpen={callState.isOpen}
         onClose={handleCloseCall}
         callType={callState.callType}
         patient={callState.patient}
-        currentUser={currentUser}
+        currentUser={
+          currentUser
+            ? {
+                ...currentUser,
+                profileImage:
+                  currentUser.profileUrl ||
+                  currentUser.profileImage ||
+                  profileData.profileUrl ||
+                  profileData.profileImage,
+              }
+            : null
+        }
+        ticketId={callState.patient?.ticketId || selectedTicket?.id}
+      />
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="modal" onClick={() => setShowSuccessModal(false)}>
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              padding: "40px 30px",
+              maxWidth: "450px",
+              width: "90%",
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+            }}
+          >
+            <div
+              style={{
+                color: "#16a34a",
+                fontSize: "4rem",
+                lineHeight: "1",
+                marginBottom: "20px",
+              }}
+            >
+              ✓
+            </div>
+            <h3
+              style={{
+                fontSize: "1.5rem",
+                marginBottom: "15px",
+                color: "#1f2937",
+              }}
+            >
+              Profile Saved Successfully
+            </h3>
+            <p
+              style={{
+                color: "#4b5563",
+                marginBottom: "25px",
+                fontSize: "1.1rem",
+                lineHeight: "1.5",
+              }}
+            >
+              Your specialist profile information has been securely updated in
+              the database.
+            </p>
+            <button
+              className="btn-primary"
+              onClick={() => setShowSuccessModal(false)}
+              style={{
+                width: "100%",
+                padding: "12px",
+                fontSize: "1.1rem",
+                marginTop: "0",
+              }}
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
+
+      {selectedMedicalEntry && (
+        <div
+          className="modal"
+          onClick={(e) =>
+            e.target.className === "modal" && closeMedicalEntryDetails()
+          }
+        >
+          <div
+            className="modal-content specialist-entry-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3>{selectedMedicalEntry.title}</h3>
+              <button
+                className="close-modal"
+                onClick={closeMedicalEntryDetails}
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="specialist-entry-modal__body">
+              {selectedMedicalEntry.type === "medicine" ? (
+                <div className="specialist-entry-modal__grid">
+                  <div className="specialist-entry-modal__field">
+                    <span>Medication Name</span>
+                    <strong>{selectedMedicalEntry.data?.name || "N/A"}</strong>
+                  </div>
+                  <div className="specialist-entry-modal__field">
+                    <span>Dosage</span>
+                    <strong>
+                      {selectedMedicalEntry.data?.dosage || "N/A"}
+                    </strong>
+                  </div>
+                  <div className="specialist-entry-modal__field">
+                    <span>Frequency</span>
+                    <strong>
+                      {selectedMedicalEntry.data?.frequency || "N/A"}
+                    </strong>
+                  </div>
+                  <div className="specialist-entry-modal__field">
+                    <span>Duration</span>
+                    <strong>
+                      {selectedMedicalEntry.data?.duration || "N/A"}
+                    </strong>
+                  </div>
+                  <div className="specialist-entry-modal__field specialist-entry-modal__field--full">
+                    <span>Special Instructions</span>
+                    <strong>
+                      {selectedMedicalEntry.data?.specialInstructions || "N/A"}
+                    </strong>
+                  </div>
+                </div>
+              ) : (
+                <div className="specialist-entry-modal__grid">
+                  <div className="specialist-entry-modal__field">
+                    <span>Test Name</span>
+                    <strong>
+                      {selectedMedicalEntry.data?.test === "Custom Test"
+                        ? selectedMedicalEntry.data?.customTestName || "N/A"
+                        : selectedMedicalEntry.data?.test || "N/A"}
+                    </strong>
+                  </div>
+                  <div className="specialist-entry-modal__field">
+                    <span>Test Type</span>
+                    <strong>{selectedMedicalEntry.data?.test || "N/A"}</strong>
+                  </div>
+                  <div className="specialist-entry-modal__field specialist-entry-modal__field--full">
+                    <span>Remarks</span>
+                    <strong>
+                      {selectedMedicalEntry.data?.remarks || "N/A"}
+                    </strong>
+                  </div>
+                  {selectedMedicalEntry.data?.test === "Custom Test" && (
+                    <div className="specialist-entry-modal__field specialist-entry-modal__field--full">
+                      <span>Custom Test Name</span>
+                      <strong>
+                        {selectedMedicalEntry.data?.customTestName || "N/A"}
+                      </strong>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {soapModalType && (
+        <div
+          className="modal"
+          onClick={(e) => e.target.className === "modal" && closeSoapModal()}
+        >
+          <div
+            className="modal-content soap-editor-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3>
+                {soapModalType === "subjective"
+                  ? "Edit Subjective"
+                  : soapModalType === "objective"
+                    ? "Edit Objective"
+                    : soapModalType === "assessment"
+                      ? "Edit Assessment"
+                      : "Edit Plan"}
+              </h3>
+              <button
+                className="close-modal"
+                onClick={closeSoapModal}
+                type="button"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="soap-editor-modal__body">
+              <div className="soap-editor-modal__field">
+                <label>
+                  {soapModalType === "subjective"
+                    ? "Subjective"
+                    : soapModalType === "objective"
+                      ? "Objective"
+                      : soapModalType === "assessment"
+                        ? "Assessment"
+                        : "Plan"}
+                </label>
+                <textarea
+                  value={soapModalValue}
+                  onChange={(e) => setSoapModalValue(e.target.value)}
+                  placeholder={
+                    soapModalType === "subjective"
+                      ? "Patient reports experiencing..."
+                      : soapModalType === "objective"
+                        ? "Physical examination reveals..."
+                        : soapModalType === "assessment"
+                          ? "Diagnosis: ..."
+                          : "Treatment plan includes..."
+                  }
+                />
+              </div>
+
+              {soapModalType === "assessment" && (
+                <div className="icd-selector-section">
+                  <ICDCodeSelector
+                    value={soapModalIcdCode}
+                    onChange={setSoapModalIcdCode}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="soap-editor-modal__actions">
+              <button
+                type="button"
+                className="btn-primary soap-editor-modal__save-btn"
+                onClick={saveSoapModal}
+              >
+                Save{" "}
+                {soapModalType === "subjective"
+                  ? "Subjective"
+                  : soapModalType === "objective"
+                    ? "Objective"
+                    : soapModalType === "assessment"
+                      ? "Assessment"
+                      : "Plan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMedicalRecords &&
+        createPortal(
+          <PatientMedicalRecordsModal
+            onClose={() => setShowMedicalRecords(false)}
+            patient={selectedPatientMedicalRecord}
+            patientId={selectedPatientMedicalRecord.id}
+            ticketId={`T-${String(selectedTicket?.id || "").padStart(3, "0")}`}
+            consultationType={
+              selectedTicket?.consultationChannel || selectedTicket?.service
+            }
+            sharedData={sharedMedicalData}
+            overlayClassName="modal"
+            overlayStyle={{ zIndex: 999999 }}
+          />,
+          document.body,
+        )}
+
+      <ImageCropperModal
+        isOpen={cropperModalOpen}
+        imageSrc={selectedImageSrc}
+        onCropComplete={handleCropComplete}
+        onCancel={handleCropCancel}
       />
     </div>
   );

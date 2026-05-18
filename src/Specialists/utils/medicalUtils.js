@@ -9,24 +9,28 @@ export const SUB_SPECIALIZATIONS = {
     "Electrophysiology",
     "Heart Failure",
     "Pediatric Cardiology",
+    "N/A",
   ],
   Dermatology: [
     "Cosmetic Dermatology",
     "Mohs Surgery",
     "Pediatric Dermatology",
     "Dermatopathology",
+    "N/A",
   ],
   Orthopedics: [
     "Sports Medicine",
     "Spine Surgery",
     "Hand Surgery",
     "Joint Replacement",
+    "N/A",
   ],
   Pediatrics: [
     "Neonatology",
     "Pediatric Neurology",
     "Pediatric Cardiology",
     "Pediatric Endocrinology",
+    "N/A",
   ],
   "Internal Medicine": [
     "Endocrinology",
@@ -35,32 +39,43 @@ export const SUB_SPECIALIZATIONS = {
     "Nephrology",
     "Rheumatology",
     "Infectious Disease",
+    "N/A",
   ],
-  Neurology: ["Stroke", "Epilepsy", "Movement Disorders", "Neuromuscular"],
-  Ophthalmology: ["Glaucoma", "Retina", "Cornea", "Pediatric Ophthalmology"],
+  Neurology: ["Stroke", "Epilepsy", "Movement Disorders", "Neuromuscular", "N/A"],
+  Ophthalmology: ["Glaucoma", "Retina", "Cornea", "Pediatric Ophthalmology", "N/A"],
   "Obstetrics & Gynecology": [
     "Maternal-Fetal Medicine",
     "Reproductive Endocrinology",
     "Gynecologic Oncology",
     "Urogynecology",
+    "N/A",
   ],
   "Otolaryngology (ENT)": [
     "Rhinology",
     "Laryngology",
     "Otology",
     "Head & Neck Surgery",
+    "N/A",
   ],
   Psychiatry: [
     "Child & Adolescent",
     "Addiction",
     "Geriatric",
     "Consultation-Liaison",
+    "N/A",
   ],
   Urology: [
     "Endourology",
     "Urologic Oncology",
     "Pediatric Urology",
     "Female Urology",
+    "N/A",
+  ],
+  "General Practitioner": [
+    "Family Medicine",
+    "Preventive Care",
+    "Primary Care",
+    "N/A",
   ],
 };
 
@@ -76,7 +91,8 @@ export const createDefaultEncounter = () => ({
   referral: "",
   followUp: false,
   medicines: [],
-  labRequests: []
+  labRequests: [],
+  icd10: ""
 });
 
 /**
@@ -98,6 +114,7 @@ export const createDefaultMedicineForm = () => ({
  */
 export const createDefaultLabForm = () => ({
   test: "",
+  customTestName: "",
   remarks: ""
 });
 
@@ -109,13 +126,14 @@ export const createDefaultLabForm = () => ({
 export const validateMedicine = (medicine) => {
   const errors = {};
 
-  if (!medicine.brand && !medicine.generic) {
+  if (!medicine.name || medicine.name.trim() === "") {
     errors.medicine = "Enter medicine brand or generic name";
   }
 
-  if (!medicine.instructions) {
-    errors.instructions = "Enter instructions";
-  }
+  // Optional: comment this out if specialInstructions is optional
+  // if (!medicine.specialInstructions) {
+  //   errors.instructions = "Enter instructions";
+  // }
 
   return {
     isValid: Object.keys(errors).length === 0,
@@ -133,6 +151,12 @@ export const validateLabRequest = (labRequest) => {
 
   if (!labRequest.test || labRequest.test.trim() === "") {
     errors.test = "Enter a lab test";
+  }
+
+  if (labRequest.test === "Custom Test") {
+    if (!labRequest.customTestName || labRequest.customTestName.trim() === "") {
+      errors.customTestName = "Enter a custom test name";
+    }
   }
 
   return {
@@ -191,7 +215,15 @@ export const addLabRequestToEncounter = (encounter, labRequest) => {
   }
 
   const labRequests = [...(encounter.labRequests || [])];
-  labRequests.push(labRequest);
+  const normalized = {
+    test: (labRequest.test || "").trim(),
+    remarks: (labRequest.remarks || "").trim(),
+    ...(labRequest.test === "Custom Test"
+      ? { customTestName: (labRequest.customTestName || "").trim() }
+      : {}),
+  };
+
+  labRequests.push(normalized);
 
   return {
     ...encounter,
@@ -257,19 +289,19 @@ export const updateMedicalHistoryStatus = (request, status) => ({
  */
 export const formatMedicineDisplay = (medicine) => {
   const parts = [];
-  
+
   if (medicine.brand || medicine.generic) {
     parts.push(medicine.brand || medicine.generic);
   }
-  
+
   if (medicine.dosage) {
     parts.push(medicine.dosage);
   }
-  
+
   if (medicine.form) {
     parts.push(`/ ${medicine.form}`);
   }
-  
+
   if (medicine.quantity) {
     parts.push(`(Qty: ${medicine.quantity})`);
   }

@@ -1,56 +1,37 @@
-import axios from 'axios';
-
-const apiClient = axios.create({
-  baseURL: 'http://localhost:1337', // Your Sails.js backend URL
-  withCredentials: true,
-});
+import { apiRequest, API_BASE_URL } from '../apiClient';
 
 /**
- * This is an interceptor. It automatically adds the authorization token 
- * to every request you make, so you don't have to do it manually.
- */
-apiClient.interceptors.request.use(config => {
-  const token = localStorage.getItem('admin_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-}, error => {
-  return Promise.reject(error);
-});
-
-/**
- * Handles the admin login. 
- * This triggers the 'last_login' update on the backend for the audit trail.
+ * Handles the admin login.
  */
 export const loginAdmin = async (email, password) => {
   try {
-    const response = await apiClient.post('/api/v1/admin/login', { email, password });
-    // In a real app with tokens, you would save the token here.
-    if (response.data.token) {
-      localStorage.setItem('admin_token', response.data.token);
+    const data = await apiRequest('/api/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+
+    const role = data?.user?.role || data?.user?.userType;
+    if (role !== 'admin' && role !== 'super_admin' && role !== 'nurse_admin' && role !== 'barangay_admin') {
+      await apiRequest('/api/v1/auth/logout', { method: 'POST' }).catch(() => {});
+      throw new Error('Access denied: this portal is for admin accounts.');
     }
-    return response.data;
+
+    return data;
   } catch (error) {
-    console.error('Admin login failed:', error.response?.data || error.message);
-    throw error.response?.data || new Error('Login failed');
+    console.error('Admin login failed:', error);
+    throw error;
   }
 };
 
 /**
- * Handles the admin logout. 
- * This triggers the 'last_active' timestamp update on the backend for the audit trail.
+ * Handles the admin logout.
  */
 export const logoutAdmin = async () => {
-    try {
-        // The backend identifies the user via their token to log the 'last_active' time.
-        await apiClient.post('/api/v1/admin/logout');
-    } catch (error) {
-        console.error('Admin logout failed:', error.response?.data || error.message);
-    } finally {
-        // Always clear local session data on logout.
-        localStorage.removeItem('admin_token');
-    }
+  try {
+    await apiRequest('/api/v1/auth/logout', { method: 'POST' });
+  } catch (error) {
+    console.error('Admin logout failed:', error);
+  }
 };
 
 /**
@@ -58,8 +39,8 @@ export const logoutAdmin = async () => {
  */
 export const getSpecialists = async () => {
   try {
-    const response = await apiClient.get('/api/v1/admin/specialists');
-    return response.data;
+    const data = await apiRequest('/api/v1/admin/specialists');
+    return Array.isArray(data) ? data : data?.specialists || data?.data || [];
   } catch (error) {
     console.error('Failed to fetch specialists:', error);
     throw error;
@@ -71,11 +52,48 @@ export const getSpecialists = async () => {
  */
 export const getPendingApplications = async () => {
   try {
-    const response = await apiClient.get('/api/v1/admin/pending-applications');
-    // Handle both array and object responses
-    return Array.isArray(response.data) 
-      ? response.data 
-      : (response.data?.applications || response.data?.data || []);
+    const data = await apiRequest('/api/v1/admin/view-pending');
+    const rawData = Array.isArray(data)
+      ? data
+      : data?.pendingApplications || data?.applications || data?.data || [];
+
+    return rawData.map((app) => {
+      const u = app.user || {};
+      return {
+        id: app.id,
+        userId: u.id,
+        name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Pending Specialist',
+        email: u.email || 'N/A',
+        role: 'Specialist',
+        status: app.applicationStatus || 'Pending',
+        date: app.createdAt ? new Date(app.createdAt).toISOString().split('T')[0] : 'N/A',
+        details: {
+          specializations: app.primarySpecialty ? [app.primarySpecialty] : [],
+          subspecializations: app.subSpecialties ? app.subSpecialties.split(',').map((s) => s.trim()) : [],
+          prcId: {
+            number: app.licenseNumber || u.licenseNumber || 'N/A',
+            imageUrl: app.prcIdUrl || null,
+          },
+          s2: {
+            number: app.s2Number || 'N/A',
+            imageUrl: app.s2LicenseUrl || null,
+          },
+          ptr: {
+            number: app.ptrNumber || 'N/A',
+            imageUrl: app.ptrUrl || null,
+          },
+          eSig: app.eSignatureUrl ? `${API_BASE_URL}${app.eSignatureUrl}` : null,
+          profilePicture: app.profilePictureUrl || u.profileImage || null,
+          addressLine1: app.addressLine1 || '',
+          addressLine2: app.addressLine2 || '',
+          barangay: app.barangay || '',
+          city: app.city || '',
+          province: app.province || '',
+          region: app.region || '',
+          zipCode: app.zipCode || '',
+        },
+      };
+    });
   } catch (error) {
     console.error('Failed to fetch pending applications:', error);
     throw error;
@@ -86,32 +104,26 @@ export const getPendingApplications = async () => {
  * Fetches the transaction history.
  */
 export const getTransactions = async () => {
-    try {
-        const response = await apiClient.get('/api/v1/admin/transactions');
-        // Handle both array and object responses
-        return Array.isArray(response.data)
-          ? response.data
-          : (response.data?.transactions || response.data?.data || []);
-    } catch (error) {
-        console.error('Failed to fetch transactions:', error);
-        throw error;
-    }
+  try {
+    const data = await apiRequest('/api/v1/admin/transactions');
+    return Array.isArray(data) ? data : data?.transactions || data?.data || [];
+  } catch (error) {
+    console.error('Failed to fetch transactions:', error);
+    throw error;
+  }
 };
 
 /**
  * Fetches the consultation history.
  */
 export const getConsultations = async () => {
-    try {
-        const response = await apiClient.get('/api/v1/admin/consultations');
-        // Handle both array and object responses
-        return Array.isArray(response.data)
-          ? response.data
-          : (response.data?.consultations || response.data?.data || []);
-    } catch (error) {
-        console.error('Failed to fetch consultations:', error);
-        throw error;
-    }
+  try {
+    const data = await apiRequest('/api/v1/admin/consultations');
+    return Array.isArray(data) ? data : data?.consultations || data?.data || [];
+  } catch (error) {
+    console.error('Failed to fetch consultations:', error);
+    throw error;
+  }
 };
 
 /**
@@ -119,30 +131,38 @@ export const getConsultations = async () => {
  */
 export const getPatientAndNurseUsers = async () => {
   try {
-    const response = await apiClient.get('/api/v1/admin/users');
-    // Handle both array and object responses
-    const users = Array.isArray(response.data)
-      ? response.data
-      : (response.data?.users || response.data?.data || []);
-    return users;
+    const data = await apiRequest('/api/v1/admin/users');
+    return Array.isArray(data) ? data : data?.users || data?.data || [];
   } catch (error) {
     console.error('Failed to fetch users:', error);
-    return [
-      { id: 'p1', userType: 'Patient', firstName: 'John', lastName: 'Doe', email: 'patient@gmail.com', mobileNumber: '98765485', subscription: 'Paid' },
-      { id: 'n1', userType: 'Nurse', firstName: 'Leslie', lastName: 'Rowland', email: 'les@row@gmail.com', mobileNumber: '97685334', subscription: 'Free' }
-    ];
+    return [];
+  }
+};
+
+/**
+ * Create a new staff account (Nurse or Admin).
+ */
+export const createStaff = async (payload) => {
+  try {
+    return await apiRequest('/api/v1/admin/create-staff', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    console.error('Failed to create staff:', error);
+    throw error;
   }
 };
 
 /**
  * Updates a user's information.
- * @param {string} userId - The ID of the user to update.
- * @param {object} userData - The data to update.
  */
 export const updateUser = async (userId, userData) => {
   try {
-    const response = await apiClient.put(`/api/v1/admin/users/${userId}`, userData);
-    return response.data;
+    return await apiRequest(`/api/v1/admin/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
   } catch (error) {
     console.error(`Failed to update user ${userId}:`, error);
     throw error;
@@ -151,14 +171,67 @@ export const updateUser = async (userId, userData) => {
 
 /**
  * Deletes a user.
- * @param {string} userId - The ID of the user to delete.
  */
 export const deleteUser = async (userId) => {
   try {
-    const response = await apiClient.delete(`/api/v1/admin/users/${userId}`);
-    return response.data;
+    return await apiRequest(`/api/v1/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
   } catch (error) {
     console.error(`Failed to delete user ${userId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Fetches the authenticated admin's profile information.
+ */
+export const getAdminProfile = async () => {
+  try {
+    return await apiRequest('/api/v1/admin/profile');
+  } catch (error) {
+    console.error('Failed to fetch admin profile:', error);
+    throw error;
+  }
+};
+
+/**
+ * Uploads a new avatar image for the admin.
+ */
+export const uploadAdminAvatar = async (file) => {
+  try {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    return await fetch(`${API_BASE_URL}/api/v1/admin/avatar`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}`,
+      },
+    }).then((res) => {
+      if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
+      return res.json();
+    });
+  } catch (error) {
+    console.error('Failed to upload admin avatar:', error);
+    throw error;
+  }
+};
+
+/**
+ * Unified controller for updating a specialist's approval status.
+ * Replaces the old 'approveSpecialist' function.
+ */
+export const updateSpecialistStatus = async ({ specialistId, status, denialReason = '' }) => {
+  try {
+    return await apiRequest(`/api/v1/admin/update-specialist-status`, {
+      method: 'POST',
+      body: JSON.stringify({ specialistId, status, denialReason }),
+    });
+  } catch (error) {
+    console.error(`Failed to update specialist status:`, error);
     throw error;
   }
 };

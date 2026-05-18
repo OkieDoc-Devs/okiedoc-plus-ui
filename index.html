@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -24,26 +24,14 @@
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OkieDoc+</title>
+    <script
+      src="https://8x8.vc/vpaas-magic-cookie-3d027dc8a9ca4eab8b5e3966fa09d0cb/external_api.js"
+      async
+    ></script>
     <script>
       window.io = window.io || {};
       window.io.sails = window.io.sails || {};
       window.io.sails.autoConnect = false;
-    </script>
-    <script src="http://localhost:1337/socket/sails.io.js"></script>
-    <script>
-      if (typeof io !== "undefined" && io.sails) {
-        io.sails.url = "http://localhost:1337";
-        io.sails.transports = ["websocket", "polling"];
-        io.sails.useCORSRouteToGetCookie = true;
-        io.sails.environment = "development";
-        console.log("Sails.io.js configured for:", io.sails.url);
-        io.socket = io.sails.connect();
-        console.log("Sails.io.js socket connecting to:", io.sails.url);
-      } else {
-        console.warn(
-          "Sails.io.js failed to load - check if backend is running and serving /socket/sails.io.js"
-        );
-      }
     </script>
   </head>
   <body>

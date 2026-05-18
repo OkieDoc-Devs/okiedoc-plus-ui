@@ -1,14 +1,5 @@
-/**
- * API Service Module
- * Handles all API communication for the Nurse module
- */
-
 import { resetSocketAuth } from "./chatService.js";
-
-const API_BASE_URL =
-  import.meta.env.MODE === "production"
-    ? "https://your-production-url.com"
-    : "http://localhost:1337";
+import { apiRequest } from "../../api/apiClient";
 
 /**
  * Fetch tickets from API
@@ -17,18 +8,7 @@ const API_BASE_URL =
  */
 export async function fetchTicketsFromAPI() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/tickets`, {
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await apiRequest("/api/v1/nurse/tickets");
 
     if (data.success) {
       return data.data || [];
@@ -48,26 +28,21 @@ export async function fetchTicketsFromAPI() {
  */
 export async function fetchNotificationsFromAPI() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/notifications`, {
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const data = await apiRequest('/api/v1/notifications');
+    const notifications = (data.notifications || []).map(n => ({
+      ...n,
+      unread: !n.isRead, // Map backend isRead to frontend-expected unread state
+    }));
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (data.success) {
+    if (data.notifications !== undefined) {
+      return notifications;
+    } else if (data.success) {
       return data.data || [];
     } else {
-      throw new Error(data.message || "Failed to load notifications");
+      throw new Error(data.message || 'Failed to load notifications');
     }
   } catch (error) {
-    console.error("Error fetching notifications from API:", error);
+    console.error('Error fetching notifications from API:', error);
     throw error;
   }
 }
@@ -79,18 +54,7 @@ export async function fetchNotificationsFromAPI() {
  */
 export async function fetchDashboardFromAPI() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/dashboard`, {
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await apiRequest("/api/v1/nurse/dashboard");
 
     if (data.success) {
       return data.data || {};
@@ -110,18 +74,10 @@ export async function fetchDashboardFromAPI() {
  */
 export async function markNotificationAsRead(notificationId) {
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/api/nurse/notifications/${notificationId}/read`,
-      {
-        method: "PUT",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    return response.ok;
+    await apiRequest(`/api/v1/notifications/${notificationId}/read`, {
+      method: "PATCH",
+    });
+    return true;
   } catch (error) {
     console.error("Error marking notification as read:", error);
     return false;
@@ -135,22 +91,11 @@ export async function markNotificationAsRead(notificationId) {
  */
 export async function fetchNurseProfile() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/profile`, {
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log("Raw API response for nurse profile:", data);
+    const data = await apiRequest("/api/v1/nurse/profile");
+    // console.log("Raw API response for nurse profile:", data);
 
     if (data.success) {
-      console.log("Profile data from API:", data.data);
+      // console.log("Profile data from API:", data.data);
       return data.data;
     } else {
       throw new Error(data.message || "Failed to load profile");
@@ -169,20 +114,10 @@ export async function fetchNurseProfile() {
  */
 export async function updateNurseProfile(profileData) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/profile`, {
+    const data = await apiRequest("/api/v1/nurse/profile", {
       method: "PUT",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(profileData),
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
 
     if (data.success) {
       return data.data;
@@ -211,25 +146,23 @@ export async function uploadNurseAvatar(file) {
 
   try {
     const formData = new FormData();
-    formData.append("avatar", file);
+    formData.append("photo", file);
 
-    const response = await fetch(`${API_BASE_URL}/api/nurse/avatar`, {
+    const data = await apiRequest("/api/v1/user/upload-profile-picture", {
       method: "POST",
-      credentials: "include",
       body: formData,
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (data?.profileUrl || data?.avatarUrl) {
+      return { profileUrl: data.profileUrl || data.avatarUrl };
     }
-
-    const data = await response.json();
-
-    if (data.success) {
-      return data.data;
-    } else {
-      throw new Error(data.message || "Failed to upload avatar");
+    if (data?.data?.profileUrl || data?.data?.avatarUrl) {
+      return { profileUrl: data.data.profileUrl || data.data.avatarUrl };
     }
+    if (data?.success) {
+      return data.data || {};
+    }
+    throw new Error(data?.message || "Failed to upload avatar");
   } catch (error) {
     console.error("Error uploading nurse avatar:", error);
     throw error;
@@ -243,19 +176,9 @@ export async function uploadNurseAvatar(file) {
  */
 export async function deleteNurseAvatar() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/avatar`, {
+    const data = await apiRequest("/api/v1/nurse/avatar", {
       method: "DELETE",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
 
     if (data.success) {
       return true;
@@ -275,18 +198,7 @@ export async function deleteNurseAvatar() {
  */
 export async function fetchDoctorsFromAPI() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/doctors`, {
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await apiRequest("/api/v1/nurse/doctors");
 
     if (data.success) {
       return data.data || [];
@@ -300,6 +212,63 @@ export async function fetchDoctorsFromAPI() {
 }
 
 /**
+ * Fetch nurse users from API
+ * @returns {Promise<Array>} Array of nurse users
+ * @throws {Error} If API request fails
+ */
+export async function fetchNursesFromAPI() {
+  try {
+    const data = await apiRequest('/api/v1/chat/users');
+    const users = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.users)
+        ? data.users
+        : Array.isArray(data?.data)
+          ? data.data
+          : [];
+
+    return users.filter((user) => String(user?.role || '').toLowerCase() === 'nurse');
+  } catch (error) {
+    console.error('Error fetching nurses from API:', error);
+    throw error;
+  }
+}
+
+export async function searchPatientsFromAPI(search = "") {
+  try {
+    const query = search ? `?search=${encodeURIComponent(search)}` : "";
+    const data = await apiRequest(`/api/v1/nurse/patients${query}`);
+
+    if (data.success) {
+      return data.data || [];
+    }
+
+    throw new Error(data.message || "Failed to search patients");
+  } catch (error) {
+    console.error("Error searching patients from API:", error);
+    throw error;
+  }
+}
+
+/**
+ * Generate invoice for a ticket
+ * @param {Object} data - Invoice data
+ * @returns {Promise<Object>} API response
+ */
+export async function generateInvoice(data) {
+  try {
+    const response = await apiRequest("/api/v1/tickets/generate-invoice", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return response;
+  } catch (error) {
+    console.error("Error generating invoice:", error);
+    throw error;
+  }
+}
+
+/**
  * Create a new ticket via API
  * @param {Object} ticketData - Ticket data to create
  * @returns {Promise<Object>} Created ticket data
@@ -307,20 +276,10 @@ export async function fetchDoctorsFromAPI() {
  */
 export async function createTicket(ticketData) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/nurse/tickets`, {
+    const data = await apiRequest("/api/v1/tickets/create", {
       method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(ticketData),
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
 
     if (data.success) {
       return data.data;
@@ -334,6 +293,62 @@ export async function createTicket(ticketData) {
 }
 
 /**
+ * Claim a ticket via API
+ * @param {number|string} ticketId - Ticket ID
+ * @returns {Promise<Object>} Claim response
+ */
+export async function claimTicket(ticketId) {
+  try {
+    return await apiRequest("/api/v1/tickets/claim", {
+      method: "PATCH",
+      body: JSON.stringify({ ticketId: parseInt(ticketId, 10) }),
+    });
+  } catch (error) {
+    console.error("Error claiming ticket:", error);
+    throw error;
+  }
+}
+
+/**
+ * Triage a ticket via API
+ * @param {Object} triageData - Triage data (ticketId, targetSpecialty, specialistId, urgency)
+ * @returns {Promise<Object>} Triage response
+ */
+export async function triageTicket(triageData) {
+  try {
+    return await apiRequest("/api/v1/nurse/triage-ticket", {
+      method: "PATCH",
+      body: JSON.stringify(triageData),
+    });
+  } catch (error) {
+    console.error("Error triaging ticket:", error);
+    throw error;
+  }
+}
+
+/**
+ * Assign a specialist to a ticket via API
+ * @param {number} ticketId - Ticket ID
+ * @param {number} specialistId - Specialist user ID
+ * @returns {Promise<Object>} Assignment response
+ */
+export async function assignSpecialist(ticketId, specialistId, details = {}) {
+  try {
+    return await apiRequest("/api/v1/tickets/assign-specialist", {
+      method: "PATCH",
+      body: JSON.stringify({
+        ticketId: parseInt(ticketId, 10),
+        specialistId: parseInt(specialistId, 10),
+        ...details,
+      }),
+    });
+  } catch (error) {
+    console.error("Error assigning specialist:", error);
+    throw error;
+  }
+}
+
+/**
  * Update ticket via API
  * @param {string} ticketId - Ticket ID
  * @param {Object} updates - Updates to apply to ticket
@@ -342,23 +357,10 @@ export async function createTicket(ticketData) {
  */
 export async function updateTicket(ticketId, updates) {
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/api/nurse/tickets/${ticketId}`,
-      {
-        method: "PUT",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updates),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await apiRequest(`/api/v1/nurse/tickets/${ticketId}`, {
+      method: "PUT",
+      body: JSON.stringify(updates),
+    });
 
     if (data.success) {
       return data.data;
@@ -380,24 +382,19 @@ export async function logoutFromAPI() {
   try {
     resetSocketAuth();
 
-    const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+    const data = await apiRequest("/api/v1/auth/logout", {
       method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
     });
 
-    const data = await response.json();
-
-    if (response.ok && data.success) {
+    if (data.success) {
       localStorage.removeItem("currentUser");
+      localStorage.removeItem("okiedoc_user_type");
       localStorage.removeItem("nurse.id");
       localStorage.removeItem("nurse.email");
       localStorage.removeItem("nurse.firstName");
       localStorage.removeItem("nurse.lastName");
 
-      console.log("Logout successful:", data.message);
+      // console.log("Logout successful:", data.message);
       return data;
     } else {
       console.warn("Logout response:", data);
@@ -410,3 +407,4 @@ export async function logoutFromAPI() {
     throw error;
   }
 }
+

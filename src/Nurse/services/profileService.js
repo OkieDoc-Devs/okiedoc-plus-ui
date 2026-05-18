@@ -9,7 +9,7 @@
  * @returns {Object} Transformed profile data
  */
 export function transformProfileFromAPI(apiProfile) {
-  console.log("Transforming API profile data:", apiProfile);
+  // console.log("Transforming API profile data:", apiProfile);
 
   let firstName =
     apiProfile.firstName ||
@@ -32,15 +32,15 @@ export function transformProfileFromAPI(apiProfile) {
 
       if (!firstName && userData.firstName) {
         firstName = userData.firstName;
-        console.log("Using currentUser firstName:", firstName);
+        // console.log("Using currentUser firstName:", firstName);
       }
       if (!lastName && userData.lastName) {
         lastName = userData.lastName;
-        console.log("Using currentUser lastName:", lastName);
+        // console.log("Using currentUser lastName:", lastName);
       }
       if (userData.email) {
         email = userData.email;
-        console.log("Using currentUser email:", userData.email);
+        // console.log("Using currentUser email:", userData.email);
       }
     }
 
@@ -58,13 +58,22 @@ export function transformProfileFromAPI(apiProfile) {
     firstName: firstName,
     lastName: lastName,
     email: email,
-    phone: apiProfile.phone || apiProfile.Phone || "",
+    phone: apiProfile.phone || apiProfile.mobileNumber || apiProfile.Phone || "",
     specialization:
       apiProfile.specialization || apiProfile.Specialization || "",
     licenseNumber: licenseNumber,
     experience: apiProfile.experience || apiProfile.Experience || "",
     department: apiProfile.department || apiProfile.Department || "",
+    prcExpiryDate: apiProfile.prcExpiryDate || "",
+    addressLine1: apiProfile.addressLine1 || "",
+    addressLine2: apiProfile.addressLine2 || "",
+    barangay: apiProfile.barangay || "",
+    city: apiProfile.city || "",
+    province: apiProfile.province || "",
+    region: apiProfile.region || "",
+    zipCode: apiProfile.zipCode || "",
     profileImage:
+      apiProfile.profileUrl ||
       apiProfile.profileImage ||
       apiProfile.profile_image ||
       apiProfile.Profile_Image_Data_URL ||
@@ -79,14 +88,22 @@ export function transformProfileFromAPI(apiProfile) {
  */
 export function transformProfileToAPI(uiProfile) {
   return {
-    first_name: uiProfile.firstName,
-    last_name: uiProfile.lastName,
+    firstName: uiProfile.firstName,
+    lastName: uiProfile.lastName,
     email: uiProfile.email,
-    phone: uiProfile.phone,
+    mobileNumber: uiProfile.phone,
     specialization: uiProfile.specialization,
-    license_number: uiProfile.licenseNumber,
+    licenseNumber: uiProfile.licenseNumber,
     experience: uiProfile.experience,
     department: uiProfile.department,
+    prcExpiryDate: uiProfile.prcExpiryDate,
+    addressLine1: uiProfile.addressLine1,
+    addressLine2: uiProfile.addressLine2,
+    barangay: uiProfile.barangay,
+    city: uiProfile.city,
+    province: uiProfile.province,
+    region: uiProfile.region,
+    zipCode: uiProfile.zipCode,
   };
 }
 
@@ -109,6 +126,7 @@ export function getFallbackProfile() {
     licenseNumber: "RN-12345",
     experience: "5 years",
     department: "Emergency Department",
+    prcExpiryDate: "",
   };
 }
 

@@ -3,17 +3,19 @@
  * Centralized localStorage management for the Nurse module
  */
 
+import { API_BASE_URL } from '../../api/apiClient';
+
 /**
  * Local storage keys used throughout the application
  */
 export const LOCAL_STORAGE_KEYS = {
-  NURSE_ID: "nurse.id",
-  NURSE_EMAIL: "nurse.email",
-  NURSE_FIRST_NAME: "nurse.firstName",
-  NURSE_LAST_NAME: "nurse.lastName",
-  NURSE_PROFILE_IMAGE: "nurse.profileImage",
-  TICKETS: "tickets",
-  NOTIFICATIONS: "notifications",
+  NURSE_ID: 'nurse.id',
+  NURSE_EMAIL: 'nurse.email',
+  NURSE_FIRST_NAME: 'nurse.firstName',
+  NURSE_LAST_NAME: 'nurse.lastName',
+  NURSE_PROFILE_IMAGE: 'nurse.profileImage',
+  TICKETS: 'tickets',
+  NOTIFICATIONS: 'notifications',
 };
 
 /**
@@ -50,33 +52,17 @@ export function saveToStorage(key, value) {
  * @returns {string|null} Nurse ID or null
  */
 export function getNurseId() {
-  let nurseId = localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_ID);
-
-  if (!nurseId) {
-    try {
-      const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-      if (currentUser && currentUser.userType === "nurse") {
-        nurseId = currentUser.id;
-        localStorage.setItem(LOCAL_STORAGE_KEYS.NURSE_ID, String(nurseId));
-        console.log(
-          "getNurseId: Retrieved from currentUser and cached:",
-          nurseId
-        );
-      }
-    } catch (error) {
-      console.error("getNurseId: Error parsing currentUser:", error);
-    }
-  }
+  const nurseId = localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_ID);
 
   if (nurseId) {
     const parsed = parseInt(nurseId, 10);
     if (!isNaN(parsed)) {
-      console.log("getNurseId: Returning nurse ID (parsed):", parsed);
+      // console.log('getNurseId: Returning nurse ID (parsed):', parsed);
       return parsed;
     }
   }
 
-  console.log("getNurseId: Returning nurse ID:", null);
+  // console.log('getNurseId: Returning nurse ID:', null);
   return null;
 }
 
@@ -85,21 +71,7 @@ export function getNurseId() {
  * @returns {string|null} Nurse email or null
  */
 export function getNurseEmail() {
-  let email = localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_EMAIL);
-
-  if (!email) {
-    try {
-      const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-      if (currentUser && currentUser.userType === "nurse") {
-        email = currentUser.email;
-        localStorage.setItem(LOCAL_STORAGE_KEYS.NURSE_EMAIL, email);
-      }
-    } catch (error) {
-      console.error("getNurseEmail: Error parsing currentUser:", error);
-    }
-  }
-
-  return email;
+  return localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_EMAIL);
 }
 
 /**
@@ -107,25 +79,9 @@ export function getNurseEmail() {
  * @returns {string} Nurse first name or "Nurse"
  */
 export function getNurseFirstName() {
-  let firstName = localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_FIRST_NAME);
+  const firstName = localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_FIRST_NAME);
 
-  if (!firstName) {
-    try {
-      const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-      if (
-        currentUser &&
-        currentUser.userType === "nurse" &&
-        currentUser.firstName
-      ) {
-        firstName = currentUser.firstName;
-        localStorage.setItem(LOCAL_STORAGE_KEYS.NURSE_FIRST_NAME, firstName);
-      }
-    } catch (error) {
-      console.error("getNurseFirstName: Error parsing currentUser:", error);
-    }
-  }
-
-  return firstName || "Nurse";
+  return firstName || 'Nurse';
 }
 
 /**
@@ -133,17 +89,7 @@ export function getNurseFirstName() {
  * @returns {string} Nurse last name or empty string
  */
 export function getNurseLastName() {
-  return localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_LAST_NAME) || "";
-}
-
-/**
- * Get the API base URL for constructing full image URLs
- * @returns {string} API base URL
- */
-function getAPIBaseURL() {
-  return import.meta.env.MODE === "production"
-    ? "https://your-production-url.com"
-    : "http://localhost:1337";
+  return localStorage.getItem(LOCAL_STORAGE_KEYS.NURSE_LAST_NAME) || '';
 }
 
 /**
@@ -152,15 +98,15 @@ function getAPIBaseURL() {
  */
 export function getNurseProfileImage() {
   const profileImage = localStorage.getItem(
-    LOCAL_STORAGE_KEYS.NURSE_PROFILE_IMAGE
+    LOCAL_STORAGE_KEYS.NURSE_PROFILE_IMAGE,
   );
 
   if (!profileImage) {
-    return "/account.svg";
+    return '/account.svg';
   }
 
-  if (profileImage.startsWith("/uploads")) {
-    return `${getAPIBaseURL()}${profileImage}`;
+  if (profileImage.startsWith('/')) {
+    return `${API_BASE_URL}${profileImage}`;
   }
 
   return profileImage;

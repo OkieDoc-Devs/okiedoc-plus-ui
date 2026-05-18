@@ -4,6 +4,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import socketClient from "../../utils/socketClient";
+import { connectSocket } from "../../utils/socketClient";
 import {
   getConversations,
   getMessages,
@@ -14,24 +16,121 @@ import {
   createConversation,
   searchUsers,
   getAllChatUsers,
-  subscribeToConversation,
   setupChatSocketListeners,
+  subscribeToConversation,
+  unsubscribeFromConversation,
   transformConversationForUI,
   transformMessageForUI,
   isSocketConnected,
   authenticateSocket,
+  respondToMedicalHistoryRequest as respondToHistoryApi,
 } from "./chatService.js";
 
+const CHAT_CONVERSATIONS_CACHE_TTL_MS = 5 * 60 * 1000;
+const ACTIVE_CONVERSATION_STORAGE_TTL_MS = 12 * 60 * 60 * 1000;
+
+const getConversationsCacheKey = (userId, userType) =>
+  userId ? `chat.conversations.${userType || "user"}.${userId}` : null;
+
+const getActiveConversationStorageKey = (userId, userType) =>
+  userId ? `chat.activeConversation.${userType || "user"}.${userId}` : null;
+
+const readCachedConversations = (userId, userType) => {
+  const key = getConversationsCacheKey(userId, userType);
+  if (!key || typeof sessionStorage === "undefined") return [];
+
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (
+      !parsed ||
+      !Array.isArray(parsed.conversations) ||
+      Date.now() - Number(parsed.cachedAt || 0) > CHAT_CONVERSATIONS_CACHE_TTL_MS
+    ) {
+      sessionStorage.removeItem(key);
+      return [];
+    }
+    return parsed.conversations;
+  } catch {
+    return [];
+  }
+};
+
+const writeCachedConversations = (userId, userType, conversations) => {
+  const key = getConversationsCacheKey(userId, userType);
+  if (!key || typeof sessionStorage === "undefined") return;
+
+  try {
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({
+        cachedAt: Date.now(),
+        conversations: Array.isArray(conversations) ? conversations : [],
+      })
+    );
+  } catch {}
+};
+
+const readStoredActiveConversationId = (userId, userType) => {
+  const key = getActiveConversationStorageKey(userId, userType);
+  if (!key || typeof localStorage === "undefined") return null;
+
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (
+      !parsed ||
+      Date.now() - Number(parsed.savedAt || 0) > ACTIVE_CONVERSATION_STORAGE_TTL_MS
+    ) {
+      localStorage.removeItem(key);
+      return null;
+    }
+
+    return parsed.conversationId ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredActiveConversationId = (userId, userType, conversationId) => {
+  const key = getActiveConversationStorageKey(userId, userType);
+  if (!key || typeof localStorage === "undefined") return;
+
+  try {
+    if (conversationId === null || conversationId === undefined) {
+      localStorage.removeItem(key);
+      return;
+    }
+
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        savedAt: Date.now(),
+        conversationId,
+      })
+    );
+  } catch {}
+};
+
 export function useChat({ currentUserId, currentUserType = "n" } = {}) {
-  const [conversations, setConversations] = useState([]);
+  const [conversations, setConversations] = useState(() =>
+    readCachedConversations(currentUserId, currentUserType)
+  );
   const [activeConversation, setActiveConversation] = useState(null);
-  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [activeCallHost, setActiveCallHost] = useState(null);
   const [typingUsers, setTypingUsers] = useState([]);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
 
   const [socketReady, setSocketReady] = useState(false);
+  const [restoredConversationId, setRestoredConversationId] = useState(() =>
+    readStoredActiveConversationId(currentUserId, currentUserType)
+  );
 
   const subscribedIdsRef = useRef(new Set());
 
@@ -40,23 +139,66 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
   const cleanupRef = useRef(null);
   const globalCleanupRef = useRef(null);
   const activeConversationRef = useRef(null);
+  const conversationsRef = useRef(conversations);
+  const messageLoadSeqRef = useRef(0);
+
+  const upsertMessages = useCallback((currentMessages, incomingMessages) => {
+    const nextMessages = [...currentMessages];
+    incomingMessages.forEach((incomingMessage) => {
+      const existingIndex = nextMessages.findIndex(
+        (message) => String(message.id) === String(incomingMessage.id)
+      );
+      if (existingIndex === -1) {
+        nextMessages.push(incomingMessage);
+      } else {
+        nextMessages[existingIndex] = {
+          ...nextMessages[existingIndex],
+          ...incomingMessage,
+        };
+      }
+    });
+    return nextMessages;
+  }, []);
 
   useEffect(() => {
     activeConversationRef.current = activeConversation;
   }, [activeConversation]);
 
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
   const prevUserIdRef = useRef(currentUserId);
   useEffect(() => {
     if (prevUserIdRef.current !== currentUserId) {
-      console.log("[useChat] User ID changed, resetting socket state", {
+      /* console.log("[useChat] User ID changed, resetting socket state", {
         previous: prevUserIdRef.current,
         current: currentUserId,
-      });
+      }); */
       prevUserIdRef.current = currentUserId;
       setSocketReady(false);
       subscribedIdsRef.current.clear();
+      setConversations(readCachedConversations(currentUserId, currentUserType));
+      setActiveConversation(null);
+      setMessages([]);
+      setTypingUsers([]);
+      setRestoredConversationId(
+        readStoredActiveConversationId(currentUserId, currentUserType)
+      );
     }
-  }, [currentUserId]);
+  }, [currentUserId, currentUserType]);
+
+  useEffect(() => {
+    if (activeConversation?.id === null || activeConversation?.id === undefined) {
+      return;
+    }
+
+    writeStoredActiveConversationId(
+      currentUserId,
+      currentUserType,
+      activeConversation.id
+    );
+  }, [activeConversation?.id, currentUserId, currentUserType]);
 
   useEffect(() => {
     let timeoutId;
@@ -69,7 +211,8 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
 
       if (socketReady) {
         if (connected) {
-          timeoutId = setTimeout(initSocket, 5000);
+          // Socket is healthy, check again in 30 seconds instead of 5
+          timeoutId = setTimeout(initSocket, 30000);
           return;
         } else {
           console.warn("[useChat] Socket disconnected. Resetting state.");
@@ -84,21 +227,24 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         try {
           const authenticated = await authenticateSocket(currentUserId);
           if (mounted) {
-            console.log("[useChat] Socket auth result:", authenticated);
-
             if (authenticated) {
               subscribedIdsRef.current.clear();
             }
 
             setSocketReady(authenticated);
-            timeoutId = setTimeout(initSocket, 2000);
+            // If auth succeeded, wait 10s before next check
+            timeoutId = setTimeout(initSocket, 10000);
           }
         } catch (err) {
           console.error("[useChat] Auth failed", err);
-          timeoutId = setTimeout(initSocket, 2000);
+          timeoutId = setTimeout(initSocket, 3000);
         }
       } else {
-        timeoutId = setTimeout(initSocket, 1000);
+        // Not yet connected — trigger a connection attempt then retry
+        if (!connected) {
+          connectSocket();
+        }
+        timeoutId = setTimeout(initSocket, 2000);
       }
     };
 
@@ -111,32 +257,58 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
   }, [currentUserId, socketReady]);
 
   const loadConversations = useCallback(async () => {
-    setLoading(true);
+    setLoading(conversationsRef.current.length === 0);
     setError(null);
     try {
       const data = await getConversations();
-      const transformed = data.map((conv) =>
-        transformConversationForUI(conv, currentUserId)
+      const transformed = data
+        .map((conv) => transformConversationForUI(conv, currentUserId))
+        .filter((conversation) => conversation.id !== null && conversation.id !== undefined);
+      const uniqueConversations = transformed.filter(
+        (conversation, index, list) =>
+          list.findIndex((item) => Number(item.id) === Number(conversation.id)) === index
       );
-      setConversations(transformed);
+      setConversations(uniqueConversations);
+      writeCachedConversations(
+        currentUserId,
+        currentUserType,
+        uniqueConversations
+      );
+      return uniqueConversations;
     } catch (err) {
       if (err.message && err.message.includes("404")) {
         console.warn("Chat API not available yet. Using empty state.");
         setConversations([]);
+        writeCachedConversations(currentUserId, currentUserType, []);
       } else {
         setError(err.message);
       }
     } finally {
       setLoading(false);
     }
-  }, [currentUserId]);
+  }, [currentUserId, currentUserType]);
 
   useEffect(() => {
-    if (!socketReady || conversations.length === 0) return;
+    if (!socketReady) return;
+
+    const visibleConversationIds = new Set(
+      conversations.map((conversation) => String(conversation.id))
+    );
+
+    subscribedIdsRef.current.forEach((conversationId) => {
+      const activeId = activeConversationRef.current?.id;
+      if (
+        !visibleConversationIds.has(String(conversationId)) &&
+        Number(conversationId) !== Number(activeId)
+      ) {
+        unsubscribeFromConversation(conversationId);
+        subscribedIdsRef.current.delete(conversationId);
+      }
+    });
 
     conversations.forEach((conv) => {
       if (!subscribedIdsRef.current.has(conv.id)) {
-        console.log(`[useChat] Auto-subscribing to conversation ${conv.id}`);
+        // console.log(`[useChat] Auto-subscribing to conversation ${conv.id}`);
         subscribeToConversation(conv.id);
         subscribedIdsRef.current.add(conv.id);
       }
@@ -148,51 +320,52 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
 
     globalCleanupRef.current = setupChatSocketListeners({
       onMessage: (data) => {
-        const incomingConversationId = data.conversationId;
+        const incomingConversationId = data.conversationId || data.ticket || data.message?.ticket;
         const currentActive = activeConversationRef.current;
+        const message = data.message || data;
 
         const senderId =
-          data.message?.Sender_ID ||
-          data.message?.Sender_Id ||
-          data.message?.senderId;
+          message.sender?.id || 
+          message.Sender_ID ||
+          message.Sender_Id ||
+          message.senderId;
 
         if (Number(senderId) === Number(currentUserId)) return;
 
-        console.log(
+        /* console.log(
           "[useChat] Incoming Global Message:",
           incomingConversationId
-        );
+        ); */
 
         setConversations((prev) => {
-          const index = prev.findIndex((c) => c.id === incomingConversationId);
+          const index = prev.findIndex((c) => Number(c.id) === Number(incomingConversationId));
 
           if (index === -1) {
-            console.log(
+            /* console.log(
               "[useChat] New conversation detected via message. Reloading list."
-            );
+            ); */
             loadConversations();
             return prev;
           }
 
           const existingConv = prev[index];
           const isActive =
-            currentActive && currentActive.id === incomingConversationId;
+            currentActive && Number(currentActive.id) === Number(incomingConversationId);
 
           const senderName =
-            data.message?.Sender_Name ||
-            data.message?.senderName ||
-            data.message?.sender?.Display_Name ||
-            data.message?.sender?.displayName ||
-            data.message?.sender?.name ||
+            message.sender?.fullName ||
+            message.senderName ||
+            message.sender?.Display_Name ||
+            message.sender?.displayName ||
+            message.sender?.name ||
             existingConv.name?.split(" ")[0] ||
             existingConv.name;
 
           const updatedConv = {
             ...existingConv,
             lastMessage:
-              data.message?.Message_Content ||
-              data.message?.content ||
-              data.message?.text ||
+              message.content ||
+              message.text ||
               "New message",
             lastMessageSentByMe: false,
             lastMessageSenderName: senderName,
@@ -213,7 +386,15 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
       },
 
       onNewConversation: (data) => {
-        console.log("[useChat] New conversation received:", data);
+        // console.log("[useChat] New conversation received:", data);
+        loadConversations();
+      },
+
+      onTicketClaimed: () => {
+        loadConversations();
+      },
+
+      onSpecialistJoined: () => {
         loadConversations();
       },
 
@@ -252,8 +433,8 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         }
       },
 
-      onRead: () => {},
-      onMessageDeleted: () => {},
+      onRead: () => { },
+      onMessageDeleted: () => { },
     });
 
     return () => {
@@ -263,32 +444,64 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
     };
   }, [socketReady, currentUserId, loadConversations]);
 
+  useEffect(() => {
+    activeConversationRef.current = activeConversation;
+    // reset active call when conversation changes (it will be re-set by loadMessages)
+    setActiveCallHost(null);
+  }, [activeConversation]);
+
   const loadMessages = useCallback(
     async (conversationId, options = {}) => {
-      setLoading(true);
+      const requestSeq = ++messageLoadSeqRef.current;
+      // Avoid frequent full-screen loading spinners if we already have messages loaded
+      // or if we're doing a background/refresh load
+      const isInitialLoad = !options.beforeId && messages.length === 0;
+
+      // Only set loading true for the initial empty-state load
+      if (isInitialLoad) {
+        setLoading(true);
+      }
       setError(null);
       try {
-        const data = await getMessages(conversationId, options);
+        const response = await getMessages(conversationId, options);
+        // Handle both old array format and new object format for safety
+        const data = Array.isArray(response) ? response : response.messages || [];
+        const hostId = response.activeCallHost || null;
+
         const transformed = data.map((msg) =>
           transformMessageForUI(msg, currentUserId, currentUserType)
         );
 
+        const activeId = activeConversationRef.current?.id;
+        if (
+          requestSeq !== messageLoadSeqRef.current ||
+          (activeId && Number(activeId) !== Number(conversationId))
+        ) {
+          return [];
+        }
+
         if (options.beforeId) {
-          setMessages((prev) => [...transformed, ...prev]);
+          setMessages((prev) => {
+            const merged = upsertMessages(transformed, prev);
+            return merged;
+          });
         } else {
-          setMessages(transformed);
+          setMessages(upsertMessages([], transformed));
+          setActiveCallHost(hostId);
         }
         setHasMoreMessages(data.length >= (options.limit || 50));
-        markAsRead(conversationId).catch(() => {});
+        markAsRead(conversationId).catch(() => { });
         return transformed;
       } catch (err) {
         setError(err.message);
         return [];
       } finally {
-        setLoading(false);
+        if (isInitialLoad || options.showLoading !== false) {
+          setLoading(false);
+        }
       }
     },
-    [currentUserId, currentUserType]
+    [currentUserId, currentUserType, messages.length, upsertMessages]
   );
 
   const setupActiveConversationListeners = useCallback(
@@ -300,16 +513,28 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         cleanupRef.current = null;
       }
 
+      // Join the ticket room via HTTP using the chatService helper (which uses socket.id + apiRequest)
       subscribeToConversation(conversationId);
+      
       subscribedIdsRef.current.add(conversationId);
 
       cleanupRef.current = setupChatSocketListeners({
         onMessage: (data) => {
           const currentActive = activeConversationRef.current;
 
-          if (data.conversationId !== currentActive?.id) return;
+          // Use Number() comparison — socket broadcasts numeric ticketId,
+          // but the stored conversation.id might be a string.
+          const incomingConversationId =
+            data.conversationId ||
+            data.ticketId ||
+            data.ticket ||
+            data.message?.ticket ||
+            data.message?.ticketId;
+
+          if (Number(incomingConversationId) !== Number(currentActive?.id)) return;
 
           const senderId =
+            data.message?.sender?.id ||
             data.message?.Sender_ID ||
             data.message?.Sender_Id ||
             data.message?.senderId;
@@ -323,14 +548,51 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
           );
 
           setMessages((prev) => {
-            const exists = prev.some((m) => m.id === transformedMsg.id);
-            if (exists) return prev;
-            return [...prev, transformedMsg];
+            return upsertMessages(prev, [transformedMsg]);
           });
 
-          markAsRead(currentActive?.id).catch(() => {});
+          markAsRead(currentActive?.id).catch(() => { });
         },
-        onTyping: () => {},
+
+        onCallEnded: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (Number(data.ticketId) === Number(currentActive?.id)) {
+            // console.log("[Chat] Call ended event received:", data);
+            setActiveCallHost(null);
+          }
+        },
+
+        onMessageUpdated: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (Number(data.conversationId) === Number(currentActive?.id)) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                Number(msg.id) === Number(data.messageId)
+                  ? { ...msg, text: data.newContent }
+                  : msg
+              )
+            );
+          }
+        },
+
+        onHistoryShared: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (Number(data.ticketId) === Number(currentActive?.id)) {
+            // Trigger dashboard refresh if available
+            if (window.refreshSpecialistDashboard) {
+              window.refreshSpecialistDashboard();
+            }
+          }
+        },
+
+        onCallStarted: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (Number(data.ticketId) === Number(currentActive?.id)) {
+            // console.log("[Chat] Call started event received:", data);
+            setActiveCallHost(data.activeCallHost);
+          }
+        },
+
         onRead: (data) => {
           const currentActive = activeConversationRef.current;
           if (data.conversationId === currentActive?.id) {
@@ -342,6 +604,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
             );
           }
         },
+
         onMessageDeleted: (data) => {
           const currentActive = activeConversationRef.current;
           if (data.conversationId === currentActive?.id) {
@@ -349,28 +612,60 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
               prev.map((msg) =>
                 msg.id === data.messageId
                   ? {
-                      ...msg,
-                      isDeleted: true,
-                      text: "This message was deleted",
-                    }
+                    ...msg,
+                    isDeleted: true,
+                    text: "This message was deleted",
+                  }
                   : msg
               )
             );
           }
         },
+        onTicketClaimed: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (!currentActive || Number(data.ticketId) !== Number(currentActive.id)) return;
+          const nurseName = data.nurse?.fullName || 'A nurse';
+          setMessages((prev) => {
+            const systemMessage = {
+              id: `sys-claimed-${Date.now()}`,
+              isSystem: true,
+              text: `${nurseName} has joined this consultation as the assigned nurse.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isSent: false,
+              sender: 'system',
+            };
+            return upsertMessages(prev, [systemMessage]);
+          });
+        },
+        onSpecialistJoined: (data) => {
+          const currentActive = activeConversationRef.current;
+          if (!currentActive || Number(data.ticketId) !== Number(currentActive.id)) return;
+          const specName = data.specialist?.fullName || 'A specialist';
+          setMessages((prev) => {
+            const systemMessage = {
+              id: `sys-specialist-${Date.now()}`,
+              isSystem: true,
+              text: `Dr. ${specName} has been assigned and joined this consultation.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isSent: false,
+              sender: 'system',
+            };
+            return upsertMessages(prev, [systemMessage]);
+          });
+        },
       });
     },
-    [socketReady, currentUserId, currentUserType]
+    [socketReady, currentUserId, currentUserType, upsertMessages]
   );
 
   const openConversation = useCallback(
     async (conversation) => {
-      if (activeConversation?.id && cleanupRef.current) {
-        cleanupRef.current();
-        cleanupRef.current = null;
-      }
+      // Avoid flickering if we're already on this conversation
+      if (activeConversationRef.current?.id === conversation.id) return;
 
       setActiveConversation(conversation);
+      setRestoredConversationId(null);
+      // We don't clear messages if the ID is the same, but here we're switching
       setMessages([]);
       setTypingUsers([]);
       setHasMoreMessages(true);
@@ -381,36 +676,41 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         )
       );
 
-      await loadMessages(conversation.id);
+      // Start loading and socket setup simultaneously
+      const loadTask = loadMessages(conversation.id);
 
       if (socketReady) {
         setupActiveConversationListeners(conversation.id);
       }
+
+      await loadTask;
     },
-    [
-      activeConversation,
-      loadMessages,
-      socketReady,
-      setupActiveConversationListeners,
-    ]
+    [loadMessages, socketReady, setupActiveConversationListeners]
   );
 
   const closeConversation = useCallback(() => {
-    if (activeConversation?.id && cleanupRef.current) {
-      cleanupRef.current();
+    if (activeConversation?.id) {
+      // Leave the ticket socket room when closing the chat via HTTP
+      unsubscribeFromConversation(activeConversation.id);
+
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
     }
     setActiveConversation(null);
     setMessages([]);
     setTypingUsers([]);
-  }, [activeConversation]);
+    writeStoredActiveConversationId(currentUserId, currentUserType, null);
+  }, [activeConversation, currentUserId, currentUserType]);
 
   const handleSendMessage = useCallback(
     async (content, replyToId = null) => {
       if (!activeConversation || !content.trim()) return null;
+      const targetConversationId = activeConversation.id;
 
       try {
         const result = await sendMessage(
-          activeConversation.id,
+          targetConversationId,
           content,
           replyToId
         );
@@ -420,10 +720,12 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
           currentUserType
         );
 
-        setMessages((prev) => [...prev, transformedMsg]);
+        if (Number(activeConversationRef.current?.id) === Number(targetConversationId)) {
+          setMessages((prev) => upsertMessages(prev, [transformedMsg]));
+        }
 
         setConversations((prev) => {
-          const index = prev.findIndex((c) => c.id === activeConversation.id);
+          const index = prev.findIndex((c) => Number(c.id) === Number(targetConversationId));
           if (index === -1) return prev;
 
           const updated = {
@@ -445,8 +747,27 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         return null;
       }
     },
-    [activeConversation, currentUserId, currentUserType]
+    [activeConversation, currentUserId, currentUserType, upsertMessages]
   );
+
+  useEffect(() => {
+    if (activeConversation || !restoredConversationId || conversations.length === 0) {
+      return;
+    }
+
+    const restoredConversation = conversations.find(
+      (conversation) => Number(conversation.id) === Number(restoredConversationId)
+    );
+
+    if (!restoredConversation) {
+      return;
+    }
+
+    setRestoredConversationId(null);
+    openConversation(restoredConversation).catch((error) => {
+      console.error("[useChat] Failed to restore active conversation", error);
+    });
+  }, [activeConversation, conversations, openConversation, restoredConversationId]);
 
   const handleUploadFile = useCallback(
     async (file, caption = "") => {
@@ -455,12 +776,14 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         return null;
       }
 
-      console.log("[useChat] handleUploadFile called", {
+      /* console.log("[useChat] handleUploadFile called", {
         fileName: file.name,
+        isCallActive: !!activeCallHost,
+        activeCallHost,
         fileType: file.type,
         fileSize: file.size,
         conversationId: activeConversation.id,
-      });
+      }); */
 
       try {
         const result = await uploadFile(activeConversation.id, file, caption);
@@ -471,7 +794,9 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
           currentUserType
         );
 
-        setMessages((prev) => [...prev, transformedMsg]);
+        if (Number(activeConversationRef.current?.id) === Number(activeConversation.id)) {
+          setMessages((prev) => upsertMessages(prev, [transformedMsg]));
+        }
 
         setConversations((prev) => {
           const index = prev.findIndex((c) => c.id === activeConversation.id);
@@ -497,7 +822,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         return null;
       }
     },
-    [activeConversation, currentUserId, currentUserType]
+    [activeConversation, currentUserId, currentUserType, upsertMessages]
   );
 
   const handleTyping = useCallback(
@@ -538,7 +863,10 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
         const result = await createConversation(conversationData);
         const transformed = transformConversationForUI(result, currentUserId);
 
-        setConversations((prev) => [transformed, ...prev]);
+        setConversations((prev) => {
+          if (prev.some((c) => Number(c.id) === Number(transformed.id))) return prev;
+          return [transformed, ...prev];
+        });
         await openConversation(transformed);
 
         if (socketReady) {
@@ -560,6 +888,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
     try {
       return await searchUsers(query);
     } catch (err) {
+      console.error("Error searching users:", err);
       return [];
     }
   }, []);
@@ -568,19 +897,28 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
     try {
       return await getAllChatUsers();
     } catch (err) {
+      console.error("Error getting all users:", err);
       return [];
     }
   }, []);
 
   useEffect(() => {
-    if (currentUserId) loadConversations();
+    if (currentUserId) {
+      // Small delay on first load to prevent double-firing and race conditions
+      const timer = setTimeout(() => {
+        loadConversations();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
   }, [currentUserId, loadConversations]);
 
   useEffect(() => {
+    const currentTypingTimeouts = typingUsersTimeoutRef.current;
+
     return () => {
       if (cleanupRef.current) cleanupRef.current();
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      Object.values(typingUsersTimeoutRef.current).forEach(clearTimeout);
+      Object.values(currentTypingTimeouts).forEach(clearTimeout);
     };
   }, []);
 
@@ -603,8 +941,48 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
     startConversation,
     searchUsers: handleSearchUsers,
     getAllUsers: handleGetAllUsers,
+    loadMessages,
+    respondToMedicalHistoryRequest: async (ticketId, approved, messageId) => {
+      // Optimistically update the messaging UI immediately
+      if (messageId) {
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === messageId) {
+              const patientName = activeConversationRef.current?.patientName || "Patient";
+              return {
+                ...msg,
+                text: approved
+                  ? "MEDICAL_HISTORY_CONTENT:System"
+                  : `MEDICAL_HISTORY_DENIED:${patientName}`,
+              };
+            }
+            return msg;
+          })
+        );
+      }
+
+      // Perform the API call
+      const result = await respondToHistoryApi(ticketId, approved, messageId);
+
+      // After successful API call, we can update the conversations list's last message too
+      setConversations((prev) => {
+        const index = prev.findIndex((c) => Number(c.id) === Number(ticketId));
+        if (index === -1) return prev;
+        const newArr = [...prev];
+        newArr[index] = {
+          ...newArr[index],
+          lastMessage: approved ? "Medical history shared" : "Request denied",
+          timestamp: "Just now"
+        };
+        return newArr;
+      });
+
+      return result;
+    },
     setError,
     setConversations,
+    activeCallHost,
+    isCallActive: !!activeCallHost,
   };
 }
 

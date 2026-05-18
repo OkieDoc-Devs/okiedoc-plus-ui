@@ -2,9 +2,11 @@ import "./auth.css";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import authService from "../Specialists/authService";
+import { useAuth, getRedirectPathForRole } from "../contexts/AuthContext";
 
 export default function SpecialistLogin() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -27,20 +29,20 @@ export default function SpecialistLogin() {
     setIsLoading(true);
 
     try {
-      const result = await authService.loginSpecialist(
-        formData.email,
-        formData.password,
-      );
-      if (result.success) {
-        const path =
-          result.redirect || authService.getRedirectPath("specialist");
-        navigate(path);
-        return;
-      }
+      const user = await login({
+        email: formData.email,
+        password: formData.password,
+        roleMode: "allow",
+        role: "specialist",
+      });
 
-      setError(result.error || "Invalid email or password. Please try again.");
+      localStorage.setItem("okiedoc_specialist_user", JSON.stringify(user));
+      localStorage.setItem("okiedoc_user_type", "specialist");
+
+      const path = getRedirectPathForRole("specialist");
+      navigate(path);
     } catch (err) {
-      setError("Login failed. Please try again.");
+      setError(err.message || "Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }

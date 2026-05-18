@@ -24,21 +24,19 @@ class AuthService {
     if (this.isInitialized) return;
 
     try {
-      // Try to restore session from API
       const response = await api.getCurrentUser();
       if (response.success && response.user) {
         this.currentUser = response.user;
         localStorage.setItem(
           STORAGE_KEYS.currentUser,
-          JSON.stringify(response.user)
+          JSON.stringify(response.user),
         );
         localStorage.setItem(
           STORAGE_KEYS.userType,
-          response.user.userType || "specialist"
+          response.user.userType || "specialist",
         );
       }
-    } catch (error) {
-      // Session expired or not authenticated
+    } catch {
       this.clearLocalStorage();
     }
 
@@ -56,10 +54,18 @@ class AuthService {
       const response = await api.loginSpecialist(email, password);
 
       if (response.success) {
+        if (response.user && response.user.role !== "specialist") {
+          await api.logoutSpecialist().catch(() => {});
+          return {
+            success: false,
+            error: "Access denied: This login portal is for Specialists only.",
+          };
+        }
+
         this.currentUser = response.user;
         localStorage.setItem(
           STORAGE_KEYS.currentUser,
-          JSON.stringify(response.user)
+          JSON.stringify(response.user),
         );
         localStorage.setItem(STORAGE_KEYS.userType, "specialist");
 
@@ -155,7 +161,7 @@ class AuthService {
     this.currentUser = { ...this.currentUser, ...userData };
     localStorage.setItem(
       STORAGE_KEYS.currentUser,
-      JSON.stringify(this.currentUser)
+      JSON.stringify(this.currentUser),
     );
   }
 
@@ -176,16 +182,13 @@ class AuthService {
   getRedirectPath(userType) {
     const paths = {
       specialist: "/specialist-dashboard",
-      patient: "/patient/main",
+      patient: "/patient-dashboard",
       nurse: "/nurse-dashboard",
       admin: "/admin/specialist-dashboard",
+      nurse_admin: "/nurse-admin-dashboard",
     };
     return paths[userType] || "/dashboard";
   }
-
-  // ==========================================
-  // Validation Helpers
-  // ==========================================
 
   validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -240,9 +243,7 @@ class AuthService {
   }
 }
 
-// Create and export singleton instance
 const authService = new AuthService();
 export default authService;
 
-// Also export the class for testing
 export { AuthService };

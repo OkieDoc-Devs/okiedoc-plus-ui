@@ -10,18 +10,20 @@ import {
   FaFileAlt,
 } from "react-icons/fa";
 import useChat from "../Nurse/services/useChat";
+import Avatar from "../components/Avatar";
 import {
   isAllowedFileType,
   getMaxFileSize,
   formatFileSize,
   getUserTypeLabel,
 } from "../Nurse/services/chatService";
-import SpecialistCall from "./SpecialistCall";
+import JitsiMeetCall from "../components/VideoCall/JitsiMeetCall";
 import "./SpecialistDashboard.css";
 
-const Messages = ({ currentUser }) => {
+const Messages = ({ currentUser, onNavigateToDashboard }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [isVideoCall, setIsVideoCall] = useState(true);
@@ -62,6 +64,8 @@ const Messages = ({ currentUser }) => {
     startConversation,
     searchUsers,
     getAllUsers,
+    isCallActive,
+    activeCallHost,
   } = useChat({ currentUserId, currentUserType: "s" });
 
   useEffect(() => {
@@ -69,6 +73,32 @@ const Messages = ({ currentUser }) => {
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
     }
   }, [chatMessages, activeConversation]);
+
+  const getConversationUserType = (conversation) => {
+    const role = (conversation.role || conversation.otherUserType || "").toLowerCase();
+    if (role.includes("nurse")) return "nurse";
+    if (role.includes("specialist") || role.includes("dr")) return "specialist";
+    if (role.includes("admin")) return "admin";
+    if (role.includes("patient")) return "patient";
+    return "patient";
+  };
+
+  const getUserTypeFromSender = (sender) => {
+    const normalized = (sender || "").toLowerCase();
+    if (normalized === "nurse") return "nurse";
+    if (normalized === "specialist" || normalized === "doctor" || normalized === "dr") return "specialist";
+    if (normalized === "admin") return "admin";
+    if (normalized === "patient") return "patient";
+    return "patient";
+  };
+
+  const getNameParts = (name) => {
+    const parts = (name || "").split(" ").filter(Boolean);
+    return {
+      firstName: parts[0] || "",
+      lastName: parts.slice(1).join(" ") || "",
+    };
+  };
 
   const handleUserSearch = useCallback(
     async (query) => {
@@ -132,11 +162,13 @@ const Messages = ({ currentUser }) => {
 
     if (
       !activeConversation ||
-      (!newMessage.trim() && uploadedFiles.length === 0)
+      (!newMessage.trim() && uploadedFiles.length === 0) ||
+      isSendingMessage
     ) {
       return;
     }
 
+    setIsSendingMessage(true);
     try {
       const trimmedMessage = newMessage.trim();
 
@@ -171,6 +203,8 @@ const Messages = ({ currentUser }) => {
     } catch (error) {
       console.error("Error sending message or uploading file:", error);
       alert("Failed to send message. Please try again.");
+    } finally {
+      setIsSendingMessage(false);
     }
   };
 
@@ -285,11 +319,14 @@ const Messages = ({ currentUser }) => {
                   onClick={() => openChat(conversation)}
                 >
                   <div className="conversation-avatar">
-                    {conversation.avatar ? (
-                      <img src={conversation.avatar} alt={conversation.name} />
-                    ) : (
-                      <FaUser />
-                    )}
+                    <Avatar
+                      profileImageUrl={conversation.avatar}
+                      firstName={getNameParts(conversation.name).firstName}
+                      lastName={getNameParts(conversation.name).lastName}
+                      userType={getConversationUserType(conversation)}
+                      size={40}
+                      alt={conversation.name}
+                    />
                     <div
                       className={`online-indicator ${
                         conversation.isOnline ? "online" : "offline"
@@ -346,14 +383,14 @@ const Messages = ({ currentUser }) => {
               <div className="chat-header">
                 <div className="chat-user-info">
                   <div className="chat-avatar">
-                    {activeConversation.avatar ? (
-                      <img
-                        src={activeConversation.avatar}
-                        alt={activeConversation.name}
-                      />
-                    ) : (
-                      <FaUser />
-                    )}
+                    <Avatar
+                      profileImageUrl={activeConversation.avatar}
+                      firstName={getNameParts(activeConversation.name).firstName}
+                      lastName={getNameParts(activeConversation.name).lastName}
+                      userType={getConversationUserType(activeConversation)}
+                      size={40}
+                      alt={activeConversation.name}
+                    />
                     <div
                       className={`online-indicator ${
                         activeConversation.isOnline ? "online" : "offline"
@@ -378,20 +415,33 @@ const Messages = ({ currentUser }) => {
                   </div>
                 </div>
                 <div className="chat-actions">
-                  <button
-                    className="icon-btn"
-                    onClick={handleVoiceCall}
-                    title="Voice Call"
-                  >
-                    <FaPhone />
-                  </button>
-                  <button
-                    className="icon-btn video-btn"
-                    onClick={handleVideoCallClick}
-                    title="Video Call"
-                  >
-                    <FaVideo />
-                  </button>
+                  {isCallActive && activeCallHost && Number(activeCallHost) !== Number(currentUserId) ? (
+                    <button
+                      className="join-call-pulse-btn"
+                      onClick={handleVideoCallClick}
+                      title="Join Patient Call"
+                    >
+                      <FaVideo style={{ marginRight: '8px' }} />
+                      Join Call
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="icon-btn"
+                        onClick={handleVoiceCall}
+                        title="Voice Call"
+                      >
+                        <FaPhone />
+                      </button>
+                      <button
+                        className="icon-btn video-btn"
+                        onClick={handleVideoCallClick}
+                        title="Video Call"
+                      >
+                        <FaVideo />
+                      </button>
+                    </>
+                  )}
                   <button
                     className="icon-btn"
                     onClick={closeChat}
@@ -421,14 +471,14 @@ const Messages = ({ currentUser }) => {
                       <>
                         {!message.isSent && (
                           <div className="message-avatar">
-                            {message.avatar ? (
-                              <img
-                                src={message.avatar}
-                                alt={message.senderName || "User"}
-                              />
-                            ) : (
-                              <FaUser className="avatar-icon-small" />
-                            )}
+                            <Avatar
+                              profileImageUrl={message.avatar}
+                              firstName={getNameParts(message.senderName).firstName}
+                              lastName={getNameParts(message.senderName).lastName}
+                              userType={getUserTypeFromSender(message.sender)}
+                              size={32}
+                              alt={message.senderName || "User"}
+                            />
                           </div>
                         )}
 
@@ -474,7 +524,48 @@ const Messages = ({ currentUser }) => {
                                 )}
                               </div>
                             ) : (
-                              <p className="message-text">{message.text}</p>
+                              <div className="message-text">
+                                {message.text && message.text.startsWith && message.text.startsWith("MEDICAL_HISTORY_REQUEST:") ? (
+                                  <div className="medical-history-request-sent">
+                                    <p className="request-title">
+                                      You requested {message.text.split(":")[1]}'s medical history.
+                                    </p>
+                                    <p className="request-status">Waiting for patient response...</p>
+                                  </div>
+                                ) : message.text && message.text.startsWith && message.text.startsWith("MEDICAL_HISTORY_DENIED:") ? (
+                                  <div className="medical-history-response-status denied">
+                                    <p className="request-denied-status-spec">Patient {message.text.split(":")[1]} has denied your request.</p>
+                                  </div>
+                                ) : message.text && message.text.startsWith && (message.text.startsWith("MEDICAL_HISTORY_APPROVED:") || message.text.startsWith("MEDICAL_HISTORY_CONTENT:")) ? (
+                                  <div className="medical-history-shared-spec">
+                                    <p className="request-content-status">Medical history has been shared!</p>
+                                    <button 
+                                      className="view-history-btn"
+                                      onClick={() => {
+                                        try {
+                                          // Trigger dashboard refresh
+                                          if (window.refreshSpecialistDashboard) {
+                                            window.refreshSpecialistDashboard();
+                                          }
+
+                                          // Switch to dashboard tab
+                                          if (typeof onNavigateToDashboard === 'function') {
+                                            onNavigateToDashboard();
+                                          }
+                                        } catch (e) {
+                                          console.error("Failed to navigate to dashboard", e);
+                                        }
+                                      }}
+                                    >
+                                      View in Dashboard
+                                    </button>
+                                  </div>
+                                ) : message.text && message.text.startsWith && message.text.startsWith("MEDICAL_HISTORY_CONTENT:") ? (
+                                  null
+                                ) : (
+                                  message.text
+                                )}
+                              </div>
                             )}
                             <span className="message-time">
                               {message.timestamp}
@@ -532,7 +623,14 @@ const Messages = ({ currentUser }) => {
                     maxLength={CHARACTER_LIMIT}
                     className="message-input"
                   />
-                  <button type="submit" className="send-btn">
+                  <button
+                    type="submit"
+                    className="send-btn"
+                    disabled={
+                      isSendingMessage ||
+                      (!newMessage.trim() && uploadedFiles.length === 0)
+                    }
+                  >
                     Send
                   </button>
                 </form>
@@ -623,11 +721,11 @@ const Messages = ({ currentUser }) => {
       )}
 
       {showVideoCall && activeConversation && (
-        <SpecialistCall
+        <JitsiMeetCall
           isOpen={showVideoCall}
           onClose={handleCloseVideoCall}
-          onCallEnd={handleCallEnd}
           callType={isVideoCall ? "video" : "audio"}
+          ticketId={activeConversation?.id}
           patient={{
             name: activeConversation?.name,
             avatar: activeConversation?.avatar,

@@ -1,33 +1,14 @@
-/**
- * Chat Service Module
- * Handles all Chat API communication including WebSocket real-time features
- */
-
-const API_BASE_URL =
-  import.meta.env.MODE === "production"
-    ? "https://your-production-url.com"
-    : "http://localhost:1337";
+import socketClient from "../../utils/socketClient";
+import { apiRequest, API_BASE_URL } from "../../api/apiClient";
+import { connectSocket } from "../../utils/socketClient";
 
 function getSocket() {
-  if (typeof window !== "undefined" && window.io && window.io.socket) {
-    return window.io.socket;
-  }
-  console.log("[Chat] getSocket - no socket available", {
-    hasWindow: typeof window !== "undefined",
-    hasIo: typeof window !== "undefined" && !!window.io,
-    hasSocket: typeof window !== "undefined" && window.io && !!window.io.socket,
-  });
-  return null;
+  return socketClient;
 }
 
 export function isSocketConnected() {
   const socket = getSocket();
-  if (!socket) return false;
-  const connected =
-    typeof socket.isConnected === "function"
-      ? socket.isConnected()
-      : socket._raw?.connected || false;
-  return connected;
+  return socket?.connected || false;
 }
 
 let socketAuthUserId = null;
@@ -36,9 +17,10 @@ let authRetryCount = 0;
 const MAX_AUTH_RETRIES = 3;
 
 function reconnectSocket() {
-  if (typeof window !== "undefined" && window.io && window.io.socket) {
-    console.log("[Chat] Reconnecting socket to refresh session...");
-    window.io.socket.reconnect();
+  const socket = getSocket();
+  if (socket && !socket.connected) {
+    // console.log("[Chat] Reconnecting socket to refresh session...");
+    connectSocket();
   }
 }
 
@@ -53,34 +35,26 @@ export async function authenticateSocket(userId = null) {
     authRetryCount = 0;
   }
 
-  socketAuthPromise = new Promise((resolve) => {
+  socketAuthPromise = (async () => {
     const socket = getSocket();
     if (!socket) {
       console.warn("[Chat] Cannot authenticate socket - no socket available");
-      resolve(false);
-      return;
+      return false;
     }
 
-    const url = userId
-      ? `/api/chat/conversations?socketUserId=${userId}`
-      : "/api/chat/conversations";
+    try {
+      const url = userId
+        ? `/api/v1/chat/conversations?socketUserId=${userId}`
+        : "/api/v1/chat/conversations";
 
-    socket.get(url, (data, response) => {
-      console.log("[Chat] Socket auth response:", {
-        statusCode: response?.statusCode,
-        hasData: !!data,
-        userId: userId,
-        retryCount: authRetryCount,
-      });
-      if (response && response.statusCode === 200) {
-        console.log(
-          "[Chat] Socket authenticated successfully for user:",
-          userId
-        );
-        socketAuthUserId = userId;
-        authRetryCount = 0;
-        resolve(true);
-      } else if (response && response.statusCode === 401) {
+      await apiRequest(url);
+      // console.log("[Chat] Socket authenticated successfully for user:", userId);
+      socketAuthUserId = userId;
+      authRetryCount = 0;
+      return true;
+    } catch (err) {
+      const status = err?.status || err?.statusCode;
+      if (status === 401 || status === 403) {
         if (authRetryCount < MAX_AUTH_RETRIES) {
           authRetryCount++;
           console.warn(
@@ -88,299 +62,287 @@ export async function authenticateSocket(userId = null) {
           );
           socketAuthPromise = null;
           reconnectSocket();
-          resolve(false);
+          return false;
         } else {
           console.warn(
             "[Chat] Socket authentication failed after max retries - user may need to re-login"
           );
           socketAuthPromise = null;
-          resolve(false);
+          return false;
         }
-      } else {
-        console.warn("[Chat] Socket authentication failed:", data);
-        socketAuthPromise = null;
-        resolve(false);
       }
-    });
-  });
+      console.warn("[Chat] Socket authentication failed:", err);
+      socketAuthPromise = null;
+      return false;
+    }
+  })();
 
   return socketAuthPromise;
 }
 
 export function resetSocketAuth() {
-  console.log("[Chat] Resetting socket auth state and reconnecting...");
+  // console.log("[Chat] Resetting socket auth state and reconnecting...");
   socketAuthPromise = null;
   socketAuthUserId = null;
   authRetryCount = 0;
 
-  if (typeof window !== "undefined" && window.io && window.io.socket) {
-    window.io.socket.disconnect();
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    socket.disconnect();
     setTimeout(() => {
-      if (window.io && window.io.socket) {
-        window.io.socket.reconnect();
-      }
+      reconnectSocket();
     }, 100);
   }
 }
 
 export async function createConversation(conversationData) {
-  const response = await fetch(`${API_BASE_URL}/api/chat/conversations`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(conversationData),
-  });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(
-      errorData.message || `HTTP error! status: ${response.status}`
-    );
+  try {
+    const data = await apiRequest("/api/v1/chat/conversations", {
+      method: "POST",
+      body: JSON.stringify(conversationData),
+    });
+    return data.conversation || data;
+  } catch (error) {
+    console.error("Error creating conversation:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.conversation || data;
 }
 
 export async function getConversations() {
-  const response = await fetch(`${API_BASE_URL}/api/chat/conversations`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-  });
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const data = await apiRequest("/api/v1/chat/conversations");
+    return data.conversations || data || [];
+  } catch (error) {
+    console.error("Error fetching conversations:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.conversations || data || [];
 }
 
 export async function getConversationById(conversationId) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}`,
-    {
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const data = await apiRequest(`/api/v1/chat/conversations/${conversationId}`);
+    return data.conversation || data;
+  } catch (error) {
+    console.error("Error fetching conversation by ID:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.conversation || data;
+}
+
+export async function respondToMedicalHistoryRequest(ticketId, approved, messageId) {
+  try {
+    return await apiRequest('/api/v1/patients/respond-medical-history-request', {
+      method: 'POST',
+      body: JSON.stringify({ ticketId, approved, messageId }),
+    });
+  } catch (error) {
+    console.error('Error responding to medical history request:', error);
+    throw error;
+  }
 }
 
 export async function addParticipant(conversationId, userId) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/participants`,
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    }
-  );
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(
-      errorData.message || `HTTP error! status: ${response.status}`
+  try {
+    return await apiRequest(
+      `/api/v1/chat/conversations/${conversationId}/participants`,
+      {
+        method: "POST",
+        body: JSON.stringify({ userId }),
+      }
     );
+  } catch (error) {
+    console.error("Error adding participant:", error);
+    throw error;
   }
-  return response.json();
 }
 
 export async function removeParticipant(conversationId, participantId) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/participants/${participantId}`,
-    {
-      method: "DELETE",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    return await apiRequest(
+      `/api/v1/chat/conversations/${conversationId}/participants/${participantId}`,
+      {
+        method: "DELETE",
+      }
+    );
+  } catch (error) {
+    console.error("Error removing participant:", error);
+    throw error;
   }
-  return response.json();
 }
 
 export async function leaveConversation(conversationId) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/leave`,
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    return await apiRequest(
+      `/api/v1/chat/conversations/${conversationId}/leave`,
+      {
+        method: "POST",
+      }
+    );
+  } catch (error) {
+    console.error("Error leaving conversation:", error);
+    throw error;
   }
-  return response.json();
 }
 
 export async function getMessages(conversationId, options = {}) {
-  const params = new URLSearchParams();
-  if (options.limit) params.append("limit", options.limit);
-  if (options.beforeId) params.append("beforeId", options.beforeId);
-  if (options.afterId) params.append("afterId", options.afterId);
-  const queryString = params.toString();
-  const url = `${API_BASE_URL}/api/chat/conversations/${conversationId}/messages${
-    queryString ? `?${queryString}` : ""
-  }`;
-  const response = await fetch(url, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-  });
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const params = new URLSearchParams();
+    if (options.limit) params.append("limit", options.limit);
+    if (options.beforeId) params.append("beforeId", options.beforeId);
+    if (options.afterId) params.append("afterId", options.afterId);
+    const queryString = params.toString();
+    const url = `/api/v1/chat/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ""
+      }`;
+
+    return await apiRequest(url);
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.messages || data || [];
 }
 
 export async function sendMessage(conversationId, content, replyToId = null) {
-  const body = { content };
-  if (replyToId) body.replyToId = replyToId;
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/messages`,
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(
-      errorData.message || `HTTP error! status: ${response.status}`
+  try {
+    const body = { content };
+    if (replyToId) body.replyToId = replyToId;
+    const data = await apiRequest(
+      `/api/v1/chat/conversations/${conversationId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      }
     );
+    return data.message || data;
+  } catch (error) {
+    console.error("Error sending message:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.message || data;
 }
 
 export async function uploadFile(conversationId, file, caption = "") {
-  const formData = new FormData();
-  formData.append("file", file);
-  if (caption) formData.append("caption", caption);
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/messages/upload`,
-    {
-      method: "POST",
-      credentials: "include",
-      body: formData,
-    }
-  );
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(
-      errorData.message || `HTTP error! status: ${response.status}`
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (caption) formData.append("caption", caption);
+
+    const data = await apiRequest(
+      `/api/v1/chat/conversations/${conversationId}/messages/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
     );
+    return data.message || data;
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.message || data;
 }
 
 export async function deleteMessage(conversationId, messageId) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/messages/${messageId}`,
-    {
-      method: "DELETE",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    return await apiRequest(
+      `/api/v1/chat/conversations/${conversationId}/messages/${messageId}`,
+      {
+        method: "DELETE",
+      }
+    );
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    throw error;
   }
-  return response.json();
 }
 
 export async function markAsRead(conversationId, messageId = null) {
-  const body = messageId ? { messageId } : {};
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/conversations/${conversationId}/read`,
-    {
-      method: "PUT",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const body = { 
+      ticketId: parseInt(conversationId, 10),
+      messageId 
+    };
+    return await apiRequest(
+      `/api/v1/chat/read`,
+      {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }
+    );
+  } catch (error) {
+    console.error("Error marking as read:", error);
+    throw error;
   }
-  return response.json();
 }
 
 export function sendTypingIndicator(conversationId, isTyping = true) {
   const socket = getSocket();
   if (socket && isSocketConnected()) {
-    socket.post(
-      `/api/chat/conversations/${conversationId}/typing`,
-      { isTyping },
-      () => {}
-    );
+    socket.emit('chat:typing', { conversationId, isTyping });
   }
 }
 
 export async function searchUsers(query) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/chat/users/search?q=${encodeURIComponent(query)}`,
-    {
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const data = await apiRequest(
+      `/api/v1/chat/users/search?q=${encodeURIComponent(query)}`
+    );
+    return data.users || data || [];
+  } catch (error) {
+    console.error("Error searching users:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.users || data || [];
 }
 
 export async function getAllChatUsers() {
-  const response = await fetch(`${API_BASE_URL}/api/chat/users`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-  });
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const data = await apiRequest("/api/v1/chat/users");
+    return data.users || data || [];
+  } catch (error) {
+    console.error("Error fetching all chat users:", error);
+    throw error;
   }
-  const data = await response.json();
-  return data.users || data || [];
 }
 
-export function subscribeToConversation(conversationId, callback) {
+
+export async function subscribeToConversation(conversationId, callback) {
   const socket = getSocket();
-  console.log("[Chat] subscribeToConversation called", {
+  /* console.log("[Chat] subscribeToConversation called", {
     conversationId,
     socketExists: !!socket,
     isConnected: socket ? isSocketConnected() : false,
-  });
-  if (socket && isSocketConnected()) {
-    socket.get(
-      `/api/chat/conversations/${conversationId}/subscribe`,
-      (data, response) => {
-        console.log("[Chat] Subscribed to conversation", conversationId, data);
-        if (callback) callback(data, response);
-      }
-    );
+    socketId: socket?.id,
+  }); */
+  if (socket && isSocketConnected() && socket.id) {
+    try {
+      const data = await apiRequest(
+        `/api/v1/chat/conversations/${conversationId}/subscribe?socketId=${encodeURIComponent(socket.id)}`
+      );
+      // console.log("[Chat] Subscribed to conversation", conversationId, data);
+      if (callback) callback(data);
+    } catch (err) {
+      console.error("[Chat] Failed to subscribe to conversation:", err);
+      if (callback) callback({ error: err });
+    }
   } else {
-    console.info("[Chat] Socket not available - subscription skipped");
+    console.info("[Chat] Socket not available or missing ID - subscription skipped");
     if (callback) callback({ error: "Socket not available" });
   }
 }
 
-export function unsubscribeFromConversation(conversationId, callback) {
+export async function unsubscribeFromConversation(conversationId, callback) {
   const socket = getSocket();
-  if (socket && isSocketConnected()) {
-    socket.get(
-      `/api/chat/conversations/${conversationId}/unsubscribe`,
-      (data, response) => {
-        console.log("Unsubscribed from conversation", conversationId);
-        if (callback) callback(data, response);
-      }
-    );
+  if (socket && socket.id) {
+    try {
+      const data = await apiRequest(
+        `/api/v1/chat/unsubscribe`,
+        {
+          method: "POST",
+          body: JSON.stringify({ ticketId: conversationId, socketId: socket.id }),
+        }
+      );
+      // console.log("[Chat] Unsubscribed from conversation", conversationId);
+      if (callback) callback(data);
+    } catch (err) {
+      console.error("[Chat] Failed to unsubscribe:", err);
+      if (callback) callback({ error: err });
+    }
   } else {
     if (callback) callback({ error: "Socket not available" });
   }
@@ -388,14 +350,14 @@ export function unsubscribeFromConversation(conversationId, callback) {
 
 export function setupChatSocketListeners(handlers) {
   const socket = getSocket();
-  console.log("[Chat] setupChatSocketListeners called", {
+  /* console.log("[Chat] setupChatSocketListeners called", {
     socketExists: !!socket,
     isConnected: socket ? isSocketConnected() : false,
     handlers: Object.keys(handlers),
-  });
+  }); */
   if (!socket) {
     console.info("[Chat] Socket not available - event listeners not set up");
-    return () => {};
+    return () => { };
   }
 
   const {
@@ -406,39 +368,45 @@ export function setupChatSocketListeners(handlers) {
     onParticipantRemoved,
     onMessageDeleted,
     onNewConversation,
+    onTicketClaimed,
+    onSpecialistJoined,
+    onCallStarted,
+    onCallEnded,
+    onMessageUpdated,
+    onHistoryShared,
   } = handlers;
 
   const processedMessageIds = new Set();
 
   const wrappedOnMessage = onMessage
     ? (data) => {
-        const messageId =
-          data.message?.Message_ID || data.message?.Id || data.message?.id;
-        if (messageId && processedMessageIds.has(messageId)) {
-          console.log(
-            "[Chat] Skipping duplicate message event for ID:",
-            messageId
-          );
-          return;
-        }
-        if (messageId) {
-          processedMessageIds.add(messageId);
-          setTimeout(() => processedMessageIds.delete(messageId), 5000);
-        }
-        console.log("[Chat] Received message event:", data);
-        onMessage(data);
+      const messageId =
+        data.message?.Message_ID || data.message?.Id || data.message?.id;
+      if (messageId && processedMessageIds.has(messageId)) {
+        /* console.log(
+          "[Chat] Skipping duplicate message event for ID:",
+          messageId
+        ); */
+        return;
       }
+      if (messageId) {
+        processedMessageIds.add(messageId);
+        setTimeout(() => processedMessageIds.delete(messageId), 5000);
+      }
+      // console.log("[Chat] Received message event:", data);
+      onMessage(data);
+    }
     : null;
 
   if (wrappedOnMessage) {
     socket.on("chat:message", wrappedOnMessage);
     socket.on("chat:newMessage", wrappedOnMessage);
-    console.log("[Chat] Listening for chat:message and chat:newMessage events");
+    // console.log("[Chat] Listening for chat:message and chat:newMessage events");
   }
   if (onTyping) {
     socket.on("chat:typing", onTyping);
     socket.on("chat:userTyping", onTyping);
-    console.log("[Chat] Listening for chat:typing and chat:userTyping events");
+    // console.log("[Chat] Listening for chat:typing and chat:userTyping events");
   }
   if (onRead) {
     socket.on("chat:read", onRead);
@@ -459,11 +427,33 @@ export function setupChatSocketListeners(handlers) {
   if (onNewConversation) {
     socket.on("chat:newConversation", onNewConversation);
     socket.on("chat:conversation-created", onNewConversation);
-    console.log("[Chat] Listening for chat:newConversation events");
+    // console.log("[Chat] Listening for chat:newConversation events");
+  }
+  if (onTicketClaimed) {
+    socket.on("ticket:claimed", onTicketClaimed);
+    // console.log("[Chat] Listening for ticket:claimed events");
+  }
+  if (onSpecialistJoined) {
+    socket.on("ticket:specialist_joined", onSpecialistJoined);
+    // console.log("[Chat] Listening for ticket:specialist_joined events");
+  }
+  if (onCallStarted) {
+    socket.on("call:started", onCallStarted);
+    // console.log("[Chat] Listening for call:started events");
+  }
+  if (onCallEnded) {
+    socket.on("call:ended", onCallEnded);
+    // console.log("[Chat] Listening for call:ended events");
+  }
+  if (onMessageUpdated) {
+    socket.on("chat:message_updated", onMessageUpdated);
+  }
+  if (onHistoryShared) {
+    socket.on("chat:history_shared", onHistoryShared);
   }
 
   return () => {
-    console.log("[Chat] Cleaning up socket listeners");
+    // console.log("[Chat] Cleaning up socket listeners");
     if (wrappedOnMessage) {
       socket.off("chat:message", wrappedOnMessage);
       socket.off("chat:newMessage", wrappedOnMessage);
@@ -491,6 +481,24 @@ export function setupChatSocketListeners(handlers) {
     if (onNewConversation) {
       socket.off("chat:newConversation", onNewConversation);
       socket.off("chat:conversation-created", onNewConversation);
+    }
+    if (onTicketClaimed) {
+      socket.off("ticket:claimed", onTicketClaimed);
+    }
+    if (onSpecialistJoined) {
+      socket.off("ticket:specialist_joined", onSpecialistJoined);
+    }
+    if (onCallStarted) {
+      socket.off("call:started", onCallStarted);
+    }
+    if (onCallEnded) {
+      socket.off("call:ended", onCallEnded);
+    }
+    if (onMessageUpdated) {
+      socket.off("chat:message_updated", onMessageUpdated);
+    }
+    if (onHistoryShared) {
+      socket.off("chat:history_shared", onHistoryShared);
     }
   };
 }
@@ -617,9 +625,11 @@ export function getMaxFileSize() {
 export function transformConversationForUI(conversation, currentUserId) {
   const participants = conversation.participants || [];
   const otherParticipant = participants.find(
-    (p) => (p.User_ID || p.User_Id || p.userId || p.id) !== currentUserId
+    (p) => Number(p.User_ID || p.User_Id || p.userId || p.id) !== Number(currentUserId)
   );
   const displayName =
+    conversation.name ||
+    conversation.displayName ||
     conversation.Conversation_Title ||
     conversation.Title ||
     conversation.title ||
@@ -668,6 +678,7 @@ export function transformConversationForUI(conversation, currentUserId) {
     conversation.Conversation_ID || conversation.Id || conversation.id;
 
   const otherUserTypeRaw =
+    conversation.otherUserType ||
     otherParticipant?.User_Type_Code ||
     otherParticipant?.User_Type ||
     otherParticipant?.userType ||
@@ -677,14 +688,14 @@ export function transformConversationForUI(conversation, currentUserId) {
     otherUserTypeRaw?.length === 1
       ? otherUserTypeRaw.toLowerCase()
       : otherUserTypeRaw?.toLowerCase().startsWith("nurse")
-      ? "n"
-      : otherUserTypeRaw?.toLowerCase().startsWith("spec")
-      ? "s"
-      : otherUserTypeRaw?.toLowerCase().startsWith("patient")
-      ? "p"
-      : otherUserTypeRaw?.toLowerCase().startsWith("admin")
-      ? "a"
-      : "p";
+        ? "n"
+        : otherUserTypeRaw?.toLowerCase().startsWith("spec")
+          ? "s"
+          : otherUserTypeRaw?.toLowerCase().startsWith("patient")
+            ? "p"
+            : otherUserTypeRaw?.toLowerCase().startsWith("admin")
+              ? "a"
+              : otherUserTypeRaw || "p";
 
   return {
     id: conversationId,
@@ -699,8 +710,8 @@ export function transformConversationForUI(conversation, currentUserId) {
     lastMessageSenderName: lastMessageSenderName,
     timestamp: formatMessageTime(
       conversation.Updated_At ||
-        conversation.updatedAt ||
-        conversation.createdAt
+      conversation.updatedAt ||
+      conversation.createdAt
     ),
     unreadCount: conversation.unreadCount || 0,
     otherUserType: otherUserType,
@@ -721,15 +732,14 @@ export function transformConversationForUI(conversation, currentUserId) {
       ? otherParticipant.avatar.startsWith("http") ||
         otherParticipant.avatar.startsWith("blob:")
         ? otherParticipant.avatar
-        : `${API_BASE_URL}${
-            otherParticipant.avatar.startsWith("/") ? "" : "/"
-          }${otherParticipant.avatar}`
+        : `${API_BASE_URL}${otherParticipant.avatar.startsWith("/") ? "" : "/"
+        }${otherParticipant.avatar}`
       : null,
     raw: conversation,
   };
 }
 
-export function transformMessageForUI(message, currentUserId, currentUserType) {
+export function transformMessageForUI(message, currentUserId) {
   const senderId =
     message.Sender_ID ||
     message.Sender_Id ||
@@ -748,14 +758,14 @@ export function transformMessageForUI(message, currentUserId, currentUserType) {
     senderType?.length === 1
       ? senderType.toLowerCase()
       : senderType?.toLowerCase().startsWith("nurse")
-      ? "n"
-      : senderType?.toLowerCase().startsWith("spec")
-      ? "s"
-      : senderType?.toLowerCase().startsWith("patient")
-      ? "p"
-      : senderType?.toLowerCase().startsWith("admin")
-      ? "a"
-      : "p";
+        ? "n"
+        : senderType?.toLowerCase().startsWith("spec")
+          ? "s"
+          : senderType?.toLowerCase().startsWith("patient")
+            ? "p"
+            : senderType?.toLowerCase().startsWith("admin")
+              ? "a"
+              : "p";
 
   const getFullUrl = (url) => {
     if (!url) return null;
@@ -765,11 +775,11 @@ export function transformMessageForUI(message, currentUserId, currentUserType) {
 
   const senderAvatar = getFullUrl(
     message.Sender_Avatar ||
-      message.sender_avatar ||
-      message.sender?.avatar ||
-      message.sender?.Avatar ||
-      message.sender?.Profile_Image ||
-      null
+    message.sender_avatar ||
+    message.sender?.avatar ||
+    message.sender?.Avatar ||
+    message.sender?.Profile_Image ||
+    null
   );
   const senderName =
     message.sender?.Display_Name ||
@@ -779,20 +789,32 @@ export function transformMessageForUI(message, currentUserId, currentUserType) {
     message.senderName ||
     "Unknown";
 
+  const messageId =
+    message.Message_ID ||
+    message.Id ||
+    message.id ||
+    [
+      message.ticket || message.Ticket_ID || message.ticketId || "ticket",
+      message.Created_At || message.createdAt || Date.now(),
+      senderId || "system",
+      message.Message_Content || message.content || "",
+    ].join("-");
+
   return {
-    id: message.Message_ID || message.Id || message.id,
+    id: messageId,
     text: message.Message_Content || message.content || "",
     timestamp: formatExactTime(message.Created_At || message.createdAt),
     rawTimestamp: message.Created_At || message.createdAt,
     isSent,
-    sender: normalizedSenderType,
+    sender: message.Is_System || message.isSystem ? "system" : normalizedSenderType,
     senderId: senderId,
     senderName: senderName,
     avatar: senderAvatar,
+    isSystem: !!(message.Is_System || message.isSystem || message.sender === 'system'),
     senderInfo: {
       id: senderId,
       name: senderName,
-      type: normalizedSenderType,
+      type: (message.Is_System || message.isSystem || message.sender === 'system') ? "system" : normalizedSenderType,
       avatar: senderAvatar,
     },
     messageType: message.Message_Type || message.type || "text",

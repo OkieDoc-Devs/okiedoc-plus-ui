@@ -1,41 +1,26 @@
 import "./auth.css";
-import { useNavigate, useLocation } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
-import authService from "../Specialists/authService";
-import { loginAdmin } from "../api/Admin/api.js";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login, getRedirectPathForRole } = useAuth();
+
+  useEffect(() => {
+    localStorage.removeItem("jwt_token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("okiedoc_user_type");
+    localStorage.removeItem("okiedoc_specialist_user");
+    sessionStorage.clear();
+  }, []);
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  const dummyCredentials = {
-    nurse: {
-      email: "nurse@okiedocplus.com",
-      password: "nurseOkDoc123",
-    },
-    patient: {
-      email: "patient@okiedocplus.com",
-      password: "patientOkDoc123",
-    },
-    specialist: {
-      email: "specialist@okiedocplus.com",
-      password: "specialistOkDoc123",
-    },
-    admin: {
-      email: "admin@okiedoc.com", 
-      password: "admin123" 
-    },
-    nurseAdmin: { 
-      email: "nurseadmin@okiedocplus.com", 
-      password: "nurseAdmin123" 
-    },
-  };
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -45,163 +30,30 @@ export default function Login() {
     }));
   };
 
-  const loginWithAPI = async (email, password) => {
-    try {
-      const response = await fetch("http://localhost:1337/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        return {
-          success: true,
-          user: data.user,
-        };
-      } else {
-        return {
-          success: false,
-          error: data.message || "Login failed",
-        };
-      }
-    } catch (error) {
-      console.error(
-        "API login failed, trying fallback credentials:",
-        error.message,
-      );
-      return {
-        success: false,
-        error: error.message || "Login failed",
-      };
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
     try {
-      const result = await loginWithAPI(formData.email, formData.password);
+      const user = await login({
+        email: formData.email,
+        password: formData.password,
+        roleMode: "deny",
+        role: "specialist",
+      });
 
-      if (result.success) {
-        const fullName =
-          result.user.fullName ||
-          result.user.Full_Name ||
-          result.user.full_name ||
-          result.user.name ||
-          "";
-        const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
-        const firstName =
-          result.user.firstName || result.user.first_name || nameParts[0] || "";
-        const lastName =
-          result.user.lastName ||
-          result.user.last_name ||
-          nameParts.slice(1).join(" ") ||
-          "";
+      const role = user.role || user.userType;
+      localStorage.setItem("okiedoc_user_type", role);
+      localStorage.setItem("okiedoc_specialist_user", JSON.stringify(user));
 
-        localStorage.setItem(
-          "currentUser",
-          JSON.stringify({
-            id: result.user.id,
-            email: result.user.email,
-            userType: result.user.userType,
-            globalId: result.user.globalId || null,
-            fullName,
-            firstName,
-            lastName,
-          }),
-        );
-
-        if (result.user.userType === "nurse_admin") {
-          sessionStorage.setItem("isNurseAdminLoggedIn", "true");
-          localStorage.setItem("userRole", "nurse_admin");
-          navigate("/nurse-admin-dashboard");
-          return;
-        }
-
-        if (result.user.userType === "nurse") {
-          const firstName =
-            result.user.firstName ||
-            result.user.first_name ||
-            result.user.name?.split(" ")[0] ||
-            result.user.fullName?.split(" ")[0] ||
-            "Nurse";
-
-          const lastName =
-            result.user.lastName ||
-            result.user.last_name ||
-            result.user.name?.split(" ")[1] ||
-            result.user.fullName?.split(" ")[1] ||
-            "";
-
-          localStorage.setItem("nurse.id", result.user.id);
-          localStorage.setItem("nurse.email", result.user.email);
-          localStorage.setItem("nurse.firstName", firstName);
-          localStorage.setItem("nurse.lastName", lastName);
-
-          console.log("Nurse data stored in localStorage:", {
-            id: result.user.id,
-            email: result.user.email,
-            firstName: firstName,
-            lastName: lastName,
-            rawUserObject: result.user,
-          });
-        }
-
-        navigate(result.user.dashboardRoute || "/patient");
-        return;
-      } else {
-        setError(result.error || "Invalid email or password");
-      }
+      const redirectPath = getRedirectPathForRole(role);
+      navigate(redirectPath, { replace: true });
     } catch (error) {
       console.error("Login error:", error);
-      setError("An error occurred. Please try again.");
+      setError(error.message || "An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
-    }
-
-    if (
-      formData.email === dummyCredentials.nurseAdmin.email &&
-      formData.password === dummyCredentials.nurseAdmin.password
-    ) {
-      sessionStorage.setItem("isNurseAdminLoggedIn", "true");
-      localStorage.setItem("userRole", "nurse_admin");
-      navigate("/nurse-admin-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.nurse.email &&
-      formData.password === dummyCredentials.nurse.password
-    ) {
-      localStorage.setItem("userRole", "nurse");
-      navigate("/nurse-dashboard");
-      return;
-    } else if (
-      formData.email === dummyCredentials.patient.email &&
-      formData.password === dummyCredentials.patient.password
-    ) {
-      localStorage.setItem("userRole", "patient");
-      navigate("/patient");
-      return;
-    }
-
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]",
-    );
-    const user = registeredUsers.find(
-      (u) => u.email === formData.email && u.password === formData.password,
-    );
-
-    if (user) {
-      localStorage.setItem("userRole", "patient");
-      navigate("/patient");
-    } else {
-      setError("Invalid email or password. Please try again.");
     }
   };
 
@@ -256,7 +108,7 @@ export default function Login() {
               {isLoading ? "Signing in..." : "Sign in"}
             </button>
             <p className="login-text">
-              Don't have an Okie-Doc+ account?{" "}
+              Don't have an OkieDoc+ account?{" "}
               <a href="/registration">Register</a>
             </p>
             <p className="specialist-text">

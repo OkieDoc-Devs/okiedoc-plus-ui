@@ -588,7 +588,7 @@ const Messages = () => {
                               firstName={getNameParts(message.senderName).firstName}
                               lastName={getNameParts(message.senderName).lastName}
                               userType={getUserTypeFromRole(message.sender)}
-                              size={32}
+                              size={42}
                               alt={message.senderName || 'User'}
                             />
                           </div>
@@ -666,7 +666,7 @@ const Messages = () => {
                               firstName={getNameParts(message.senderName).firstName}
                               lastName={getNameParts(message.senderName).lastName}
                               userType={getUserTypeFromRole(message.sender)}
-                              size={32}
+                              size={42}
                               alt={message.senderName || 'You'}
                             />
                           </div>
@@ -684,7 +684,7 @@ const Messages = () => {
                         firstName={getNameParts(activeConversation.name).firstName}
                         lastName={getNameParts(activeConversation.name).lastName}
                         userType={getUserTypeFromRole(activeConversation.role || activeConversation.type)}
-                        size={32}
+                        size={42}
                         alt={activeConversation.name}
                       />
                     </div>

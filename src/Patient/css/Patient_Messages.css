@@ -189,7 +189,7 @@
 
 .patient-chat-header {
   padding: 0.875rem 1.25rem;
-  background: #4aa7ed;
+  background: #1E90FF !important;
   color: white;
   border-bottom: 1px solid #e4e6ea;
   display: flex;

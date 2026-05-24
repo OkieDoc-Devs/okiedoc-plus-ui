@@ -55,7 +55,12 @@ const symptomsList = [
   "Anxiety",
 ];
 
-const CURRENT_DATE = new Date();
+// Helper to get today's date safely in YYYY-MM-DD
+const getTodayString = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
 
 export default function BookSpecialist({
   onGoBack,
@@ -98,6 +103,7 @@ export default function BookSpecialist({
   const [patientAge, setPatientAge] = useState("");
   const [patientGender, setPatientGender] = useState("");
   const [patientContact, setPatientContact] = useState("");
+  const [phoneError, setPhoneError] = useState("");
 
   const [complaint, setComplaint] = useState("");
   const [symptoms, setSymptoms] = useState([]);
@@ -118,6 +124,16 @@ export default function BookSpecialist({
               currency: "PHP",
             }).format(doc.feeInitialWithoutCert);
 
+            // Robust Schedule Parsing
+            let parsedSchedules = {};
+            if (typeof doc.schedules === "string") {
+              try {
+                parsedSchedules = JSON.parse(doc.schedules);
+              } catch (e) {}
+            } else if (doc.schedules) {
+              parsedSchedules = doc.schedules;
+            }
+
             return {
               id: doc.id,
               name: doc.name,
@@ -135,7 +151,7 @@ export default function BookSpecialist({
                 .substring(0, 2)
                 .toUpperCase(),
               available: true,
-              schedules: doc.schedules,
+              schedules: parsedSchedules,
               hmosList: doc.hmos || [],
             };
           });
@@ -170,12 +186,20 @@ export default function BookSpecialist({
     let digits = value.replace(/\D/g, "");
     if (digits.length === 0) {
       setPatientContact("");
+      setPhoneError("Phone number is required.");
       return;
     }
+
     if (digits.startsWith("0")) {
       digits = "63" + digits.substring(1);
     } else if (!digits.startsWith("63")) {
       digits = digits === "6" ? "6" : "63" + digits;
+    }
+
+    if (digits.length > 0 && digits.length < 12) {
+      setPhoneError("Please enter a valid 10-digit mobile number.");
+    } else {
+      setPhoneError("");
     }
 
     digits = digits.substring(0, 12);
@@ -199,13 +223,12 @@ export default function BookSpecialist({
         digits.substring(5, 8) +
         " " +
         digits.substring(8);
+
     setPatientContact(formatted);
   };
 
-  const isDateInvalid = date
-    ? new Date(date + "T00:00:00") <
-      new Date(CURRENT_DATE.toISOString().split("T")[0] + "T00:00:00")
-    : false;
+  const todayStr = getTodayString();
+  const isDateInvalid = date ? date < todayStr : false;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -219,7 +242,14 @@ export default function BookSpecialist({
   // --- DYNAMIC TIME SLOTS ---
   useEffect(() => {
     if (date && specialist && specialist.schedules) {
-      const dateObj = new Date(date + "T00:00:00");
+      // Safely parse date to guarantee local timezone day check
+      const dateParts = date.split("-");
+      const dateObj = new Date(
+        parseInt(dateParts[0]),
+        parseInt(dateParts[1]) - 1,
+        parseInt(dateParts[2]),
+      );
+
       const dayOfWeek = dateObj.toLocaleDateString("en-US", {
         weekday: "long",
       });
@@ -227,17 +257,23 @@ export default function BookSpecialist({
       const dayKey = Object.keys(specialist.schedules).find(
         (k) => k.toLowerCase() === dayOfWeek.toLowerCase(),
       );
-      if (!dayKey) {
+
+      if (!dayKey || !specialist.schedules[dayKey]) {
         setAvailableSlots([]);
         setTime("");
         return;
       }
 
-      const [startStr, endStr] = specialist.schedules[dayKey].split("-");
+      // Time variables
+      const now = new Date();
+      const isToday = date === todayStr;
+      const currentMins = now.getHours() * 60 + now.getMinutes();
+
       const parseTime = (t) => {
         const [h, m] = t.trim().split(":");
         return parseInt(h) * 60 + parseInt(m);
       };
+
       const formatTime = (mins) => {
         const h = Math.floor(mins / 60);
         const m = mins % 60;
@@ -246,20 +282,52 @@ export default function BookSpecialist({
         return `${h12.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${ampm}`;
       };
 
-      const slots = [];
-      let current = parseTime(startStr);
-      const end = parseTime(endStr);
+      const timeBlocks = specialist.schedules[dayKey].split(",");
 
-      while (current < end) {
-        slots.push(formatTime(current));
-        current += 30;
+      let minTime = Infinity;
+      let maxTime = -Infinity;
+      const parsedBlocks = [];
+
+      timeBlocks.forEach((block) => {
+        const [startStr, endStr] = block.split("-");
+        if (!startStr || !endStr) return;
+        const start = parseTime(startStr);
+        const end = parseTime(endStr);
+        if (start < minTime) minTime = start;
+        if (end > maxTime) maxTime = end;
+        parsedBlocks.push({ start, end });
+      });
+
+      if (parsedBlocks.length === 0) {
+        setAvailableSlots([]);
+        return;
       }
+
+      const slots = [];
+      let current = minTime;
+
+      // Generate all slots from the earliest start to the latest end
+      while (current < maxTime) {
+        // Check if the current slot falls inside ANY of the allowed blocks
+        const isInAWorkingBlock = parsedBlocks.some(
+          (b) => current >= b.start && current < b.end,
+        );
+        const isPassedToday = isToday && current <= currentMins;
+
+        slots.push({
+          time: formatTime(current),
+          isAvailable: isInAWorkingBlock && !isPassedToday,
+        });
+
+        current += 30; // 30-minute intervals
+      }
+
       setAvailableSlots(slots);
       setTime("");
     } else {
       setAvailableSlots([]);
     }
-  }, [date, specialist]);
+  }, [date, specialist, todayStr]);
 
   const filteredSpecialists = useMemo(() => {
     let result = specialistsData.filter((doc) => {
@@ -311,6 +379,7 @@ export default function BookSpecialist({
     }
   };
 
+  // --- VALIDATION GATEKEEPER ---
   const canProceed = () => {
     if (currentStep === 0) return specialist !== null;
     if (currentStep === 1) {
@@ -322,7 +391,10 @@ export default function BookSpecialist({
       return true;
     }
     if (currentStep === 2) return date !== "" && !isDateInvalid && time !== "";
-    if (currentStep === 3) return patientContact.trim().length > 0;
+    if (currentStep === 3) {
+      const digits = patientContact.replace(/\D/g, "");
+      return digits.length === 12;
+    }
     if (currentStep === 4) return complaint.trim().length > 0;
     return true;
   };
@@ -336,18 +408,22 @@ export default function BookSpecialist({
         body: JSON.stringify({
           patientId: user?.id,
           patient: user?.id,
-          specialist: specialist.id,
+          specialistId: specialist.id,
           status: "pending",
           consultationChannel: "Video",
           preferredDate: date,
           preferredTime: time,
           chiefComplaint: complaint,
-          symptoms: symptoms.length > 0 ? symptoms.join(", ") : "None",
+
+          symptoms:
+            symptoms.length > 0
+              ? JSON.stringify(symptoms)
+              : JSON.stringify(["None"]),
+
           additionalDetails: notes,
           isUsingHmo: paymentMethod === "hmo" ? true : false,
           hmoProvider: paymentMethod === "hmo" ? hmoProvider : "",
           hmoMemberId: paymentMethod === "hmo" ? hmoId : "",
-
           targetSpecialty: specialist.spec,
           doctorFee: specialist.rawPrice,
         }),
@@ -374,36 +450,15 @@ export default function BookSpecialist({
 
   // --- DYNAMIC SCHEDULE PILLS ---
   const formatSchedulePills = (schedules) => {
-    if (!schedules) return null;
+    if (!schedules || Object.keys(schedules).length === 0) {
+      return <span className="bs-badge bs-badge-outline">No Schedule Set</span>;
+    }
 
-    // Group days by their time string
-    const groupedSchedules = {};
-    Object.entries(schedules).forEach(([day, t]) => {
-      if (!groupedSchedules[t]) groupedSchedules[t] = [];
-      groupedSchedules[t].push(day.substring(0, 3));
-    });
-
-    return Object.entries(groupedSchedules).map(([t, days]) => {
-      let daysDisplay = "";
-      if (days.length === 1) {
-        daysDisplay = days[0];
-      } else if (
-        days.length === 5 &&
-        days.join(",") === "Mon,Tue,Wed,Thu,Fri"
-      ) {
-        daysDisplay = "Mon - Fri";
-      } else if (days.length === 7) {
-        daysDisplay = "Mon - Sun";
-      } else {
-        daysDisplay = days.join(", ");
-      }
-
-      return (
-        <span key={t + daysDisplay} className="bs-badge bs-badge-outline">
-          {daysDisplay} {t}
-        </span>
-      );
-    });
+    return Object.entries(schedules).map(([day, t]) => (
+      <span key={day} className="bs-badge bs-badge-outline">
+        {day.substring(0, 3)} {t}
+      </span>
+    ));
   };
 
   return (
@@ -593,7 +648,6 @@ export default function BookSpecialist({
                             </span>
                           ))}
 
-                          {/* Dynamic Schedule Pills strictly using existing CSS classes */}
                           {formatSchedulePills(doc.schedules)}
                         </div>
                       </div>
@@ -774,10 +828,11 @@ export default function BookSpecialist({
                 <input
                   type="date"
                   value={date}
-                  min={CURRENT_DATE.toISOString().split("T")[0]}
+                  min={todayStr}
                   max="2030-12-31"
                   onChange={(e) => {
                     setDate(e.target.value);
+                    setTime("");
                   }}
                   className="bs-form-input"
                 />
@@ -794,20 +849,27 @@ export default function BookSpecialist({
 
                   <div className="bs-time-grid-extended">
                     {availableSlots.length > 0 ? (
-                      availableSlots.map((t) => (
+                      availableSlots.map((slot) => (
                         <button
-                          key={t}
-                          className={`bs-time-btn-extended ${time === t ? "selected" : "available"}`}
-                          onClick={() => setTime(t)}
+                          key={slot.time}
+                          disabled={!slot.isAvailable}
+                          className={`bs-time-btn-extended ${
+                            time === slot.time
+                              ? "selected"
+                              : slot.isAvailable
+                                ? "available"
+                                : "unavailable"
+                          }`}
+                          onClick={() => setTime(slot.time)}
                         >
                           <IconClock size={18} className="mb-8" />
-                          {t}
+                          {slot.time}
                         </button>
                       ))
                     ) : (
                       <p className="bs-empty-state">
-                        The specialist is not scheduled on this day. Please
-                        select another date.
+                        The specialist is not scheduled to work on this day.
+                        Please select another date.
                       </p>
                     )}
                   </div>
@@ -820,6 +882,10 @@ export default function BookSpecialist({
                       <span className="bs-legend-item">
                         <div className="bs-legend-dot available"></div>{" "}
                         Available
+                      </span>
+                      <span className="bs-legend-item">
+                        <div className="bs-legend-dot unavailable"></div>{" "}
+                        Unavailable
                       </span>
                     </div>
                   )}
@@ -882,6 +948,7 @@ export default function BookSpecialist({
                       className="bs-form-input pl-36"
                     />
                   </div>
+                  {phoneError && <p className="bs-error-msg">{phoneError}</p>}
                 </div>
               </div>
             </div>

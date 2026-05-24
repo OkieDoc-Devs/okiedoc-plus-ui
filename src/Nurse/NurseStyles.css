@@ -5941,7 +5941,6 @@ body::-webkit-scrollbar {
   height: 42px;
   border-radius: 50%;
   overflow: hidden;
-  border: 2px solid #0b5388;
 }
 
 .nurse-message-avatar img {

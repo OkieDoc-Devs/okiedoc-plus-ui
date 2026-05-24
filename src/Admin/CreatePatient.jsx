@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../api/apiClient';
+import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 
 export default function CreatePatient() {
   const navigate = useNavigate();
@@ -8,6 +9,10 @@ export default function CreatePatient() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successData, setSuccessData] = useState({ isSuccess: false, password: '' });
   const [copied, setCopied] = useState(false);
+
+  // Accordion States
+  const [isAddressOpen, setIsAddressOpen] = useState(false);
+  const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -47,16 +52,13 @@ export default function CreatePatient() {
     setLoading(true);
     setErrorMsg('');
 
-    // Ensure strict numeric stripping before sending to backend, just in case
     const cleanPayload = {
       ...formData,
       birthday: formData.dateOfBirth,
-      // Strip all formatting spaces/dashes before sending to backend DB (optional, but good practice)
       mobileNumber: formData.mobileNumber.replace(/[\s-]/g, ''),
       emergencyContactPhone: formData.emergencyContactPhone.replace(/[\s-]/g, ''),
     };
 
-    // Remove the duplicate dateOfBirth key to match backend expectations cleanly
     delete cleanPayload.dateOfBirth;
 
     try {
@@ -66,7 +68,6 @@ export default function CreatePatient() {
       });
 
       const finalPassword = response?.generatedPassword || 'System-Generated';
-      
       setSuccessData({ isSuccess: true, password: finalPassword });
     } catch (error) {
       let exactProblem = error.message;
@@ -74,7 +75,7 @@ export default function CreatePatient() {
         exactProblem = `Validation failed for: ${error.problems.join(', ')}`;
       }
       setErrorMsg(exactProblem);
-      if (error.problems) console.error("Validation Problems:", error.problems);
+      console.error("Validation Problems:", error.problems);
     } finally {
       setLoading(false);
     }
@@ -93,7 +94,6 @@ export default function CreatePatient() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col items-center pb-16">
       
-      {/* Top Navigation */}
       <div className="w-full max-w-6xl flex justify-between items-center py-6 px-6 lg:px-8">
         <img 
           src="/okie-doc-logo.png" 
@@ -175,53 +175,38 @@ export default function CreatePatient() {
                 </div>
               </div>
 
-              <h2 className="text-lg font-bold text-gray-800 mb-5 border-b border-gray-100 pb-2">Delivery Address</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-                <div className="md:col-span-2">
-                  <label className={labelClass}>Address Line 1 (Unit, Building, Street)</label>
-                  <input name="addressLine1" value={formData.addressLine1} onChange={handleChange} placeholder="123 Main St" className={inputClass} />
-                </div>
-                <div className="md:col-span-2">
-                  <label className={labelClass}>Address Line 2 (Subdivision, Area)</label>
-                  <input name="addressLine2" value={formData.addressLine2} onChange={handleChange} placeholder="Apt 4B" className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Barangay</label>
-                  <input name="barangay" value={formData.barangay} onChange={handleChange} placeholder="Barangay Name" className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>City</label>
-                  <input name="city" value={formData.city} onChange={handleChange} placeholder="City Name" className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Province</label>
-                  <input name="province" value={formData.province} onChange={handleChange} placeholder="Province Name" className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Zip Code</label>
-                  <input name="zipCode" type="text" inputMode="numeric" value={formData.zipCode} onChange={handleChange} placeholder="1234" className={inputClass} />
-                </div>
+              {/* Delivery Address Accordion */}
+              <div className="mb-6 border border-gray-200 rounded-lg overflow-hidden">
+                <button type="button" onClick={() => setIsAddressOpen(!isAddressOpen)} className="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 transition-all font-bold text-gray-800 text-sm">
+                  Delivery Address {isAddressOpen ? <FiChevronUp /> : <FiChevronDown />}
+                </button>
+                {isAddressOpen && (
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5 bg-white border-t border-gray-100">
+                    <div className="md:col-span-2"><label className={labelClass}>Address Line 1</label><input name="addressLine1" value={formData.addressLine1} onChange={handleChange} placeholder="123 Main St" className={inputClass} /></div>
+                    <div className="md:col-span-2"><label className={labelClass}>Address Line 2</label><input name="addressLine2" value={formData.addressLine2} onChange={handleChange} placeholder="Apt 4B" className={inputClass} /></div>
+                    <div><label className={labelClass}>Barangay</label><input name="barangay" value={formData.barangay} onChange={handleChange} placeholder="Barangay Name" className={inputClass} /></div>
+                    <div><label className={labelClass}>City</label><input name="city" value={formData.city} onChange={handleChange} placeholder="City Name" className={inputClass} /></div>
+                    <div><label className={labelClass}>Province</label><input name="province" value={formData.province} onChange={handleChange} placeholder="Province Name" className={inputClass} /></div>
+                    <div><label className={labelClass}>Zip Code</label><input name="zipCode" type="text" inputMode="numeric" value={formData.zipCode} onChange={handleChange} placeholder="1234" className={inputClass} /></div>
+                  </div>
+                )}
               </div>
 
-              <h2 className="text-lg font-bold text-gray-800 mb-5 border-b border-gray-100 pb-2 mt-8">Emergency Contact</h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-                <div>
-                  <label className={labelClass}>Contact Name</label>
-                  <input name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} placeholder="Maria Dela Cruz" className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Contact Phone</label>
-                  <input name="emergencyContactPhone" type="tel" value={formData.emergencyContactPhone} onChange={handleChange} placeholder="+63 919 000 0000" className={inputClass} />
-                </div>
-                <div className="md:col-span-2">
-                  <label className={labelClass}>Contact Address</label>
-                  <input name="emergencyContactAddress" value={formData.emergencyContactAddress} onChange={handleChange} placeholder="Emergency contact's address" className={inputClass} />
-                </div>
+              {/* Emergency Contact Accordion */}
+              <div className="mb-8 border border-gray-200 rounded-lg overflow-hidden">
+                <button type="button" onClick={() => setIsEmergencyOpen(!isEmergencyOpen)} className="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 transition-all font-bold text-gray-800 text-sm">
+                  Emergency Contact {isEmergencyOpen ? <FiChevronUp /> : <FiChevronDown />}
+                </button>
+                {isEmergencyOpen && (
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5 bg-white border-t border-gray-100">
+                    <div><label className={labelClass}>Contact Name</label><input name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} placeholder="Maria Dela Cruz" className={inputClass} /></div>
+                    <div><label className={labelClass}>Contact Phone</label><input name="emergencyContactPhone" type="tel" value={formData.emergencyContactPhone} onChange={handleChange} placeholder="+63 919 000 0000" className={inputClass} /></div>
+                    <div className="md:col-span-2"><label className={labelClass}>Contact Address</label><input name="emergencyContactAddress" value={formData.emergencyContactAddress} onChange={handleChange} placeholder="Emergency contact's address" className={inputClass} /></div>
+                  </div>
+                )}
               </div>
 
-              <div className="pt-4 mt-2">
+              <div className="pt-4">
                 <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-lg shadow-sm transition-colors text-[15px] disabled:opacity-50">
                   {loading ? 'Processing Registration...' : 'Create Patient Account'}
                 </button>
@@ -253,7 +238,7 @@ export default function CreatePatient() {
                 </button>
               </div>
               <p className="text-[12px] text-gray-500 mt-3 leading-relaxed">
-                Please securely share this password with the patient. They will need this to log in to their account.
+                Please securely share this password with the patient.
               </p>
             </div>
 
@@ -266,7 +251,6 @@ export default function CreatePatient() {
             </button>
           </div>
         )}
-
       </main>
     </div>
   );

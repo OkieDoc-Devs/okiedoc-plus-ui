@@ -1,13 +1,14 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import authService from './authService';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function DeniedVerification() {
     const navigate = useNavigate();
+    const { logout } = useAuth();
 
-    const handleLogout = () => {
-        authService.logout();
-        navigate('/specialist-login');
+    const handleLogout = async () => {
+        await logout();
+        navigate('/specialist-login', { replace: true });
     };
 
     return (

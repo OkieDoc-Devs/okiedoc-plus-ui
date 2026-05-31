@@ -1,8 +1,7 @@
 import "./auth.css";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import authService from "../Specialists/authService";
-import { useAuth, getRedirectPathForRole } from "../contexts/AuthContext";
+import { useAuth, getPostLoginPathForUser } from "../contexts/AuthContext";
 
 export default function SpecialistLogin() {
   const navigate = useNavigate();
@@ -39,8 +38,7 @@ export default function SpecialistLogin() {
       localStorage.setItem("okiedoc_specialist_user", JSON.stringify(user));
       localStorage.setItem("okiedoc_user_type", "specialist");
 
-      const path = getRedirectPathForRole("specialist");
-      navigate(path);
+      navigate(getPostLoginPathForUser(user), { replace: true });
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
     } finally {

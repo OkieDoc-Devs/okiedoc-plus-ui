@@ -1046,6 +1046,7 @@ select.login-input option {
   padding: 0.6rem 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  margin-bottom: 1rem;
 }
 
 .specialist-inline-header {
@@ -1273,7 +1274,7 @@ select.login-input option {
   display: grid;
   grid-template-columns: 170px minmax(0, 1fr);
   gap: 1rem;
-  align-items: center;
+  align-items: start;
 }
 
 .specialist-schedule-day {
@@ -1287,21 +1288,15 @@ select.login-input option {
   gap: 0.9rem;
 }
 
+.specialist-schedule-time-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
 .specialist-time-input-wrap {
   position: relative;
-}
-
-.specialist-time-input {
-  padding-right: 2.8rem;
-}
-
-.specialist-time-icon {
-  position: absolute;
-  right: 0.95rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #64748b;
-  pointer-events: none;
 }
 
 .specialist-form-footer {
@@ -1341,6 +1336,60 @@ select.login-input option {
   width: auto;
   min-width: 220px;
   margin: 0;
+}
+
+/* Tailwind preflight can make buttons inherit text color; keep primary actions readable. */
+.specialist-registration-page .specialist-form-footer .login-btn.specialist-submit-btn {
+  color: #ffffff;
+}
+
+.login-btn.login-btn--ghost {
+  background: transparent;
+  color: #0aadef;
+  border: 2px solid #0aadef;
+  margin-top: 0.5rem;
+}
+
+.login-btn.login-btn--ghost:hover {
+  background: rgba(10, 174, 239, 0.08);
+  box-shadow: none;
+}
+
+.specialist-approval-card {
+  max-width: 28rem;
+}
+
+.specialist-approval-lead {
+  text-align: left;
+}
+
+.specialist-approval-panel {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: #f0f9ff;
+  border-radius: 12px;
+  border: 1px solid #bae6fd;
+  text-align: left;
+}
+
+.specialist-approval-status {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+  color: #0369a1;
+}
+
+.specialist-approval-note {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.specialist-approval-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 @media (max-width: 1080px) {

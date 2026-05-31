@@ -136,17 +136,26 @@ export async function apiRequest(endpoint, options = {}) {
       }
 
       if (typeof responseData === 'string') {
-        throw new Error(
+        const err = new Error(
           responseData || `HTTP error! status: ${response.status}`,
         );
+        err.statusCode = response.status;
+        err.body = {};
+        throw err;
       }
 
       const errorMessage =
+        responseData?.emailAlreadyInUse?.message ||
+        responseData?.mobileNumberInUse?.message ||
         responseData?.error ||
         responseData?.message ||
         `HTTP error! status: ${response.status}`;
 
-      throw new Error(errorMessage);
+      const err = new Error(errorMessage);
+      err.statusCode = response.status;
+      err.body =
+        typeof responseData === 'object' && responseData !== null ? responseData : {};
+      throw err;
     }
 
     return responseData;

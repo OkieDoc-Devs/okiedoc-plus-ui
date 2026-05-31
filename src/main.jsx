@@ -14,6 +14,7 @@ import GuardianRegistration from './Login & Registration/GuardianRegistration.js
 import FamilyRegistration from './Login & Registration/FamilyRegistration.jsx';
 import SpecialistLogin from './Login & Registration/SpecialistLogin.jsx';
 import SpecialistRegistration from './Login & Registration/SpecialistRegistration.jsx';
+import SpecialistApplicationSubmitted from './Login & Registration/SpecialistApplicationSubmitted.jsx';
 import Dashboard from './Nurse/Dashboard.jsx';
 import Notifications from './Nurse/Notifications.jsx';
 import MyAccount from './Nurse/MyAccount.jsx';
@@ -78,6 +79,9 @@ function AppContent() {
     '/registration-family',
     '/specialist-login',
     '/specialist-registration',
+    '/specialist-application-submitted',
+    '/specialist-pending',
+    '/specialist-denied',
     '/patient-dashboard',
     '/admin',
     '/nurse-dashboard',
@@ -138,6 +142,10 @@ function AppContent() {
         <Route
           path='/specialist-registration'
           element={<SpecialistRegistration />}
+        />
+        <Route
+          path='/specialist-application-submitted'
+          element={<SpecialistApplicationSubmitted />}
         />
 
         {/* Nurse Routes */}

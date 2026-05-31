@@ -2264,6 +2264,14 @@ const SpecialistDashboard = () => {
   const saveSoapModal = async () => {
     if (!soapModalType) return;
 
+    // Validate ICD fields when saving assessment
+    if (soapModalType === "assessment") {
+      if (!soapModalIcdCode || !soapModalIcdCode.trim()) {
+        alert("Please select all ICD code fields (Chapter, Block, Category, and Subcategory) before saving.");
+        return;
+      }
+    }
+
     const payload = { [soapModalType]: soapModalValue };
     if (soapModalType === "assessment") {
       payload.icd10 = soapModalIcdCode;
@@ -3096,6 +3104,7 @@ const SpecialistDashboard = () => {
                           style={{
                             backgroundColor: "#10b981",
                             borderColor: "#10b981",
+                            color: "white",
                           }}
                           onClick={() => {
                             setSelectedTicketId(selectedPatient.id);
@@ -3119,7 +3128,7 @@ const SpecialistDashboard = () => {
                   </div>
                 </div>
 
-                <div className="patient-details-scroll">
+                <div className={`patient-details-scroll ${profileData.specialization === "General Practice" ? "patient-details-scroll--gp-fixed" : ""}`}>
                   <div className="patient-info-card">
                     <div className="section-title-small">
                       Patient Information
@@ -3266,7 +3275,7 @@ const SpecialistDashboard = () => {
                     readOnly
                   />
 
-                  <div className="soap-panel">
+                  <div className={`soap-panel ${profileData.specialization === "General Practice" ? "soap-panel--gp-scrollable" : ""}`}>
                     <div className="soap-header">
                       <h3>SOAP Notes</h3>
                       <p>Document your clinical findings and treatment plan</p>
@@ -3361,85 +3370,63 @@ const SpecialistDashboard = () => {
                         aria-label="Open plan SOAP editor"
                       />
                     </div>
-                    <div className="soap-card medical-records-access-card">
-                      <div className="medical-records-header">
-                        <div>
-                          <div className="soap-card-title">
-                            Medical Records Access
-                          </div>
-                          <p className="medical-records-description">
-                            Patient record permissions and shared details.
-                          </p>
-                        </div>
-                        {mhRequests.length > 0 && (
-                          <span className="status-pill status-pill--shared">
-                            Shared
-                          </span>
-                        )}
-                      </div>
-                      {mhRequests.length === 0 ? (
-                        <div className="medical-records-empty">
-                          <div className="medical-records-icon">🔒</div>
-                          <div className="medical-records-empty-text">
-                            No medical records shared yet
-                          </div>
-                          <button
-                            className="request-record-btn"
-                            onClick={requestPatientRecords}
-                            disabled={
-                              profileData.specialization ===
-                              "General Practitioner"
-                            }
-                            title={
-                              profileData.specialization ===
-                              "General Practitioner"
-                                ? "General practitioners cannot request medical history"
-                                : ""
-                            }
-                          >
-                            Request Record from Patient
-                          </button>
-                          {profileData.specialization ===
-                            "General Practitioner" && (
-                            <p
-                              style={{
-                                color: "#66788d",
-                                fontSize: "0.87rem",
-                                margin: "8px 0 0 0",
-                                textAlign: "center",
-                              }}
-                            >
-                              General practitioners cannot request patient
-                              medical history
+                    {profileData.specialization !== "General Practice" && (
+                      <div className="soap-card medical-records-access-card">
+                        <div className="medical-records-header">
+                          <div>
+                            <div className="soap-card-title">
+                              Medical Records Access
+                            </div>
+                            <p className="medical-records-description">
+                              Patient record permissions and shared details.
                             </p>
+                          </div>
+                          {mhRequests.length > 0 && (
+                            <span className="status-pill status-pill--shared">
+                              Shared
+                            </span>
                           )}
                         </div>
-                      ) : (
-                        <div className="medical-records-list">
-                          {[
-                            { label: "Previous Consultations", icon: "📄" },
-                            { label: "Prescriptions", icon: "💊" },
-                            { label: "Lab Results", icon: "🧪" },
-                            { label: "Treatment Plans", icon: "🩺" },
-                          ].map((item) => (
-                            <div
-                              key={item.label}
-                              className="medical-records-item"
-                            >
-                              <span className="medical-records-item-icon">
-                                {item.icon}
-                              </span>
-                              <span className="medical-records-item-label">
-                                {item.label}
-                              </span>
-                              <span className="medical-records-item-arrow">
-                                ▸
-                              </span>
+                        {mhRequests.length === 0 ? (
+                          <div className="medical-records-empty">
+                            <div className="medical-records-icon">🔒</div>
+                            <div className="medical-records-empty-text">
+                              No medical records shared yet
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                            <button
+                              className="request-record-btn"
+                              onClick={requestPatientRecords}
+                            >
+                              Request Record from Patient
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="medical-records-list">
+                            {[
+                              { label: "Previous Consultations", icon: "📄" },
+                              { label: "Prescriptions", icon: "💊" },
+                              { label: "Lab Results", icon: "🧪" },
+                              { label: "Treatment Plans", icon: "🩺" },
+                            ].map((item) => (
+                              <div
+                                key={item.label}
+                                className="medical-records-item"
+                              >
+                                <span className="medical-records-item-icon">
+                                  {item.icon}
+                                </span>
+                                <span className="medical-records-item-label">
+                                  {item.label}
+                                </span>
+                                <span className="medical-records-item-arrow">
+                                  ▸
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -6114,7 +6101,7 @@ const SpecialistDashboard = () => {
                     {isTriage && (
                       <button
                         className="btn-primary"
-                        style={{ backgroundColor: "#10b981" }}
+                        style={{ backgroundColor: "#10b981", color: "white" }}
                         onClick={() => {
                           setSelectedTicketId(selectedTicket.id);
                           setShowInvoiceModal(true);

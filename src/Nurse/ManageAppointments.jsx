@@ -25,6 +25,7 @@ import {
   fetchDoctorsFromAPI,
   createTicket,
   searchPatientsFromAPI,
+  generateInvoice,
 } from './services/apiService.js';
 import NotificationBell from '../components/Notifications/NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
@@ -397,6 +398,12 @@ function NurseCreateTicketWorkspace({ onBack, onTicketCreated, initialFormData =
     setFormError('');
 
     try {
+      const durationValue = formData.durationValue
+        ? Number(formData.durationValue)
+        : undefined;
+      const severityValue =
+        formData.severity === '' ? undefined : Number(formData.severity);
+
       const payload = {
         patientId: formData.patientId ? Number(formData.patientId) : undefined,
         patientName: formData.fullName.trim(),
@@ -421,9 +428,9 @@ function NurseCreateTicketWorkspace({ onBack, onTicketCreated, initialFormData =
         painAreas: formData.painAreas,
         selectedPainAreas: formData.painAreas,
         painMapView: formData.painMapView,
-        durationValue: formData.durationValue ? Number(formData.durationValue) : null,
+        durationValue: Number.isNaN(durationValue) ? undefined : durationValue,
         durationUnit: formData.durationUnit,
-        severity: Number(formData.severity) || null,
+        severity: Number.isNaN(severityValue) ? undefined : severityValue,
       };
 
       const createdTicket = await createTicket(payload);
@@ -1213,8 +1220,30 @@ export default function ManageAppointment() {
     await generatePostConsultationBillingPDF(billingPayload);
   };
 
-  const handleSendToPatient = () => {
-    alert('Send to Patient is interactive but not connected yet.');
+  const handleSendToPatient = async (billingPayload) => {
+    try {
+      const response = await generateInvoice({
+        ticketId: invoiceTicket.id,
+        consultationType: 'initial', // Default for now
+        includesCertificate: billingPayload.selectedAdditionalServices.some(
+          (s) => s.id === 'medical-certificate'
+        ),
+        discountType: billingPayload.discountType,
+      });
+
+      if (response) {
+        alert(
+          response.message || 'Invoice generated and sent to patient successfully!'
+        );
+        setShowInvoiceModal(false);
+        // Refresh tickets
+        const updated = await fetchTicketsFromAPI();
+        setTickets(updated);
+      }
+    } catch (error) {
+      console.error('Error sending invoice:', error);
+      alert('Failed to generate invoice. Please try again.');
+    }
   };
 
   const handleRedirectPaymentGateway = () => {

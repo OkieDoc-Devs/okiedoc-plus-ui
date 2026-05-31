@@ -28,6 +28,7 @@ import PatientMedicalRecordsModal from '../components/MedicalRecords';
 import { disconnectSocket } from '../utils/socketClient';
 import { useChat } from './services/useChat.js';
 import { fetchCallbacks, updateCallbackStatus } from '../api/apiClient';
+import referredPainChart from '../assets/1506_Referred_Pain_Chart.jpg';
 import {
   Activity,
   AlertCircle,
@@ -63,7 +64,14 @@ const TRIAGE_STATUS_OPTIONS = [
   'Urgent',
   'Completed',
 ];
-const CALLBACK_STATUS_OPTIONS = ['new', 'in_progress', 'pending', 'expired'];
+const CALLBACK_STATUS_OPTIONS = [
+  'new',
+  'in_progress',
+  'inquiry',
+  'incomplete',
+  'pending',
+  'expired',
+];
 const SYMPTOM_PILL_OPTIONS = [
   'Fever',
   'Headache',
@@ -483,6 +491,13 @@ const getChannelLabel = (ticket) => {
   const channel = String(
     readValue(ticket, ['consultationChannel', 'channel'], 'chat'),
   ).toLowerCase();
+
+  if (
+    channel.includes('in_person') ||
+    channel.includes('physical') ||
+    channel.includes('clinic')
+  )
+    return 'Physical';
   if (channel.includes('video')) return 'Video';
   if (channel.includes('voice') || channel.includes('call')) return 'Voice';
   return 'Chat';
@@ -495,6 +510,12 @@ const getCallbackChannelLabel = (callback) => {
     .trim()
     .toLowerCase();
 
+  if (
+    channel.includes('in_person') ||
+    channel.includes('physical') ||
+    channel.includes('clinic')
+  )
+    return 'Physical';
   if (channel.includes('video')) return 'Video';
   if (
     channel.includes('voice') ||
@@ -551,7 +572,9 @@ const getCallbackFullName = (callback) => {
     return directFullName;
   }
 
-  const fallbackName = String(callback?.patientName || callback?.name || '').trim();
+  const fallbackName = String(
+    callback?.patientName || callback?.name || '',
+  ).trim();
   if (fallbackName) {
     return fallbackName;
   }
@@ -1322,27 +1345,39 @@ export default function Dashboard() {
           ? 'New'
           : callbackStatus === 'in_progress'
             ? 'In Progress'
-            : callbackStatus === 'pending'
-              ? 'Pending'
-              : callbackStatus === 'expired'
-                ? 'Expired'
-                : 'New',
+            : callbackStatus === 'inquiry'
+              ? 'Inquiry'
+              : callbackStatus === 'incomplete'
+                ? 'Incomplete'
+                : callbackStatus === 'pending'
+                  ? 'Pending'
+                  : callbackStatus === 'expired'
+                    ? 'Expired'
+                    : 'New',
       );
     } else {
       const hydratedStatus =
         localDraft.status || localDraft.triageStatus || selectedTicket.status;
       setTriageStatus(mapTicketStatusToTriageStatus(hydratedStatus));
     }
-    const inquiryFlag = toBooleanFlag(
-      readValue(selectedTicket, ['isInquiry', 'is_inquiry', 'inquiry'], false),
-    );
-    const incompleteFlag = toBooleanFlag(
-      readValue(
-        selectedTicket,
-        ['isIncomplete', 'is_incomplete', 'incomplete'],
-        false,
-      ),
-    );
+    const inquiryFlag = isSelectedCallbackTicket
+      ? selectedTicket?.callbackStatus === 'inquiry'
+      : toBooleanFlag(
+          readValue(
+            selectedTicket,
+            ['isInquiry', 'is_inquiry', 'inquiry'],
+            false,
+          ),
+        );
+    const incompleteFlag = isSelectedCallbackTicket
+      ? selectedTicket?.callbackStatus === 'incomplete'
+      : toBooleanFlag(
+          readValue(
+            selectedTicket,
+            ['isIncomplete', 'is_incomplete', 'incomplete'],
+            false,
+          ),
+        );
 
     setMarkInquiry(inquiryFlag);
     setMarkIncomplete(!inquiryFlag && incompleteFlag);
@@ -1580,7 +1615,11 @@ export default function Dashboard() {
         '',
       ),
     );
-    const barangay = readValue(selectedTicket, ['barangay', 'patientBarangay'], '');
+    const barangay = readValue(
+      selectedTicket,
+      ['barangay', 'patientBarangay'],
+      '',
+    );
     const city = readValue(selectedTicket, ['city', 'patientCity'], '');
     const province = readValue(
       selectedTicket,
@@ -1956,9 +1995,19 @@ export default function Dashboard() {
         status: nextStatus,
       });
     } else {
-      await applyTicketPatch(selectedTicket.id, {
+      const patch = {
         status: mapTriageStatusToTicketStatus(nextStatus),
-      });
+      };
+
+      // If setting to triage (processing), assign the current nurse
+      if (nextStatus === 'in triage') {
+        const currentNurseId = localStorage.getItem('nurse.id');
+        if (currentNurseId) {
+          patch.nurse = Number(currentNurseId);
+        }
+      }
+
+      await applyTicketPatch(selectedTicket.id, patch);
     }
 
     setIsUpdatingStatus(false);
@@ -2115,18 +2164,41 @@ export default function Dashboard() {
       return;
     }
 
-    const nextInquiry =
-      reason === 'inquiry' ? checked : checked ? false : markInquiry;
-    const nextIncomplete =
-      reason === 'incomplete' ? checked : checked ? false : markIncomplete;
+    // Only update the specific reason being toggled
+    const nextInquiry = reason === 'inquiry' ? checked : markInquiry;
+    const nextIncomplete = reason === 'incomplete' ? checked : markIncomplete;
 
     setMarkInquiry(nextInquiry);
     setMarkIncomplete(nextIncomplete);
 
-    await applyTicketPatch(selectedTicket.id, {
-      isInquiry: nextInquiry,
-      isIncomplete: nextIncomplete,
-    });
+    // Handle callbacks and regular tickets differently
+    if (isSelectedCallbackTicket && selectedTicket.callbackId) {
+      // For callbacks, update the status based on what's being marked
+      try {
+        let newStatus = 'new';
+        if (nextInquiry) {
+          newStatus = 'inquiry';
+        } else if (nextIncomplete) {
+          newStatus = 'incomplete';
+        }
+
+        await handleCallbackPatch(selectedTicket.callbackId, {
+          status: newStatus,
+        });
+      } catch (error) {
+        console.error('Failed to update callback status:', error);
+      }
+    } else {
+      // For regular tickets, update both the flags and the ticket status
+      const ticketStatus =
+        nextInquiry || nextIncomplete ? 'completed' : selectedTicket.status;
+
+      await applyTicketPatch(selectedTicket.id, {
+        status: ticketStatus,
+        isInquiry: nextInquiry,
+        isIncomplete: nextIncomplete,
+      });
+    }
   };
 
   const handleVitalChange = (field, value) => {
@@ -2786,7 +2858,8 @@ export default function Dashboard() {
 
                             <div>
                               <div className='triage-ticket-code'>
-                                {ticket.ticketNumber || `T-${String(ticket.id).padStart(3, '0')}`}
+                                {ticket.ticketNumber ||
+                                  `T-${String(ticket.id).padStart(3, '0')}`}
                               </div>
                               <div className='triage-ticket-name'>
                                 {readValue(ticket, [
@@ -2809,6 +2882,8 @@ export default function Dashboard() {
                             <Video size={14} strokeWidth={2.2} />
                           ) : channelLabel === 'Voice' ? (
                             <Phone size={14} strokeWidth={2.2} />
+                          ) : channelLabel === 'Physical' ? (
+                            <MapPin size={14} strokeWidth={2.2} />
                           ) : (
                             <MessageSquare size={14} strokeWidth={2.2} />
                           )}
@@ -2910,7 +2985,6 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-
                       <div className='triage-divider' />
 
                       <div className='triage-last-visit'>
@@ -2976,10 +3050,7 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {(!selectedPatient ||
-                (selectedPatientId &&
-                  selectedPatient.email &&
-                  selectedPatient.email !== 'N/A')) && (
+              {!isSelectedCallbackTicket && (
                 <div className='triage-snapshot-chat-dock'>
                   <article className='triage-chat-panel'>
                     <header>
@@ -3035,10 +3106,7 @@ export default function Dashboard() {
                         onChange={(event) =>
                           setQuickMessage(event.target.value)
                         }
-                        disabled={
-                          !selectedPatient ||
-                          isSendingQuickMessage
-                        }
+                        disabled={!selectedPatient || isSendingQuickMessage}
                       />
                       <button
                         className='triage-chat-send-btn'
@@ -3168,7 +3236,6 @@ export default function Dashboard() {
                       <input
                         type='checkbox'
                         checked={markInquiry}
-                        disabled={isSelectedCallbackTicket}
                         onChange={(event) =>
                           handleCloseReasonToggle(
                             'inquiry',
@@ -3182,7 +3249,6 @@ export default function Dashboard() {
                       <input
                         type='checkbox'
                         checked={markIncomplete}
-                        disabled={isSelectedCallbackTicket}
                         onChange={(event) =>
                           handleCloseReasonToggle(
                             'incomplete',
@@ -3422,6 +3488,13 @@ export default function Dashboard() {
                             );
                           })}
                         </div>
+
+                        <figure className='triage-pain-reference-card'>
+                          <img
+                            src={referredPainChart}
+                            alt='Referred pain reference chart'
+                          />
+                        </figure>
 
                         <div className='triage-pain-map-selection'>
                           <div className='triage-pain-map-selection-title'>
@@ -3931,8 +4004,16 @@ export default function Dashboard() {
                         <div className='flex items-center gap-2'>
                           {getCallbackChannelLabel(callback) === 'Video' ? (
                             <Video size={16} className='text-blue-500' />
-                          ) : (
+                          ) : getCallbackChannelLabel(callback) === 'Voice' ? (
                             <Phone size={16} className='text-blue-500' />
+                          ) : getCallbackChannelLabel(callback) ===
+                            'Physical' ? (
+                            <MapPin size={16} className='text-blue-500' />
+                          ) : (
+                            <MessageSquare
+                              size={16}
+                              className='text-blue-500'
+                            />
                           )}
                           <span>{getCallbackChannelLabel(callback)}</span>
                         </div>
@@ -4307,6 +4388,14 @@ export default function Dashboard() {
               </button>
               <button
                 type='button'
+                className='callback-form-btn incomplete'
+                onClick={() => handleCallbackModalStatusAction('incomplete')}
+                disabled={Boolean(callbackActionLoadingStatus)}
+              >
+                Mark as Incomplete
+              </button>
+              <button
+                type='button'
                 className='callback-form-btn convert'
                 onClick={handleConvertCallbackToTicket}
                 disabled={Boolean(callbackActionLoadingStatus)}
@@ -4342,7 +4431,10 @@ export default function Dashboard() {
             onClose={() => setShowMedicalRecords(false)}
             patient={selectedPatient}
             patientId={selectedPatientId}
-            ticketId={selectedTicket.ticketNumber || `T-${String(selectedTicket.id).padStart(3, '0')}`}
+            ticketId={
+              selectedTicket.ticketNumber ||
+              `T-${String(selectedTicket.id).padStart(3, '0')}`
+            }
             consultationType={getChannelLabel(selectedTicket)}
           />
         )}

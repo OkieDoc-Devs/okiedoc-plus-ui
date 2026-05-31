@@ -27,9 +27,13 @@ import {
 } from "./chatService.js";
 
 const CHAT_CONVERSATIONS_CACHE_TTL_MS = 5 * 60 * 1000;
+const ACTIVE_CONVERSATION_STORAGE_TTL_MS = 12 * 60 * 60 * 1000;
 
 const getConversationsCacheKey = (userId, userType) =>
   userId ? `chat.conversations.${userType || "user"}.${userId}` : null;
+
+const getActiveConversationStorageKey = (userId, userType) =>
+  userId ? `chat.activeConversation.${userType || "user"}.${userId}` : null;
 
 const readCachedConversations = (userId, userType) => {
   const key = getConversationsCacheKey(userId, userType);
@@ -68,6 +72,49 @@ const writeCachedConversations = (userId, userType, conversations) => {
   } catch {}
 };
 
+const readStoredActiveConversationId = (userId, userType) => {
+  const key = getActiveConversationStorageKey(userId, userType);
+  if (!key || typeof localStorage === "undefined") return null;
+
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (
+      !parsed ||
+      Date.now() - Number(parsed.savedAt || 0) > ACTIVE_CONVERSATION_STORAGE_TTL_MS
+    ) {
+      localStorage.removeItem(key);
+      return null;
+    }
+
+    return parsed.conversationId ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredActiveConversationId = (userId, userType, conversationId) => {
+  const key = getActiveConversationStorageKey(userId, userType);
+  if (!key || typeof localStorage === "undefined") return;
+
+  try {
+    if (conversationId === null || conversationId === undefined) {
+      localStorage.removeItem(key);
+      return;
+    }
+
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        savedAt: Date.now(),
+        conversationId,
+      })
+    );
+  } catch {}
+};
+
 export function useChat({ currentUserId, currentUserType = "n" } = {}) {
   const [conversations, setConversations] = useState(() =>
     readCachedConversations(currentUserId, currentUserType)
@@ -81,6 +128,9 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
 
   const [socketReady, setSocketReady] = useState(false);
+  const [restoredConversationId, setRestoredConversationId] = useState(() =>
+    readStoredActiveConversationId(currentUserId, currentUserType)
+  );
 
   const subscribedIdsRef = useRef(new Set());
 
@@ -129,8 +179,26 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
       setSocketReady(false);
       subscribedIdsRef.current.clear();
       setConversations(readCachedConversations(currentUserId, currentUserType));
+      setActiveConversation(null);
+      setMessages([]);
+      setTypingUsers([]);
+      setRestoredConversationId(
+        readStoredActiveConversationId(currentUserId, currentUserType)
+      );
     }
   }, [currentUserId, currentUserType]);
+
+  useEffect(() => {
+    if (activeConversation?.id === null || activeConversation?.id === undefined) {
+      return;
+    }
+
+    writeStoredActiveConversationId(
+      currentUserId,
+      currentUserType,
+      activeConversation.id
+    );
+  }, [activeConversation?.id, currentUserId, currentUserType]);
 
   useEffect(() => {
     let timeoutId;
@@ -596,6 +664,7 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
       if (activeConversationRef.current?.id === conversation.id) return;
 
       setActiveConversation(conversation);
+      setRestoredConversationId(null);
       // We don't clear messages if the ID is the same, but here we're switching
       setMessages([]);
       setTypingUsers([]);
@@ -631,7 +700,8 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
     setActiveConversation(null);
     setMessages([]);
     setTypingUsers([]);
-  }, [activeConversation]);
+    writeStoredActiveConversationId(currentUserId, currentUserType, null);
+  }, [activeConversation, currentUserId, currentUserType]);
 
   const handleSendMessage = useCallback(
     async (content, replyToId = null) => {
@@ -679,6 +749,25 @@ export function useChat({ currentUserId, currentUserType = "n" } = {}) {
     },
     [activeConversation, currentUserId, currentUserType, upsertMessages]
   );
+
+  useEffect(() => {
+    if (activeConversation || !restoredConversationId || conversations.length === 0) {
+      return;
+    }
+
+    const restoredConversation = conversations.find(
+      (conversation) => Number(conversation.id) === Number(restoredConversationId)
+    );
+
+    if (!restoredConversation) {
+      return;
+    }
+
+    setRestoredConversationId(null);
+    openConversation(restoredConversation).catch((error) => {
+      console.error("[useChat] Failed to restore active conversation", error);
+    });
+  }, [activeConversation, conversations, openConversation, restoredConversationId]);
 
   const handleUploadFile = useCallback(
     async (file, caption = "") => {

@@ -153,11 +153,16 @@ export async function uploadNurseAvatar(file) {
       body: formData,
     });
 
-    if (data.success) {
-      return data.data;
-    } else {
-      throw new Error(data.message || "Failed to upload avatar");
+    if (data?.profileUrl || data?.avatarUrl) {
+      return { profileUrl: data.profileUrl || data.avatarUrl };
     }
+    if (data?.data?.profileUrl || data?.data?.avatarUrl) {
+      return { profileUrl: data.data.profileUrl || data.data.avatarUrl };
+    }
+    if (data?.success) {
+      return data.data || {};
+    }
+    throw new Error(data?.message || "Failed to upload avatar");
   } catch (error) {
     console.error("Error uploading nurse avatar:", error);
     throw error;
@@ -241,6 +246,24 @@ export async function searchPatientsFromAPI(search = "") {
     throw new Error(data.message || "Failed to search patients");
   } catch (error) {
     console.error("Error searching patients from API:", error);
+    throw error;
+  }
+}
+
+/**
+ * Generate invoice for a ticket
+ * @param {Object} data - Invoice data
+ * @returns {Promise<Object>} API response
+ */
+export async function generateInvoice(data) {
+  try {
+    const response = await apiRequest("/api/v1/tickets/generate-invoice", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return response;
+  } catch (error) {
+    console.error("Error generating invoice:", error);
     throw error;
   }
 }

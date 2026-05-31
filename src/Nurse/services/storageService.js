@@ -105,7 +105,7 @@ export function getNurseProfileImage() {
     return '/account.svg';
   }
 
-  if (profileImage.startsWith('/uploads')) {
+  if (profileImage.startsWith('/')) {
     return `${API_BASE_URL}${profileImage}`;
   }
 

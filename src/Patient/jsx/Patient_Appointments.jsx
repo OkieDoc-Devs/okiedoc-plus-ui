@@ -174,20 +174,23 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
   };
 
   const getChannelIcon = (channel) => {
-    if (channel === "chat")
+    const c = String(channel || "").toLowerCase();
+    if (c.includes("chat"))
       return <IconMessageCircle size={16} className="detail-icon" />;
-    if (channel === "mobile_call" || channel?.includes("audio"))
+    if (c.includes("mobile_call") || c.includes("audio") || c.includes("phone"))
       return <IconPhone size={16} className="detail-icon" />;
-    if (channel === "in_person")
+    if (c.includes("in_person") || c.includes("physical"))
       return <IconMapPin size={16} className="detail-icon" />;
     return <IconVideo size={16} className="detail-icon" />;
   };
 
   const getChannelTypeLabel = (channel) => {
-    if (channel === "chat") return "Text Chat";
-    if (channel === "mobile_call" || channel?.includes("audio"))
+    const c = String(channel || "").toLowerCase();
+    if (c.includes("chat")) return "Text Chat";
+    if (c.includes("mobile_call") || c.includes("audio") || c.includes("phone"))
       return "Voice Call";
-    if (channel === "in_person") return "Clinic Visit";
+    if (c.includes("in_person") || c.includes("physical"))
+      return "Clinic Visit";
     return "Video Call";
   };
 
@@ -510,24 +513,27 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                         className="detail-icon"
                         style={{ flexShrink: 0 }}
                       />
-                      <span>{displayLocation}</span>
+                      <span>
+                        {appt.clinicAddress ||
+                          appt.specialistAddress ||
+                          displayLocation ||
+                          "Clinic Address TBA"}
+                      </span>
                     </div>
                   )}
 
                   <div className="appt-detail-row">
                     {getChannelIcon(appt.consultationChannel)}
                     <span style={{ textTransform: "capitalize" }}>
-                      {(appt.consultationChannel || "Platform Call").replace(
-                        "_",
-                        " ",
-                      )}
+                      {getChannelTypeLabel(appt.consultationChannel)}
                     </span>
                   </div>
                 </div>
 
                 <div className="appt-card-actions">
                   <button
-                    className="appt-btn appt-btn-outline full-width"
+                    className="appt-btn appt-btn-outline"
+                    style={{ flex: 1 }}
                     onClick={() => {
                       window.history.pushState(
                         null,
@@ -539,6 +545,22 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                   >
                     View Details
                   </button>
+                  <button
+                    className="appt-btn appt-btn-outline"
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                    }}
+                    onClick={() => {
+                      window.location.hash = `#/Messages?ticket=${appt.ticketNumber}`;
+                      if (setActive) setActive("Messages");
+                    }}
+                  >
+                    <IconMessageCircle size={18} /> Message
+                  </button>
                   {appt.status === "for_payment" && (
                     <button
                       className="appt-btn appt-btn-primary full-width"
@@ -548,15 +570,29 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                     </button>
                   )}
                   {appt.status === "active" &&
-                    appt.paymentStatus !== "unpaid" && (
+                    appt.paymentStatus !== "unpaid" &&
+                    appt.consultationChannel !== "in_person" && (
                       <button
-                        className="appt-btn appt-btn-primary full-width"
+                        className="appt-btn appt-btn-primary"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
                         onClick={() => {
-                          handleCloseModal();
-                          setJitsiConfig({ isOpen: true, appt: appt });
+                          setJitsiConfig({ isOpen: true, appt });
                         }}
                       >
-                        Join Room
+                        {appt.consultationChannel?.includes("audio") ||
+                        appt.consultationChannel === "mobile_call" ? (
+                          <>
+                            <IconPhone size={16} /> Join Voice Call
+                          </>
+                        ) : (
+                          <>
+                            <IconVideo size={16} /> Join Video Call
+                          </>
+                        )}
                       </button>
                     )}
                 </div>
@@ -653,9 +689,7 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
                       className="appt-modal-value"
                       style={{ textTransform: "capitalize" }}
                     >
-                      {(
-                        viewingAppt.consultationChannel || "platform_call"
-                      ).replace("_", " ")}
+                      {getChannelTypeLabel(viewingAppt.consultationChannel)}
                     </p>
                   </div>
                 </div>

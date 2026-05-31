@@ -19,6 +19,9 @@ import {
   FaStethoscope,
   FaClock,
   FaVideo,
+  FaPhone,
+  FaBuilding,
+  FaComments,
 } from "react-icons/fa";
 import jsPDF from "jspdf";
 import "./SpecialistDashboard.css";
@@ -284,6 +287,20 @@ const getPatientAvatarNames = (t) => {
     return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
   }
   return { firstName: parts[0] || "Patient", lastName: "" };
+};
+
+const getChannelDetails = (channel) => {
+  const c = String(channel || "").toLowerCase();
+  if (c.includes("video"))
+    return { label: "Video Consultation", icon: FaVideo, type: "video" };
+  if (c.includes("phone"))
+    return { label: "Phone Consultation", icon: FaPhone, type: "phone" };
+  if (c.includes("chat") || c.includes("message"))
+    return { label: "Chat Consultation", icon: FaComments, type: "chat" };
+  if (c.includes("physical") || c.includes("in-person") || c.includes("clinic"))
+    return { label: "Physical Visit", icon: FaBuilding, type: "physical" };
+
+  return { label: "Consultation", icon: FaStethoscope, type: "default" }; // Fallback
 };
 
 const formatPatientNameFromPatientObj = (p) => {
@@ -654,7 +671,7 @@ const SpecialistDashboard = () => {
   const [invoiceForm, setInvoiceForm] = useState({
     consultationType: "initial",
     includesCertificate: false,
-    isDiscounted: false,
+    discountType: "None",
   });
 
   const [cropperModalOpen, setCropperModalOpen] = useState(false);
@@ -700,6 +717,8 @@ const SpecialistDashboard = () => {
   const [completedDetailLoading, setCompletedDetailLoading] = useState(false);
   const [completedDetailTicket, setCompletedDetailTicket] = useState(null);
   const [completedDetailTab, setCompletedDetailTab] = useState("patient");
+  const [hasSharedAccess, setHasSharedAccess] = useState(false);
+  const [sharedMedicalData, setSharedMedicalData] = useState(null);
 
   const [dashboardStats, setDashboardStats] = useState({
     totalPatients: 0,
@@ -1081,23 +1100,73 @@ const SpecialistDashboard = () => {
         {
           id: "TKT-001",
           patient: "John Doe",
-          service: "Consultation",
+          patientFullName: "John Doe",
+          service: "General Checkup",
+          chiefComplaint: "Fever and persistent cough for 3 days",
           when: formatDateLabel(plusDays(0), "10:30 AM"),
           status: "Confirmed",
+          consultationChannel: "Video",
+          mobile: "+63 917 123 4567",
+          gender: "Male",
+          patientBirthdate: "1990-05-15",
+          bloodType: "O+",
+          allergies: ["Peanuts", "Dust"],
+          medicalHistory: ["Asthma diagnosed in childhood"],
+          triageNotes:
+            "BP 120/80, HR 85, Temp 38.2C. Patient appears fatigued.",
         },
         {
           id: "TKT-002",
           patient: "Jane Smith",
+          patientFullName: "Jane Smith",
           service: "Medical Certificate",
+          chiefComplaint: "Needs fit-to-work clearance after viral infection",
           when: formatDateLabel(plusDays(1), "2:15 PM"),
-          status: "Pending",
+          status: "Confirmed",
+          consultationChannel: "Physical",
+          mobile: "+63 918 987 6543",
+          gender: "Female",
+          patientBirthdate: "1985-11-20",
+          bloodType: "A+",
+          allergies: ["None"],
+          medicalHistory: ["No significant past medical history"],
+          triageNotes:
+            "BP 110/70, HR 72, Temp 36.5C. Ready for physical assessment.",
         },
         {
           id: "TKT-003",
           patient: "Robert Johnson",
-          service: "Medical Clearance",
+          patientFullName: "Robert Johnson",
+          service: "Follow-up",
+          chiefComplaint: "Review of hypertension medication efficacy",
           when: formatDateLabel(plusDays(2), "9:00 AM"),
           status: "Confirmed",
+          consultationChannel: "Phone",
+          mobile: "+63 922 333 4444",
+          gender: "Male",
+          patientBirthdate: "1978-02-10",
+          bloodType: "B+",
+          allergies: ["Penicillin"],
+          medicalHistory: ["Hypertension (Diagnosed 2021)"],
+          triageNotes:
+            "Patient requested a phone call. Vitals self-reported: BP 130/85.",
+        },
+        {
+          id: "TKT-004",
+          patient: "Maria Clara",
+          patientFullName: "Maria Clara",
+          service: "Dermatology Consult",
+          chiefComplaint: "Spreading red rash on left arm",
+          when: formatDateLabel(plusDays(0), "1:00 PM"),
+          status: "Confirmed",
+          consultationChannel: "Chat",
+          mobile: "+63 999 888 7777",
+          gender: "Female",
+          patientBirthdate: "2000-08-08",
+          bloodType: "AB+",
+          allergies: ["Seafood"],
+          medicalHistory: ["Mild Eczema"],
+          triageNotes: "Patient uploaded 2 images of the rash via chat portal.",
         },
       ];
 
@@ -1382,16 +1451,37 @@ const SpecialistDashboard = () => {
   }, [activeTab, loadTicketsData]);
 
   useEffect(() => {
-    if (selectedTicketId) {
-      const data = loadEncounterData(selectedTicketId);
-      if (data) {
-        setEncounter(data);
-      } else {
-        setEncounter(createDefaultEncounter());
+    const checkRecordAccess = async () => {
+      if (!selectedTicketId) {
+        setHasSharedAccess(false);
+        setSharedMedicalData(null);
+        return;
       }
-      setMhRequests([]);
-    }
-  }, [selectedTicketId]);
+
+      const activeTicket = tickets.find(
+        (t) => String(t.id) === String(selectedTicketId),
+      );
+      const patientId =
+        activeTicket?.rawTicket?.patient?.id ||
+        activeTicket?.patientId ||
+        activeTicket?.rawTicket?.patientId;
+
+      if (!patientId) return;
+
+      try {
+        const response = await specialistApi.fetchSharedRecords(patientId);
+        setHasSharedAccess(true);
+        setSharedMedicalData(response.data);
+        setMhRequests([{ label: "Shared via System" }]); // Tricks the UI to show the 'Shared' pill
+      } catch (error) {
+        setHasSharedAccess(false);
+        setSharedMedicalData(null);
+        setMhRequests([]);
+      }
+    };
+
+    checkRecordAccess();
+  }, [selectedTicketId, tickets]);
 
   useEffect(() => {
     const savedLabRequests = Array.isArray(encounter?.labRequests)
@@ -1582,6 +1672,39 @@ const SpecialistDashboard = () => {
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [consultationStartedAtMs]);
+
+  useEffect(() => {
+    const checkRecordAccess = async () => {
+      if (!selectedTicketId) {
+        setHasSharedAccess(false);
+        setSharedMedicalData(null);
+        return;
+      }
+      const activeTicket = tickets.find(
+        (t) => String(t.id) === String(selectedTicketId),
+      );
+      const patientId =
+        activeTicket?.rawTicket?.patient?.id || activeTicket?.patientId;
+
+      if (!patientId) return;
+
+      try {
+        // Ask the Bouncer route!
+        const response = await specialistApi.fetchSharedRecords(patientId);
+
+        setHasSharedAccess(true);
+        setSharedMedicalData(response.data);
+
+        setMhRequests([{ label: "Shared via System" }]);
+      } catch (error) {
+        setHasSharedAccess(false);
+        setSharedMedicalData(null);
+        setMhRequests([]); // Clear the dummy requests
+      }
+    };
+
+    checkRecordAccess();
+  }, [selectedTicketId, tickets]);
 
   const formatConsultationDuration = useCallback((totalSec) => {
     const m = Math.floor(totalSec / 60);
@@ -2289,7 +2412,7 @@ const SpecialistDashboard = () => {
         ticketId: selectedTicketId,
         consultationType: invoiceForm.consultationType,
         includesCertificate: invoiceForm.includesCertificate,
-        isDiscounted: invoiceForm.isDiscounted,
+        discountType: invoiceForm.discountType,
       });
       alert("Invoice generated and ticket moved to For Payment!");
       setShowInvoiceModal(false);
@@ -2885,15 +3008,12 @@ const SpecialistDashboard = () => {
       profileData?.subSpecialization ||
       "General";
 
-    const channelIsVideo = selectedPatient
-      ? String(
-          selectedPatient.consultationChannel ||
-            selectedPatient.rawTicket?.consultationChannel ||
-            "",
-        )
-          .toLowerCase()
-          .includes("video")
-      : false;
+    const selectedChannelRaw =
+      selectedPatient?.consultationChannel ||
+      selectedPatient?.rawTicket?.consultationChannel ||
+      "default";
+    const selectedChannel = getChannelDetails(selectedChannelRaw);
+    const SelectedChannelIcon = selectedChannel.icon;
 
     const headerAvatarNames = selectedPatient
       ? getPatientAvatarNames(selectedPatient)
@@ -2989,6 +3109,29 @@ const SpecialistDashboard = () => {
                         <FaStethoscope aria-hidden />
                         {emrDepartmentLabel}
                       </span>
+                      {(() => {
+                        const channelRaw =
+                          t.consultationChannel ||
+                          t.rawTicket?.consultationChannel ||
+                          "default";
+                        const channelDetails = getChannelDetails(channelRaw);
+                        const ChannelIcon = channelDetails.icon;
+                        return (
+                          <span
+                            className="emr-patient-card__meta-line"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              color: "#0b5388",
+                              fontWeight: "600",
+                            }}
+                          >
+                            <ChannelIcon aria-hidden />
+                            {channelDetails.label}
+                          </span>
+                        );
+                      })()}
                       <span className="emr-patient-card__meta-line">
                         <FaClock aria-hidden />
                         Triaged: {triaged || "—"}
@@ -3040,11 +3183,12 @@ const SpecialistDashboard = () => {
                         <span className="patient-details-header-emr__sub-sep">
                           •
                         </span>
-                        <FaVideo
+                        <SelectedChannelIcon
                           className="patient-details-header-emr__video-ic"
                           aria-hidden
+                          style={{ marginRight: "4px" }}
                         />
-                        {channelIsVideo ? "Video Consultation" : "Consultation"}
+                        {selectedChannel.label}
                       </p>
                     </div>
                   </div>
@@ -3066,20 +3210,98 @@ const SpecialistDashboard = () => {
                         </span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      className="start-video-call-btn"
-                      onClick={handleStartVideoCall}
-                      disabled={!selectedPatient || isUnclaimedAvailable}
-                      title={
-                        isUnclaimedAvailable
-                          ? "Claim this ticket before starting a video call"
-                          : "Start video call with patient"
-                      }
-                    >
-                      <FaVideo aria-hidden />
-                      Start Video Call
-                    </button>
+                    {selectedChannel.type === "video" && (
+                      <button
+                        type="button"
+                        className="start-video-call-btn"
+                        onClick={handleStartVideoCall}
+                        disabled={!selectedPatient || isUnclaimedAvailable}
+                        title={
+                          isUnclaimedAvailable
+                            ? "Claim this ticket before starting a video call"
+                            : "Start video call with patient"
+                        }
+                      >
+                        <FaVideo aria-hidden />
+                        Start Video Call
+                      </button>
+                    )}
+
+                    {selectedChannel.type === "phone" && (
+                      <button
+                        type="button"
+                        className="start-video-call-btn"
+                        style={{
+                          backgroundColor: "#10b981",
+                          borderColor: "#10b981",
+                          color: "white",
+                        }}
+                        onClick={() =>
+                          alert(
+                            `Dialing patient at: ${selectedPatient?.mobile || "No number on file"}`,
+                          )
+                        }
+                        disabled={!selectedPatient || isUnclaimedAvailable}
+                        title={
+                          isUnclaimedAvailable
+                            ? "Claim this ticket before calling"
+                            : "Call patient"
+                        }
+                      >
+                        <FaPhone aria-hidden />
+                        Call Patient
+                      </button>
+                    )}
+
+                    {selectedChannel.type === "chat" && (
+                      <button
+                        type="button"
+                        className="start-video-call-btn"
+                        style={{
+                          backgroundColor: "#8b5cf6",
+                          borderColor: "#8b5cf6",
+                          color: "white",
+                        }}
+                        onClick={() => {
+                          if (patientChatMessagesRef.current) {
+                            patientChatMessagesRef.current.scrollIntoView({
+                              behavior: "smooth",
+                              block: "center",
+                            });
+                          }
+                        }}
+                        disabled={!selectedPatient || isUnclaimedAvailable}
+                        title="Jump to Chat Panel"
+                      >
+                        <FaComments aria-hidden />
+                        Open Chat
+                      </button>
+                    )}
+
+                    {selectedChannel.type === "physical" && (
+                      <div
+                        className="clinic-address-badge"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          padding: "10px 16px",
+                          backgroundColor: "#f3f4f6",
+                          borderRadius: "8px",
+                          border: "1px solid #d1d5db",
+                          color: "#374151",
+                          fontSize: "0.9rem",
+                        }}
+                      >
+                        <FaBuilding style={{ color: "#6b7280" }} />
+                        <span>
+                          <strong>Clinic Location:</strong>{" "}
+                          {profileData.addressLine1 ||
+                            profileData.city ||
+                            "Address not configured in profile"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3214,7 +3436,12 @@ const SpecialistDashboard = () => {
                       type="button"
                       className="specialist-medical-history-btn"
                       onClick={() => setShowMedicalRecords(true)}
-                      disabled={!selectedTicket}
+                      disabled={!selectedTicket || !hasSharedAccess} // <-- CHANGED
+                      title={
+                        !hasSharedAccess
+                          ? "The patient must share their records first."
+                          : ""
+                      }
                     >
                       <span className="specialist-medical-history-icon">
                         <FaFileMedical size={17} />
@@ -3370,63 +3597,82 @@ const SpecialistDashboard = () => {
                         aria-label="Open plan SOAP editor"
                       />
                     </div>
-                    {profileData.specialization !== "General Practice" && (
-                      <div className="soap-card medical-records-access-card">
-                        <div className="medical-records-header">
-                          <div>
-                            <div className="soap-card-title">
-                              Medical Records Access
-                            </div>
-                            <p className="medical-records-description">
-                              Patient record permissions and shared details.
-                            </p>
+                    <div className="soap-card medical-records-access-card">
+                      <div className="medical-records-header">
+                        <div>
+                          <div className="soap-card-title">
+                            Medical Records Access
                           </div>
-                          {mhRequests.length > 0 && (
-                            <span className="status-pill status-pill--shared">
-                              Shared
-                            </span>
-                          )}
+                          <p className="medical-records-description">
+                            Patient record permissions and shared details.
+                          </p>
                         </div>
-                        {mhRequests.length === 0 ? (
-                          <div className="medical-records-empty">
-                            <div className="medical-records-icon">🔒</div>
-                            <div className="medical-records-empty-text">
-                              No medical records shared yet
-                            </div>
-                            <button
-                              className="request-record-btn"
-                              onClick={requestPatientRecords}
-                            >
-                              Request Record from Patient
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="medical-records-list">
-                            {[
-                              { label: "Previous Consultations", icon: "📄" },
-                              { label: "Prescriptions", icon: "💊" },
-                              { label: "Lab Results", icon: "🧪" },
-                              { label: "Treatment Plans", icon: "🩺" },
-                            ].map((item) => (
-                              <div
-                                key={item.label}
-                                className="medical-records-item"
-                              >
-                                <span className="medical-records-item-icon">
-                                  {item.icon}
-                                </span>
-                                <span className="medical-records-item-label">
-                                  {item.label}
-                                </span>
-                                <span className="medical-records-item-arrow">
-                                  ▸
-                                </span>
-                              </div>
-                            ))}
-                          </div>
+                        {hasSharedAccess && (
+                          <span className="status-pill status-pill--shared">
+                            Shared
+                          </span>
                         )}
                       </div>
-                    )}
+
+                      {!hasSharedAccess ? (
+                        <div className="medical-records-empty">
+                          <div className="medical-records-icon">🔒</div>
+                          <div className="medical-records-empty-text">
+                            No medical records shared yet
+                          </div>
+                          <p
+                            style={{
+                              color: "#66788d",
+                              fontSize: "0.87rem",
+                              margin: "8px 0 0 0",
+                              textAlign: "center",
+                            }}
+                          >
+                            The patient must grant you access from their
+                            dashboard.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="medical-records-list">
+                          <div className="medical-records-item">
+                            <span className="medical-records-item-icon">
+                              📄
+                            </span>
+                            <span className="medical-records-item-label">
+                              Consultations (
+                              {sharedMedicalData?.certificates?.length || 0})
+                            </span>
+                          </div>
+                          <div className="medical-records-item">
+                            <span className="medical-records-item-icon">
+                              💊
+                            </span>
+                            <span className="medical-records-item-label">
+                              Prescriptions (
+                              {sharedMedicalData?.prescriptions?.length || 0})
+                            </span>
+                          </div>
+                          <div className="medical-records-item">
+                            <span className="medical-records-item-icon">
+                              🧪
+                            </span>
+                            <span className="medical-records-item-label">
+                              Lab Results (
+                              {sharedMedicalData?.labRequests?.length || 0})
+                            </span>
+                          </div>
+                          <div className="medical-records-item">
+                            <span className="medical-records-item-icon">
+                              🩺
+                            </span>
+                            <span className="medical-records-item-label">
+                              Treatment Plans (
+                              {sharedMedicalData?.treatmentPlans?.length || 0})
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -6258,30 +6504,82 @@ const SpecialistDashboard = () => {
               </div>
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  marginTop: "1rem",
+                  marginTop: "1.5rem",
+                  borderTop: "1px solid #eee",
+                  paddingTop: "1rem",
                 }}
               >
-                <input
-                  type="checkbox"
-                  id="invoiceDiscount"
-                  style={{ width: "18px", height: "18px", margin: 0 }}
-                  checked={invoiceForm.isDiscounted}
-                  onChange={(e) =>
-                    setInvoiceForm((f) => ({
-                      ...f,
-                      isDiscounted: e.target.checked,
-                    }))
-                  }
-                />
-                <label
-                  htmlFor="invoiceDiscount"
-                  style={{ margin: 0, cursor: "pointer", fontWeight: 500 }}
-                >
-                  Apply Discount (Senior/PWD)
-                </label>
+                <p style={{ fontWeight: 600, marginBottom: "0.5rem" }}>
+                  Apply Discount ({profileData?.discountPercentage || 20}%)
+                </p>
+                <div style={{ display: "flex", gap: "20px" }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="discountType"
+                      value="Pwd"
+                      checked={invoiceForm.discountType === "Pwd"}
+                      onChange={(e) =>
+                        setInvoiceForm((f) => ({
+                          ...f,
+                          discountType:
+                            e.target.value === f.discountType
+                              ? "None"
+                              : e.target.value,
+                        }))
+                      }
+                      onClick={(e) => {
+                        if (invoiceForm.discountType === "Pwd") {
+                          setInvoiceForm((f) => ({
+                            ...f,
+                            discountType: "None",
+                          }));
+                        }
+                      }}
+                    />
+                    <span style={{ fontSize: "0.9rem" }}>PWD</span>
+                  </label>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="discountType"
+                      value="Senior"
+                      checked={invoiceForm.discountType === "Senior"}
+                      onChange={(e) =>
+                        setInvoiceForm((f) => ({
+                          ...f,
+                          discountType:
+                            e.target.value === f.discountType
+                              ? "None"
+                              : e.target.value,
+                        }))
+                      }
+                      onClick={(e) => {
+                        if (invoiceForm.discountType === "Senior") {
+                          setInvoiceForm((f) => ({
+                            ...f,
+                            discountType: "None",
+                          }));
+                        }
+                      }}
+                    />
+                    <span style={{ fontSize: "0.9rem" }}>Senior Citizen</span>
+                  </label>
+                </div>
               </div>
             </div>
             <div
@@ -6578,6 +6876,7 @@ const SpecialistDashboard = () => {
             consultationType={
               selectedTicket?.consultationChannel || selectedTicket?.service
             }
+            sharedData={sharedMedicalData}
             overlayClassName="modal"
             overlayStyle={{ zIndex: 999999 }}
           />,

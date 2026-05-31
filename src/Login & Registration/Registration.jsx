@@ -37,6 +37,7 @@ const registerPatient = async (formData) => {
       addressLine1: formData.addressLine1,
       addressLine2: formData.addressLine2,
       isPhilHealthMember: formData.isPhilHealthMember,
+      philHealthNumber: formData.isPhilHealthMember ? formData.philHealthNumber : '',
       emergencyFullName: formData.emergencyFullName,
       emergencyRelationship: formData.emergencyRelationship,
       emergencyPhoneNumber: formData.emergencyPhoneNumber,
@@ -74,6 +75,7 @@ export default function Registration() {
     addressLine1: '',
     addressLine2: '',
     isPhilHealthMember: false,
+    philHealthNumber: '',
     emergencyFullName: '',
     emergencyRelationship: '',
     emergencyPhoneNumber: '',
@@ -143,6 +145,17 @@ export default function Registration() {
     } else if (id === 'mobileNumber' || id === 'emergencyPhoneNumber') {
       // Ensure only + and numbers are entered, and max length for +639XXXXXXXXX (13 chars)
       filteredValue = value.replace(/[^0-9+]/g, '').slice(0, 13);
+    } else if (id === 'philHealthNumber') {
+      // Numbers only, then format as XX-XXXXXXXXX-X (12 digits total)
+      const digits = value.replace(/[^0-9]/g, '').slice(0, 12);
+      filteredValue = digits;
+      if (digits.length > 2) {
+        filteredValue = digits.slice(0, 2) + '-' + digits.slice(2);
+      }
+      if (digits.length > 11) {
+        filteredValue =
+          digits.slice(0, 2) + '-' + digits.slice(2, 11) + '-' + digits.slice(11);
+      }
     } else if (id === 'zipCode') {
       filteredValue = value.replace(/[^0-9]/g, '').slice(0, 4);
     } else if (['addressLine1', 'addressLine2'].includes(id)) {
@@ -278,8 +291,53 @@ export default function Registration() {
       newErrors.birthday = 'Birthday is required';
     } else {
       const birthDate = new Date(formData.birthday);
-      if (birthDate > new Date())
+      if (birthDate > new Date()) {
         newErrors.birthday = 'Birthday cannot be in the future';
+      } else {
+        // Confirm if 18
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        if (age < 18) {
+          newErrors.birthday = 'You must be at least 18 years old to register';
+        }
+
+        // Year bug: 5-digit year
+        if (birthDate.getFullYear() > 9999) {
+          newErrors.birthday = 'Invalid year in birthday';
+        }
+      }
+    }
+
+    if (formData.isPhilHealthMember) {
+      if (!formData.philHealthNumber.trim()) {
+        newErrors.philHealthNumber = 'PhilHealth number is required';
+      } else {
+        const philRegex = /^\d{2}-\d{9}-\d$/;
+        if (!philRegex.test(formData.philHealthNumber)) {
+          newErrors.philHealthNumber = 'Invalid PhilHealth format (XX-XXXXXXXXX-X)';
+        }
+      }
+    }
+
+    if (showDeliveryAddress) {
+      if (!formData.addressLine1.trim()) newErrors.addressLine1 = 'Street address is required';
+      if (!formData.region) newErrors.region = 'Region is required';
+      if (!formData.province) newErrors.province = 'Province is required';
+      if (!formData.city) newErrors.city = 'City is required';
+      if (!formData.barangay) newErrors.barangay = 'Barangay is required';
+      if (!formData.zipCode.trim()) newErrors.zipCode = 'Zip code is required';
+    }
+
+    if (showEmergencyContact) {
+      if (!formData.emergencyFullName.trim()) newErrors.emergencyFullName = 'Full name is required';
+      if (!formData.emergencyRelationship.trim()) newErrors.emergencyRelationship = 'Relationship is required';
+      if (!formData.emergencyPhoneNumber.trim()) {
+        newErrors.emergencyPhoneNumber = 'Phone number is required';
+      }
     }
 
     if (!formData.gender) {
@@ -595,7 +653,14 @@ export default function Registration() {
                   className='registration-checkbox' 
                   style={{ accentColor: '#2563eb' }} 
                   checked={formData.isPhilHealthMember}
-                  onChange={(e) => setFormData({ ...formData, isPhilHealthMember: e.target.checked })}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setFormData({ 
+                      ...formData, 
+                      isPhilHealthMember: checked,
+                      philHealthNumber: checked ? formData.philHealthNumber : ''
+                    });
+                  }}
                 />
                 <div>
                   <div style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '1.1rem' }}>I am a PhilHealth Member</div>
@@ -604,10 +669,51 @@ export default function Registration() {
                 </div>
               </div>
 
+              {formData.isPhilHealthMember && (
+                <div className='registration-field full-width'>
+                  <label className='registration-label' htmlFor='philHealthNumber'>
+                    PhilHealth Number <span className='required'>*</span>
+                  </label>
+                  <input
+                    className={`registration-input ${errors.philHealthNumber ? 'error' : ''}`}
+                    id='philHealthNumber'
+                    type='text'
+                    placeholder='17-13245678-0'
+                    value={formData.philHealthNumber}
+                    onChange={handleInputChange}
+                    maxLength={14}
+                  />
+                  {errors.philHealthNumber && (
+                    <span className='registration-error-text'>{errors.philHealthNumber}</span>
+                  )}
+                </div>
+              )}
+
               <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
                 <button
                   type='button'
-                  onClick={() => setShowDeliveryAddress(!showDeliveryAddress)}
+                  onClick={() => {
+                    const newShow = !showDeliveryAddress;
+                    setShowDeliveryAddress(newShow);
+                    if (!newShow) {
+                      setFormData(prev => ({
+                        ...prev,
+                        barangay: '',
+                        city: '',
+                        province: '',
+                        region: '',
+                        zipCode: '',
+                        addressLine1: '',
+                        addressLine2: ''
+                      }));
+                      // Clear errors for these fields
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        ['barangay', 'city', 'province', 'region', 'zipCode', 'addressLine1', 'addressLine2'].forEach(k => delete newErrors[k]);
+                        return newErrors;
+                      });
+                    }
+                  }}
                   style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: '#2563eb', fontWeight: 600, fontSize: '1.05rem', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
                 >
                   <span style={{ fontSize: '1.5rem', marginRight: '0.75rem', lineHeight: 1 }}>{showDeliveryAddress ? '−' : '+'}</span>
@@ -621,13 +727,16 @@ export default function Registration() {
                       <label className='registration-label'>Street Address</label>
                       <input
                         id='addressLine1'
-                        className='registration-input'
+                        className={`registration-input ${errors.addressLine1 ? 'error' : ''}`}
                         type='text'
                         placeholder='123 Main Street, Unit 456'
                         value={formData.addressLine1}
                         onChange={handleInputChange}
                         style={{ backgroundColor: '#fff' }}
                       />
+                      {errors.addressLine1 && (
+                        <span className='registration-error-text'>{errors.addressLine1}</span>
+                      )}
                     </div>
 
                     <div className="registration-grid-2">
@@ -635,7 +744,7 @@ export default function Registration() {
                         <label className='registration-label'>Region</label>
                         <select
                           id='region'
-                          className='registration-select'
+                          className={`registration-select ${errors.region ? 'input-error' : ''}`}
                           value={formData.region}
                           onChange={handleRegionChange}
                           style={{ backgroundColor: '#fff' }}
@@ -647,12 +756,15 @@ export default function Registration() {
                             </option>
                           ))}
                         </select>
+                        {errors.region && (
+                          <span className='registration-error-text'>{errors.region}</span>
+                        )}
                       </div>
                       <div className='registration-field'>
                         <label className='registration-label'>Province</label>
                         <select
                           id='province'
-                          className='registration-select'
+                          className={`registration-select ${errors.province ? 'input-error' : ''}`}
                           value={formData.province}
                           onChange={handleProvinceChange}
                           style={{ backgroundColor: '#fff' }}
@@ -665,12 +777,15 @@ export default function Registration() {
                             </option>
                           ))}
                         </select>
+                        {errors.province && (
+                          <span className='registration-error-text'>{errors.province}</span>
+                        )}
                       </div>
                       <div className='registration-field'>
                         <label className='registration-label'>City/Municipality</label>
                         <select
                           id='city'
-                          className='registration-select'
+                          className={`registration-select ${errors.city ? 'input-error' : ''}`}
                           value={formData.city}
                           onChange={handleCityChange}
                           style={{ backgroundColor: '#fff' }}
@@ -683,12 +798,15 @@ export default function Registration() {
                             </option>
                           ))}
                         </select>
+                        {errors.city && (
+                          <span className='registration-error-text'>{errors.city}</span>
+                        )}
                       </div>
                       <div className='registration-field'>
                         <label className='registration-label'>Barangay</label>
                         <select
                           id='barangay'
-                          className='registration-select'
+                          className={`registration-select ${errors.barangay ? 'input-error' : ''}`}
                           value={formData.barangay}
                           onChange={handleBarangayChange}
                           style={{ backgroundColor: '#fff' }}
@@ -701,18 +819,24 @@ export default function Registration() {
                             </option>
                           ))}
                         </select>
+                        {errors.barangay && (
+                          <span className='registration-error-text'>{errors.barangay}</span>
+                        )}
                       </div>
                       <div className='registration-field'>
                         <label className='registration-label'>Zip Code</label>
                         <input
                           id='zipCode'
-                          className='registration-input'
+                          className={`registration-input ${errors.zipCode ? 'error' : ''}`}
                           type='text'
                           placeholder='1000'
                           value={formData.zipCode}
                           onChange={handleInputChange}
                           style={{ backgroundColor: '#fff' }}
                         />
+                         {errors.zipCode && (
+                          <span className='registration-error-text'>{errors.zipCode}</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -722,7 +846,24 @@ export default function Registration() {
               <div className='registration-field full-width' style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem' }}>
                 <button
                   type='button'
-                  onClick={() => setShowEmergencyContact(!showEmergencyContact)}
+                  onClick={() => {
+                    const newShow = !showEmergencyContact;
+                    setShowEmergencyContact(newShow);
+                    if (!newShow) {
+                      setFormData(prev => ({
+                        ...prev,
+                        emergencyFullName: '',
+                        emergencyRelationship: '',
+                        emergencyPhoneNumber: ''
+                      }));
+                      // Clear errors for these fields
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        ['emergencyFullName', 'emergencyRelationship', 'emergencyPhoneNumber'].forEach(k => delete newErrors[k]);
+                        return newErrors;
+                      });
+                    }
+                  }}
                   style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: '#2563eb', fontWeight: 600, fontSize: '1.05rem', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
                 >
                   <span style={{ fontSize: '1.5rem', marginRight: '0.75rem', lineHeight: 1 }}>{showEmergencyContact ? '−' : '+'}</span>
@@ -736,13 +877,16 @@ export default function Registration() {
                       <label className='registration-label'>Full Name</label>
                       <input
                         id='emergencyFullName'
-                        className='registration-input'
+                        className={`registration-input ${errors.emergencyFullName ? 'error' : ''}`}
                         type='text'
                         placeholder='Maria Dela Cruz'
                         value={formData.emergencyFullName || ''}
                         onChange={handleInputChange}
                         style={{ backgroundColor: '#fff' }}
                       />
+                      {errors.emergencyFullName && (
+                        <span className='registration-error-text'>{errors.emergencyFullName}</span>
+                      )}
                     </div>
 
                     <div className="registration-grid-2">
@@ -750,19 +894,22 @@ export default function Registration() {
                         <label className='registration-label'>Relationship</label>
                         <input
                           id='emergencyRelationship'
-                          className='registration-input'
+                          className={`registration-input ${errors.emergencyRelationship ? 'error' : ''}`}
                           type='text'
                           placeholder='Mother, Spouse, etc.'
                           value={formData.emergencyRelationship || ''}
                           onChange={handleInputChange}
                           style={{ backgroundColor: '#fff' }}
                         />
+                         {errors.emergencyRelationship && (
+                          <span className='registration-error-text'>{errors.emergencyRelationship}</span>
+                        )}
                       </div>
                       <div className='registration-field' style={{ position: 'relative' }}>
                         <label className='registration-label'>Phone Number</label>
                         <input
                           id='emergencyPhoneNumber'
-                          className={`registration-input ${errors.emergencyPhoneNumber ? 'input-error' : ''}`}
+                          className={`registration-input ${errors.emergencyPhoneNumber ? 'error' : ''}`}
                           type='tel'
                           placeholder='+63 912 345 6789'
                           value={formData.emergencyPhoneNumber || ''}

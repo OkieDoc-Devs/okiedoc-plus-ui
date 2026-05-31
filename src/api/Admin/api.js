@@ -2,7 +2,6 @@ import { apiRequest, API_BASE_URL } from '../apiClient';
 
 /**
  * Handles the admin login.
- * This triggers the 'last_login' update on the backend for the audit trail.
  */
 export const loginAdmin = async (email, password) => {
   try {
@@ -13,9 +12,7 @@ export const loginAdmin = async (email, password) => {
 
     const role = data?.user?.role || data?.user?.userType;
     if (role !== 'admin' && role !== 'super_admin' && role !== 'nurse_admin' && role !== 'barangay_admin') {
-      await apiRequest('/api/v1/auth/logout', { method: 'POST' }).catch(
-        () => {},
-      );
+      await apiRequest('/api/v1/auth/logout', { method: 'POST' }).catch(() => {});
       throw new Error('Access denied: this portal is for admin accounts.');
     }
 
@@ -143,21 +140,6 @@ export const getPatientAndNurseUsers = async () => {
 };
 
 /**
- * Approve or deny a pending specialist application.
- */
-export const approveSpecialist = async (payload) => {
-  try {
-    return await apiRequest('/api/v1/admin/approve', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-  } catch (error) {
-    console.error('Failed to approve/deny specialist:', error);
-    throw error;
-  }
-};
-
-/**
  * Create a new staff account (Nurse or Admin).
  */
 export const createStaff = async (payload) => {
@@ -239,13 +221,14 @@ export const uploadAdminAvatar = async (file) => {
 };
 
 /**
- * Updates a specialist's approval status.
+ * Unified controller for updating a specialist's approval status.
+ * Replaces the old 'approveSpecialist' function.
  */
-export const updateSpecialistStatus = async ({ specialistId, status }) => {
+export const updateSpecialistStatus = async ({ specialistId, status, denialReason = '' }) => {
   try {
     return await apiRequest(`/api/v1/admin/update-specialist-status`, {
       method: 'POST',
-      body: JSON.stringify({ specialistId, status }),
+      body: JSON.stringify({ specialistId, status, denialReason }),
     });
   } catch (error) {
     console.error(`Failed to update specialist status:`, error);

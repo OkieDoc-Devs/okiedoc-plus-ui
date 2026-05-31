@@ -20,6 +20,7 @@ import Appointments_Patient from "./Patient_Appointments";
 import MedicalRecords_Patient from "./Patient_MedicalRecords";
 import Prescriptions_Patient from "./Patient_Prescriptions";
 import Profile_Patient from "./Patient_Profile";
+import Patient_Messages from "./Patient_Messages";
 
 // Sub-Pages for Patient
 import BookSpecialist from "../sub-pages/BookSpecialist";
@@ -261,6 +262,9 @@ function Patient_App() {
             {mainRoute === "Profile" && (
               <Profile_Patient setActive={navigate} />
             )}
+            {mainRoute === "Messages" && (
+              <Patient_Messages setActive={navigate} />
+            )}
 
             {/* Your Sub-Pages */}
             {mainRoute === "IntakeForm" && (
@@ -300,6 +304,7 @@ function Patient_App() {
               mainRoute !== "MedicalRecords" &&
               mainRoute !== "RecordSharing" &&
               mainRoute !== "Prescriptions" &&
+              mainRoute !== "Messages" &&
               mainRoute !== "Profile" && (
                 <div className={styles["not-found-container"]}>
                   {ActiveIcon && (

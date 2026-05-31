@@ -4,7 +4,6 @@ import {
   IconPill,
   IconFlask,
   IconCertificate,
-  IconClipboardHeart,
   IconMessageCircle,
   IconShare,
   IconShieldCheck,
@@ -13,20 +12,22 @@ import {
   IconSearch,
   IconFilter,
   IconVideo,
-  IconEye,
   IconCalendarEvent,
   IconStethoscope,
   IconCheck,
   IconPhone,
-  IconClipboardList,
-  IconActivity,
-  IconArrowLeft,
+  IconEye,
   IconCircleCheck,
   IconAlertCircle,
+  IconX,
 } from "@tabler/icons-react";
 import "../css/Patient_MedicalRecords.css";
 import { fetchPatientMedicalHistory } from "../../api/apiClient";
 import { ICD11_CHAPTERS, parseICDCode } from "../../Specialists/utils/icdData";
+
+// Strict override for the requested Blue Color
+const CORE_BLUE = "#228be6";
+const LIGHT_BLUE = "#e7f5ff";
 
 const toConsultationTypeLabel = (channel) => {
   const normalized = String(channel || "")
@@ -34,6 +35,8 @@ const toConsultationTypeLabel = (channel) => {
     .toLowerCase();
   if (!normalized) return "Chat";
   if (normalized.includes("video")) return "Video";
+  if (normalized.includes("physical") || normalized.includes("clinic"))
+    return "Physical";
   if (
     normalized.includes("call") ||
     normalized.includes("audio") ||
@@ -48,6 +51,7 @@ const consultationChannelBadge = (channel) => {
   const label = toConsultationTypeLabel(channel);
   if (label === "Video") return { label, Icon: IconVideo };
   if (label === "Voice") return { label, Icon: IconPhone };
+  if (label === "Physical") return { label, Icon: IconStethoscope };
   return { label, Icon: IconMessageCircle };
 };
 
@@ -130,131 +134,202 @@ const TABS = (backendData) => [
     icon: IconCertificate,
     data: backendData.certs,
   },
-  {
-    id: "plans",
-    label: "Treatment Plans",
-    icon: IconClipboardHeart,
-    data: backendData.plans,
-  },
 ];
 
 export default function Patient_MedicalRecords() {
   const [activeTab, setActiveTab] = useState("history");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
+
+  // Advanced Filters
   const [statusFilter, setStatusFilter] = useState([
     "Completed",
     "Pending",
     "Active",
     "Booked",
+    "Issued",
   ]);
+  const [channelFilter, setChannelFilter] = useState("All");
+  const [sortOrder, setSortOrder] = useState("Newest");
+
   const [backendHistory, setBackendHistory] = useState([]);
   const [backendPrescriptions, setBackendPrescriptions] = useState([]);
   const [backendLabs, setBackendLabs] = useState([]);
   const [backendCerts, setBackendCerts] = useState([]);
-  const [backendPlans, setBackendPlans] = useState([]);
-  const [consultationDetail, setConsultationDetail] = useState(null);
-  const popoverRef = useRef(null);
 
-  useEffect(() => {
-    setConsultationDetail(null);
-  }, [activeTab]);
+  // Modal State
+  const [consultationDetail, setConsultationDetail] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const popoverRef = useRef(null);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const response = await fetchPatientMedicalHistory();
-        if (response && response.history) {
-          const sorted = [...response.history].sort((a, b) => {
-            const ta = a.visitDate ? new Date(a.visitDate).getTime() : 0;
-            const tb = b.visitDate ? new Date(b.visitDate).getTime() : 0;
+        if (response) {
+          // 1. Map Consultation History
+          const rawHistory = response.history || [];
+          const sortedHistory = [...rawHistory].sort((a, b) => {
+            const ta = a.visitDate
+              ? new Date(a.visitDate).getTime()
+              : a.createdAt
+                ? new Date(a.createdAt).getTime()
+                : 0;
+            const tb = b.visitDate
+              ? new Date(b.visitDate).getTime()
+              : b.createdAt
+                ? new Date(b.createdAt).getTime()
+                : 0;
             return tb - ta;
           });
 
-          const history = sorted.map((h, i) => ({
+          const history = sortedHistory.map((h, i) => ({
             id: `h-${h.ticketNumber || i}-${i}`,
             dr: `Dr. ${h.specialistName || "Unassigned"}`.replace(
               /^Dr\.\s*Dr\./i,
               "Dr.",
             ),
-            spec: h.specialistTitle || "Specialist",
+            spec: h.specialistTitle || "General Practice",
             date: h.visitDate
               ? new Date(h.visitDate).toLocaleDateString()
-              : "N/A",
+              : h.preferredDate
+                ? new Date(h.preferredDate).toLocaleDateString()
+                : "N/A",
             time: h.preferredTime || "N/A",
             complaint: h.chiefComplaint || "N/A",
             dur: "N/A",
             status: formatTicketStatus(h.status),
-            channel: h.consultationType,
+            channel: h.consultationType || h.consultationChannel,
+            visitDateRaw: h.visitDate
+              ? new Date(h.visitDate).getTime()
+              : h.preferredDate
+                ? new Date(h.preferredDate).getTime()
+                : 0,
             detail: {
               ticketNumber: h.ticketNumber || "—",
               date: h.visitDate
                 ? new Date(h.visitDate).toLocaleDateString()
-                : "N/A",
+                : h.preferredDate
+                  ? new Date(h.preferredDate).toLocaleDateString()
+                  : "N/A",
               consultationTypeLabel: toConsultationTypeLabel(
-                h.consultationType,
+                h.consultationType || h.consultationChannel,
               ),
               specialistName: h.specialistName || "Unassigned",
-              specialistTitle: h.specialistTitle || "Specialist",
+              specialistTitle: h.specialistTitle || "General Practice",
               nurseName: h.nurseName,
               chiefComplaint: h.chiefComplaint || "—",
               status: formatTicketStatus(h.status),
               assessment: (h.assessment || "").trim() || "—",
               diagnosis: deriveDiagnosisReason(h),
               treatmentPlan: (h.plan || "").trim() || "—",
-              prescriptions: h.prescriptions || [],
-              labRequests: h.labRequests || [],
-              visitDateRaw: h.visitDate,
             },
           }));
           setBackendHistory(history);
 
-          const prescriptions = sorted.flatMap((h) =>
-            (h.prescriptions || []).map((p, idx) => ({
-              id: `p-${h.ticketNumber}-${idx}`,
-              dr: `Dr. ${h.specialistName}`,
-              date: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
-              meds: [`${p.generic} ${p.brand ? `(${p.brand})` : ""} - ${p.dosage}`],
-              status: "Active",
-            })),
+          // SAFE DATA EXTRACTION: This handles data whether the backend dev nested it OR sent it at the top level
+          const extractRecords = (rootKey, nestedKey) => {
+            if (
+              response[rootKey] &&
+              Array.isArray(response[rootKey]) &&
+              response[rootKey].length > 0
+            ) {
+              return response[rootKey].map((item) => ({
+                ...item,
+                _parentTicket: {},
+              }));
+            }
+            return sortedHistory.flatMap((h) => {
+              const arr = h[nestedKey] || [];
+              return arr.map((item) => ({ ...item, _parentTicket: h }));
+            });
+          };
+
+          const rawPrescriptions = extractRecords(
+            "prescriptions",
+            "prescriptions",
           );
+          const rawLabs = extractRecords("labRequests", "labRequests");
+          const rawCerts = extractRecords(
+            "medicalCertificates",
+            "medicalCertificates",
+          );
+
+          // 2. Map Prescriptions
+          const prescriptions = rawPrescriptions.map((p, idx) => {
+            const parent = p._parentTicket || {};
+            return {
+              id: p.id || `p-${idx}`,
+              docId: p.id,
+              docType: "prescription",
+              dr: `Dr. ${parent.specialistName || "Specialist"}`,
+              date: parent.visitDate
+                ? new Date(parent.visitDate).toLocaleDateString()
+                : p.createdAt
+                  ? new Date(p.createdAt).toLocaleDateString()
+                  : "N/A",
+              visitDateRaw: parent.visitDate
+                ? new Date(parent.visitDate).getTime()
+                : p.createdAt
+                  ? new Date(p.createdAt).getTime()
+                  : 0,
+              meds: [
+                `${p.generic || ""} ${p.brand ? `(${p.brand})` : ""} - ${p.dosage || ""}`,
+              ],
+              status: p.status ? formatTicketStatus(p.status) : "Active",
+            };
+          });
           setBackendPrescriptions(prescriptions);
 
-          const labs = sorted.flatMap((h) =>
-            (h.labRequests || []).map((l, idx) => ({
-              id: `l-${h.ticketNumber}-${idx}`,
-              dr: `Dr. ${h.specialistName}`,
-              date: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
-              test: l.test,
-              clinic: l.customTestName || "N/A",
-              status: "Completed",
-            })),
-          );
+          // 3. Map Lab Requests
+          const labs = rawLabs.map((l, idx) => {
+            const parent = l._parentTicket || {};
+            return {
+              id: l.id || `l-${idx}`,
+              docId: l.id,
+              docType: "lab",
+              dr: `Dr. ${parent.specialistName || "Specialist"}`,
+              date: parent.visitDate
+                ? new Date(parent.visitDate).toLocaleDateString()
+                : l.createdAt
+                  ? new Date(l.createdAt).toLocaleDateString()
+                  : "N/A",
+              visitDateRaw: parent.visitDate
+                ? new Date(parent.visitDate).getTime()
+                : l.createdAt
+                  ? new Date(l.createdAt).getTime()
+                  : 0,
+              test: l.test || "Lab Test",
+              clinic: l.customTestName || "Standard Clinic",
+              status: l.status ? formatTicketStatus(l.status) : "Completed",
+            };
+          });
           setBackendLabs(labs);
 
-          const certs = sorted.flatMap((h) =>
-            (h.medicalCertificates || []).map((c, idx) => ({
-              id: `c-${h.ticketNumber}-${idx}`,
-              dr: `Dr. ${h.specialistName}`,
-              date: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
-              type: c.diagnosisReason,
-              status: "Completed",
-            })),
-          );
+          // 4. Map Certs
+          const certs = rawCerts.map((c, idx) => {
+            const parent = c._parentTicket || {};
+            return {
+              id: c.id || `c-${idx}`,
+              docId: c.id,
+              docType: "certificate",
+              dr: `Dr. ${parent.specialistName || "Specialist"}`,
+              date: c.dateIssued
+                ? new Date(c.dateIssued).toLocaleDateString()
+                : parent.visitDate
+                  ? new Date(parent.visitDate).toLocaleDateString()
+                  : "N/A",
+              visitDateRaw: c.dateIssued
+                ? new Date(c.dateIssued).getTime()
+                : parent.visitDate
+                  ? new Date(parent.visitDate).getTime()
+                  : 0,
+              type: c.diagnosisReason || "Medical Certificate",
+              status: c.status ? formatTicketStatus(c.status) : "Issued",
+            };
+          });
           setBackendCerts(certs);
-
-          const plans = sorted.flatMap((h) =>
-            (h.treatmentPlans || []).map((tp, idx) => ({
-              id: `tp-${h.ticketNumber}-${idx}`,
-              dr: `Dr. ${h.specialistName}`,
-              start: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
-              next: "TBD",
-              condition: tp.plan,
-              spec: h.specialistTitle || "Specialist",
-              status: "Active",
-            })),
-          );
-          setBackendPlans(plans);
         }
       } catch (err) {
         console.error("Failed to load backend medical history:", err);
@@ -283,13 +358,12 @@ export default function Patient_MedicalRecords() {
     prescriptions: backendPrescriptions,
     labs: backendLabs,
     certs: backendCerts,
-    plans: backendPlans,
   });
 
   const currentTabData = tabs.find((t) => t.id === activeTab)?.data || [];
 
   const filteredData = useMemo(() => {
-    return currentTabData.filter((item) => {
+    let filtered = currentTabData.filter((item) => {
       const matchesSearch = Object.entries(item).some(([key, val]) => {
         if (key === "detail") return false;
         if (typeof val === "string")
@@ -302,123 +376,52 @@ export default function Patient_MedicalRecords() {
           );
         return false;
       });
-      if (activeTab === "history") {
-        return matchesSearch;
+
+      const matchesStatus =
+        activeTab === "history" ? true : statusFilter.includes(item.status);
+
+      let matchesChannel = true;
+      if (activeTab === "history" && channelFilter !== "All") {
+        matchesChannel =
+          toConsultationTypeLabel(item.channel) === channelFilter;
       }
-      const matchesStatus = statusFilter.includes(item.status);
-      return matchesSearch && matchesStatus;
+
+      return matchesSearch && matchesStatus && matchesChannel;
     });
-  }, [currentTabData, searchQuery, statusFilter, activeTab]);
+
+    filtered.sort((a, b) => {
+      if (sortOrder === "Newest") return b.visitDateRaw - a.visitDateRaw;
+      return a.visitDateRaw - b.visitDateRaw;
+    });
+
+    return filtered;
+  }, [
+    currentTabData,
+    searchQuery,
+    statusFilter,
+    channelFilter,
+    sortOrder,
+    activeTab,
+  ]);
+
+  const handleOpenDocument = (docType, docId) => {
+    // Uses the browser's native PDF pop-up in a new tab
+    if (docType && docId) {
+      window.open(`/api/v1/documents/${docType}/${docId}`, "_blank");
+    } else {
+      alert("Document not available.");
+    }
+  };
 
   const renderContent = () => {
-    if (activeTab === "history" && consultationDetail) {
-      const d = consultationDetail;
-      const { Icon: TypeIcon } = consultationChannelBadge(d.consultationTypeLabel);
-      return (
-        <div className="mr-consultation-details-page">
-          <div className="mr-back-nav">
-            <button
-              type="button"
-              className="mr-back-link"
-              onClick={() => setConsultationDetail(null)}
-            >
-              <IconArrowLeft size={18} /> Back to Medical Records
-            </button>
-          </div>
-
-          <div className="mr-details-header-card">
-            <div className="mr-header-left">
-              <div className="mr-header-avatar">
-                {doctorInitials(d.specialistName)}
-              </div>
-              <div className="mr-header-info">
-                <h2 className="mr-header-name">Dr. {d.specialistName}</h2>
-                <p className="mr-header-spec">
-                  <IconStethoscope size={16} /> {d.specialistTitle}
-                </p>
-                {d.nurseName && (
-                  <div className="mr-assisted-by">
-                    <div className="mr-assist-avatar small">{nurseInitials(d.nurseName)}</div>
-                    <div className="mr-assist-text">
-                      Assisted by:<br />
-                      <strong>Nurse {d.nurseName}</strong>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="mr-header-right">
-              <div className="mr-header-action-badge">
-                <TypeIcon size={16} /> {d.consultationTypeLabel} Consultation
-              </div>
-              <div className="mr-header-datetime">
-                <IconCalendarEvent size={18} /> {d.date}
-              </div>
-              <div className="mr-header-time">
-                <IconClock size={16} /> {consultationDetail.time}
-              </div>
-              <div className="mr-header-status">
-                <span className="mr-status-pill">
-                  <IconCircleCheck size={14} /> {d.status}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mr-complaint-section">
-            <h5 className="mr-section-kicker">Chief Complaint</h5>
-            <p className="mr-complaint-text">{d.chiefComplaint}</p>
-          </div>
-
-          <div className="mr-clinical-notes-card">
-            <div className="mr-clinical-title-row">
-              <div className="mr-clinical-icon-box">
-                <IconFileDescription size={20} />
-              </div>
-              <h4>Diagnosis & Clinical Notes</h4>
-            </div>
-
-            <div className="mr-assessment-block">
-              <div className="mr-assessment-label">
-                <IconAlertCircle size={18} /> Assessment
-              </div>
-              <p className="mr-assessment-text">{d.assessment}</p>
-            </div>
-
-            <div className="mr-diagnosis-block">
-              <div className="mr-diagnosis-label">
-                <IconCircleCheck size={18} /> Diagnosis
-              </div>
-              <p className="mr-diagnosis-text">{d.diagnosis}</p>
-            </div>
-
-            <div className="mr-treatment-section">
-              <div className="mr-treatment-label">
-                <IconClipboardList size={18} /> Treatment Plan
-              </div>
-              <div className="mr-treatment-body">
-                <ul className="mr-treatment-list">
-                  {(d.treatmentPlan || "").split("\n").map((line, idx) => {
-                    const trimmed = line.trim();
-                    if (!trimmed) return null;
-                    return (
-                      <li key={idx} className="mr-treatment-item">
-                        {trimmed}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
     if (filteredData.length === 0) {
       return (
         <div className="mr-empty-state">
-          <IconSearch size={48} className="mr-empty-icon" />
+          <IconSearch
+            size={48}
+            className="mr-empty-icon"
+            style={{ color: CORE_BLUE }}
+          />
           <h3 className="mr-empty-title">No records found</h3>
           <p className="mr-empty-desc">
             Try adjusting your search or filter settings.
@@ -438,16 +441,32 @@ export default function Patient_MedicalRecords() {
               <div key={item.id} className="mr-card">
                 <div className="mr-card-flex">
                   <div className="mr-card-main">
-                    <div className="mr-avatar">{doctorInitials(item.dr)}</div>
+                    <div
+                      className="mr-avatar"
+                      style={{ backgroundColor: CORE_BLUE }}
+                    >
+                      {doctorInitials(item.dr)}
+                    </div>
                     <div className="mr-card-details">
                       <div className="mr-card-header-row">
                         <h4 className="mr-card-title">{item.dr}</h4>
-                        <span className="mr-badge mr-badge-blue">
+                        <span
+                          className="mr-badge"
+                          style={{
+                            backgroundColor: LIGHT_BLUE,
+                            color: CORE_BLUE,
+                            border: `1px solid ${CORE_BLUE}`,
+                          }}
+                        >
                           <TypeIcon size={10} /> {typeLabel}
                         </span>
                       </div>
                       <p className="mr-card-spec">
-                        <IconStethoscope size={14} /> {item.spec}
+                        <IconStethoscope
+                          size={14}
+                          style={{ color: CORE_BLUE }}
+                        />{" "}
+                        {item.spec}
                       </p>
                       <div className="mr-card-datetime">
                         <span className="mr-info-icon-text">
@@ -464,17 +483,22 @@ export default function Patient_MedicalRecords() {
                         <span className="mr-badge mr-badge-outline-green">
                           <IconCheck size={10} /> {item.status}
                         </span>
-                        <span className="mr-card-duration">
-                          Duration: {item.dur}
-                        </span>
                       </div>
                     </div>
                   </div>
                   <div className="mr-card-actions">
                     <button
                       type="button"
-                      className="mr-btn mr-btn-primary"
-                      onClick={() => setConsultationDetail(item.detail)}
+                      className="mr-btn"
+                      style={{
+                        backgroundColor: CORE_BLUE,
+                        color: "white",
+                        border: "none",
+                      }}
+                      onClick={() => {
+                        setConsultationDetail(item.detail);
+                        setIsModalOpen(true);
+                      }}
                     >
                       <IconEye size={16} /> View Details
                     </button>
@@ -492,24 +516,41 @@ export default function Patient_MedicalRecords() {
                   <div className="mr-card-main-col">
                     <div className="mr-card-header-row">
                       <h4 className="mr-card-title">{item.dr}</h4>
-                      <span className="mr-badge mr-badge-active">Active</span>
+                      <span
+                        className="mr-badge"
+                        style={{
+                          backgroundColor: LIGHT_BLUE,
+                          color: CORE_BLUE,
+                        }}
+                      >
+                        {item.status}
+                      </span>
                     </div>
                     <p className="mr-card-meta-margin">Issued on {item.date}</p>
                     <p className="mr-meds-label">Medications:</p>
                     <ul className="mr-meds-list">
                       {item.meds.map((m) => (
                         <li key={m} className="mr-med-item">
-                          <IconPill size={14} /> {m}
+                          <IconPill size={14} style={{ color: CORE_BLUE }} />{" "}
+                          {m}
                         </li>
                       ))}
                     </ul>
-                    <p className="mr-card-meta-bottom">
-                      Valid until: {item.date}
-                    </p>
                   </div>
                   <div className="mr-card-actions">
-                    <button type="button" className="mr-btn mr-btn-primary">
-                      <IconEye size={16} /> View Details
+                    <button
+                      type="button"
+                      className="mr-btn"
+                      style={{
+                        backgroundColor: CORE_BLUE,
+                        color: "white",
+                        border: "none",
+                      }}
+                      onClick={() =>
+                        handleOpenDocument(item.docType, item.docId)
+                      }
+                    >
+                      <IconFileDescription size={16} /> View Document
                     </button>
                   </div>
                 </div>
@@ -526,7 +567,12 @@ export default function Patient_MedicalRecords() {
                     <div className="mr-card-header-row">
                       <h4 className="mr-card-title">{item.test}</h4>
                       <span
-                        className={`mr-badge ${item.status === "Pending" ? "mr-badge-pending" : "mr-badge-active"}`}
+                        className="mr-badge"
+                        style={
+                          item.status !== "Pending"
+                            ? { backgroundColor: LIGHT_BLUE, color: CORE_BLUE }
+                            : { backgroundColor: "#fff3cd", color: "#f08c00" }
+                        }
                       >
                         {item.status}
                       </span>
@@ -538,12 +584,24 @@ export default function Patient_MedicalRecords() {
                       <IconCalendarEvent size={14} /> Request Date: {item.date}
                     </p>
                     <p className="mr-info-icon-text mr-meta-spacing">
-                      <IconFlask size={14} /> {item.clinic}
+                      <IconFlask size={14} style={{ color: CORE_BLUE }} />{" "}
+                      {item.clinic}
                     </p>
                   </div>
                   <div className="mr-card-actions">
-                    <button type="button" className="mr-btn mr-btn-primary">
-                      <IconEye size={16} /> View Details
+                    <button
+                      type="button"
+                      className="mr-btn"
+                      style={{
+                        backgroundColor: CORE_BLUE,
+                        color: "white",
+                        border: "none",
+                      }}
+                      onClick={() =>
+                        handleOpenDocument(item.docType, item.docId)
+                      }
+                    >
+                      <IconFileDescription size={16} /> View Document
                     </button>
                   </div>
                 </div>
@@ -557,7 +615,10 @@ export default function Patient_MedicalRecords() {
               <div key={item.id} className="mr-card">
                 <div className="mr-card-flex">
                   <div className="mr-card-main">
-                    <div className="mr-icon-box-primary">
+                    <div
+                      className="mr-icon-box-primary"
+                      style={{ backgroundColor: LIGHT_BLUE, color: CORE_BLUE }}
+                    >
                       <IconCertificate size={24} />
                     </div>
                     <div className="mr-card-details">
@@ -571,37 +632,19 @@ export default function Patient_MedicalRecords() {
                     </div>
                   </div>
                   <div className="mr-card-actions">
-                    <button type="button" className="mr-btn mr-btn-primary">
-                      <IconEye size={16} /> View Details
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          }
-
-          /* --- PLANS --- */
-          if (activeTab === "plans") {
-            return (
-              <div key={item.id} className="mr-card">
-                <div className="mr-card-flex">
-                  <div className="mr-card-main-col">
-                    <div className="mr-card-header-row">
-                      <h4 className="mr-card-title">{item.condition}</h4>
-                      <span className="mr-badge mr-badge-active">Active</span>
-                    </div>
-                    <p className="mr-card-spec mr-spec-spacing">{item.spec}</p>
-                    <p className="mr-card-meta-margin">{item.dr}</p>
-                    <p className="mr-info-icon-text mr-meta-spacing">
-                      <IconCalendarEvent size={14} /> Start Date: {item.start}
-                    </p>
-                    <p className="mr-info-icon-text mr-meta-spacing">
-                      <IconClock size={14} /> Next Review: {item.next}
-                    </p>
-                  </div>
-                  <div className="mr-card-actions">
-                    <button type="button" className="mr-btn mr-btn-primary">
-                      <IconEye size={16} /> View Details
+                    <button
+                      type="button"
+                      className="mr-btn"
+                      style={{
+                        backgroundColor: CORE_BLUE,
+                        color: "white",
+                        border: "none",
+                      }}
+                      onClick={() =>
+                        handleOpenDocument(item.docType, item.docId)
+                      }
+                    >
+                      <IconFileDescription size={16} /> View Document
                     </button>
                   </div>
                 </div>
@@ -617,162 +660,501 @@ export default function Patient_MedicalRecords() {
 
   return (
     <div className="mr-page-wrapper">
-      {/* --- STICKY TOP SECTION --- */}
-      {!(activeTab === "history" && consultationDetail) && (
-        <div className="mr-sticky-header">
-          {/* Title Area */}
-          <div className="mr-header-title-container">
-            <h2 className="mr-page-title">Medical Records</h2>
-            <p className="mr-page-subtitle">
-              Access your complete healthcare history
-            </p>
-          </div>
+      <div className="mr-sticky-header">
+        {/* Title Area */}
+        <div className="mr-header-title-container">
+          <h2 className="mr-page-title">Medical Records</h2>
+          <p className="mr-page-subtitle">
+            Access your complete healthcare history
+          </p>
+        </div>
 
-          {/* Consent Banner */}
-          <div className="mr-consent-banner">
-            <div className="mr-banner-content">
-              <div className="mr-banner-icon-bg">
-                <IconShare size={24} />
-              </div>
-              <div className="mr-banner-text-area">
-                <div className="mr-banner-title-row">
-                  <h4 className="mr-banner-title">
-                    Medical Records Sharing & Consent
-                  </h4>
-                  <span className="mr-badge mr-badge-primary">New</span>
-                </div>
-                <p className="mr-banner-desc">
-                  Securely share your medical records with doctors during
-                  consultations. Full control over what you share and for how
-                  long.
-                </p>
-                <div className="mr-banner-tags-row">
-                  <span className="mr-tag mr-tag-green">
-                    <IconShieldCheck size={12} /> Privacy Protected
-                  </span>
-                  <span className="mr-tag mr-tag-primary">
-                    <IconLock size={12} /> Encrypted
-                  </span>
-                  <span className="mr-tag mr-tag-primary">
-                    <IconClock size={12} /> Time-Limited Access
-                  </span>
-                </div>
-              </div>
-            </div>
-            <button
-              className="mr-btn mr-btn-primary"
-              onClick={() => (window.location.hash = "#/RecordSharing")}
+        {/* Consent Banner */}
+        <div className="mr-consent-banner">
+          <div className="mr-banner-content">
+            <div
+              className="mr-banner-icon-bg"
+              style={{ backgroundColor: LIGHT_BLUE, color: CORE_BLUE }}
             >
-              <IconShare size={16} /> Manage Sharing
-            </button>
-          </div>
-
-          {/* Tabs Navigation */}
-          <div className="mr-tabs-container">
-            <div className="mr-tabs-scroll">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  className={`mr-custom-tab ${activeTab === tab.id ? "mr-tab-active" : ""}`}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setSearchQuery("");
-                  }}
+              <IconShare size={24} />
+            </div>
+            <div className="mr-banner-text-area">
+              <div className="mr-banner-title-row">
+                <h4 className="mr-banner-title">
+                  Medical Records Sharing & Consent
+                </h4>
+                <span
+                  className="mr-badge"
+                  style={{ backgroundColor: CORE_BLUE, color: "white" }}
                 >
-                  <div className="mr-tab-top">
-                    <tab.icon size={20} stroke={activeTab === tab.id ? 2 : 1.5} />
-                    <span
-                      className={`mr-tab-count ${activeTab === tab.id ? "mr-tab-count-active" : "mr-tab-count-inactive"}`}
-                    >
-                      {tab.data.length}
-                    </span>
-                  </div>
-                  <span className="mr-tab-label">{tab.label}</span>
-                </button>
-              ))}
+                  New
+                </span>
+              </div>
+              <p className="mr-banner-desc">
+                Securely share your medical records with doctors during
+                consultations. Full control over what you share and for how
+                long.
+              </p>
+              <div className="mr-banner-tags-row">
+                <span className="mr-tag mr-tag-green">
+                  <IconShieldCheck size={12} /> Privacy Protected
+                </span>
+                <span
+                  className="mr-tag"
+                  style={{ backgroundColor: LIGHT_BLUE, color: CORE_BLUE }}
+                >
+                  <IconLock size={12} /> Encrypted
+                </span>
+                <span
+                  className="mr-tag"
+                  style={{ backgroundColor: LIGHT_BLUE, color: CORE_BLUE }}
+                >
+                  <IconClock size={12} /> Time-Limited Access
+                </span>
+              </div>
             </div>
           </div>
-
-          {/* STATIC SEARCH & FILTER BAR */}
-          <div
-            className={`mr-controls-bar ${activeTab === "history" && consultationDetail ? "mr-controls-bar-hidden" : ""}`}
+          <button
+            className="mr-btn"
+            style={{
+              backgroundColor: CORE_BLUE,
+              color: "white",
+              border: "none",
+            }}
+            onClick={() => (window.location.hash = "#/RecordSharing")}
           >
-            <div className="mr-search-wrapper">
-              <IconSearch size={16} className="mr-search-icon" />
-              <input
-                type="text"
-                className="mr-search-input"
-                placeholder={`Search ${tabs.find((t) => t.id === activeTab).label.toLowerCase()}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <IconShare size={16} /> Manage Sharing
+          </button>
+        </div>
 
-            {activeTab !== "history" && (
-              <div className="mr-popover-container" ref={popoverRef}>
-                <button
-                  type="button"
-                  className="mr-btn mr-btn-outline"
-                  onClick={() => setFilterOpen(!filterOpen)}
+        {/* Tabs Navigation */}
+        <div className="mr-tabs-container">
+          <div className="mr-tabs-scroll">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={`mr-custom-tab ${activeTab === tab.id ? "mr-tab-active" : ""}`}
+                style={
+                  activeTab === tab.id
+                    ? { borderBottomColor: CORE_BLUE, color: CORE_BLUE }
+                    : {}
+                }
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setSearchQuery("");
+                }}
+              >
+                <div className="mr-tab-top">
+                  <tab.icon size={20} stroke={activeTab === tab.id ? 2 : 1.5} />
+                  <span
+                    className="mr-tab-count"
+                    style={
+                      activeTab === tab.id
+                        ? { backgroundColor: CORE_BLUE, color: "white" }
+                        : { backgroundColor: "#f1f3f5", color: "#868e96" }
+                    }
+                  >
+                    {tab.data.length}
+                  </span>
+                </div>
+                <span className="mr-tab-label">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* SEARCH & FILTERS BAR */}
+        <div className="mr-controls-bar">
+          <div className="mr-search-wrapper">
+            <IconSearch size={16} className="mr-search-icon" />
+            <input
+              type="text"
+              className="mr-search-input"
+              placeholder={`Search ${tabs.find((t) => t.id === activeTab).label.toLowerCase()}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="mr-popover-container" ref={popoverRef}>
+            <button
+              type="button"
+              className="mr-btn mr-btn-outline"
+              onClick={() => setFilterOpen(!filterOpen)}
+            >
+              <IconFilter size={16} /> Filters & Sorting
+            </button>
+
+            {filterOpen && (
+              <div className="mr-popover-menu" style={{ width: "250px" }}>
+                <div className="mr-popover-title">
+                  <span>Sort By</span>
+                </div>
+                <div
+                  className="mr-checkbox-group"
+                  style={{ marginBottom: "16px" }}
                 >
-                  <IconFilter size={16} /> Filters
-                </button>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      borderRadius: "6px",
+                      border: "1px solid #dee2e6",
+                    }}
+                  >
+                    <option value="Newest">Newest First</option>
+                    <option value="Oldest">Oldest First</option>
+                  </select>
+                </div>
 
-                {filterOpen && (
-                  <div className="mr-popover-menu">
+                {activeTab === "history" && (
+                  <>
+                    <div className="mr-popover-title">
+                      <span>Channel Filter</span>
+                    </div>
+                    <div
+                      className="mr-checkbox-group"
+                      style={{ marginBottom: "16px" }}
+                    >
+                      <select
+                        value={channelFilter}
+                        onChange={(e) => setChannelFilter(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          borderRadius: "6px",
+                          border: "1px solid #dee2e6",
+                        }}
+                      >
+                        <option value="All">All Channels</option>
+                        <option value="Video">Video</option>
+                        <option value="Voice">Voice</option>
+                        <option value="Physical">Physical</option>
+                        <option value="Chat">Chat</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {activeTab !== "history" && (
+                  <>
                     <div className="mr-popover-title">
                       <span>Status Filter</span>
                     </div>
                     <div className="mr-checkbox-group">
-                      <label className="mr-checkbox-label">
-                        <input
-                          type="checkbox"
-                          className="mr-checkbox-input"
-                          checked={statusFilter.includes("Completed")}
-                          onChange={() => toggleStatus("Completed")}
-                        />{" "}
-                        Completed
-                      </label>
-                      <label className="mr-checkbox-label">
-                        <input
-                          type="checkbox"
-                          className="mr-checkbox-input"
-                          checked={statusFilter.includes("Pending")}
-                          onChange={() => toggleStatus("Pending")}
-                        />{" "}
-                        Pending
-                      </label>
-                      <label className="mr-checkbox-label">
-                        <input
-                          type="checkbox"
-                          className="mr-checkbox-input"
-                          checked={statusFilter.includes("Active")}
-                          onChange={() => toggleStatus("Active")}
-                        />{" "}
-                        Active
-                      </label>
-                      <label className="mr-checkbox-label">
-                        <input
-                          type="checkbox"
-                          className="mr-checkbox-input"
-                          checked={statusFilter.includes("Booked")}
-                          onChange={() => toggleStatus("Booked")}
-                        />{" "}
-                        Booked
-                      </label>
+                      {[
+                        "Completed",
+                        "Pending",
+                        "Active",
+                        "Booked",
+                        "Issued",
+                      ].map((status) => (
+                        <label key={status} className="mr-checkbox-label">
+                          <input
+                            type="checkbox"
+                            className="mr-checkbox-input"
+                            checked={statusFilter.includes(status)}
+                            onChange={() => toggleStatus(status)}
+                          />{" "}
+                          {status}
+                        </label>
+                      ))}
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             )}
           </div>
         </div>
-      )}
-
-      {/* --- SCROLLABLE CONTENT SECTION --- */}
-      <div className={`mr-scrollable-content ${activeTab === "history" && consultationDetail ? "mr-detail-view-active" : ""}`}>
-        {renderContent()}
       </div>
+
+      <div className="mr-scrollable-content">{renderContent()}</div>
+
+      {/* --- CONSULTATION DETAIL OVERLAY MODAL --- */}
+      {isModalOpen &&
+        consultationDetail &&
+        (() => {
+          const d = consultationDetail;
+          const { Icon: TypeIcon } = consultationChannelBadge(
+            d.consultationTypeLabel,
+          );
+
+          return (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0,0,0,0.5)",
+                zIndex: 9999,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "20px",
+              }}
+            >
+              <div
+                style={{
+                  backgroundColor: "white",
+                  borderRadius: "12px",
+                  width: "100%",
+                  maxWidth: "800px",
+                  maxHeight: "90vh",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+                }}
+              >
+                {/* Modal Header */}
+                <div
+                  style={{
+                    padding: "20px 24px",
+                    backgroundColor: CORE_BLUE,
+                    color: "white",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <h3
+                    style={{
+                      margin: 0,
+                      fontSize: "18px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <TypeIcon size={20} /> Consultation Details
+                  </h3>
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "white",
+                      cursor: "pointer",
+                      padding: "4px",
+                    }}
+                  >
+                    <IconX size={24} />
+                  </button>
+                </div>
+
+                {/* Modal Scrollable Body */}
+                <div
+                  style={{
+                    padding: "24px",
+                    overflowY: "auto",
+                    flex: 1,
+                    backgroundColor: "#f8f9fa",
+                  }}
+                >
+                  <div
+                    style={{
+                      backgroundColor: "white",
+                      borderRadius: "8px",
+                      padding: "20px",
+                      marginBottom: "20px",
+                      border: "1px solid #e9ecef",
+                      display: "flex",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: "16px" }}>
+                      <div
+                        style={{
+                          width: "48px",
+                          height: "48px",
+                          borderRadius: "50%",
+                          backgroundColor: CORE_BLUE,
+                          color: "white",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: "bold",
+                          fontSize: "18px",
+                        }}
+                      >
+                        {doctorInitials(d.specialistName)}
+                      </div>
+                      <div>
+                        <h2
+                          style={{
+                            margin: "0 0 4px 0",
+                            fontSize: "18px",
+                            color: "#343a40",
+                          }}
+                        >
+                          Dr. {d.specialistName}
+                        </h2>
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#868e96",
+                            fontSize: "14px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <IconStethoscope
+                            size={14}
+                            style={{ color: CORE_BLUE }}
+                          />{" "}
+                          {d.specialistTitle}
+                        </p>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          color: "#343a40",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        <IconCalendarEvent
+                          size={14}
+                          style={{
+                            display: "inline",
+                            verticalAlign: "text-bottom",
+                            color: CORE_BLUE,
+                          }}
+                        />{" "}
+                        {d.date}
+                      </div>
+                      <div style={{ fontSize: "14px", color: "#868e96" }}>
+                        {d.time}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      backgroundColor: "white",
+                      borderRadius: "8px",
+                      padding: "20px",
+                      marginBottom: "20px",
+                      border: "1px solid #e9ecef",
+                    }}
+                  >
+                    <h5
+                      style={{
+                        margin: "0 0 8px 0",
+                        color: CORE_BLUE,
+                        fontSize: "13px",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                        fontWeight: 700,
+                      }}
+                    >
+                      Chief Complaint
+                    </h5>
+                    <p style={{ margin: 0, color: "#343a40", lineHeight: 1.5 }}>
+                      {d.chiefComplaint}
+                    </p>
+                  </div>
+
+                  <div
+                    style={{
+                      backgroundColor: "white",
+                      borderRadius: "8px",
+                      border: "1px solid #e9ecef",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "16px 20px",
+                        borderBottom: "1px solid #e9ecef",
+                        backgroundColor: "#f8f9fa",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <IconFileDescription
+                        size={18}
+                        style={{ color: CORE_BLUE }}
+                      />
+                      <h4
+                        style={{
+                          margin: 0,
+                          fontSize: "16px",
+                          color: "#343a40",
+                        }}
+                      >
+                        Clinical Notes
+                      </h4>
+                    </div>
+                    <div style={{ padding: "20px" }}>
+                      <div style={{ marginBottom: "24px" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            color: "#868e96",
+                            fontSize: "14px",
+                            fontWeight: 600,
+                            marginBottom: "8px",
+                          }}
+                        >
+                          <IconAlertCircle size={16} /> Assessment
+                        </div>
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#343a40",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {d.assessment}
+                        </p>
+                      </div>
+
+                      <div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            color: "#868e96",
+                            fontSize: "14px",
+                            fontWeight: 600,
+                            marginBottom: "8px",
+                          }}
+                        >
+                          <IconCircleCheck
+                            size={16}
+                            style={{ color: "#40c057" }}
+                          />{" "}
+                          Diagnosis
+                        </div>
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#343a40",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {d.diagnosis}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }

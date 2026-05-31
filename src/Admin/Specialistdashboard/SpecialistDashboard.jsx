@@ -21,6 +21,7 @@ import {
   getConsultations,
   getPatientAndNurseUsers,
   getAdminProfile,
+  updateSpecialistStatus
 } from '../../api/Admin/api.js';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -487,42 +488,39 @@ const SpecialistDashboard = () => {
   };
 
   const handleApproveSpecialist = async (specialistId) => {
+    if (!window.confirm("Are you sure you want to approve this specialist?")) return;
     try {
-      await import('../../api/Admin/api.js').then((module) =>
-        module.approveSpecialist({ specialistId, action: 'approve' }),
-      );
+      await updateSpecialistStatus({ specialistId: String(specialistId), status: 'approved' });
       alert(`Specialist approved!`);
-      window.location.reload();
+      window.location.reload(); 
     } catch (error) {
-      alert('Failed to approve specialist.');
+      console.error(error);
+      alert('Failed to approve specialist. Check console for details.');
     }
   };
 
-  const handleDenySpecialist = async (specialistId, reason) => {
+  const handleDenySpecialist = async (specialistId) => {
+    const reason = window.prompt("Please provide a reason for denial:");
+    if (reason === null) return; 
     try {
-      await import('../../api/Admin/api.js').then((module) =>
-        module.approveSpecialist({ specialistId, action: 'deny', reason }),
-      );
+      await updateSpecialistStatus({ specialistId: String(specialistId), status: 'denied', denialReason: reason });
       alert(`Specialist denied!`);
       window.location.reload();
     } catch (error) {
+      console.error(error);
       alert('Failed to deny specialist.');
     }
   };
 
-  const handleUpdateSpecialistStatus = async (specialistId, newStatus) => {
+  const handleSuspendSpecialist = async (specialistId) => {
+    if (!window.confirm("Are you sure you want to suspend this specialist?")) return;
     try {
-      const { updateSpecialistStatus } = await import('../../api/Admin/api.js');
-      await updateSpecialistStatus({ specialistId, status: newStatus });
-      alert(`Specialist status successfully updated!`);
-      setSpecialists((prev) =>
-        prev.map((s) =>
-          s.id === specialistId ? { ...s, status: newStatus } : s,
-        ),
-      );
+      await updateSpecialistStatus({ specialistId: String(specialistId), status: 'suspended' });
+      alert(`Specialist suspended!`);
+      window.location.reload();
     } catch (error) {
-      alert('Failed to update specialist status.');
       console.error(error);
+      alert('Failed to suspend specialist.');
     }
   };
 
@@ -961,7 +959,10 @@ const SpecialistDashboard = () => {
           />
         )}
         {activeTab === 'list' && (
-          <SpecialistTable specialists={filteredSpecialists} />
+          <SpecialistTable 
+            specialists={filteredSpecialists} 
+            onSuspend={handleSuspendSpecialist} 
+          />
         )}
 
         {activeTab === 'users' && (

@@ -205,6 +205,33 @@ export async function verifyTicketPayment(ticketId) {
   }
 }
 
+export const fetchDoctors = async () => {
+  try {
+    const response = await apiRequest("/api/v1/patients/doctors", {
+      method: "GET",
+    });
+
+    // apiRequest already parses the response, so we just return it directly!
+    return response;
+  } catch (error) {
+    console.error("Error fetching doctors:", error);
+    throw error;
+  }
+};
+
+export const shareRecords = async (specialistId) => {
+  try {
+    const response = await apiRequest("/api/v1/patients/share-records", {
+      method: "POST",
+      body: JSON.stringify({ specialistId }),
+    });
+    return response;
+  } catch (error) {
+    console.error("Error sharing records:", error);
+    throw error;
+  }
+};
+
 /**
  * Logout Patient
  */

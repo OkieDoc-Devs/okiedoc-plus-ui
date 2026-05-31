@@ -201,9 +201,9 @@ export const getAdminProfile = async () => {
 export const uploadAdminAvatar = async (file) => {
   try {
     const formData = new FormData();
-    formData.append('avatar', file);
+    formData.append('photo', file);
 
-    return await fetch(`${API_BASE_URL}/api/v1/admin/avatar`, {
+    return await fetch(`/api/v1/user/profile-picture`, {
       method: 'POST',
       body: formData,
       credentials: 'include',

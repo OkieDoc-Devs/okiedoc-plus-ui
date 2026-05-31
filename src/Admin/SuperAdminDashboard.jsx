@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   FiGrid, FiUserCheck, FiUsers, FiCalendar, FiCreditCard, 
-  FiPieChart, FiFileText, FiSettings, FiSearch, FiDownload, FiEye 
+  FiPieChart, FiFileText, FiSettings, FiSearch, FiDownload, FiEye, FiSave
 } from 'react-icons/fi';
 
 import AdminLayout from './Components/AdminLayout';
@@ -14,6 +14,7 @@ import PendingTable from './Specialistdashboard/PendingTable';
 import SpecialistTable from './Specialistdashboard/SpecialistTable';
 import UserTable from './UserManagement/UserTable.jsx';
 import { handleExport } from './utils/exportUtils';
+import { apiRequest } from '../api/apiClient';
 
 import {
   getSpecialists, getPendingApplications, getTransactions,
@@ -39,11 +40,13 @@ const SuperAdminDashboard = () => {
   const [denyingSpecialistId, setDenyingSpecialistId] = useState(null);
   const [denyReason, setDenyReason] = useState('');
 
-  const [systemFees, setSystemFees] = useState({
-    doctorsFee: { isActive: true, name: "Doctor's Fee" },
-    processingFee: { isActive: true, name: 'Processing Fee' },
-    convenienceFee: { isActive: true, name: 'Convenience Fee' },
+  // DYNAMIC BASE FEES
+  const [baseInputs, setBaseInputs] = useState({
+    gpFee: 500, specialistFee: 800, processingFee: 50, convenienceFee: 25,
+    medCertFee: 150, labRequestFee: 100, prescriptionFee: 100, treatmentPlanFee: 200,
+    checkoutNotes: 'Please settle your payment to confirm your consultation.'
   });
+  const [isSavingFees, setIsSavingFees] = useState(false);
 
   const safeArray = (data) => {
     if (!data) return [];
@@ -64,18 +67,23 @@ const SuperAdminDashboard = () => {
     const fetchAndProcessData = async () => {
       try {
         const [
-          specialistsData, pendingData, transactionsData, usersData, adminProfileData 
+          specialistsData, pendingData, transactionsData, usersData, adminProfileData, baseFeeData
         ] = await Promise.all([
           getSpecialists().catch(() => []), 
           getPendingApplications().catch(() => []), 
           getTransactions().catch(() => []),
           getPatientAndNurseUsers().catch(() => []), 
-          getAdminProfile().catch(() => null) 
+          getAdminProfile().catch(() => null),
+          apiRequest('/api/v1/admin/base-inputs').catch(() => null) 
         ]);
 
         const profile = adminProfileData?.data || adminProfileData;
         if (profile?.profileUrl && !profile.profileUrl.includes('admin_avatar.png')) {
           setAdminAvatar(profile.profileUrl);
+        }
+
+        if (baseFeeData?.data) {
+          setBaseInputs(baseFeeData.data);
         }
 
         const rawSpecs = safeArray(specialistsData);
@@ -168,6 +176,21 @@ const SuperAdminDashboard = () => {
       const result = await uploadAdminAvatar(file);
       setAdminAvatar(result.profileUrl); 
     } catch (error) { alert('Failed to upload avatar: ' + error.message); }
+  };
+
+  const handleSaveFees = async () => {
+    setIsSavingFees(true);
+    try {
+      await apiRequest('/api/v1/admin/base-inputs', {
+        method: 'PUT',
+        body: JSON.stringify(baseInputs)
+      });
+      alert('Global System Fees have been updated successfully.');
+    } catch (err) {
+      alert('Failed to save fees: ' + err.message);
+    } finally {
+      setIsSavingFees(false);
+    }
   };
 
   const navLinks = [
@@ -392,32 +415,137 @@ const SuperAdminDashboard = () => {
           )}
 
           {isSettingsTab && (
-            <div className="admin-page-card">
-              <div className="admin-card-header">
+            <div className="admin-page-card" style={{ padding: '0', overflow: 'hidden' }}>
+              <div className="admin-card-header" style={{ padding: '24px 30px', borderBottom: '1px solid #f1f5f9' }}>
                 <h2 className="admin-card-title">System Settings</h2>
-                <div className="admin-tabs">
+                <div className="admin-tabs" style={{ marginBottom: 0 }}>
                   <button className={`admin-tab ${activeTab === 'fee_config' ? 'active' : ''}`} onClick={() => setActiveTab('fee_config')}>Fee Configuration</button>
                   <button className={`admin-tab ${activeTab === 'role_permissions' ? 'active' : ''}`} onClick={() => setActiveTab('role_permissions')}>Role Permissions</button>
                 </div>
               </div>
               
               {activeTab === 'fee_config' ? (
-                <div>
-                  {Object.entries(systemFees).map(([key, fee]) => (
-                    <div key={key} className="settings-row">
-                      <div className="settings-info">
-                        <span className="settings-name">{fee.name}</span>
-                        <span className="settings-desc">Toggle to enable or disable this fee platform-wide.</span>
-                      </div>
-                      <label className="toggle-switch">
-                        <input type="checkbox" checked={fee.isActive} onChange={() => setSystemFees(prev => ({...prev, [key]: {...prev[key], isActive: !prev[key].isActive}}))} />
-                        <span className="toggle-slider"></span>
-                      </label>
+                <div style={{ padding: '30px', backgroundColor: '#f8fafc' }}>
+                  <div style={{ 
+                    backgroundColor: '#ffffff', 
+                    borderRadius: '12px', 
+                    padding: '30px', 
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    <div style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
+                      <h3 style={{ margin: '0 0 8px 0', color: '#0f172a', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FiCreditCard style={{ color: '#0ea5e9' }} /> 
+                        Global Fee Variables
+                      </h3>
+                      <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
+                        Set the base parameters for unassigned tickets and standard processing fees across the system.
+                      </p>
                     </div>
-                  ))}
+                    
+                    {/* FIXED GRID LAYOUT: Strict 3-column layout that avoids overlapping */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+                      
+                      <div style={{ width: '100%' }}>
+                        <label style={{display:'block', marginBottom:'8px', fontSize: '0.85rem', fontWeight:600, color: '#475569'}}>GP Base Fee (₱)</label>
+                        <div style={{position: 'relative', width: '100%'}}>
+                          <span style={{position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontWeight: 'bold'}}>₱</span>
+                          <input type="number" value={baseInputs.gpFee} onChange={e => setBaseInputs({...baseInputs, gpFee: Number(e.target.value)})} className="admin-search-input" style={{width:'100%', boxSizing: 'border-box', paddingLeft: '28px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0'}}/>
+                        </div>
+                      </div>
+                      
+                      <div style={{ width: '100%' }}>
+                        <label style={{display:'block', marginBottom:'8px', fontSize: '0.85rem', fontWeight:600, color: '#475569'}}>Specialist Base Fee (₱)</label>
+                        <div style={{position: 'relative', width: '100%'}}>
+                          <span style={{position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontWeight: 'bold'}}>₱</span>
+                          <input type="number" value={baseInputs.specialistFee} onChange={e => setBaseInputs({...baseInputs, specialistFee: Number(e.target.value)})} className="admin-search-input" style={{width:'100%', boxSizing: 'border-box', paddingLeft: '28px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0'}}/>
+                        </div>
+                      </div>
+
+                      <div style={{ width: '100%' }}>
+                        <label style={{display:'block', marginBottom:'8px', fontSize: '0.85rem', fontWeight:600, color: '#475569'}}>System Processing Fee (₱)</label>
+                        <div style={{position: 'relative', width: '100%'}}>
+                          <span style={{position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontWeight: 'bold'}}>₱</span>
+                          <input type="number" value={baseInputs.processingFee} onChange={e => setBaseInputs({...baseInputs, processingFee: Number(e.target.value)})} className="admin-search-input" style={{width:'100%', boxSizing: 'border-box', paddingLeft: '28px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0'}}/>
+                        </div>
+                      </div>
+
+                      <div style={{ width: '100%' }}>
+                        <label style={{display:'block', marginBottom:'8px', fontSize: '0.85rem', fontWeight:600, color: '#475569'}}>Gateway Convenience Fee (₱)</label>
+                        <div style={{position: 'relative', width: '100%'}}>
+                          <span style={{position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontWeight: 'bold'}}>₱</span>
+                          <input type="number" value={baseInputs.convenienceFee} onChange={e => setBaseInputs({...baseInputs, convenienceFee: Number(e.target.value)})} className="admin-search-input" style={{width:'100%', boxSizing: 'border-box', paddingLeft: '28px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0'}}/>
+                        </div>
+                      </div>
+
+                      <div style={{ width: '100%' }}>
+                        <label style={{display:'block', marginBottom:'8px', fontSize: '0.85rem', fontWeight:600, color: '#475569'}}>Med Cert Base Fee (₱)</label>
+                        <div style={{position: 'relative', width: '100%'}}>
+                          <span style={{position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontWeight: 'bold'}}>₱</span>
+                          <input type="number" value={baseInputs.medCertFee} onChange={e => setBaseInputs({...baseInputs, medCertFee: Number(e.target.value)})} className="admin-search-input" style={{width:'100%', boxSizing: 'border-box', paddingLeft: '28px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0'}}/>
+                        </div>
+                      </div>
+
+                      <div style={{ width: '100%' }}>
+                        <label style={{display:'block', marginBottom:'8px', fontSize: '0.85rem', fontWeight:600, color: '#475569'}}>Lab Request Base Fee (₱)</label>
+                        <div style={{position: 'relative', width: '100%'}}>
+                          <span style={{position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontWeight: 'bold'}}>₱</span>
+                          <input type="number" value={baseInputs.labRequestFee} onChange={e => setBaseInputs({...baseInputs, labRequestFee: Number(e.target.value)})} className="admin-search-input" style={{width:'100%', boxSizing: 'border-box', paddingLeft: '28px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0'}}/>
+                        </div>
+                      </div>
+
+                      <div style={{ width: '100%' }}>
+                        <label style={{display:'block', marginBottom:'8px', fontSize: '0.85rem', fontWeight:600, color: '#475569'}}>Prescription Base Fee (₱)</label>
+                        <div style={{position: 'relative', width: '100%'}}>
+                          <span style={{position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontWeight: 'bold'}}>₱</span>
+                          <input type="number" value={baseInputs.prescriptionFee} onChange={e => setBaseInputs({...baseInputs, prescriptionFee: Number(e.target.value)})} className="admin-search-input" style={{width:'100%', boxSizing: 'border-box', paddingLeft: '28px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0'}}/>
+                        </div>
+                      </div>
+
+                      <div style={{ width: '100%' }}>
+                        <label style={{display:'block', marginBottom:'8px', fontSize: '0.85rem', fontWeight:600, color: '#475569'}}>Treatment Plan Base Fee (₱)</label>
+                        <div style={{position: 'relative', width: '100%'}}>
+                          <span style={{position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontWeight: 'bold'}}>₱</span>
+                          <input type="number" value={baseInputs.treatmentPlanFee} onChange={e => setBaseInputs({...baseInputs, treatmentPlanFee: Number(e.target.value)})} className="admin-search-input" style={{width:'100%', boxSizing: 'border-box', paddingLeft: '28px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0'}}/>
+                        </div>
+                      </div>
+
+                      <div style={{ gridColumn: '1 / -1', width: '100%', marginTop: '8px' }}>
+                        <label style={{display:'block', marginBottom:'8px', fontSize: '0.85rem', fontWeight:600, color: '#475569'}}>Global Checkout Notes</label>
+                        <textarea value={baseInputs.checkoutNotes} onChange={e => setBaseInputs({...baseInputs, checkoutNotes: e.target.value})} className="admin-search-input" style={{width:'100%', boxSizing: 'border-box', minHeight: '80px', padding: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', resize: 'vertical', lineHeight: '1.5'}}/>
+                        <p style={{fontSize: '0.75rem', color: '#94a3b8', marginTop: '6px'}}>This text will dynamically appear on all patient checkout invoices.</p>
+                      </div>
+                    </div>
+
+                    <div style={{marginTop: '30px', textAlign: 'right', borderTop: '1px solid #f1f5f9', paddingTop: '20px'}}>
+                      <button 
+                        onClick={handleSaveFees} 
+                        disabled={isSavingFees}
+                        style={{ 
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          background: '#0ea5e9', 
+                          color: 'white', 
+                          padding: '10px 24px', 
+                          borderRadius: '8px', 
+                          fontWeight: 600, 
+                          border: 'none', 
+                          cursor: isSavingFees ? 'not-allowed' : 'pointer',
+                          transition: 'background-color 0.2s',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                        }}
+                        onMouseOver={(e) => { if(!isSavingFees) e.currentTarget.style.background = '#0284c7'; }}
+                        onMouseOut={(e) => { if(!isSavingFees) e.currentTarget.style.background = '#0ea5e9'; }}
+                      >
+                        <FiSave size={18} />
+                        {isSavingFees ? 'Saving Configuration...' : 'Save Global Fees'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <div className="admin-empty-state" style={{border: 'none', height: '300px'}}>
+                <div className="admin-empty-state" style={{border: 'none', height: '300px', backgroundColor: '#f8fafc'}}>
                   <FiUsers style={{fontSize: '3rem', color: '#cbd5e1', margin: '0 auto 16px auto'}}/>
                   <h3 style={{margin: 0, textAlign: 'center'}}>Role Permissions</h3>
                   <p style={{marginTop: '8px', textAlign: 'center'}}>This module is currently under development.</p>

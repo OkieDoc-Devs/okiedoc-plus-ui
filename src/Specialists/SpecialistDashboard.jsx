@@ -2387,6 +2387,14 @@ const SpecialistDashboard = () => {
   const saveSoapModal = async () => {
     if (!soapModalType) return;
 
+    // Validate ICD fields when saving assessment
+    if (soapModalType === "assessment") {
+      if (!soapModalIcdCode || !soapModalIcdCode.trim()) {
+        alert("Please select all ICD code fields (Chapter, Block, Category, and Subcategory) before saving.");
+        return;
+      }
+    }
+
     const payload = { [soapModalType]: soapModalValue };
     if (soapModalType === "assessment") {
       payload.icd10 = soapModalIcdCode;
@@ -3318,6 +3326,7 @@ const SpecialistDashboard = () => {
                           style={{
                             backgroundColor: "#10b981",
                             borderColor: "#10b981",
+                            color: "white",
                           }}
                           onClick={() => {
                             setSelectedTicketId(selectedPatient.id);
@@ -3341,7 +3350,7 @@ const SpecialistDashboard = () => {
                   </div>
                 </div>
 
-                <div className="patient-details-scroll">
+                <div className={`patient-details-scroll ${profileData.specialization === "General Practice" ? "patient-details-scroll--gp-fixed" : ""}`}>
                   <div className="patient-info-card">
                     <div className="section-title-small">
                       Patient Information
@@ -3493,7 +3502,7 @@ const SpecialistDashboard = () => {
                     readOnly
                   />
 
-                  <div className="soap-panel">
+                  <div className={`soap-panel ${profileData.specialization === "General Practice" ? "soap-panel--gp-scrollable" : ""}`}>
                     <div className="soap-header">
                       <h3>SOAP Notes</h3>
                       <p>Document your clinical findings and treatment plan</p>
@@ -6338,7 +6347,7 @@ const SpecialistDashboard = () => {
                     {isTriage && (
                       <button
                         className="btn-primary"
-                        style={{ backgroundColor: "#10b981" }}
+                        style={{ backgroundColor: "#10b981", color: "white" }}
                         onClick={() => {
                           setSelectedTicketId(selectedTicket.id);
                           setShowInvoiceModal(true);

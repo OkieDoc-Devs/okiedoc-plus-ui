@@ -1,8 +1,7 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import '../Login & Registration/auth.css';
+import "./auth.css";
+import { useNavigate } from "react-router-dom";
 
-export default function PendingVerification() {
+export default function SpecialistApplicationSubmitted() {
   const navigate = useNavigate();
 
   return (
@@ -23,14 +22,16 @@ export default function PendingVerification() {
 
         <h2 className="login-title">Waiting for admin approval</h2>
         <p className="login-subtitle specialist-approval-lead">
-          Please wait. Your specialist application is pending for admin approval. You will be able 
-          to use the full dashboard after your credentials have been reviewed.
+          Please wait. Your application has been submitted successfully and is{" "}
+          <strong>pending admin approval</strong>. Thank you—we will notify you when your account is
+          ready.
         </p>
 
         <div className="specialist-approval-panel">
           <p className="specialist-approval-status">Status: Waiting for admin approval</p>
           <p className="specialist-approval-note">
-            We will notify you by email when there is an update on your application status.
+            You will be able to use the specialist dashboard after an administrator approves your
+            registration.
           </p>
         </div>
 

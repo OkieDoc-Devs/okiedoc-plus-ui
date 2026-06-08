@@ -6,7 +6,7 @@ import {
   getMonthName as sharedGetMonthName,
   formatDateKey as sharedFormatDateKey,
   isToday as sharedIsToday,
-  isPastDate as sharedIsPastDate
+  isPastDate as sharedIsPastDate,
 } from '../../utils/dateFormatter';
 
 export const formatDateLabel = sharedFormatDateLabel;
@@ -27,10 +27,25 @@ export const parseTicketDate = (whenField) => {
   return {
     month: date.getMonth(),
     day: date.getDate(),
-    year: date.getFullYear()
+    year: date.getFullYear(),
   };
 };
 
+/**
+ * Parse preferredDate from a ticket directly (locale-safe, avoids toLocaleDateString issues)
+ * @param {string|Date} preferredDate - The preferredDate from a ticket (YYYY-MM-DD string or Date object)
+ * @returns {Object|null} Parsed date info { month, day, year } or null
+ */
+export const parseTicketPreferredDate = (preferredDate) => {
+  if (!preferredDate) return null;
+  const date = new Date(preferredDate);
+  if (isNaN(date.getTime())) return null;
+  return {
+    month: date.getMonth(),
+    day: date.getDate(),
+    year: date.getFullYear(),
+  };
+};
 
 /**
  * Check if a date is today

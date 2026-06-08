@@ -1,5 +1,5 @@
-import { resetSocketAuth } from "./chatService.js";
-import { apiRequest } from "../../api/apiClient";
+import { resetSocketAuth } from './chatService.js';
+import { apiRequest } from '../../api/apiClient';
 
 /**
  * Fetch tickets from API
@@ -8,15 +8,15 @@ import { apiRequest } from "../../api/apiClient";
  */
 export async function fetchTicketsFromAPI() {
   try {
-    const data = await apiRequest("/api/v1/nurse/tickets");
+    const data = await apiRequest('/api/v1/nurse/tickets');
 
     if (data.success) {
       return data.data || [];
     } else {
-      throw new Error(data.message || "Failed to load tickets");
+      throw new Error(data.message || 'Failed to load tickets');
     }
   } catch (error) {
-    console.error("Error fetching tickets from API:", error);
+    console.error('Error fetching tickets from API:', error);
     throw error;
   }
 }
@@ -29,7 +29,7 @@ export async function fetchTicketsFromAPI() {
 export async function fetchNotificationsFromAPI() {
   try {
     const data = await apiRequest('/api/v1/notifications');
-    const notifications = (data.notifications || []).map(n => ({
+    const notifications = (data.notifications || []).map((n) => ({
       ...n,
       unread: !n.isRead, // Map backend isRead to frontend-expected unread state
     }));
@@ -54,15 +54,15 @@ export async function fetchNotificationsFromAPI() {
  */
 export async function fetchDashboardFromAPI() {
   try {
-    const data = await apiRequest("/api/v1/nurse/dashboard");
+    const data = await apiRequest('/api/v1/nurse/dashboard');
 
     if (data.success) {
       return data.data || {};
     } else {
-      throw new Error(data.message || "Failed to load dashboard data");
+      throw new Error(data.message || 'Failed to load dashboard data');
     }
   } catch (error) {
-    console.error("Error fetching dashboard from API:", error);
+    console.error('Error fetching dashboard from API:', error);
     throw error;
   }
 }
@@ -75,11 +75,11 @@ export async function fetchDashboardFromAPI() {
 export async function markNotificationAsRead(notificationId) {
   try {
     await apiRequest(`/api/v1/notifications/${notificationId}/read`, {
-      method: "PATCH",
+      method: 'PATCH',
     });
     return true;
   } catch (error) {
-    console.error("Error marking notification as read:", error);
+    console.error('Error marking notification as read:', error);
     return false;
   }
 }
@@ -91,17 +91,17 @@ export async function markNotificationAsRead(notificationId) {
  */
 export async function fetchNurseProfile() {
   try {
-    const data = await apiRequest("/api/v1/nurse/profile");
+    const data = await apiRequest('/api/v1/nurse/profile');
     // console.log("Raw API response for nurse profile:", data);
 
     if (data.success) {
       // console.log("Profile data from API:", data.data);
       return data.data;
     } else {
-      throw new Error(data.message || "Failed to load profile");
+      throw new Error(data.message || 'Failed to load profile');
     }
   } catch (error) {
-    console.error("Error fetching nurse profile:", error);
+    console.error('Error fetching nurse profile:', error);
     throw error;
   }
 }
@@ -114,18 +114,18 @@ export async function fetchNurseProfile() {
  */
 export async function updateNurseProfile(profileData) {
   try {
-    const data = await apiRequest("/api/v1/nurse/profile", {
-      method: "PUT",
+    const data = await apiRequest('/api/v1/nurse/profile', {
+      method: 'PUT',
       body: JSON.stringify(profileData),
     });
 
     if (data.success) {
       return data.data;
     } else {
-      throw new Error(data.message || "Failed to update profile");
+      throw new Error(data.message || 'Failed to update profile');
     }
   } catch (error) {
-    console.error("Error updating nurse profile:", error);
+    console.error('Error updating nurse profile:', error);
     throw error;
   }
 }
@@ -140,16 +140,16 @@ export async function uploadNurseAvatar(file) {
   const MAX_SIZE = 2 * 1024 * 1024;
   if (file.size > MAX_SIZE) {
     throw new Error(
-      "File size exceeds 2MB limit. Please choose a smaller image."
+      'File size exceeds 2MB limit. Please choose a smaller image.',
     );
   }
 
   try {
     const formData = new FormData();
-    formData.append("photo", file);
+    formData.append('photo', file);
 
-    const data = await apiRequest("/api/v1/user/upload-profile-picture", {
-      method: "POST",
+    const data = await apiRequest('/api/v1/user/upload-profile-picture', {
+      method: 'POST',
       body: formData,
     });
 
@@ -162,9 +162,9 @@ export async function uploadNurseAvatar(file) {
     if (data?.success) {
       return data.data || {};
     }
-    throw new Error(data?.message || "Failed to upload avatar");
+    throw new Error(data?.message || 'Failed to upload avatar');
   } catch (error) {
-    console.error("Error uploading nurse avatar:", error);
+    console.error('Error uploading nurse avatar:', error);
     throw error;
   }
 }
@@ -176,17 +176,17 @@ export async function uploadNurseAvatar(file) {
  */
 export async function deleteNurseAvatar() {
   try {
-    const data = await apiRequest("/api/v1/nurse/avatar", {
-      method: "DELETE",
+    const data = await apiRequest('/api/v1/nurse/avatar', {
+      method: 'DELETE',
     });
 
     if (data.success) {
       return true;
     } else {
-      throw new Error(data.message || "Failed to delete avatar");
+      throw new Error(data.message || 'Failed to delete avatar');
     }
   } catch (error) {
-    console.error("Error deleting nurse avatar:", error);
+    console.error('Error deleting nurse avatar:', error);
     throw error;
   }
 }
@@ -198,15 +198,15 @@ export async function deleteNurseAvatar() {
  */
 export async function fetchDoctorsFromAPI() {
   try {
-    const data = await apiRequest("/api/v1/nurse/doctors");
+    const data = await apiRequest('/api/v1/nurse/doctors');
 
     if (data.success) {
       return data.data || [];
     } else {
-      throw new Error(data.message || "Failed to load doctors");
+      throw new Error(data.message || 'Failed to load doctors');
     }
   } catch (error) {
-    console.error("Error fetching doctors from API:", error);
+    console.error('Error fetching doctors from API:', error);
     throw error;
   }
 }
@@ -227,25 +227,27 @@ export async function fetchNursesFromAPI() {
           ? data.data
           : [];
 
-    return users.filter((user) => String(user?.role || '').toLowerCase() === 'nurse');
+    return users.filter(
+      (user) => String(user?.role || '').toLowerCase() === 'nurse',
+    );
   } catch (error) {
     console.error('Error fetching nurses from API:', error);
     throw error;
   }
 }
 
-export async function searchPatientsFromAPI(search = "") {
+export async function searchPatientsFromAPI(search = '') {
   try {
-    const query = search ? `?search=${encodeURIComponent(search)}` : "";
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
     const data = await apiRequest(`/api/v1/nurse/patients${query}`);
 
     if (data.success) {
       return data.data || [];
     }
 
-    throw new Error(data.message || "Failed to search patients");
+    throw new Error(data.message || 'Failed to search patients');
   } catch (error) {
-    console.error("Error searching patients from API:", error);
+    console.error('Error searching patients from API:', error);
     throw error;
   }
 }
@@ -257,13 +259,13 @@ export async function searchPatientsFromAPI(search = "") {
  */
 export async function generateInvoice(data) {
   try {
-    const response = await apiRequest("/api/v1/tickets/generate-invoice", {
-      method: "POST",
+    const response = await apiRequest('/api/v1/tickets/generate-invoice', {
+      method: 'POST',
       body: JSON.stringify(data),
     });
     return response;
   } catch (error) {
-    console.error("Error generating invoice:", error);
+    console.error('Error generating invoice:', error);
     throw error;
   }
 }
@@ -276,18 +278,18 @@ export async function generateInvoice(data) {
  */
 export async function createTicket(ticketData) {
   try {
-    const data = await apiRequest("/api/v1/tickets/create", {
-      method: "POST",
+    const data = await apiRequest('/api/v1/tickets/create', {
+      method: 'POST',
       body: JSON.stringify(ticketData),
     });
 
     if (data.success) {
       return data.data;
     } else {
-      throw new Error(data.message || "Failed to create ticket");
+      throw new Error(data.message || 'Failed to create ticket');
     }
   } catch (error) {
-    console.error("Error creating ticket:", error);
+    console.error('Error creating ticket:', error);
     throw error;
   }
 }
@@ -299,13 +301,47 @@ export async function createTicket(ticketData) {
  */
 export async function claimTicket(ticketId) {
   try {
-    return await apiRequest("/api/v1/tickets/claim", {
-      method: "PATCH",
+    return await apiRequest('/api/v1/tickets/claim', {
+      method: 'PATCH',
       body: JSON.stringify({ ticketId: parseInt(ticketId, 10) }),
     });
   } catch (error) {
-    console.error("Error claiming ticket:", error);
+    console.error('Error claiming ticket:', error);
     throw error;
+  }
+}
+
+/**
+ * Fetch available time slots for a given date
+ * @param {string} date - Date in YYYY-MM-DD format
+ * @returns {Promise<Object>} Object with bookedSlots and allSlots arrays
+ */
+export async function fetchAvailableSlots(date) {
+  try {
+    const res = await apiRequest(`/api/v1/nurse/available-slots?date=${date}`);
+    const booked = res?.bookedSlots || [];
+    const allSlots = [
+      '08:00',
+      '08:30',
+      '09:00',
+      '09:30',
+      '10:00',
+      '10:30',
+      '11:00',
+      '11:30',
+      '13:00',
+      '13:30',
+      '14:00',
+      '14:30',
+      '15:00',
+      '15:30',
+      '16:00',
+      '16:30',
+    ];
+    return { bookedSlots: booked, allSlots };
+  } catch (error) {
+    console.error('Error fetching available slots:', error);
+    return { bookedSlots: [], allSlots: [] };
   }
 }
 
@@ -316,12 +352,12 @@ export async function claimTicket(ticketId) {
  */
 export async function triageTicket(triageData) {
   try {
-    return await apiRequest("/api/v1/nurse/triage-ticket", {
-      method: "PATCH",
+    return await apiRequest('/api/v1/nurse/triage-ticket', {
+      method: 'PATCH',
       body: JSON.stringify(triageData),
     });
   } catch (error) {
-    console.error("Error triaging ticket:", error);
+    console.error('Error triaging ticket:', error);
     throw error;
   }
 }
@@ -334,8 +370,8 @@ export async function triageTicket(triageData) {
  */
 export async function assignSpecialist(ticketId, specialistId, details = {}) {
   try {
-    return await apiRequest("/api/v1/tickets/assign-specialist", {
-      method: "PATCH",
+    return await apiRequest('/api/v1/tickets/assign-specialist', {
+      method: 'PATCH',
       body: JSON.stringify({
         ticketId: parseInt(ticketId, 10),
         specialistId: parseInt(specialistId, 10),
@@ -343,7 +379,7 @@ export async function assignSpecialist(ticketId, specialistId, details = {}) {
       }),
     });
   } catch (error) {
-    console.error("Error assigning specialist:", error);
+    console.error('Error assigning specialist:', error);
     throw error;
   }
 }
@@ -358,17 +394,17 @@ export async function assignSpecialist(ticketId, specialistId, details = {}) {
 export async function updateTicket(ticketId, updates) {
   try {
     const data = await apiRequest(`/api/v1/nurse/tickets/${ticketId}`, {
-      method: "PUT",
+      method: 'PUT',
       body: JSON.stringify(updates),
     });
 
     if (data.success) {
       return data.data;
     } else {
-      throw new Error(data.message || "Failed to update ticket");
+      throw new Error(data.message || 'Failed to update ticket');
     }
   } catch (error) {
-    console.error("Error updating ticket:", error);
+    console.error('Error updating ticket:', error);
     throw error;
   }
 }
@@ -382,29 +418,28 @@ export async function logoutFromAPI() {
   try {
     resetSocketAuth();
 
-    const data = await apiRequest("/api/v1/auth/logout", {
-      method: "POST",
+    const data = await apiRequest('/api/v1/auth/logout', {
+      method: 'POST',
     });
 
     if (data.success) {
-      localStorage.removeItem("currentUser");
-      localStorage.removeItem("okiedoc_user_type");
-      localStorage.removeItem("nurse.id");
-      localStorage.removeItem("nurse.email");
-      localStorage.removeItem("nurse.firstName");
-      localStorage.removeItem("nurse.lastName");
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('okiedoc_user_type');
+      localStorage.removeItem('nurse.id');
+      localStorage.removeItem('nurse.email');
+      localStorage.removeItem('nurse.firstName');
+      localStorage.removeItem('nurse.lastName');
 
       // console.log("Logout successful:", data.message);
       return data;
     } else {
-      console.warn("Logout response:", data);
-      localStorage.removeItem("currentUser");
+      console.warn('Logout response:', data);
+      localStorage.removeItem('currentUser');
       return data;
     }
   } catch (error) {
-    console.error("Error during logout:", error);
-    localStorage.removeItem("currentUser");
+    console.error('Error during logout:', error);
+    localStorage.removeItem('currentUser');
     throw error;
   }
 }
-

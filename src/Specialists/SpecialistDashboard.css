@@ -18,7 +18,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: "Inter", Arial, sans-serif;
+  font-family: 'Inter', Arial, sans-serif;
 }
 
 body.specialist-dashboard-body,
@@ -270,7 +270,7 @@ html:has(body.specialist-dashboard-body) {
   border: 1.5px solid #bfe5f9;
   border-radius: 8px;
   font-size: 0.95rem;
-  font-family: "Inter", Arial, sans-serif;
+  font-family: 'Inter', Arial, sans-serif;
   transition: all 0.2s ease;
   background: var(--white);
   color: #000000;
@@ -311,7 +311,7 @@ html:has(body.specialist-dashboard-body) {
   border-radius: 8px;
   padding: 10px 18px;
   cursor: pointer;
-  font-family: "Inter", Arial, sans-serif;
+  font-family: 'Inter', Arial, sans-serif;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -325,7 +325,7 @@ html:has(body.specialist-dashboard-body) {
   background: #4aa7ed !important;
 }
 
-.upload-btn input[type="file"] {
+.upload-btn input[type='file'] {
   position: absolute;
   left: 0;
   top: 0;
@@ -345,7 +345,7 @@ html:has(body.specialist-dashboard-body) {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  font-family: "Inter", Arial, sans-serif;
+  font-family: 'Inter', Arial, sans-serif;
   transition: all 0.3s ease;
   margin-top: 1rem;
 }
@@ -363,7 +363,7 @@ html:has(body.specialist-dashboard-body) {
   padding: 10px 16px;
   font-weight: 600;
   cursor: pointer;
-  font-family: "Inter", Arial, sans-serif;
+  font-family: 'Inter', Arial, sans-serif;
   transition: all 0.3s ease;
 }
 
@@ -569,7 +569,7 @@ html:has(body.specialist-dashboard-body) {
   border: 1px solid var(--light-gray);
   border-radius: 8px;
   font-size: 1rem;
-  font-family: "Poppins", sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 .full-width {
@@ -599,7 +599,7 @@ html:has(body.specialist-dashboard-body) {
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
-  font-family: "Poppins", sans-serif;
+  font-family: 'Poppins', sans-serif;
   transition: all 0.3s ease;
 }
 
@@ -647,7 +647,7 @@ html:has(body.specialist-dashboard-body) {
   color: var(--primary);
   border-radius: 6px;
   cursor: pointer;
-  font-family: "Poppins", sans-serif;
+  font-family: 'Poppins', sans-serif;
   transition: all 0.3s ease;
 }
 
@@ -804,7 +804,9 @@ html:has(body.specialist-dashboard-body) {
   text-align: center;
 }
 
-.specialist-dashboard .completed-consult-detail-modal .modal-content.completed-consult-detail-modal__content {
+.specialist-dashboard
+  .completed-consult-detail-modal
+  .modal-content.completed-consult-detail-modal__content {
   max-width: 960px;
   width: 94vw;
   max-height: 90vh;
@@ -847,7 +849,9 @@ html:has(body.specialist-dashboard-body) {
   margin-top: 4px;
 }
 
-.specialist-dashboard .completed-consult-detail-soap--inline .section-title-small {
+.specialist-dashboard
+  .completed-consult-detail-soap--inline
+  .section-title-small {
   margin-bottom: 0;
 }
 
@@ -938,7 +942,7 @@ html:has(body.specialist-dashboard-body) {
     font-size: 0.95rem;
   }
 
-  .ticket-row>div {
+  .ticket-row > div {
     word-break: break-word;
   }
 }
@@ -971,7 +975,7 @@ html:has(body.specialist-dashboard-body) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 0.5rem;
+  padding: 1rem;
   min-width: 0;
   background: var(--white);
   width: 100%;
@@ -1081,7 +1085,7 @@ html:has(body.specialist-dashboard-body) {
   gap: 0;
   width: 100%;
   background: var(--white);
-  min-height: 500px;
+  min-height: 520px;
   height: 100%;
 }
 
@@ -1090,7 +1094,7 @@ html:has(body.specialist-dashboard-body) {
   border: 1px solid var(--light-gray);
   border-top: none;
   border-left: none;
-  padding: 1rem 0.75rem;
+  padding: 0.6rem 0.5rem;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -1099,7 +1103,7 @@ html:has(body.specialist-dashboard-body) {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
-  min-height: 70px;
+  min-height: 80px;
 }
 
 .calendar-day:nth-child(7n) {
@@ -1201,7 +1205,7 @@ html:has(body.specialist-dashboard-body) {
 }
 
 .selected-date-panel {
-  width: 300px;
+  width: 400px;
   flex-shrink: 0;
   padding: 1rem;
   background: var(--light-bg);
@@ -1416,7 +1420,7 @@ html:has(body.specialist-dashboard-body) {
   font-weight: 500;
   color: var(--gray);
   transition: all 0.3s ease;
-  font-family: "Poppins", sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 .filter-item:hover {
@@ -1516,7 +1520,7 @@ html:has(body.specialist-dashboard-body) {
   font-size: 0.85rem;
   font-weight: 500;
   transition: all 0.3s ease;
-  font-family: "Poppins", sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 .action-btn:hover {
@@ -1576,7 +1580,7 @@ html:has(body.specialist-dashboard-body) {
   font-size: 0.85rem;
   font-weight: 500;
   transition: all 0.3s ease;
-  font-family: "Poppins", sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 .edit-btn:hover {
@@ -1630,21 +1634,33 @@ html:has(body.specialist-dashboard-body) {
   overflow: hidden;
 }
 
-.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--left,
-.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--center,
-.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--right {
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--left,
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center,
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--right {
   border-radius: 0;
   margin: 0;
   box-shadow: none;
 }
 
-.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--left,
-.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--center {
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--left,
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center {
   border: none;
   border-right: 1px solid #d9ecff;
 }
 
-.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--left {
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--left {
   padding: 16px;
   flex: 0 0 20%;
   width: auto;
@@ -1683,7 +1699,9 @@ html:has(body.specialist-dashboard-body) {
   gap: 8px;
 }
 
-.specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--center {
+.specialist-dashboard
+  .dashboard-content.dashboard-1to1.emr-dash-layout
+  > .emr-dash-panel--center {
   padding: 16px;
   flex: 0 0 50%;
   max-height: none;
@@ -1901,7 +1919,8 @@ html:has(body.specialist-dashboard-body) {
 .specialist-dashboard
   .dashboard-content.dashboard-1to1.emr-dash-layout
   > .emr-dash-panel--right
-  .clinical-tab svg {
+  .clinical-tab
+  svg {
   flex-shrink: 0;
   font-size: 0.9rem;
 }
@@ -1967,7 +1986,10 @@ html:has(body.specialist-dashboard-body) {
   border-radius: 12px;
   padding: 14px 12px;
   cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
   text-align: left;
 }
 
@@ -2061,6 +2083,15 @@ html:has(body.specialist-dashboard-body) {
   flex-shrink: 0;
   color: #64748b;
   font-size: 0.85rem;
+}
+
+.emr-patient-card__meta-line--scheduled {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.emr-patient-card__meta-line--scheduled svg {
+  color: #16a34a;
 }
 
 .emr-patient-card__complaint {
@@ -2213,7 +2244,9 @@ html:has(body.specialist-dashboard-body) {
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.15s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
   white-space: nowrap;
 }
 
@@ -2249,7 +2282,9 @@ html:has(body.specialist-dashboard-body) {
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.15s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
 }
 
 .btn-complete-consultation-emr:hover:not(:disabled) {
@@ -2482,7 +2517,9 @@ html:has(body.specialist-dashboard-body) {
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .complete-consultation:hover:not(:disabled) {
@@ -2545,7 +2582,9 @@ html:has(body.specialist-dashboard-body) {
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .clinical-tab:last-child {
@@ -3187,7 +3226,10 @@ html:has(body.specialist-dashboard-body) {
   font-size: 0.95rem;
   box-shadow: 0 8px 18px rgba(93, 140, 240, 0.25);
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
 }
 
 .patient-chat-send-btn:hover {
@@ -3215,7 +3257,10 @@ html:has(body.specialist-dashboard-body) {
 
 .soap-card-textarea--display {
   cursor: pointer;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
 
 .soap-card-textarea--display:hover {
@@ -3448,7 +3493,9 @@ html:has(body.specialist-dashboard-body) {
   border: 1px solid #d9e3f3;
   border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 2px 6px rgba(15, 23, 42, 0.04);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 2px 6px rgba(15, 23, 42, 0.04);
   text-align: left;
   cursor: pointer;
   transition:
@@ -3520,7 +3567,9 @@ html:has(body.specialist-dashboard-body) {
   border-radius: 14px;
   padding: 14px 16px;
   cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .medical-records-item:hover {
@@ -3592,7 +3641,9 @@ html:has(body.specialist-dashboard-body) {
     max-height: none;
   }
 
-  .specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--left {
+  .specialist-dashboard
+    .dashboard-content.dashboard-1to1.emr-dash-layout
+    > .emr-dash-panel--left {
     max-height: none;
   }
 
@@ -3603,7 +3654,9 @@ html:has(body.specialist-dashboard-body) {
     max-height: 320px;
   }
 
-  .specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--center {
+  .specialist-dashboard
+    .dashboard-content.dashboard-1to1.emr-dash-layout
+    > .emr-dash-panel--center {
     max-height: none;
   }
 
@@ -3614,13 +3667,21 @@ html:has(body.specialist-dashboard-body) {
     max-height: 280px;
   }
 
-  .specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--right {
+  .specialist-dashboard
+    .dashboard-content.dashboard-1to1.emr-dash-layout
+    > .emr-dash-panel--right {
     max-height: none;
   }
 
-  .specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--left,
-  .specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--center,
-  .specialist-dashboard .dashboard-content.dashboard-1to1.emr-dash-layout > .emr-dash-panel--right {
+  .specialist-dashboard
+    .dashboard-content.dashboard-1to1.emr-dash-layout
+    > .emr-dash-panel--left,
+  .specialist-dashboard
+    .dashboard-content.dashboard-1to1.emr-dash-layout
+    > .emr-dash-panel--center,
+  .specialist-dashboard
+    .dashboard-content.dashboard-1to1.emr-dash-layout
+    > .emr-dash-panel--right {
     flex: none;
     width: 100%;
     min-width: 0;
@@ -3984,7 +4045,7 @@ html:has(body.specialist-dashboard-body) {
   font-weight: 600;
   color: var(--navy);
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .ticket-card-actions {
@@ -4039,7 +4100,7 @@ html:has(body.specialist-dashboard-body) {
   border-top-right-radius: 6px;
 }
 
-.tabbar button+button {
+.tabbar button + button {
   margin-left: 8px;
 }
 
@@ -4303,7 +4364,7 @@ html:has(body.specialist-dashboard-body) {
 }
 
 .soap-followup-checkbox::after {
-  content: "";
+  content: '';
   width: 10px;
   height: 10px;
   border-radius: 3px;
@@ -4904,7 +4965,7 @@ html:has(body.specialist-dashboard-body) {
   align-items: center;
 }
 
-.input-row input[type="text"] {
+.input-row input[type='text'] {
   flex: 1;
   padding: 10px 12px;
   border: 1.5px solid #bfe5f9;
@@ -4914,14 +4975,14 @@ html:has(body.specialist-dashboard-body) {
   color: #222;
 }
 
-.input-row input[type="text"]:focus {
+.input-row input[type='text']:focus {
   outline: none;
   border-color: #4aa7ed;
   box-shadow: 0 0 0 3px rgba(74, 167, 237, 0.18);
   background: #ffffff;
 }
 
-.input-row input[type="text"]::placeholder {
+.input-row input[type='text']::placeholder {
   color: #9ca3af;
 }
 
@@ -5005,13 +5066,23 @@ html:has(body.specialist-dashboard-body) {
 }
 
 @keyframes modalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes modalSlideUp {
-  from { opacity: 0; transform: translateY(30px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .specialist-dashboard .modal-content {
@@ -5507,20 +5578,20 @@ html:has(body.specialist-dashboard-body) {
   .icd-dropdowns-container {
     gap: 8px;
   }
-  
+
   .icd-dropdown-group {
     gap: 4px;
   }
-  
+
   .icd-label {
     font-size: 0.8rem;
   }
-  
+
   .icd-dropdown {
     font-size: 0.85rem;
     padding: 7px 10px;
   }
-  
+
   .icd-code-details {
     padding: 8px 10px;
   }

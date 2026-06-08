@@ -10,6 +10,7 @@ import {
   saveNurseProfileImage,
 } from './services/storageService.js';
 import {
+  fetchAvailableSlots,
   fetchDashboardFromAPI,
   fetchDoctorsFromAPI,
   fetchNursesFromAPI,
@@ -716,6 +717,12 @@ export default function Dashboard() {
   const [isDepartmentMenuOpen, setIsDepartmentMenuOpen] = useState(false);
   const [isDoctorMenuOpen, setIsDoctorMenuOpen] = useState(false);
   const [isNurseMenuOpen, setIsNurseMenuOpen] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [bookedSlots, setBookedSlots] = useState([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [isScheduleMenuOpen, setIsScheduleMenuOpen] = useState(false);
   const [callbacks, setCallbacks] = useState([]);
   const [showCallbackModal, setShowCallbackModal] = useState(false);
   const [activeCallback, setActiveCallback] = useState(null);
@@ -866,13 +873,19 @@ export default function Dashboard() {
     setIsDepartmentMenuOpen(false);
     setIsDoctorMenuOpen(false);
     setIsNurseMenuOpen(false);
+    setIsScheduleMenuOpen(false);
     setTransferReason('');
+    setScheduleDate('');
+    setScheduleTime('');
+    setAvailableSlots([]);
+    setBookedSlots([]);
   };
 
   const closeTransferMenus = () => {
     setIsDepartmentMenuOpen(false);
     setIsDoctorMenuOpen(false);
     setIsNurseMenuOpen(false);
+    setIsScheduleMenuOpen(false);
   };
 
   const closeCallbackModal = () => {
@@ -986,9 +999,14 @@ export default function Dashboard() {
     setSelectedDoctorId('');
     setSelectedNurseId('');
     setTransferReason('');
+    setScheduleDate('');
+    setScheduleTime('');
+    setAvailableSlots([]);
+    setBookedSlots([]);
     setIsDepartmentMenuOpen(false);
     setIsDoctorMenuOpen(false);
     setIsNurseMenuOpen(false);
+    setIsScheduleMenuOpen(false);
   };
 
   const persistTriageDraft = (ticketId, patch) => {
@@ -1216,6 +1234,38 @@ export default function Dashboard() {
       isMounted = false;
     };
   }, [showTransferModal, user?.id]);
+
+  useEffect(() => {
+    if (!showTransferModal || !scheduleDate) {
+      setAvailableSlots([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadSlots = async () => {
+      setIsLoadingSlots(true);
+      try {
+        const { bookedSlots: booked, allSlots } =
+          await fetchAvailableSlots(scheduleDate);
+        if (!isMounted) return;
+        setBookedSlots(booked);
+        setAvailableSlots(allSlots.filter((s) => !booked.includes(s)));
+      } catch {
+        if (!isMounted) return;
+        setAvailableSlots([]);
+        setBookedSlots([]);
+      } finally {
+        if (isMounted) setIsLoadingSlots(false);
+      }
+    };
+
+    loadSlots();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [scheduleDate, showTransferModal]);
 
   useEffect(() => {
     if (!selectedTicket || !selectedPatientId || selectedTicket.isCallback) {
@@ -2055,9 +2105,15 @@ export default function Dashboard() {
   );
 
   const canTransferToDoctor = Boolean(
-    selectedDepartment && selectedDoctorId && !isTransferSubmitting,
+    selectedDepartment &&
+    selectedDoctorId &&
+    scheduleDate &&
+    scheduleTime &&
+    !isTransferSubmitting,
   );
-  const canTransferToNurse = Boolean(selectedNurseId && !isTransferSubmitting);
+  const canTransferToNurse = Boolean(
+    selectedNurseId && scheduleDate && scheduleTime && !isTransferSubmitting,
+  );
 
   const buildTransferTriagePayload = () => {
     const clinicalConcern = String(chiefComplaintDraft || '').trim();
@@ -2099,6 +2155,8 @@ export default function Dashboard() {
       currentMedications: currentMedicationsDraft,
       urgencyLevel: selectedUrgencyLevel || null,
       transferReason: transferReason.trim() || null,
+      scheduleDate: scheduleDate || null,
+      scheduleTime: scheduleTime || null,
     };
   };
 
@@ -2142,6 +2200,8 @@ export default function Dashboard() {
           nurse: Number(selectedNurseId),
           transferReason: transferReason.trim() || null,
           status: 'processing',
+          preferredDate: scheduleDate,
+          preferredTime: scheduleTime,
         });
       }
 
@@ -4104,6 +4164,7 @@ export default function Dashboard() {
                   setIsDepartmentMenuOpen(false);
                   setIsDoctorMenuOpen(false);
                   setIsNurseMenuOpen(false);
+                  setIsScheduleMenuOpen(false);
                 }}
               >
                 To Doctor
@@ -4116,6 +4177,7 @@ export default function Dashboard() {
                   setIsDepartmentMenuOpen(false);
                   setIsDoctorMenuOpen(false);
                   setIsNurseMenuOpen(false);
+                  setIsScheduleMenuOpen(false);
                 }}
               >
                 To Nurse
@@ -4251,6 +4313,114 @@ export default function Dashboard() {
                 </div>
               </>
             )}
+
+            <div className='triage-transfer-schedule-divider'>
+              <span>Schedule Appointment</span>
+            </div>
+
+            <div className='triage-transfer-field'>
+              <label>Schedule Date *</label>
+              <div className='triage-transfer-select-wrap'>
+                <input
+                  type='date'
+                  className='triage-transfer-date-input'
+                  value={scheduleDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  max={new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+                    .toISOString()
+                    .slice(0, 10)}
+                  onFocus={closeTransferMenus}
+                  onClick={closeTransferMenus}
+                  onChange={(e) => {
+                    setScheduleDate(e.target.value);
+                    setScheduleTime('');
+                    setIsScheduleMenuOpen(false);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className='triage-transfer-field'>
+              <label>Available Time *</label>
+              <div className='triage-transfer-select-wrap'>
+                <button
+                  type='button'
+                  className={`triage-transfer-select ${scheduleDate && scheduleTime ? '' : 'placeholder'}`}
+                  onClick={() => {
+                    if (!scheduleDate) return;
+                    setIsScheduleMenuOpen((prev) => !prev);
+                  }}
+                  onFocus={closeTransferMenus}
+                >
+                  <span>
+                    {!scheduleDate
+                      ? 'Select a date first'
+                      : isLoadingSlots
+                        ? 'Loading available slots...'
+                        : scheduleTime
+                          ? (() => {
+                              const [h, m] = scheduleTime.split(':');
+                              const hour = parseInt(h, 10);
+                              const ampm = hour >= 12 ? 'PM' : 'AM';
+                              const h12 = hour % 12 || 12;
+                              return `${h12}:${m} ${ampm}`;
+                            })()
+                          : 'Select a time slot'}
+                  </span>
+                  <ChevronDown size={17} strokeWidth={2.1} />
+                </button>
+                {isScheduleMenuOpen && scheduleDate && (
+                  <div className='triage-transfer-menu schedule-slots-menu'>
+                    {isLoadingSlots ? (
+                      <div className='triage-transfer-empty'>Loading...</div>
+                    ) : availableSlots.length > 0 ? (
+                      availableSlots.map((slot) => {
+                        const [h, m] = slot.split(':');
+                        const hour = parseInt(h, 10);
+                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                        const h12 = hour % 12 || 12;
+                        const displayTime = `${h12}:${m} ${ampm}`;
+                        const isBooked = bookedSlots.includes(slot);
+                        return (
+                          <button
+                            key={slot}
+                            type='button'
+                            className={`triage-transfer-option ${scheduleTime === slot ? 'active' : ''} ${isBooked ? 'triage-transfer-slot-booked' : ''}`}
+                            disabled={isBooked}
+                            onClick={() => {
+                              if (isBooked) return;
+                              setScheduleTime(slot);
+                              setIsScheduleMenuOpen(false);
+                            }}
+                          >
+                            {displayTime}
+                            {isBooked && (
+                              <span className='triage-transfer-slot-badge booked'>
+                                Booked
+                              </span>
+                            )}
+                            {!isBooked && scheduleTime !== slot && (
+                              <span className='triage-transfer-slot-badge select'>
+                                Select
+                              </span>
+                            )}
+                            {scheduleTime === slot && (
+                              <span className='triage-transfer-slot-badge selected'>
+                                Selected
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className='triage-transfer-empty'>
+                        No available slots for this date
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
 
             <div className='triage-transfer-actions'>
               <button

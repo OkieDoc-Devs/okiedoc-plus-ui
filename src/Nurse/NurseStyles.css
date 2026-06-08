@@ -4346,6 +4346,91 @@ body::-webkit-scrollbar {
   cursor: not-allowed;
 }
 
+.triage-transfer-schedule-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 10px;
+}
+
+.triage-transfer-schedule-divider::before,
+.triage-transfer-schedule-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #d9dde6;
+}
+
+.triage-transfer-schedule-divider span {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.triage-transfer-date-input {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  background: #ebecef;
+  min-height: 42px;
+  padding: 0 12px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  box-shadow: none;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.triage-transfer-date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.triage-transfer-date-input:focus,
+.triage-transfer-date-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.schedule-slots-menu {
+  max-height: 220px;
+}
+
+.triage-transfer-option.triage-transfer-slot-booked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.triage-transfer-slot-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-left: auto;
+}
+
+.triage-transfer-slot-badge.booked {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.triage-transfer-slot-badge.select {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.triage-transfer-slot-badge.selected {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
 .triage-empty-note {
   border: 1px dashed #cad2de;
   border-radius: 12px;

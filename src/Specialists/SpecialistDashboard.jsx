@@ -28,7 +28,8 @@ import './SpecialistDashboard.css';
 import authService from './authService';
 import * as specialistApi from './services/apiService';
 import { API_BASE_URL } from '../api/apiClient';
-import { getConversations as fetchChatConversations, sendMessage } from '../Nurse/services/chatService.js';
+import { getConversations as fetchChatConversations, sendMessage, subscribeToConversation, unsubscribeFromConversation, setupChatSocketListeners } from '../Nurse/services/chatService.js';
+import { connectSocket } from '../utils/socketClient';
 import JitsiMeetCall from '../components/VideoCall/JitsiMeetCall';
 import Messages from './Messages';
 import ImageCropperModal from '../components/ImageCropperModal';
@@ -1604,6 +1605,58 @@ const SpecialistDashboard = () => {
     if (!messagePanel) return;
     messagePanel.scrollTop = messagePanel.scrollHeight;
   }, [selectedTicketId, patientChatThreads]);
+
+  useEffect(() => {
+    if (!selectedTicketId) return;
+    connectSocket();
+
+    let previousTicketId = null;
+
+    subscribeToConversation(selectedTicketId);
+
+    const cleanup = setupChatSocketListeners({
+      onMessage: (data) => {
+        const ticketId = data.conversationId || data.ticket || data.message?.ticket;
+        if (Number(ticketId) !== Number(selectedTicketId)) return;
+
+        const senderId = data.message?.sender?.id || data.message?.Sender_ID || data.message?.senderId;
+        if (!senderId) return;
+
+        const msg = data.message || data;
+        const senderName = msg.sender?.fullName || msg.sender?.name || msg.senderName || 'Patient';
+        const content = msg.content || msg.text || msg.Message_Content || '';
+        const timestamp = msg.createdAt
+          ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        setPatientChatThreads((prev) => {
+          const thread = prev[selectedTicketId] || [];
+          const alreadyExists = thread.some(
+            (m) => String(m.id) === String(msg.id || msg.Message_ID),
+          );
+          if (alreadyExists) return prev;
+
+          return {
+            ...prev,
+            [selectedTicketId]: [
+              ...thread,
+              {
+                id: msg.id || msg.Message_ID || `incoming-${Date.now()}`,
+                sender: 'patient',
+                message: content,
+                text: content,
+                timestamp,
+              },
+            ],
+          };
+        });
+      },
+    });
+
+    return () => {
+      cleanup();
+    };
+  }, [selectedTicketId]);
 
   const handleNavigation = (target, title) => {
     setActiveTab(target);

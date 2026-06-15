@@ -2689,23 +2689,15 @@ export default function Dashboard() {
         return;
       }
       setQuickMessage('');
-      window.setTimeout(() => {
-        setOptimisticQuickMessagesByTicketId((previous) => {
-          const currentMessages = previous[selectedTicketId] || [];
-          const nextMessages = currentMessages.filter(
-            (message) => message.id !== optimisticMessage.id,
-          );
 
-          if (nextMessages.length === currentMessages.length) {
-            return previous;
-          }
-
-          return {
-            ...previous,
-            [selectedTicketId]: nextMessages,
-          };
-        });
-      }, 8000);
+      setOptimisticQuickMessagesByTicketId((previous) => {
+        const currentMessages = previous[selectedTicketId] || [];
+        const nextMessages = currentMessages.filter(
+          (message) => message.id !== optimisticMessage.id,
+        );
+        if (nextMessages.length === currentMessages.length) return previous;
+        return { ...previous, [selectedTicketId]: nextMessages };
+      });
     } catch (error) {
       console.error('Failed to send quick message:', error);
       setQuickMessageError('Unable to send your message right now.');

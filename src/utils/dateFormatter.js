@@ -8,15 +8,24 @@ export const MONTH_NAMES = [
     "July", "August", "September", "October", "November", "December"
 ];
 
+const isValidDate = (d) => d instanceof Date && !isNaN(d.getTime());
+
+export const safeFormatDate = (date, fallback = 'N/A') => {
+    if (date == null || date === '') return fallback;
+    const d = new Date(date);
+    return isValidDate(d) ? d.toLocaleDateString('en-US') : fallback;
+};
+
 export const formatDateFullStr = (date) => {
     if (!date) return '';
     const d = new Date(date);
-    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    return isValidDate(d) ? d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
 };
 
 export const formatDateShort = (date) => {
     if (!date) return '';
-    return new Date(date).toLocaleDateString('en-US');
+    const d = new Date(date);
+    return isValidDate(d) ? d.toLocaleDateString('en-US') : '';
 };
 
 export const formatTimeStr = (time) => {

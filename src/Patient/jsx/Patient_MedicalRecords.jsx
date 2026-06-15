@@ -26,6 +26,7 @@ import {
 } from "@tabler/icons-react";
 import "../css/Patient_MedicalRecords.css";
 import { fetchPatientMedicalHistory } from "../../api/apiClient";
+import { safeFormatDate } from "../../utils/dateFormatter";
 import { ICD11_CHAPTERS, parseICDCode } from "../../Specialists/utils/icdData";
 
 const toConsultationTypeLabel = (channel) => {
@@ -178,9 +179,7 @@ export default function Patient_MedicalRecords() {
               "Dr.",
             ),
             spec: h.specialistTitle || "Specialist",
-            date: h.visitDate
-              ? new Date(h.visitDate).toLocaleDateString()
-              : "N/A",
+            date: safeFormatDate(h.visitDate),
             time: h.preferredTime || "N/A",
             complaint: h.chiefComplaint || "N/A",
             dur: "N/A",
@@ -188,9 +187,7 @@ export default function Patient_MedicalRecords() {
             channel: h.consultationType,
             detail: {
               ticketNumber: h.ticketNumber || "—",
-              date: h.visitDate
-                ? new Date(h.visitDate).toLocaleDateString()
-                : "N/A",
+              date: safeFormatDate(h.visitDate),
               consultationTypeLabel: toConsultationTypeLabel(
                 h.consultationType,
               ),
@@ -213,7 +210,7 @@ export default function Patient_MedicalRecords() {
             (h.prescriptions || []).map((p, idx) => ({
               id: `p-${h.ticketNumber}-${idx}`,
               dr: `Dr. ${h.specialistName}`,
-              date: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
+              date: safeFormatDate(h.visitDate),
               meds: [`${p.generic} ${p.brand ? `(${p.brand})` : ""} - ${p.dosage}`],
               status: "Active",
             })),
@@ -224,7 +221,7 @@ export default function Patient_MedicalRecords() {
             (h.labRequests || []).map((l, idx) => ({
               id: `l-${h.ticketNumber}-${idx}`,
               dr: `Dr. ${h.specialistName}`,
-              date: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
+              date: safeFormatDate(h.visitDate),
               test: l.test,
               clinic: l.customTestName || "N/A",
               status: "Completed",
@@ -236,7 +233,7 @@ export default function Patient_MedicalRecords() {
             (h.medicalCertificates || []).map((c, idx) => ({
               id: `c-${h.ticketNumber}-${idx}`,
               dr: `Dr. ${h.specialistName}`,
-              date: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
+              date: safeFormatDate(h.visitDate),
               type: c.diagnosisReason,
               status: "Completed",
             })),
@@ -247,7 +244,7 @@ export default function Patient_MedicalRecords() {
             (h.treatmentPlans || []).map((tp, idx) => ({
               id: `tp-${h.ticketNumber}-${idx}`,
               dr: `Dr. ${h.specialistName}`,
-              start: h.visitDate ? new Date(h.visitDate).toLocaleDateString() : "N/A",
+              start: safeFormatDate(h.visitDate),
               next: "TBD",
               condition: tp.plan,
               spec: h.specialistTitle || "Specialist",

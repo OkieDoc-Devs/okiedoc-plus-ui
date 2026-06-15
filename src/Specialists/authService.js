@@ -3,12 +3,12 @@
  * Handles authentication and session management for specialists
  */
 
-import * as api from './services/apiService.js';
+import * as api from "./services/apiService.js";
 
 const STORAGE_KEYS = {
-  currentUser: 'okiedoc_specialist_user',
-  userType: 'okiedoc_user_type',
-  token: 'okiedoc_auth_token',
+  currentUser: "okiedoc_specialist_user",
+  userType: "okiedoc_user_type",
+  token: "okiedoc_auth_token",
 };
 
 class AuthService {
@@ -33,7 +33,7 @@ class AuthService {
         );
         localStorage.setItem(
           STORAGE_KEYS.userType,
-          response.user.userType || 'specialist',
+          response.user.userType || "specialist",
         );
       }
     } catch {
@@ -54,11 +54,11 @@ class AuthService {
       const response = await api.loginSpecialist(email, password);
 
       if (response.success) {
-        if (response.user && response.user.role !== 'specialist') {
+        if (response.user && response.user.role !== "specialist") {
           await api.logoutSpecialist().catch(() => {});
           return {
             success: false,
-            error: 'Access denied: This login portal is for Specialists only.',
+            error: "Access denied: This login portal is for Specialists only.",
           };
         }
 
@@ -67,7 +67,7 @@ class AuthService {
           STORAGE_KEYS.currentUser,
           JSON.stringify(response.user),
         );
-        localStorage.setItem(STORAGE_KEYS.userType, 'specialist');
+        localStorage.setItem(STORAGE_KEYS.userType, "specialist");
 
         // The API enforces JWT for mutating requests (CSRF protection).
         // `apiClient` reads `jwt_token`, so keep it in sync here.
@@ -79,19 +79,19 @@ class AuthService {
         return {
           success: true,
           user: response.user,
-          redirect: response.redirect || '/specialist-dashboard',
+          redirect: response.redirect || "/specialist-dashboard",
         };
       }
 
       return {
         success: false,
-        error: response.message || 'Login failed',
+        error: response.message || "Login failed",
       };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       return {
         success: false,
-        error: error.message || 'Login failed. Please try again.',
+        error: error.message || "Login failed. Please try again.",
       };
     }
   }
@@ -104,7 +104,7 @@ class AuthService {
     try {
       await api.logoutSpecialist();
     } catch (error) {
-      console.error('Logout API error:', error);
+      console.error("Logout API error:", error);
     } finally {
       this.clearLocalStorage();
       this.currentUser = null;
@@ -121,7 +121,7 @@ class AuthService {
     if (this.currentUser) {
       return {
         user: this.currentUser,
-        userType: 'specialist',
+        userType: "specialist",
       };
     }
 
@@ -137,7 +137,7 @@ class AuthService {
         };
       }
     } catch (error) {
-      console.error('Error getting current user:', error);
+      console.error("Error getting current user:", error);
     }
 
     return null;
@@ -157,7 +157,7 @@ class AuthService {
    */
   isSpecialist() {
     const current = this.getCurrentUser();
-    return current && current.userType === 'specialist';
+    return current && current.userType === "specialist";
   }
 
   /**
@@ -189,13 +189,13 @@ class AuthService {
    */
   getRedirectPath(userType) {
     const paths = {
-      specialist: '/specialist-dashboard',
-      patient: '/patient-dashboard',
-      nurse: '/nurse-dashboard',
-      admin: '/admin/specialist-dashboard',
-      nurse_admin: '/nurse-admin-dashboard',
+      specialist: "/specialist-dashboard",
+      patient: "/patient-dashboard",
+      nurse: "/nurse-dashboard",
+      admin: "/admin/specialist-dashboard",
+      nurse_admin: "/nurse-admin-dashboard",
     };
-    return paths[userType] || '/dashboard';
+    return paths[userType] || "/dashboard";
   }
 
   validateEmail(email) {
@@ -211,37 +211,37 @@ class AuthService {
     const errors = {};
 
     if (!data.firstName?.trim()) {
-      errors.firstName = 'First name is required';
+      errors.firstName = "First name is required";
     }
 
     if (!data.lastName?.trim()) {
-      errors.lastName = 'Last name is required';
+      errors.lastName = "Last name is required";
     }
 
     if (!data.email?.trim()) {
-      errors.email = 'Email is required';
+      errors.email = "Email is required";
     } else if (!this.validateEmail(data.email)) {
-      errors.email = 'Please enter a valid email address';
+      errors.email = "Please enter a valid email address";
     }
 
     if (!data.password) {
-      errors.password = 'Password is required';
+      errors.password = "Password is required";
     } else if (!this.validatePassword(data.password)) {
-      errors.password = 'Password must be at least 6 characters long';
+      errors.password = "Password must be at least 6 characters long";
     }
 
     if (!data.confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password';
+      errors.confirmPassword = "Please confirm your password";
     } else if (data.password !== data.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
+      errors.confirmPassword = "Passwords do not match";
     }
 
     if (!data.specialization?.trim()) {
-      errors.specialization = 'Medical specialty is required';
+      errors.specialization = "Medical specialty is required";
     }
 
     if (!data.prcNumber?.trim()) {
-      errors.prcNumber = 'PRC license number is required';
+      errors.prcNumber = "PRC license number is required";
     }
 
     return {

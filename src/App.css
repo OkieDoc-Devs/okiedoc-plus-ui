@@ -8,8 +8,7 @@ body {
 }
 
 #root {
-  width: 100%;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
   text-align: initial;
 }
@@ -390,7 +389,9 @@ body {
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .action-item:hover {
@@ -702,8 +703,9 @@ body {
   }
 
   .header {
-    padding: 0rem 1rem 0.5rem 0.5rem;
-    flex-wrap: wrap;
+    padding: 0.5rem 1rem;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
   }
 
   .text-and-buttons {
@@ -716,13 +718,13 @@ body {
 
   .button-group {
     display: flex;
-    order: 3;
     gap: 0.5rem;
+    margin-left: auto;
   }
 
   .mobile-nav-toggle {
     display: block;
-    order: 2;
+    margin-right: 1rem;
   }
 
   .mobile-nav-dropdown {
@@ -1102,7 +1104,9 @@ body {
   background: #e0e0e0;
   cursor: pointer;
   position: relative;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
   flex-shrink: 0;
 }
 
@@ -1152,7 +1156,9 @@ body {
   background: #e0e0e0;
   cursor: pointer;
   position: relative;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
   flex-shrink: 0;
 }
 

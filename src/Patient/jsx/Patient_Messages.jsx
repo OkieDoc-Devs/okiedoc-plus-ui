@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FaComments,
   FaTimes,
@@ -6,10 +6,8 @@ import {
   FaPaperclip,
   FaPhone,
   FaVideo,
-  FaPlus,
   FaSearch,
   FaSpinner,
-  FaUser,
 } from 'react-icons/fa';
 import Avatar from '../../components/Avatar';
 import { useAuth } from '../../contexts/AuthContext';
@@ -18,7 +16,6 @@ import {
   isAllowedFileType,
   getMaxFileSize,
   formatFileSize,
-  getUserTypeLabel,
 } from '../../Nurse/services/chatService.js';
 import JitsiMeetCall from '../../components/VideoCall/JitsiMeetCall.jsx';
 import '../css/Patient_Messages.css';
@@ -31,10 +28,6 @@ const Patient_Messages = ({ setActive }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [isVideoCall, setIsVideoCall] = useState(true);
-  const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [userSearchResults, setUserSearchResults] = useState([]);
-  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const chatMessagesRef = useRef(null);
   const chatBottomRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -53,10 +46,7 @@ const Patient_Messages = ({ setActive }) => {
     sendMessage: sendChatMessage,
     uploadFile: uploadChatFile,
     handleTyping,
-    startConversation,
-    searchUsers,
-    getAllUsers,
-    loadConversations, // Added this
+    loadConversations,
     isCallActive,
     activeCallHost,
   } = useChat({ currentUserId, currentUserType: 'p' });
@@ -70,41 +60,6 @@ const Patient_Messages = ({ setActive }) => {
       chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, activeConversation]);
-
-  const handleUserSearch = useCallback(
-    async (query) => {
-      setIsSearchingUsers(true);
-      try {
-        if (!query.trim()) {
-          const results = await getAllUsers();
-          setUserSearchResults(results || []);
-        } else {
-          const results = await searchUsers(query);
-          setUserSearchResults(results || []);
-        }
-      } catch (error) {
-        console.error('Error searching users:', error);
-        setUserSearchResults([]);
-      } finally {
-        setIsSearchingUsers(false);
-      }
-    },
-    [searchUsers, getAllUsers],
-  );
-
-  useEffect(() => {
-    if (showNewChatModal) {
-      handleUserSearch('');
-    }
-  }, [showNewChatModal, handleUserSearch]);
-
-  useEffect(() => {
-    if (!showNewChatModal) return;
-    const timer = setTimeout(() => {
-      handleUserSearch(userSearchQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [userSearchQuery, handleUserSearch, showNewChatModal]);
 
   const handleMessageChange = (e) => {
     const text = e.target.value;
@@ -177,17 +132,6 @@ const Patient_Messages = ({ setActive }) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleStartNewChat = async (userId) => {
-    try {
-      await startConversation('direct', userId);
-      setShowNewChatModal(false);
-      setUserSearchQuery('');
-      setUserSearchResults([]);
-    } catch (error) {
-      console.error('Error starting new chat:', error);
-    }
-  };
-
   const filteredConversations = conversations.filter(conv => {
     const name = (conv.name || '').toLowerCase();
     const ticketNumber = (conv.ticketNumber || '').toLowerCase();
@@ -202,12 +146,6 @@ const Patient_Messages = ({ setActive }) => {
           <div className="patient-conversations-header">
             <div className="patient-conversations-title">
               <span>Messages</span>
-              <button 
-                className="patient-new-chat-btn"
-                onClick={() => setShowNewChatModal(true)}
-              >
-                <FaPlus />
-              </button>
             </div>
             <div className="patient-conversations-search">
               <FaSearch className="patient-search-icon" />
@@ -385,62 +323,10 @@ const Patient_Messages = ({ setActive }) => {
               <FaComments size={64} />
               <h3>Your Messages</h3>
               <p>Select a conversation to start chatting</p>
-              <button className="primary-button" onClick={() => setShowNewChatModal(true)}>New Chat</button>
             </div>
           )}
         </main>
       </div>
-
-      {showNewChatModal && (
-        <div className="patient-modal-overlay" onClick={() => setShowNewChatModal(false)}>
-          <div className="patient-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="patient-modal-header">
-              <h3>Start New Conversation</h3>
-              <button className="patient-modal-close" onClick={() => setShowNewChatModal(false)}><FaTimes /></button>
-            </div>
-            <div className="patient-modal-body">
-              <div className="patient-user-search">
-                <FaSearch className="patient-search-icon" />
-                <input 
-                  type="text" 
-                  placeholder="Search users by name..." 
-                  value={userSearchQuery}
-                  onChange={(e) => setUserSearchQuery(e.target.value)}
-                  className="patient-user-search-input"
-                />
-              </div>
-              <div className="patient-user-results">
-                {isSearchingUsers ? (
-                  <div className="patient-searching">
-                    <FaSpinner className="fa-spin" />
-                    <span>Searching...</span>
-                  </div>
-                ) : userSearchResults.length > 0 ? (
-                  userSearchResults.map(u => (
-                    <div key={u.Id || u.id} className="patient-user-result-item" onClick={() => handleStartNewChat(u.Id || u.id)}>
-                      <div className="patient-user-avatar">
-                        <FaUser />
-                      </div>
-                      <div className="patient-user-info">
-                        <span className="patient-user-name">{u.Display_Name || u.name || u.Email}</span>
-                        <span className="patient-user-type">{u.User_Type || getUserTypeLabel(u.User_Type_Code || u.userType || u.type)}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : userSearchQuery ? (
-                  <div className="patient-no-users">
-                    <p>No users found</p>
-                  </div>
-                ) : (
-                  <div className="patient-search-hint">
-                    <p>Type a name to search for users</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showVideoCall && (
         <JitsiMeetCall

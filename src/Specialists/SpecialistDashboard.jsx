@@ -28,7 +28,7 @@ import './SpecialistDashboard.css';
 import authService from './authService';
 import * as specialistApi from './services/apiService';
 import { API_BASE_URL } from '../api/apiClient';
-import { getConversations as fetchChatConversations } from '../Nurse/services/chatService.js';
+import { getConversations as fetchChatConversations, sendMessage } from '../Nurse/services/chatService.js';
 import JitsiMeetCall from '../components/VideoCall/JitsiMeetCall';
 import Messages from './Messages';
 import ImageCropperModal from '../components/ImageCropperModal';
@@ -2040,31 +2040,32 @@ const SpecialistDashboard = () => {
 
     const trimmedMessage = patientChatDraft.trim();
     if (!trimmedMessage || !selectedTicketId) return;
-    const activeTicket = tickets.find(
-      (ticket) => String(ticket.id) === String(selectedTicketId),
-    );
 
-    const newMessage = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      sender: 'specialist',
-      message: trimmedMessage,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    };
+    try {
+      const sentMessage = await sendMessage(selectedTicketId, trimmedMessage);
 
-    setPatientChatThreads((prev) => ({
-      ...prev,
-      [selectedTicketId]: [
-        ...(prev[selectedTicketId] || createPatientChatMessages(activeTicket)),
-        newMessage,
-      ],
-    }));
-    setPatientChatDraft('');
+      const localMessage = {
+        id: sentMessage?.id || `${Date.now()}`,
+        sender: 'specialist',
+        message: trimmedMessage,
+        text: trimmedMessage,
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      };
 
-    // TODO: wire up real message sending API call when available.
-    // await specialistApi.sendMessageToPatient(selectedTicketId, trimmedMessage);
+      setPatientChatThreads((prev) => ({
+        ...prev,
+        [selectedTicketId]: [
+          ...(prev[selectedTicketId] || []),
+          localMessage,
+        ],
+      }));
+      setPatientChatDraft('');
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    }
   };
 
   const handleCropComplete = async (croppedFile) => {

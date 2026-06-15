@@ -26,6 +26,19 @@ function normalizeUser(rawUser) {
 export const getRedirectPathForRole = (role) =>
   DEFAULT_REDIRECTS[role] || '/login';
 
+/** Where to send the user immediately after a successful login (handles specialist approval). */
+export function getPostLoginPathForUser(user) {
+  if (!user) return '/login';
+  const role = user.role || user.userType;
+  if (role === 'specialist') {
+    const status = String(user.applicationStatus || 'pending').toLowerCase();
+    if (status === 'denied') return '/specialist-denied';
+    if (status === 'pending') return '/specialist-pending';
+    return '/specialist-dashboard';
+  }
+  return getRedirectPathForRole(role);
+}
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -110,6 +123,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       refreshSession,
       getRedirectPathForRole,
+      getPostLoginPathForUser,
     }),
     [user, loading, login, logout, refreshSession],
   );

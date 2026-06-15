@@ -41,6 +41,15 @@ const Patient_Messages = ({ setActive }) => {
 
   const currentUserId = user?.id || null;
 
+  // Helper function to extract name parts
+  const getNameParts = (name) => {
+    const parts = (name || '').split(' ').filter(Boolean);
+    return {
+      firstName: parts[0] || '',
+      lastName: parts.slice(1).join(' ') || '',
+    };
+  };
+
   const {
     conversations,
     activeConversation,
@@ -303,15 +312,20 @@ const Patient_Messages = ({ setActive }) => {
               <div className="patient-chat-messages" ref={chatMessagesRef}>
                 {messages.map((msg, index) => {
                   const isMe = Number(msg.senderId || msg.sender?.id) === Number(currentUserId);
-                  const sender = msg.sender || activeConversation.participants?.find(p => p.id === msg.senderId) || { firstName: (activeConversation.role || 'U'), lastName: '' };
+                  
+                  // Get sender name - check multiple possible locations in the message object
+                  const senderName = msg.senderName || msg.sender?.name || msg.sender?.fullName || '';
+                  const { firstName, lastName } = getNameParts(senderName);
+                  
+                  const sender = msg.sender || {};
                   
                   return (
                     <div key={msg.id || index} className={`patient-message-row ${isMe ? 'sent' : 'received'}`}>
                       {!isMe && (
                         <Avatar 
-                          profileImageUrl={sender.profilePictureUrl} 
-                          firstName={sender.firstName || sender.name?.split(' ')[0] || sender.fullName?.split(' ')[0]} 
-                          lastName={sender.lastName || sender.name?.split(' ')[1] || sender.fullName?.split(' ')[1]}
+                          profileImageUrl={sender.profilePictureUrl || sender.avatar} 
+                          firstName={firstName}
+                          lastName={lastName}
                           size={32}
                         />
                       )}

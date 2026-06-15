@@ -12,7 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const SpecialistLogin = () => {
   const navigate = useNavigate();
-  const { login: contextLogin, isAuthenticated, user, getRedirectPathForRole } = useAuth();
+  const { login: contextLogin, isAuthenticated, user, getPostLoginPathForUser } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -24,9 +24,9 @@ const SpecialistLogin = () => {
 
   useEffect(() => {
     if (isAuthenticated && user?.role === 'specialist') {
-      navigate(getRedirectPathForRole('specialist'));
+      navigate(getPostLoginPathForUser(user));
     }
-  }, [isAuthenticated, user, navigate, getRedirectPathForRole]);
+  }, [isAuthenticated, user, navigate, getPostLoginPathForUser]);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -58,7 +58,7 @@ const SpecialistLogin = () => {
             (loggedInUser.lastName || loggedInUser.firstName || '') +
             ' 👋',
         );
-        navigate(getRedirectPathForRole('specialist') || '/specialist-dashboard');
+        navigate(getPostLoginPathForUser(loggedInUser) || '/specialist-dashboard');
       }
     } catch (error) {
       alert(error.message || 'An error occurred during login. Please try again.');

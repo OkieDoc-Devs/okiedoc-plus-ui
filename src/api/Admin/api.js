@@ -72,7 +72,7 @@ export const getPendingApplications = async () => {
           subspecializations: app.subSpecialties ? app.subSpecialties.split(',').map((s) => s.trim()) : [],
           prcId: {
             number: app.licenseNumber || u.licenseNumber || 'N/A',
-            imageUrl: app.prcIdUrl || null,
+            imageUrl: app.prcIdUrl || app.prcId || null,
           },
           s2: {
             number: app.s2Number || 'N/A',
@@ -84,7 +84,7 @@ export const getPendingApplications = async () => {
           },
           eSig: app.eSignatureUrl ? `${API_BASE_URL}${app.eSignatureUrl}` : null,
           profilePicture: app.profilePictureUrl || u.profileImage || null,
-          addressLine1: app.addressLine1 || '',
+          addressLine1: app.addressLine1 || app.addressLine || '',
           addressLine2: app.addressLine2 || '',
           barangay: app.barangay || '',
           city: app.city || '',
@@ -201,9 +201,9 @@ export const getAdminProfile = async () => {
 export const uploadAdminAvatar = async (file) => {
   try {
     const formData = new FormData();
-    formData.append('avatar', file);
+    formData.append('photo', file);
 
-    return await fetch(`${API_BASE_URL}/api/v1/admin/avatar`, {
+    return await fetch(`/api/v1/user/profile-picture`, {
       method: 'POST',
       body: formData,
       credentials: 'include',

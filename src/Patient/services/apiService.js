@@ -219,15 +219,28 @@ export const fetchDoctors = async () => {
   }
 };
 
-export const shareRecords = async (specialistId) => {
+export const shareRecords = async (specialistId, recordTypes = [], accessDuration = 'one-time') => {
   try {
     const response = await apiRequest("/api/v1/patients/share-records", {
+      method: "POST",
+      body: JSON.stringify({ specialistId, recordTypes, accessDuration }),
+    });
+    return response;
+  } catch (error) {
+    console.error("Error sharing records:", error);
+    throw error;
+  }
+};
+
+export const revokeRecords = async (specialistId) => {
+  try {
+    const response = await apiRequest("/api/v1/patients/revoke-records", {
       method: "POST",
       body: JSON.stringify({ specialistId }),
     });
     return response;
   } catch (error) {
-    console.error("Error sharing records:", error);
+    console.error("Error revoking records:", error);
     throw error;
   }
 };

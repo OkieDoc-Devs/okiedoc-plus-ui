@@ -37,36 +37,6 @@ import AboutUs from './AboutUs.tsx';
 import { NotificationProvider } from './contexts/NotificationContext.jsx';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 
-const apiUrl =
-  import.meta.env.VITE_API_URL ||
-  import.meta.env.VITE_API_BASE_URL ||
-  'http://localhost:1337';
-const isProd = import.meta.env.MODE === 'production';
-
-const loadSailsSocket = () => {
-  const script = document.createElement('script');
-  script.src = `${apiUrl}/dependencies/sails.io.js`;
-  script.onload = () => {
-    if (window.io && window.io.sails) {
-      window.io.sails.url = apiUrl;
-      window.io.sails.useCORSRouteToGetCookie = true;
-      window.io.sails.transports = ['websocket', 'polling'];
-      if (typeof window.io.socket.connect === 'function') {
-        window.io.socket.connect();
-      }
-    }
-  };
-  script.onerror = () => {
-    console.warn(
-      '[Socket] Failed to load sails.io.js - real-time features will be unavailable',
-    );
-  };
-  script.async = true;
-  document.head.appendChild(script);
-};
-
-loadSailsSocket();
-
 function AppContent() {
   const [activeView, setActiveView] = useState('patient');
   const location = useLocation();

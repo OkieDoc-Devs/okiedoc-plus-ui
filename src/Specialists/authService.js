@@ -69,6 +69,13 @@ class AuthService {
         );
         localStorage.setItem(STORAGE_KEYS.userType, 'specialist');
 
+        // The API enforces JWT for mutating requests (CSRF protection).
+        // `apiClient` reads `jwt_token`, so keep it in sync here.
+        if (response.token) {
+          localStorage.setItem('jwt_token', response.token);
+          localStorage.setItem(STORAGE_KEYS.token, response.token);
+        }
+
         return {
           success: true,
           user: response.user,
@@ -172,6 +179,7 @@ class AuthService {
     localStorage.removeItem(STORAGE_KEYS.currentUser);
     localStorage.removeItem(STORAGE_KEYS.userType);
     localStorage.removeItem(STORAGE_KEYS.token);
+    localStorage.removeItem('jwt_token');
   }
 
   /**

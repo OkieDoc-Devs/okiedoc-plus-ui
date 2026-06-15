@@ -125,8 +125,12 @@ export const createDefaultLabForm = () => ({
  */
 export const validateMedicine = (medicine) => {
   const errors = {};
+  const hasName =
+    (medicine.name && medicine.name.trim()) ||
+    (medicine.brand && medicine.brand.trim()) ||
+    (medicine.generic && medicine.generic.trim());
 
-  if (!medicine.name || medicine.name.trim() === "") {
+  if (!hasName) {
     errors.medicine = "Enter medicine brand or generic name";
   }
 
@@ -171,6 +175,79 @@ export const validateLabRequest = (labRequest) => {
  * @param {Object} medicine - Medicine to add
  * @returns {Object} Updated encounter data
  */
+const normalizeMedicineEntry = (medicine) => {
+  const name = (medicine.name || medicine.brand || medicine.generic || "").trim();
+  const instructionParts = [
+    medicine.instructions,
+    medicine.specialInstructions,
+    medicine.frequency ? `Frequency: ${medicine.frequency}` : "",
+    medicine.duration ? `Duration: ${medicine.duration}` : "",
+  ].filter(Boolean);
+
+  return {
+    ...medicine,
+    name,
+    brand: (medicine.brand || name).trim(),
+    generic: (medicine.generic || name).trim(),
+    instructions: instructionParts.join("; ") || medicine.instructions || "",
+  };
+};
+
+/**
+ * Map encounter medicines for complete-consultation API payload.
+ * @param {Array} medicines - Medicines from encounter state
+ * @returns {Array} Prescription payloads for the API
+ */
+export const mapMedicinesForCompletion = (medicines = []) =>
+  (Array.isArray(medicines) ? medicines : [])
+    .map(normalizeMedicineEntry)
+    .filter((medicine) => medicine.brand || medicine.generic)
+    .map((medicine) => ({
+      brand: medicine.brand || null,
+      generic: medicine.generic || medicine.brand || "",
+      dosage: medicine.dosage || null,
+      form: medicine.form || null,
+      quantity: medicine.quantity || medicine.duration || null,
+      instructions: medicine.instructions || medicine.specialInstructions || null,
+    }));
+
+/**
+ * Map lab selections for complete-consultation API payload.
+ * @param {Array} labRequests - Lab requests from encounter state
+ * @returns {Array} Lab request payloads for the API
+ */
+export const mapLabRequestsForCompletion = (labRequests = []) =>
+  (Array.isArray(labRequests) ? labRequests : [])
+    .map((labRequest) => ({
+      test: (labRequest.test || "").trim(),
+      customTestName: (labRequest.customTestName || "").trim() || null,
+      remarks: (labRequest.remarks || "").trim() || null,
+    }))
+    .filter((labRequest) => labRequest.test);
+
+/**
+ * Map med certificate form for complete-consultation API payload.
+ * @param {Object} certificateForm - Certificate form state
+ * @returns {Array} Medical certificate payloads for the API
+ */
+export const mapMedicalCertificatesForCompletion = (certificateForm) => {
+  if (!certificateForm || !String(certificateForm.diagnosisReason || "").trim()) {
+    return [];
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  return [
+    {
+      diagnosisReason: certificateForm.diagnosisReason.trim(),
+      dateIssued: certificateForm.dateIssued || today,
+      restStartDate: certificateForm.restStartDate || today,
+      restEndDate: certificateForm.restEndDate || certificateForm.restStartDate || today,
+      additionalRemarks: certificateForm.additionalRemarks || null,
+    },
+  ];
+};
+
 export const addMedicineToEncounter = (encounter, medicine) => {
   const validation = validateMedicine(medicine);
   if (!validation.isValid) {
@@ -178,7 +255,7 @@ export const addMedicineToEncounter = (encounter, medicine) => {
   }
 
   const medicines = [...(encounter.medicines || [])];
-  medicines.push(medicine);
+  medicines.push(normalizeMedicineEntry(medicine));
 
   return {
     ...encounter,
@@ -289,9 +366,10 @@ export const updateMedicalHistoryStatus = (request, status) => ({
  */
 export const formatMedicineDisplay = (medicine) => {
   const parts = [];
+  const label = medicine.name || medicine.brand || medicine.generic;
 
-  if (medicine.brand || medicine.generic) {
-    parts.push(medicine.brand || medicine.generic);
+  if (label) {
+    parts.push(label);
   }
 
   if (medicine.dosage) {

@@ -350,3 +350,28 @@ export const parseICDCode = (icdCode) => {
     subcategory: parts[3] || ''
   };
 };
+
+/**
+ * Returns true only when all required ICD dropdown levels are selected.
+ * Subcategory is required when the chosen category defines subcategories.
+ */
+export const isICDSelectionComplete = (icdCode) => {
+  const { chapter, block, category, subcategory } = parseICDCode(icdCode);
+  if (!chapter || !block || !category) {
+    return false;
+  }
+
+  const categoryData =
+    ICD11_CHAPTERS[chapter]?.blocks?.[block]?.categories?.[category];
+  if (!categoryData) {
+    return false;
+  }
+
+  const subcategories = categoryData.subcategories || {};
+  const hasSubcategories = Object.keys(subcategories).length > 0;
+  if (hasSubcategories && !subcategory) {
+    return false;
+  }
+
+  return true;
+};

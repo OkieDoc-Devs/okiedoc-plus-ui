@@ -129,6 +129,85 @@ export const saveAccountData = (email, accountData) => {
   return saveToStorage(`account:${email}`, accountData);
 };
 
+const DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+const getDayOfWeekFromDateKey = (dateKey) => {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return DAY_NAMES[date.getDay()];
+};
+
+const durationFromTimeBlock = (block) => {
+  const [start, end] = String(block || "").split("-");
+  if (!start || !end) {
+    return 30;
+  }
+
+  const [startHours, startMinutes] = start.split(":").map(Number);
+  const [endHours, endMinutes] = end.split(":").map(Number);
+  return endHours * 60 + endMinutes - (startHours * 60 + startMinutes);
+};
+
+/**
+ * Expand weekly MySQL schedule format into calendar date keys for display.
+ * @param {Object} weeklySchedules - e.g. { Monday: "09:00-17:00" }
+ * @param {number} year
+ * @param {number} month - zero-based month index
+ * @returns {Object} Calendar schedule keyed by YYYY-MM-DD
+ */
+export const weeklySchedulesToCalendar = (weeklySchedules = {}, year, month) => {
+  const result = {};
+
+  if (!weeklySchedules || typeof weeklySchedules !== "object") {
+    return result;
+  }
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dayName = getDayOfWeekFromDateKey(dateKey);
+    const dayValue =
+      weeklySchedules[dayName] ||
+      weeklySchedules[dayName.toLowerCase()];
+
+    if (!dayValue) {
+      continue;
+    }
+
+    const blocks = String(dayValue)
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+    if (blocks.length === 0) {
+      continue;
+    }
+
+    result[dateKey] = blocks.map((block) => {
+      const time = block.split("-")[0];
+      return {
+        id: `${dayName}::${block}`,
+        time,
+        duration: durationFromTimeBlock(block),
+        notes: "Available for consultation",
+        block,
+        dayOfWeek: dayName,
+      };
+    });
+  }
+
+  return result;
+};
+
 /**
  * Load schedule data for a user
  * @param {string} email - User email

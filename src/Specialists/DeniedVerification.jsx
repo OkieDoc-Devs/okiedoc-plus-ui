@@ -4,7 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 
 export default function DeniedVerification() {
     const navigate = useNavigate();
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
+    const denialReason =
+      typeof user?.denialReason === 'string' && user.denialReason.trim()
+        ? user.denialReason.trim()
+        : '';
 
     const handleLogout = async () => {
         await logout();
@@ -20,7 +24,12 @@ export default function DeniedVerification() {
             </p>
             <div style={{ padding: '20px', backgroundColor: '#fdeded', borderRadius: '8px', borderLeft: '4px solid #e74c3c', marginTop: '30px', maxWidth: '500px' }}>
                 <p style={{ margin: 0, color: '#c0392b' }}>
-                    <strong>Status: Denied.</strong> If you believe this was in error or you have updated credentials, please contact admin@okiedocplus.com.
+                    <strong>Status: Denied.</strong>
+                    {denialReason ? (
+                      <> Reason: {denialReason}</>
+                    ) : (
+                      <> If you believe this was in error or you have updated credentials, please contact admin@okiedocplus.com.</>
+                    )}
                 </p>
             </div>
             <button

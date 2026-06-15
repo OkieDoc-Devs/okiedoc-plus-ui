@@ -403,12 +403,17 @@ export default function SpecialistRegistration() {
       console.log("Response type:", typeof result);
       console.log("Result.success:", result?.success);
 
-      // Check for success - be explicit about what we expect
-      if (result && typeof result === 'object' && result.success === true) {
+      const submitted =
+        result &&
+        typeof result === "object" &&
+        (result.success === true ||
+          String(result.message || "")
+            .toLowerCase()
+            .includes("submitted"));
+
+      if (submitted) {
         console.log("Registration successful, redirecting to approval page...");
-        // Reset state before redirect
         setIsSubmitting(false);
-        // Give a small delay to ensure state is clean before redirect
         setTimeout(() => {
           window.location.assign("/specialist-application-submitted");
         }, 100);

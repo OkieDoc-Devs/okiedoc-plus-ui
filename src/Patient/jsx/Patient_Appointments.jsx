@@ -411,7 +411,9 @@ export default function Patient_Appointments({ setActive, ticketIdParam }) {
             </div>
           )}
 
-          {filteredAppointments.map((appt) => {
+          {filteredAppointments
+            .filter((appt) => appt.status !== "for_payment")
+            .map((appt) => {
             const displaySpecialist = appt.specialistName || "TBA";
             const displaySpecialization = appt.specialization || "TBA";
             const displayDate = appt.preferredDate

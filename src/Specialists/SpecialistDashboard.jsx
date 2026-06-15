@@ -28,7 +28,13 @@ import './SpecialistDashboard.css';
 import authService from './authService';
 import * as specialistApi from './services/apiService';
 import { API_BASE_URL } from '../api/apiClient';
-import { getConversations as fetchChatConversations, sendMessage, subscribeToConversation, unsubscribeFromConversation, setupChatSocketListeners } from '../Nurse/services/chatService.js';
+import {
+  getConversations as fetchChatConversations,
+  sendMessage,
+  subscribeToConversation,
+  unsubscribeFromConversation,
+  setupChatSocketListeners,
+} from '../Nurse/services/chatService.js';
 import { connectSocket } from '../utils/socketClient';
 import JitsiMeetCall from '../components/VideoCall/JitsiMeetCall';
 import Messages from './Messages';
@@ -1616,18 +1622,29 @@ const SpecialistDashboard = () => {
 
     const cleanup = setupChatSocketListeners({
       onMessage: (data) => {
-        const ticketId = data.conversationId || data.ticket || data.message?.ticket;
+        const ticketId =
+          data.conversationId || data.ticket || data.message?.ticket;
         if (Number(ticketId) !== Number(selectedTicketId)) return;
 
-        const senderId = data.message?.sender?.id || data.message?.Sender_ID || data.message?.senderId;
+        const senderId =
+          data.message?.sender?.id ||
+          data.message?.Sender_ID ||
+          data.message?.senderId;
         if (!senderId) return;
 
+        if (Number(senderId) === Number(currentUser?.id)) return;
+
         const msg = data.message || data;
-        const senderName = msg.sender?.fullName || msg.sender?.name || msg.senderName || 'Patient';
         const content = msg.content || msg.text || msg.Message_Content || '';
         const timestamp = msg.createdAt
-          ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          ? new Date(msg.createdAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : new Date().toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
 
         setPatientChatThreads((prev) => {
           const thread = prev[selectedTicketId] || [];
@@ -1656,7 +1673,7 @@ const SpecialistDashboard = () => {
     return () => {
       cleanup();
     };
-  }, [selectedTicketId]);
+  }, [selectedTicketId, currentUser?.id]);
 
   const handleNavigation = (target, title) => {
     setActiveTab(target);
@@ -2110,10 +2127,7 @@ const SpecialistDashboard = () => {
 
       setPatientChatThreads((prev) => ({
         ...prev,
-        [selectedTicketId]: [
-          ...(prev[selectedTicketId] || []),
-          localMessage,
-        ],
+        [selectedTicketId]: [...(prev[selectedTicketId] || []), localMessage],
       }));
       setPatientChatDraft('');
     } catch (err) {

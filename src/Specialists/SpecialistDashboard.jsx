@@ -639,6 +639,8 @@ const SpecialistDashboard = () => {
     feeFollowUpWithoutCert: 0,
     feeFollowUpWithCert: 0,
   });
+  const [minConsultFee, setMinConsultFee] = useState(0);
+  const [specialistType, setSpecialistType] = useState('specialist');
 
   const [accountDetails, setAccountDetails] = useState({
     accountType: 'bank',
@@ -1272,6 +1274,8 @@ const SpecialistDashboard = () => {
             feeFollowUpWithCert: profileResponse.feeFollowUpWithCert || 0,
           };
           setServices(fees);
+          setMinConsultFee(profileResponse.minConsultFee || 0);
+          setSpecialistType(profileResponse.specialistType || 'specialist');
         }
       } catch (profileError) {
         console.warn('Failed to fetch profile from API:', profileError);
@@ -1903,6 +1907,11 @@ const SpecialistDashboard = () => {
     const rawFee = parseFloat(editingService.fee);
     if (isNaN(rawFee) || rawFee < 0) {
       alert('Please enter a valid positive number for the fee.');
+      return;
+    }
+
+    if (minConsultFee > 0 && rawFee < minConsultFee) {
+      alert(`Fee cannot be lower than the minimum ₱${minConsultFee.toFixed(2)} for ${specialistType === 'gp' ? 'GP' : 'Specialist'} consultations.`);
       return;
     }
 
@@ -5372,6 +5381,12 @@ const SpecialistDashboard = () => {
     <div className='dashboard-content'>
       <div className='services-container'>
         <h2 className='section-title'>Professional Fees</h2>
+        {minConsultFee > 0 && (
+          <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '16px' }}>
+            Minimum consultation fee for {specialistType === 'gp' ? 'General Practitioners' : 'Specialists'}:{' '}
+            <strong>₱{minConsultFee.toFixed(2)}</strong>
+          </p>
+        )}
         <div>
           {Object.entries({
             feeInitialWithoutCert: 'Initial Consultation (No Med Cert)',
@@ -5790,6 +5805,11 @@ const SpecialistDashboard = () => {
                   }}
                 >
                   Professional Fee (₱)
+                  {minConsultFee > 0 && (
+                    <span style={{ color: '#6b7280', fontWeight: 'normal', marginLeft: '8px', fontSize: '0.85rem' }}>
+                      — minimum ₱{minConsultFee.toFixed(2)} ({specialistType === 'gp' ? 'GP' : 'Specialist'})
+                    </span>
+                  )}
                 </label>
                 <input
                   type='number'
@@ -5800,7 +5820,7 @@ const SpecialistDashboard = () => {
                       fee: e.target.value,
                     }))
                   }
-                  min='0'
+                  min={minConsultFee || 0}
                   step='0.01'
                   style={{
                     width: '100%',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   IconCheck,
   IconChevronLeft,
@@ -14,33 +14,33 @@ import {
   IconCircleCheck,
   IconPhone,
   IconArrowRight,
-} from "@tabler/icons-react";
-import "../css/BookPhysical.css";
-import { useAuth } from "../../contexts/AuthContext";
-import { apiRequest } from "../../api/apiClient";
+} from '@tabler/icons-react';
+import '../css/BookPhysical.css';
+import { useAuth } from '../../contexts/AuthContext';
+import { apiRequest } from '../../api/apiClient';
 
 const STEPS = [
-  { label: "Doctor", icon: IconStethoscope },
-  { label: "Facility", icon: IconBuildingHospital },
-  { label: "Date & Time", icon: IconCalendarEvent },
-  { label: "Patient Info", icon: IconUser },
-  { label: "Details", icon: IconFileDescription },
-  { label: "Review", icon: IconCircleCheck },
+  { label: 'Doctor', icon: IconStethoscope },
+  { label: 'Facility', icon: IconBuildingHospital },
+  { label: 'Date & Time', icon: IconCalendarEvent },
+  { label: 'Patient Info', icon: IconUser },
+  { label: 'Details', icon: IconFileDescription },
+  { label: 'Review', icon: IconCircleCheck },
 ];
 
 const symptomsList = [
-  "Fever",
-  "Cough",
-  "Headache",
-  "Sore Throat",
-  "Body Pain",
-  "Fatigue",
-  "Nausea",
-  "Dizziness",
-  "Chest Pain",
-  "Shortness of Breath",
-  "Stomach Pain",
-  "Loss of Appetite",
+  'Fever',
+  'Cough',
+  'Headache',
+  'Sore Throat',
+  'Body Pain',
+  'Fatigue',
+  'Nausea',
+  'Dizziness',
+  'Chest Pain',
+  'Shortness of Breath',
+  'Stomach Pain',
+  'Loss of Appetite',
 ];
 
 const CURRENT_DATE = new Date();
@@ -61,33 +61,33 @@ export default function BookPhysical({
   const [facilities, setFacilities] = useState([]);
 
   // Form States
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [doctor, setDoctor] = useState(null);
   const [facility, setFacility] = useState(null);
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
   const [availableSlots, setAvailableSlots] = useState([]);
 
-  const [patientName, setPatientName] = useState("");
-  const [patientAge, setPatientAge] = useState("");
-  const [patientGender, setPatientGender] = useState("");
-  const [patientContact, setPatientContact] = useState("");
+  const [patientName, setPatientName] = useState('');
+  const [patientAge, setPatientAge] = useState('');
+  const [patientGender, setPatientGender] = useState('');
+  const [patientContact, setPatientContact] = useState('');
 
-  const [complaint, setComplaint] = useState("");
+  const [complaint, setComplaint] = useState('');
   const [symptoms, setSymptoms] = useState([]);
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState('');
 
   // --- API INTEGRATION: Fetch Doctors & Facilities ---
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await apiRequest("/api/v1/booking-data", { method: "GET" });
+        const res = await apiRequest('/api/v1/booking-data', { method: 'GET' });
         if (res) {
           setDoctors(res.doctors || []);
           setFacilities(res.facilities || []);
         }
       } catch (error) {
-        console.error("Failed to fetch booking data:", error);
+        console.error('Failed to fetch booking data:', error);
       }
     };
     fetchData();
@@ -97,8 +97,8 @@ export default function BookPhysical({
   useEffect(() => {
     if (user) {
       setPatientName(`${user.firstName} ${user.lastName}`.trim());
-      setPatientGender(user.gender || "");
-      setPatientContact(user.mobileNumber || "");
+      setPatientGender(user.gender || '');
+      setPatientContact(user.mobileNumber || '');
 
       if (user.birthday) {
         const ageDifMs = Date.now() - new Date(user.birthday).getTime();
@@ -113,8 +113,8 @@ export default function BookPhysical({
     if (!selectedDate || !scheduleObj) return [];
 
     // Get Day of Week (e.g., "Monday")
-    const dateObj = new Date(selectedDate + "T00:00:00");
-    const dayOfWeek = dateObj.toLocaleDateString("en-US", { weekday: "long" });
+    const dateObj = new Date(selectedDate + 'T00:00:00');
+    const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
 
     // Support case-insensitive key matching
     const dayKey = Object.keys(scheduleObj).find(
@@ -123,19 +123,19 @@ export default function BookPhysical({
     if (!dayKey) return []; // Doctor does not work on this day
 
     const timeRange = scheduleObj[dayKey]; // e.g., "09:00-17:00"
-    const [startStr, endStr] = timeRange.split("-");
+    const [startStr, endStr] = timeRange.split('-');
     if (!startStr || !endStr) return [];
 
     const parseTime = (t) => {
-      const [h, m] = t.trim().split(":");
+      const [h, m] = t.trim().split(':');
       return parseInt(h) * 60 + parseInt(m);
     };
     const formatTime = (mins) => {
       const h = Math.floor(mins / 60);
       const m = mins % 60;
-      const ampm = h >= 12 ? "PM" : "AM";
+      const ampm = h >= 12 ? 'PM' : 'AM';
       const h12 = h % 12 || 12;
-      return `${h12.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${ampm}`;
+      return `${h12.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`;
     };
 
     const slots = [];
@@ -154,7 +154,7 @@ export default function BookPhysical({
     if (date && doctor && doctor.schedules) {
       const slots = getAvailableTimeSlots(date, doctor.schedules);
       setAvailableSlots(slots);
-      setTime(""); // Reset time if date changes
+      setTime(''); // Reset time if date changes
     } else {
       setAvailableSlots([]);
     }
@@ -172,19 +172,19 @@ export default function BookPhysical({
   );
 
   const isDateInvalid = date
-    ? new Date(date + "T00:00:00") <
-      new Date(CURRENT_DATE.toISOString().split("T")[0] + "T00:00:00")
+    ? new Date(date + 'T00:00:00') <
+      new Date(CURRENT_DATE.toISOString().split('T')[0] + 'T00:00:00')
     : false;
 
   const canProceed = () => {
     if (currentStep === 0) return doctor !== null;
     if (currentStep === 1) return facility !== null;
-    if (currentStep === 2) return date !== "" && !isDateInvalid && time !== "";
+    if (currentStep === 2) return date !== '' && !isDateInvalid && time !== '';
     if (currentStep === 3)
       return (
         patientName.trim().length > 0 &&
         patientAge.trim().length > 0 &&
-        patientGender !== "" &&
+        patientGender !== '' &&
         patientContact.trim().length > 0
       );
     if (currentStep === 4) return complaint.trim().length > 0;
@@ -194,26 +194,22 @@ export default function BookPhysical({
   const handleConfirmAppointment = async () => {
     setIsSubmitting(true);
     try {
-      await apiRequest("/api/v1/tickets", {
-        method: "POST",
+      await apiRequest('/api/v1/tickets', {
+        method: 'POST',
         body: JSON.stringify({
-          patient: user?.id,
-          specialist: doctor.id,
-          nurse: null,
-          status: "pending",
-          consultationChannel: "Physical",
+          specialistId: doctor.id,
+          consultationChannel: 'physical',
           preferredDate: date,
           preferredTime: time,
           chiefComplaint: complaint,
-          symptoms: symptoms.join(", "),
-          additionalRemarks: notes,
-          hospitalName: facility.name,
+          symptoms: symptoms.join(', '),
+          additionalDetails: notes,
         }),
       });
       setIsModalOpen(true);
     } catch (error) {
-      console.error("Failed to book appointment:", error);
-      alert("Failed to book appointment. Please try again.");
+      console.error('Failed to book appointment:', error);
+      alert('Failed to book appointment. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -239,45 +235,45 @@ export default function BookPhysical({
     );
 
   const handlePhoneChange = (value) => {
-    let digits = value.replace(/\D/g, "");
+    let digits = value.replace(/\D/g, '');
 
     if (digits.length === 0) {
-      setPatientContact("");
+      setPatientContact('');
       return;
     }
 
-    if (digits.startsWith("0")) {
-      digits = "63" + digits.substring(1);
-    } else if (!digits.startsWith("63")) {
-      if (digits === "6") {
-        digits = "6";
+    if (digits.startsWith('0')) {
+      digits = '63' + digits.substring(1);
+    } else if (!digits.startsWith('63')) {
+      if (digits === '6') {
+        digits = '6';
       } else {
-        digits = "63" + digits;
+        digits = '63' + digits;
       }
     }
 
     digits = digits.substring(0, 12);
 
-    let formatted = "+";
+    let formatted = '+';
     if (digits.length <= 2) {
       formatted += digits;
     } else if (digits.length <= 5) {
-      formatted += digits.substring(0, 2) + " " + digits.substring(2);
+      formatted += digits.substring(0, 2) + ' ' + digits.substring(2);
     } else if (digits.length <= 8) {
       formatted +=
         digits.substring(0, 2) +
-        " " +
+        ' ' +
         digits.substring(2, 5) +
-        " " +
+        ' ' +
         digits.substring(5);
     } else {
       formatted +=
         digits.substring(0, 2) +
-        " " +
+        ' ' +
         digits.substring(2, 5) +
-        " " +
+        ' ' +
         digits.substring(5, 8) +
-        " " +
+        ' ' +
         digits.substring(8);
     }
 
@@ -285,31 +281,31 @@ export default function BookPhysical({
   };
 
   return (
-    <div className="bp-container">
+    <div className='bp-container'>
       {/* HEADER & STEPPER */}
-      <div className="bp-header-wrapper">
-        <div className="bp-title-container">
-          <button className="bp-back-btn" onClick={onGoBack}>
+      <div className='bp-header-wrapper'>
+        <div className='bp-title-container'>
+          <button className='bp-back-btn' onClick={onGoBack}>
             <IconChevronLeft size={24} />
           </button>
-          <div className="bp-title-text-group">
-            <h2 className="bp-title">Book Physical Consultation</h2>
-            <p className="bp-subtitle">
+          <div className='bp-title-text-group'>
+            <h2 className='bp-title'>Book Physical Consultation</h2>
+            <p className='bp-subtitle'>
               Schedule an in-person visit with our healthcare professionals
             </p>
           </div>
         </div>
 
-        <div className="bp-card">
-          <div className="bp-stepper-container">
+        <div className='bp-card'>
+          <div className='bp-stepper-container'>
             {STEPS.map((step, index) => {
               const isCompleted = index < currentStep;
               const isCurrent = index === currentStep;
               return (
                 <React.Fragment key={step.label}>
-                  <div className="bp-step-item">
+                  <div className='bp-step-item'>
                     <div
-                      className={`bp-step-circle ${isCompleted ? "bp-step-circle-completed" : isCurrent ? "bp-step-circle-active" : ""}`}
+                      className={`bp-step-circle ${isCompleted ? 'bp-step-circle-completed' : isCurrent ? 'bp-step-circle-active' : ''}`}
                     >
                       {isCompleted ? (
                         <IconCheck size={20} />
@@ -318,14 +314,14 @@ export default function BookPhysical({
                       )}
                     </div>
                     <span
-                      className={`bp-step-label ${isCompleted || isCurrent ? "bp-step-label-active" : ""}`}
+                      className={`bp-step-label ${isCompleted || isCurrent ? 'bp-step-label-active' : ''}`}
                     >
                       {step.label}
                     </span>
                   </div>
                   {index < STEPS.length - 1 && (
                     <div
-                      className={`bp-step-line ${isCompleted ? "bp-step-line-completed" : isCurrent ? "bp-step-line-active" : ""}`}
+                      className={`bp-step-line ${isCompleted ? 'bp-step-line-completed' : isCurrent ? 'bp-step-line-active' : ''}`}
                     />
                   )}
                 </React.Fragment>
@@ -336,40 +332,40 @@ export default function BookPhysical({
       </div>
 
       {/* SCROLLABLE CONTENT */}
-      <div className="bp-scroll-wrapper">
-        <div className="bp-card">
+      <div className='bp-scroll-wrapper'>
+        <div className='bp-card'>
           {/* STEP 1: DOCTOR */}
           {currentStep === 0 && (
-            <div className="bp-step-content">
-              <div className="bp-section-heading text-cyan">
+            <div className='bp-step-content'>
+              <div className='bp-section-heading text-cyan'>
                 <IconStethoscope size={20} /> <h3>Select Doctor</h3>
               </div>
-              <div className="bp-search-box">
-                <IconSearch size={16} className="bp-search-icon" />
+              <div className='bp-search-box'>
+                <IconSearch size={16} className='bp-search-icon' />
                 <input
-                  type="text"
-                  placeholder="Search by name, specialty, or location..."
-                  className="bp-search-input"
+                  type='text'
+                  placeholder='Search by name, specialty, or location...'
+                  className='bp-search-input'
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <div className="bp-specialist-list">
+              <div className='bp-specialist-list'>
                 {filteredDoctors.map((doc) => {
                   const isAvailable = true;
                   const initials = doc.name
                     ? doc.name
-                        .split(" ")
+                        .split(' ')
                         .map((n) => n[0])
-                        .join("")
+                        .join('')
                         .substring(0, 2)
                         .toUpperCase()
-                    : "DR";
+                    : 'DR';
 
                   return (
                     <div
                       key={doc.id}
-                      className={`bp-doc-card ${doctor?.id === doc.id ? "bp-doc-selected" : ""} ${!isAvailable ? "bp-doc-disabled" : ""}`}
+                      className={`bp-doc-card ${doctor?.id === doc.id ? 'bp-doc-selected' : ''} ${!isAvailable ? 'bp-doc-disabled' : ''}`}
                       onClick={() => {
                         if (isAvailable) {
                           setDoctor(doc);
@@ -377,38 +373,38 @@ export default function BookPhysical({
                         }
                       }}
                     >
-                      <div className="bp-doc-info-wrapper">
+                      <div className='bp-doc-info-wrapper'>
                         <div
-                          className={`bp-doc-avatar ${isAvailable ? "bp-avatar-active" : "bp-avatar-inactive"}`}
+                          className={`bp-doc-avatar ${isAvailable ? 'bp-avatar-active' : 'bp-avatar-inactive'}`}
                         >
                           {initials}
                         </div>
-                        <div className="bp-doc-details">
-                          <h4 className="bp-doc-name">{doc.name}</h4>
+                        <div className='bp-doc-details'>
+                          <h4 className='bp-doc-name'>{doc.name}</h4>
                           <p
-                            className={`bp-doc-spec ${isAvailable ? "bp-spec-active" : "bp-spec-inactive"}`}
+                            className={`bp-doc-spec ${isAvailable ? 'bp-spec-active' : 'bp-spec-inactive'}`}
                           >
                             {doc.primarySpecialty}
                           </p>
-                          <p className="bp-doc-meta">
+                          <p className='bp-doc-meta'>
                             <IconMapPin size={14} /> {doc.hospitalName}
                           </p>
                           {/* REMOVE YEARS EXPERIENCE IF 0 OR MISSING */}
                           {doc.yearsExperience > 0 && (
-                            <p className="bp-doc-meta-last">
-                              <IconStethoscope size={14} />{" "}
+                            <p className='bp-doc-meta-last'>
+                              <IconStethoscope size={14} />{' '}
                               {doc.yearsExperience} years experience
                             </p>
                           )}
                         </div>
                       </div>
-                      <div className="bp-doc-status-wrapper">
+                      <div className='bp-doc-status-wrapper'>
                         {isAvailable ? (
-                          <span className="bp-status-pill bp-pill-available">
+                          <span className='bp-status-pill bp-pill-available'>
                             Available
                           </span>
                         ) : (
-                          <span className="bp-status-pill bp-pill-unavailable">
+                          <span className='bp-status-pill bp-pill-unavailable'>
                             Unavailable
                           </span>
                         )}
@@ -417,7 +413,7 @@ export default function BookPhysical({
                   );
                 })}
                 {filteredDoctors.length === 0 && (
-                  <p className="bp-empty-state">
+                  <p className='bp-empty-state'>
                     No doctors found matching your search.
                   </p>
                 )}
@@ -427,29 +423,29 @@ export default function BookPhysical({
 
           {/* STEP 2: FACILITY */}
           {currentStep === 1 && (
-            <div className="bp-step-content">
-              <div className="bp-section-heading text-cyan">
+            <div className='bp-step-content'>
+              <div className='bp-section-heading text-cyan'>
                 <IconMapPin size={20} /> <h3>Select Facility / Location</h3>
               </div>
-              <p className="bp-instruction-text">
+              <p className='bp-instruction-text'>
                 Available locations for {doctor?.name}
               </p>
 
-              <div className="bp-specialist-list">
+              <div className='bp-specialist-list'>
                 {availableFacilities.length > 0 ? (
                   availableFacilities.map((fac) => (
                     <div
                       key={fac.id}
-                      className={`bp-doc-card ${facility?.id === fac.id ? "bp-doc-selected" : ""}`}
+                      className={`bp-doc-card ${facility?.id === fac.id ? 'bp-doc-selected' : ''}`}
                       onClick={() => setFacility(fac)}
                     >
-                      <div className="bp-doc-info-wrapper align-center">
-                        <div className="bp-icon-box bp-icon-cyan">
+                      <div className='bp-doc-info-wrapper align-center'>
+                        <div className='bp-icon-box bp-icon-cyan'>
                           <IconMapPin size={24} />
                         </div>
-                        <div className="bp-doc-details">
-                          <h4 className="bp-doc-name">{fac.name}</h4>
-                          <p className="bp-doc-meta-last fw-500">
+                        <div className='bp-doc-details'>
+                          <h4 className='bp-doc-name'>{fac.name}</h4>
+                          <p className='bp-doc-meta-last fw-500'>
                             <IconMapPin size={14} /> {fac.address}
                           </p>
                           {/* ROOM/FLOOR REMOVED HERE AS REQUESTED */}
@@ -458,14 +454,14 @@ export default function BookPhysical({
                       <IconCheck
                         size={24}
                         className={
-                          facility?.id === fac.id ? "text-cyan" : "text-muted"
+                          facility?.id === fac.id ? 'text-cyan' : 'text-muted'
                         }
                         style={{ opacity: facility?.id === fac.id ? 1 : 0.2 }}
                       />
                     </div>
                   ))
                 ) : (
-                  <p className="bp-empty-state">
+                  <p className='bp-empty-state'>
                     No matching facilities found for this doctor's location.
                   </p>
                 )}
@@ -475,48 +471,48 @@ export default function BookPhysical({
 
           {/* STEP 3: SCHEDULE */}
           {currentStep === 2 && (
-            <div className="bp-step-content">
-              <div className="bp-inner-card mb-24">
-                <div className="bp-section-heading text-cyan mb-16">
+            <div className='bp-step-content'>
+              <div className='bp-inner-card mb-24'>
+                <div className='bp-section-heading text-cyan mb-16'>
                   <IconCalendarEvent size={20} /> <h3>Select Date</h3>
                 </div>
                 <input
-                  type="date"
+                  type='date'
                   value={date}
-                  min={CURRENT_DATE.toISOString().split("T")[0]}
-                  max="2030-12-31"
+                  min={CURRENT_DATE.toISOString().split('T')[0]}
+                  max='2030-12-31'
                   onChange={(e) => {
                     setDate(e.target.value);
                   }}
-                  className="bp-form-input"
+                  className='bp-form-input'
                 />
               </div>
 
               {date && !isDateInvalid && (
-                <div className="bp-inner-card">
-                  <div className="bp-section-heading text-cyan mb-8">
+                <div className='bp-inner-card'>
+                  <div className='bp-section-heading text-cyan mb-8'>
                     <IconClock size={20} /> <h3>Select Time Slot</h3>
                   </div>
-                  <p className="bp-instruction-text-small">
+                  <p className='bp-instruction-text-small'>
                     Available slots for {date}
                   </p>
 
-                  <div className="bp-time-grid-extended">
+                  <div className='bp-time-grid-extended'>
                     {availableSlots.length > 0 ? (
                       availableSlots.map((t) => (
                         <button
                           key={t}
-                          className={`bp-time-btn-extended ${time === t ? "selected" : "available"}`}
+                          className={`bp-time-btn-extended ${time === t ? 'selected' : 'available'}`}
                           onClick={() => setTime(t)}
                         >
-                          <IconClock size={18} className="mb-8" />
+                          <IconClock size={18} className='mb-8' />
                           {t}
                         </button>
                       ))
                     ) : (
                       <p
-                        className="bp-empty-state"
-                        style={{ gridColumn: "1 / -1" }}
+                        className='bp-empty-state'
+                        style={{ gridColumn: '1 / -1' }}
                       >
                         The doctor is not scheduled on this day. Please select
                         another date.
@@ -525,12 +521,12 @@ export default function BookPhysical({
                   </div>
 
                   {availableSlots.length > 0 && (
-                    <div className="bp-time-legend">
-                      <span className="bp-legend-item">
-                        <div className="bp-legend-dot selected"></div> Selected
+                    <div className='bp-time-legend'>
+                      <span className='bp-legend-item'>
+                        <div className='bp-legend-dot selected'></div> Selected
                       </span>
-                      <span className="bp-legend-item">
-                        <div className="bp-legend-dot available"></div>{" "}
+                      <span className='bp-legend-item'>
+                        <div className='bp-legend-dot available'></div>{' '}
                         Available
                       </span>
                     </div>
@@ -542,68 +538,68 @@ export default function BookPhysical({
 
           {/* STEP 4: PATIENT INFO */}
           {currentStep === 3 && (
-            <div className="bp-step-content">
-              <div className="bp-inner-card">
-                <div className="bp-section-heading text-cyan mb-8">
+            <div className='bp-step-content'>
+              <div className='bp-inner-card'>
+                <div className='bp-section-heading text-cyan mb-8'>
                   <IconUser size={20} /> <h3>Patient Details</h3>
                 </div>
-                <p className="bp-instruction-text">
+                <p className='bp-instruction-text'>
                   Your basic info is auto-filled. Please verify your contact
                   number.
                 </p>
 
-                <div className="bp-form-group">
-                  <label className="bp-form-label">Full Name</label>
+                <div className='bp-form-group'>
+                  <label className='bp-form-label'>Full Name</label>
                   <input
-                    type="text"
+                    type='text'
                     value={patientName}
-                    className="bp-form-input"
+                    className='bp-form-input'
                     disabled
                     style={{
-                      backgroundColor: "#f1f5f9",
-                      cursor: "not-allowed",
+                      backgroundColor: '#f1f5f9',
+                      cursor: 'not-allowed',
                     }}
                   />
                 </div>
 
-                <div className="bp-form-group">
-                  <label className="bp-form-label">Age</label>
+                <div className='bp-form-group'>
+                  <label className='bp-form-label'>Age</label>
                   <input
-                    type="text"
+                    type='text'
                     value={patientAge}
-                    className="bp-form-input"
+                    className='bp-form-input'
                     disabled
                     style={{
-                      backgroundColor: "#f1f5f9",
-                      cursor: "not-allowed",
+                      backgroundColor: '#f1f5f9',
+                      cursor: 'not-allowed',
                     }}
                   />
                 </div>
 
-                <div className="bp-form-group">
-                  <label className="bp-form-label">Gender</label>
+                <div className='bp-form-group'>
+                  <label className='bp-form-label'>Gender</label>
                   <input
-                    type="text"
+                    type='text'
                     value={patientGender}
-                    className="bp-form-input"
+                    className='bp-form-input'
                     disabled
                     style={{
-                      backgroundColor: "#f1f5f9",
-                      cursor: "not-allowed",
+                      backgroundColor: '#f1f5f9',
+                      cursor: 'not-allowed',
                     }}
                   />
                 </div>
 
-                <div className="bp-form-group bp-margin-0">
-                  <label className="bp-form-label">Contact Number *</label>
-                  <div className="bp-input-with-icon">
-                    <IconPhone size={16} className="bp-inner-icon" />
+                <div className='bp-form-group bp-margin-0'>
+                  <label className='bp-form-label'>Contact Number *</label>
+                  <div className='bp-input-with-icon'>
+                    <IconPhone size={16} className='bp-inner-icon' />
                     <input
-                      type="text"
-                      placeholder="+63 XXX XXX XXXX"
+                      type='text'
+                      placeholder='+63 XXX XXX XXXX'
                       value={patientContact}
                       onChange={(e) => handlePhoneChange(e.target.value)}
-                      className="bp-form-number pl-36"
+                      className='bp-form-number pl-36'
                     />
                   </div>
                 </div>
@@ -613,43 +609,43 @@ export default function BookPhysical({
 
           {/* STEP 5: DETAILS */}
           {currentStep === 4 && (
-            <div className="bp-step-content">
-              <div className="bp-section-heading text-cyan">
+            <div className='bp-step-content'>
+              <div className='bp-section-heading text-cyan'>
                 <IconStethoscope size={20} /> <h3>Consultation Details</h3>
               </div>
-              <div className="bp-form-group">
-                <label className="bp-form-label">Chief Complaint *</label>
+              <div className='bp-form-group'>
+                <label className='bp-form-label'>Chief Complaint *</label>
                 <input
-                  type="text"
-                  placeholder="What brings you in today?"
+                  type='text'
+                  placeholder='What brings you in today?'
                   maxLength={50}
                   value={complaint}
                   onChange={(e) => setComplaint(e.target.value)}
-                  className="bp-form-input"
+                  className='bp-form-input'
                 />
-                <p className="bp-char-count">{complaint.length}/50</p>
+                <p className='bp-char-count'>{complaint.length}/50</p>
               </div>
-              <div className="bp-form-group">
-                <label className="bp-form-label">
+              <div className='bp-form-group'>
+                <label className='bp-form-label'>
                   Symptoms (Select all that apply)
                 </label>
-                <div className="bp-symptom-badges">
+                <div className='bp-symptom-badges'>
                   {symptomsList.map((sym) => (
                     <span
                       key={sym}
-                      className={`bp-symptom-badge ${symptoms.includes(sym) ? "bp-symptom-active" : ""}`}
+                      className={`bp-symptom-badge ${symptoms.includes(sym) ? 'bp-symptom-active' : ''}`}
                       onClick={() => toggleSymptom(sym)}
                     >
                       {symptoms.includes(sym) && (
-                        <IconCheck size={12} className="bp-symptom-check" />
-                      )}{" "}
+                        <IconCheck size={12} className='bp-symptom-check' />
+                      )}{' '}
                       {sym}
                     </span>
                   ))}
                 </div>
               </div>
-              <div className="bp-form-group bp-form-group-last">
-                <label className="bp-form-label">
+              <div className='bp-form-group bp-form-group-last'>
+                <label className='bp-form-label'>
                   Additional Notes (Optional)
                 </label>
                 <textarea
@@ -658,84 +654,84 @@ export default function BookPhysical({
                   rows={4}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="bp-form-textarea"
+                  className='bp-form-textarea'
                 />
-                <p className="bp-char-count">{notes.length}/1000</p>
+                <p className='bp-char-count'>{notes.length}/1000</p>
               </div>
             </div>
           )}
 
           {/* STEP 6: REVIEW */}
           {currentStep === 5 && (
-            <div className="bp-step-content">
-              <div className="bp-review-header-wrapper">
-                <div className="bp-section-heading bp-margin-0 text-cyan">
+            <div className='bp-step-content'>
+              <div className='bp-review-header-wrapper'>
+                <div className='bp-section-heading bp-margin-0 text-cyan'>
                   <IconCheck size={20} /> <h3>Review Your Booking</h3>
                 </div>
               </div>
 
-              <p className="bp-review-label">Doctor & Facility</p>
-              <div className="bp-review-doctor-row">
-                <div className="bp-review-avatar bg-cyan">
+              <p className='bp-review-label'>Doctor & Facility</p>
+              <div className='bp-review-doctor-row'>
+                <div className='bp-review-avatar bg-cyan'>
                   {doctor.name
                     ? doctor.name
-                        .split(" ")
+                        .split(' ')
                         .map((n) => n[0])
-                        .join("")
+                        .join('')
                         .substring(0, 2)
                         .toUpperCase()
-                    : "DR"}
+                    : 'DR'}
                 </div>
-                <div className="bp-review-doctor-info">
-                  <h4 className="bp-review-doctor-name">{doctor.name}</h4>
-                  <p className="bp-review-doctor-spec text-cyan">
+                <div className='bp-review-doctor-info'>
+                  <h4 className='bp-review-doctor-name'>{doctor.name}</h4>
+                  <p className='bp-review-doctor-spec text-cyan'>
                     {doctor.primarySpecialty} • {facility.name}
                   </p>
                 </div>
               </div>
-              <hr className="bp-divider" />
+              <hr className='bp-divider' />
 
-              <div className="bp-review-grid">
-                <div className="bp-review-grid-item">
-                  <p className="bp-review-label">Date</p>
-                  <p className="bp-review-value-icon">
+              <div className='bp-review-grid'>
+                <div className='bp-review-grid-item'>
+                  <p className='bp-review-label'>Date</p>
+                  <p className='bp-review-value-icon'>
                     <IconCalendarEvent
                       size={16}
-                      className="bp-review-icon text-cyan"
-                    />{" "}
+                      className='bp-review-icon text-cyan'
+                    />{' '}
                     {date}
                   </p>
                 </div>
-                <div className="bp-review-grid-item">
-                  <p className="bp-review-label">Time</p>
-                  <p className="bp-review-value-icon">
-                    <IconClock size={16} className="bp-review-icon text-cyan" />{" "}
+                <div className='bp-review-grid-item'>
+                  <p className='bp-review-label'>Time</p>
+                  <p className='bp-review-value-icon'>
+                    <IconClock size={16} className='bp-review-icon text-cyan' />{' '}
                     {time}
                   </p>
                 </div>
               </div>
-              <hr className="bp-divider" />
+              <hr className='bp-divider' />
 
-              <p className="bp-review-label">Patient Information</p>
-              <h4 className="bp-review-value-bold">
+              <p className='bp-review-label'>Patient Information</p>
+              <h4 className='bp-review-value-bold'>
                 {patientName}, {patientAge} yrs ({patientGender})
               </h4>
-              <p className="bp-review-value-sub">{patientContact}</p>
-              <hr className="bp-divider" />
+              <p className='bp-review-value-sub'>{patientContact}</p>
+              <hr className='bp-divider' />
 
-              <p className="bp-review-label">Chief Complaint</p>
-              <h4 className="bp-review-value-bold bp-margin-bottom-large">
+              <p className='bp-review-label'>Chief Complaint</p>
+              <h4 className='bp-review-value-bold bp-margin-bottom-large'>
                 {complaint}
               </h4>
 
               {symptoms.length > 0 && (
-                <div className="bp-review-symptoms-wrapper">
-                  <p className="bp-review-label">Symptoms</p>
-                  <div className="bp-review-symptoms-list">
+                <div className='bp-review-symptoms-wrapper'>
+                  <p className='bp-review-label'>Symptoms</p>
+                  <div className='bp-review-symptoms-list'>
                     {symptoms.map((s) => (
                       <span
                         key={s}
-                        className="bp-review-symptom-tag bg-light-cyan text-cyan"
+                        className='bp-review-symptom-tag bg-light-cyan text-cyan'
                       >
                         {s}
                       </span>
@@ -744,16 +740,16 @@ export default function BookPhysical({
                 </div>
               )}
 
-              <div className="bp-banner bp-banner-yellow">
+              <div className='bp-banner bp-banner-yellow'>
                 <IconAlertCircle
                   size={20}
-                  className="bp-banner-icon-yellow bp-icon-top"
+                  className='bp-banner-icon-yellow bp-icon-top'
                 />
-                <div className="bp-banner-content">
-                  <h4 className="bp-banner-title-yellow">
+                <div className='bp-banner-content'>
+                  <h4 className='bp-banner-title-yellow'>
                     Important Reminders
                   </h4>
-                  <ul className="bp-banner-list-yellow">
+                  <ul className='bp-banner-list-yellow'>
                     <li>Please arrive 15 minutes before your appointment</li>
                     <li>
                       Bring a valid ID and PhilHealth card (if applicable)
@@ -772,17 +768,17 @@ export default function BookPhysical({
       </div>
 
       {/* FOOTER */}
-      <div className="bp-footer-wrapper">
-        <div className="bp-footer-inner">
+      <div className='bp-footer-wrapper'>
+        <div className='bp-footer-inner'>
           <button
-            className="bp-nav-btn bp-nav-btn-outline"
+            className='bp-nav-btn bp-nav-btn-outline'
             onClick={handleBack}
             disabled={(currentStep === 0 && !onGoBack) || isSubmitting}
           >
             <IconChevronLeft size={16} /> Back
           </button>
           <button
-            className={`bp-nav-btn ${!canProceed() || isSubmitting ? "bp-nav-btn-disabled" : "bp-nav-btn-primary"}`}
+            className={`bp-nav-btn ${!canProceed() || isSubmitting ? 'bp-nav-btn-disabled' : 'bp-nav-btn-primary'}`}
             onClick={handleNext}
             disabled={!canProceed() || isSubmitting}
           >
@@ -791,9 +787,9 @@ export default function BookPhysical({
                 Next <IconArrowRight size={16} />
               </>
             ) : isSubmitting ? (
-              "Confirming..."
+              'Confirming...'
             ) : (
-              "Confirm Appointment"
+              'Confirm Appointment'
             )}
           </button>
         </div>
@@ -801,18 +797,18 @@ export default function BookPhysical({
 
       {/* MODAL */}
       {isModalOpen && (
-        <div className="bp-modal-overlay">
-          <div className="bp-modal-container">
-            <div className="bp-modal-icon-wrapper bg-light-green text-green">
+        <div className='bp-modal-overlay'>
+          <div className='bp-modal-container'>
+            <div className='bp-modal-icon-wrapper bg-light-green text-green'>
               <IconCheck size={40} />
             </div>
-            <h3 className="bp-modal-title">Appointment Created</h3>
-            <p className="bp-modal-desc">
+            <h3 className='bp-modal-title'>Appointment Created</h3>
+            <p className='bp-modal-desc'>
               Your physical consultation has been successfully scheduled.
             </p>
-            <div className="bp-modal-actions">
+            <div className='bp-modal-actions'>
               <button
-                className="bp-modal-btn bp-modal-btn-cyan"
+                className='bp-modal-btn bp-modal-btn-cyan'
                 onClick={() => {
                   setIsModalOpen(false);
                   onGoToAppointments();
@@ -821,7 +817,7 @@ export default function BookPhysical({
                 Go to Appointments
               </button>
               <button
-                className="bp-modal-btn bp-modal-btn-ghost"
+                className='bp-modal-btn bp-modal-btn-ghost'
                 onClick={() => {
                   setIsModalOpen(false);
                   onGoToDashboard();

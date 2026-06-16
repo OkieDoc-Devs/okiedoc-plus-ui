@@ -2224,16 +2224,13 @@ export default function Dashboard() {
       return;
     }
 
-    // Only update the specific reason being toggled
     const nextInquiry = reason === 'inquiry' ? checked : markInquiry;
     const nextIncomplete = reason === 'incomplete' ? checked : markIncomplete;
 
     setMarkInquiry(nextInquiry);
     setMarkIncomplete(nextIncomplete);
 
-    // Handle callbacks and regular tickets differently
     if (isSelectedCallbackTicket && selectedTicket.callbackId) {
-      // For callbacks, update the status based on what's being marked
       try {
         let newStatus = 'new';
         if (nextInquiry) {
@@ -2248,16 +2245,6 @@ export default function Dashboard() {
       } catch (error) {
         console.error('Failed to update callback status:', error);
       }
-    } else {
-      // For regular tickets, update both the flags and the ticket status
-      const ticketStatus =
-        nextInquiry || nextIncomplete ? 'completed' : selectedTicket.status;
-
-      await applyTicketPatch(selectedTicket.id, {
-        status: ticketStatus,
-        isInquiry: nextInquiry,
-        isIncomplete: nextIncomplete,
-      });
     }
   };
 

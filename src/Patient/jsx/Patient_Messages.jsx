@@ -330,9 +330,19 @@ const Patient_Messages = ({ setActive }) => {
 
       {showVideoCall && (
         <JitsiMeetCall
-          roomName={activeConversation?.id}
-          userName={`${user?.firstName} ${user?.lastName}`}
-          isVideo={isVideoCall}
+          isOpen={showVideoCall}
+          callType={isVideoCall ? 'video' : 'audio'}
+          patient={{
+            name: activeConversation?.name || 'Patient',
+            id: activeConversation?.participants?.find(p => Number(p.id) !== Number(currentUserId))?.id,
+          }}
+          currentUser={{
+            firstName: user?.firstName,
+            lastName: user?.lastName,
+            email: user?.email,
+            profileUrl: user?.profileUrl,
+          }}
+          ticketId={activeConversation?.id}
           onClose={() => setShowVideoCall(false)}
         />
       )}

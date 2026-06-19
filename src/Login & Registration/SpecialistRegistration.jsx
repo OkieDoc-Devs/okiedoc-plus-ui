@@ -274,10 +274,10 @@ export default function SpecialistRegistration() {
     if (!formData.mobileNumber.trim()) {
       newErrors.mobileNumber = "Mobile number is required";
     } else {
-      const mobileRegex = /^(09\d{9}|\+639\d{9})$/;
+      const mobileRegex = /^\+63\d{10}$/;
       if (!mobileRegex.test(formData.mobileNumber.trim())) {
         newErrors.mobileNumber =
-          "Must be a valid PH number (e.g., 09123456789 or +639123456789)";
+          "Must be a valid PH number (+63 followed by exactly 10 digits, e.g., +639171234567)";
       }
     }
 
@@ -469,9 +469,11 @@ export default function SpecialistRegistration() {
         "Network error. Please try again later.";
 
       console.log("Setting generic error:", errorMessage);
-      setErrors({
-        email: errorMessage,
-      });
+      if (body.mobileNumberInUse?.message) {
+        setErrors({ mobileNumber: body.mobileNumberInUse.message });
+      } else {
+        setErrors({ email: errorMessage });
+      }
       setIsSubmitting(false);
       window.scrollTo(0, 0);
     }
@@ -532,10 +534,10 @@ export default function SpecialistRegistration() {
       if (!formData.mobileNumber.trim()) {
         stepErrors.mobileNumber = "Mobile number is required";
       } else {
-        const mobileRegex = /^(09\d{9}|\+639\d{9})$/;
+        const mobileRegex = /^\+63\d{10}$/;
         if (!mobileRegex.test(formData.mobileNumber.trim())) {
           stepErrors.mobileNumber =
-            "Must be a valid PH number (e.g., 09123456789 or +639123456789)";
+            "Must be a valid PH number (+63 followed by exactly 10 digits, e.g., +639171234567)";
         }
       }
 

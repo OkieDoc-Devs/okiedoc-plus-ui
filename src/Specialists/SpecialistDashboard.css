@@ -2698,6 +2698,8 @@ html:has(body.specialist-dashboard-body) {
   flex: 0 0 auto !important;
   min-width: 190px !important;
   max-width: none !important;
+}
+
 .complete-consultation {
   background: #0d6efd !important;
   color: #fff !important;

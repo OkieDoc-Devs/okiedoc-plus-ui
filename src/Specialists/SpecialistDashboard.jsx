@@ -3276,6 +3276,7 @@ const SpecialistDashboard = () => {
                         {profileData.specialization || "Consultation"}
                         <span className="patient-details-header-emr__sub-sep"> • </span>
                         Consultation
+                      </p>
                       <p className='patient-details-header-emr__sub'>
                         {emrDepartmentLabel}
                         <span className='patient-details-header-emr__sub-sep'>

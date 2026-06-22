@@ -64,7 +64,7 @@ import {
   loadAccountData,
   saveAccountData,
   loadScheduleData,
-  saveScheduleData,
+  weeklySchedulesToCalendar,
   loadEncounterData,
   saveEncounterData,
   loadMedicalHistoryData,
@@ -93,6 +93,9 @@ import {
   updateMedicalHistoryStatus,
   formatMedicineDisplay,
   formatLabRequestDisplay,
+  mapMedicinesForCompletion,
+  mapLabRequestsForCompletion,
+  mapMedicalCertificatesForCompletion,
   getSubSpecializations,
   isValidSpecialization,
   isValidSubSpecialization,
@@ -114,7 +117,8 @@ import {
   validateMedicalHistoryRequest,
   ICD11_CHAPTERS,
   parseICDCode,
-} from './utils';
+  isICDSelectionComplete,
+} from "./utils";
 
 const TICKET_REFRESH_INTERVAL_MS = 15000;
 
@@ -633,6 +637,11 @@ const SpecialistDashboard = () => {
     zipCode: '',
   });
 
+  const isGeneralPractitioner = useMemo(
+    () => profileData.specialization === "General Practice",
+    [profileData.specialization],
+  );
+
   const [services, setServices] = useState({
     feeInitialWithoutCert: 0,
     feeInitialWithCert: 0,
@@ -711,10 +720,13 @@ const SpecialistDashboard = () => {
   });
 
   const [mhRequests, setMhRequests] = useState([]);
+  const [isRequestingRecords, setIsRequestingRecords] = useState(false);
+  const [recordRequestPending, setRecordRequestPending] = useState(false);
   const [selectedMedicalEntry, setSelectedMedicalEntry] = useState(null);
   const [soapModalType, setSoapModalType] = useState(null);
-  const [soapModalValue, setSoapModalValue] = useState('');
-  const [soapModalIcdCode, setSoapModalIcdCode] = useState('');
+  const [soapModalValue, setSoapModalValue] = useState("");
+  const [soapModalIcdCode, setSoapModalIcdCode] = useState("");
+  const [soapIcdShowErrors, setSoapIcdShowErrors] = useState(false);
 
   const [centerTab, setCenterTab] = useState('medicine');
   const [completedConsultations, setCompletedConsultations] = useState([]);
@@ -1313,6 +1325,26 @@ const SpecialistDashboard = () => {
     }
   }, []);
 
+  const loadScheduleFromApi = useCallback(async () => {
+    try {
+      const weeklySchedules = await specialistApi.fetchSchedule(
+        currentMonth,
+        currentYear,
+      );
+      setSchedules(
+        weeklySchedulesToCalendar(
+          weeklySchedules || {},
+          currentYear,
+          currentMonth,
+        ),
+      );
+    } catch (error) {
+      console.warn("Failed to fetch schedule from API:", error);
+      const email = getCurrentUserEmail();
+      setSchedules(loadScheduleData(email));
+    }
+  }, [currentMonth, currentYear]);
+
   const openCompletedConsultDetailModal = async (consultation) => {
     const id = consultation?.id;
     if (!id) return;
@@ -1366,18 +1398,19 @@ const SpecialistDashboard = () => {
       return;
     }
 
+    // FIX: Check applicationStatus directly on currentUser, not currentUser.user
     if (
-      currentUser.user.applicationStatus === 'pending' &&
+      currentUser.applicationStatus === "pending" &&
       !onboardingOverride
     ) {
       navigate('/specialist-pending');
       return;
-    } else if (currentUser.user.applicationStatus === 'denied') {
-      navigate('/specialist-denied');
+    } else if (currentUser.applicationStatus === "denied") {
+      navigate("/specialist-denied");
       return;
     }
 
-    setCurrentUser(currentUser.user);
+    setCurrentUser(currentUser);
     setIsLoading(false);
 
     if (onboardingOverride) {
@@ -1385,39 +1418,36 @@ const SpecialistDashboard = () => {
     }
 
     const initials = generateUserInitials(
-      currentUser.user.firstName || currentUser.user.fName,
-      currentUser.user.lastName || currentUser.user.lName,
+      currentUser.firstName || currentUser.fName,
+      currentUser.lastName || currentUser.lName,
     );
     setUserInitials(initials);
 
-    const profile = loadProfileData(currentUser.user.email);
+    const profile = loadProfileData(currentUser.email);
     setProfileData((prev) => ({
       ...prev,
-      firstName: currentUser.user.firstName || currentUser.user.fName || '',
-      lastName: currentUser.user.lastName || currentUser.user.lName || '',
-      email: currentUser.user.email,
-      phone: profile.phone || currentUser.user.phone || '+63 ',
-      prcNumber: profile.prcNumber || currentUser.user.licenseNumber || '',
+      firstName: currentUser.firstName || currentUser.fName || "",
+      lastName: currentUser.lastName || currentUser.lName || "",
+      email: currentUser.email,
+      phone: profile.phone || currentUser.phone || "+63 ",
+      prcNumber: profile.prcNumber || currentUser.licenseNumber || "",
       specialization:
-        profile.specialization || currentUser.user.specialty || '',
-      subSpecialization: profile.subSpecialization || '',
-      bio: profile.bio || '',
-      prcImage: profile.prcImage || '',
-      profileImage: profile.profileImage || '',
-      addressLine1: profile.addressLine1 || '',
-      addressLine2: profile.addressLine2 || '',
-      barangay: profile.barangay || '',
-      city: profile.city || '',
-      province: profile.province || '',
-      region: profile.region || '',
-      zipCode: profile.zipCode || '',
+        profile.specialization || currentUser.specialty || "",
+      subSpecialization: profile.subSpecialization || "",
+      bio: profile.bio || "",
+      prcImage: profile.prcImage || "",
+      profileImage: profile.profileImage || "",
+      addressLine1: profile.addressLine1 || "",
+      addressLine2: profile.addressLine2 || "",
+      barangay: profile.barangay || "",
+      city: profile.city || "",
+      province: profile.province || "",
+      region: profile.region || "",
+      zipCode: profile.zipCode || "",
     }));
 
-    const savedAccount = loadAccountData(currentUser.user.email);
+    const savedAccount = loadAccountData(currentUser.email);
     setAccountDetails((prev) => ({ ...prev, ...savedAccount }));
-
-    const savedSchedules = loadScheduleData(currentUser.user.email);
-    setSchedules(savedSchedules);
 
     loadTicketsData();
     loadDashboardData();
@@ -1435,7 +1465,11 @@ const SpecialistDashboard = () => {
   ]);
 
   useEffect(() => {
-    if (activeTab === 'dashboard') {
+    loadScheduleFromApi();
+  }, [loadScheduleFromApi]);
+
+  useEffect(() => {
+    if (activeTab === "dashboard") {
       console.log(
         '[SpecialistDashboard] Dashboard tab active, reloading tickets...',
       );
@@ -1465,6 +1499,8 @@ const SpecialistDashboard = () => {
 
   useEffect(() => {
     const checkRecordAccess = async () => {
+      setRecordRequestPending(false);
+
       if (!selectedTicketId) {
         setHasSharedAccess(false);
         setSharedMedicalData(null);
@@ -1481,11 +1517,17 @@ const SpecialistDashboard = () => {
 
       if (!patientId) return;
 
+      if (isGeneralPractitioner) {
+        setHasSharedAccess(true);
+        setSharedMedicalData(null);
+        return;
+      }
+
       try {
         const response = await specialistApi.fetchSharedRecords(patientId);
         setHasSharedAccess(true);
         setSharedMedicalData(response.data);
-        setMhRequests([{ label: 'Shared via System' }]); // Tricks the UI to show the 'Shared' pill
+        setMhRequests([{ label: "Shared via System" }]);
       } catch (error) {
         setHasSharedAccess(false);
         setSharedMedicalData(null);
@@ -1494,7 +1536,7 @@ const SpecialistDashboard = () => {
     };
 
     checkRecordAccess();
-  }, [selectedTicketId, tickets]);
+  }, [selectedTicketId, tickets, isGeneralPractitioner]);
 
   useEffect(() => {
     const savedLabRequests = Array.isArray(encounter?.labRequests)
@@ -2093,6 +2135,16 @@ const SpecialistDashboard = () => {
         }
         await loadTicketsData();
       }
+      const labRequestsForCompletion = mapLabRequestsForCompletion(
+        selectedLabTests.length > 0
+          ? selectedLabTests.map((item) => ({
+              test: item.test,
+              customTestName: item.customTestName || "",
+              remarks: item.remarks || labInstructions || "",
+            }))
+          : encounter.labRequests,
+      );
+
       await specialistApi.completeConsultation({
         ticketId: selectedTicketId,
         subjective: encounter.subjective,
@@ -2100,8 +2152,19 @@ const SpecialistDashboard = () => {
         assessment: encounter.assessment,
         plan: encounter.plan,
         icd10Code: encounter.icd10,
+        prescriptions: mapMedicinesForCompletion(encounter.medicines),
+        labRequests: labRequestsForCompletion,
+        medicalCertificates: mapMedicalCertificatesForCompletion(certificateForm),
       });
-      alert('Consultation completed!');
+      alert("Consultation completed!");
+      const medCertKey = MEDCERT_STORAGE_KEY(selectedTicketId);
+      if (medCertKey) {
+        try {
+          localStorage.removeItem(medCertKey);
+        } catch {
+          /* ignore */
+        }
+      }
       setSelectedTicketId(null);
       await loadTicketsData();
       await loadDashboardData();
@@ -2459,12 +2522,23 @@ const SpecialistDashboard = () => {
 
   const closeSoapModal = () => {
     setSoapModalType(null);
-    setSoapModalValue('');
-    setSoapModalIcdCode('');
+    setSoapModalValue("");
+    setSoapModalIcdCode("");
+    setSoapIcdShowErrors(false);
   };
 
   const saveSoapModal = async () => {
     if (!soapModalType) return;
+
+    if (soapModalType === "assessment") {
+      if (!isICDSelectionComplete(soapModalIcdCode)) {
+        setSoapIcdShowErrors(true);
+        alert(
+          "Please select all ICD code fields (Chapter, Block, Category, and Subcategory when available) before saving.",
+        );
+        return;
+      }
+    }
 
     const payload = { [soapModalType]: soapModalValue };
     if (soapModalType === 'assessment') {
@@ -2552,24 +2626,26 @@ const SpecialistDashboard = () => {
 
   const closeMedicalEntryDetails = () => setSelectedMedicalEntry(null);
 
-  const requestPatientRecords = () => {
+  const requestPatientRecords = async () => {
     if (!selectedTicketId) {
       alert('Please select a patient ticket first.');
       return;
     }
 
+    if (isRequestingRecords || recordRequestPending) {
+      return;
+    }
+
+    setIsRequestingRecords(true);
     try {
-      const item = createMedicalHistoryRequest({
-        reason: 'Medical records requested by specialist',
-        from: '',
-        to: '',
-        consent: true,
-      });
-      const list = mhRequests.concat([item]);
-      saveMedicalHistoryData(selectedTicketId, list);
-      setMhRequests(list);
+      await specialistApi.requestMedicalHistory(selectedTicketId);
+      setRecordRequestPending(true);
+      alert("Medical records request sent to the patient.");
     } catch (error) {
-      alert(error.message);
+      console.error("Failed to request medical records:", error);
+      alert(error.message || "Failed to request medical records.");
+    } finally {
+      setIsRequestingRecords(false);
     }
   };
 
@@ -2591,7 +2667,6 @@ const SpecialistDashboard = () => {
       return;
     }
 
-    const email = getCurrentUserEmail();
     const dateKey = formatDateKey(currentYear, currentMonth, selectedDate);
     const newSchedule = {
       time: scheduleData.time,
@@ -2604,21 +2679,16 @@ const SpecialistDashboard = () => {
       await specialistApi.updateSchedule({
         date: dateKey,
         time: scheduleData.time,
-        duration: parseInt(scheduleData.duration),
-        notes: scheduleData.notes || 'Available for consultation',
+        duration: parseInt(scheduleData.duration, 10),
+        notes: scheduleData.notes || "Available for consultation",
         isAvailable: true,
       });
+      await loadScheduleFromApi();
     } catch (error) {
-      console.warn('Failed to save schedule via API:', error);
+      console.warn("Failed to save schedule via API:", error);
+      alert(error?.message || "Failed to save schedule.");
+      return;
     }
-
-    const updatedSchedules = {
-      ...schedules,
-      [dateKey]: [...(schedules[dateKey] || []), newSchedule],
-    };
-
-    setSchedules(updatedSchedules);
-    saveScheduleData(email, updatedSchedules);
 
     setShowScheduleModal(false);
     setSelectedDate(null);
@@ -2628,22 +2698,11 @@ const SpecialistDashboard = () => {
   const deleteSchedule = async (dateKey, scheduleId) => {
     try {
       await specialistApi.deleteSchedule(scheduleId);
+      await loadScheduleFromApi();
     } catch (error) {
-      console.warn('Failed to delete schedule via API:', error);
+      console.warn("Failed to delete schedule via API:", error);
+      alert(error?.message || "Failed to delete schedule.");
     }
-
-    const email = getCurrentUserEmail();
-    const updatedSchedules = {
-      ...schedules,
-      [dateKey]: schedules[dateKey].filter((s) => s.id !== scheduleId),
-    };
-
-    if (updatedSchedules[dateKey].length === 0) {
-      delete updatedSchedules[dateKey];
-    }
-
-    setSchedules(updatedSchedules);
-    saveScheduleData(email, updatedSchedules);
   };
 
   const renderCalendar = () => {
@@ -3290,6 +3349,10 @@ const SpecialistDashboard = () => {
                           {selectedPatient.status}
                         </span>
                       </div>
+                      <p className="patient-details-header-emr__sub">
+                        {profileData.specialization || "Consultation"}
+                        <span className="patient-details-header-emr__sub-sep"> • </span>
+                        Consultation
                       <p className='patient-details-header-emr__sub'>
                         {emrDepartmentLabel}
                         <span className='patient-details-header-emr__sub-sep'>
@@ -3301,6 +3364,7 @@ const SpecialistDashboard = () => {
                           style={{ marginRight: '4px' }}
                         />
                         {selectedChannel.label}
+                      </p>
                       </p>
                     </div>
                   </div>
@@ -3418,27 +3482,21 @@ const SpecialistDashboard = () => {
                 </div>
               </div>
 
-              <div className='patient-details-panel'>
-                <div className='patient-details-header'>
-                  <div>
-                    <h2>
-                      {selectedPatient.patientFullName ||
-                        selectedPatient.patient ||
-                        'Patient'}
-                    </h2>
-                    <p className='patient-specialization'>
-                      {selectedPatient.service || 'Consultation'}
-                    </p>
+              <div className="patient-details-panel__inner">
+                <div className="patient-details-header">
+                  <div className="patient-details-header__complaint">
+                    {selectedPatient.service || "Consultation"}
                   </div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    {selectedPatient?.rawTicket?.status !== 'completed' &&
-                      selectedPatient?.rawTicket?.status !== 'for_payment' && (
+                </div>
+
+                <div
+                  className={`patient-details-scroll ${profileData.specialization === "General Practice" ? "patient-details-scroll--gp-fixed" : ""}`}
+                >
+                  <div className="patient-details-complete-row">
+                    {selectedPatient?.rawTicket?.status !== "completed" &&
+                      selectedPatient?.rawTicket?.status !== "for_payment" && (
                         <button
-                          className='btn-primary generate-invoice-btn'
-                          style={{
-                            backgroundColor: '#10b981',
-                            borderColor: '#10b981',
-                          }}
+                          className="btn-primary generate-invoice-btn"
                           onClick={() => {
                             setSelectedTicketId(selectedPatient.id);
                             setShowInvoiceModal(true);
@@ -3448,22 +3506,17 @@ const SpecialistDashboard = () => {
                         </button>
                       )}
                     <button
-                      className='btn-primary complete-consultation'
+                      className="btn-complete-consultation-emr complete-consultation"
                       onClick={handleCompleteConsultation}
-                      disabled={
-                        !selectedPatient || patientStatus === 'Completed'
-                      }
+                      disabled={!selectedPatient || patientStatus === "Completed"}
                     >
                       {patientStatus === 'Completed'
                         ? 'Completed'
                         : 'Complete Consultation'}
                     </button>
                   </div>
-                </div>
-
-                <div className='patient-details-scroll'>
-                  <div className='patient-info-card'>
-                    <div className='section-title-small'>
+                  <div className="patient-info-card">
+                    <div className="section-title-small">
                       Patient Information
                     </div>
                     <div className='patient-info-grid'>
@@ -3547,11 +3600,14 @@ const SpecialistDashboard = () => {
                       type='button'
                       className='specialist-medical-history-btn'
                       onClick={() => setShowMedicalRecords(true)}
-                      disabled={!selectedTicket || !hasSharedAccess} // <-- CHANGED
+                      disabled={
+                        !selectedTicket ||
+                        (!isGeneralPractitioner && !hasSharedAccess)
+                      }
                       title={
-                        !hasSharedAccess
-                          ? 'The patient must share their records first.'
-                          : ''
+                        !isGeneralPractitioner && !hasSharedAccess
+                          ? "The patient must share their records first."
+                          : ""
                       }
                     >
                       <span className='specialist-medical-history-icon'>
@@ -3613,8 +3669,8 @@ const SpecialistDashboard = () => {
                     readOnly
                   />
 
-                  <div className='soap-panel'>
-                    <div className='soap-header'>
+                  <div className={`soap-panel ${profileData.specialization === "General Practice" ? "soap-panel--gp-scrollable" : ""}`}>
+                    <div className="soap-header">
                       <h3>SOAP Notes</h3>
                       <p>Document your clinical findings and treatment plan</p>
                     </div>
@@ -3708,92 +3764,109 @@ const SpecialistDashboard = () => {
                         aria-label='Open plan SOAP editor'
                       />
                     </div>
-                    <div className='soap-card medical-records-access-card'>
-                      <div className='medical-records-header'>
-                        <div>
-                          <div className='soap-card-title'>
-                            Medical Records Access
+                    {!isGeneralPractitioner && (
+                      <div className="soap-card medical-records-access-card">
+                        <div className="medical-records-header">
+                          <div>
+                            <div className="soap-card-title">
+                              Medical Records Access
+                            </div>
+                            <p className="medical-records-description">
+                              Patient record permissions and shared details.
+                            </p>
                           </div>
-                          <p className='medical-records-description'>
-                            Patient record permissions and shared details.
-                          </p>
+                          {hasSharedAccess && (
+                            <span className="status-pill status-pill--shared">
+                              Shared
+                            </span>
+                          )}
                         </div>
-                        {hasSharedAccess && (
-                          <span className='status-pill status-pill--shared'>
-                            Shared
-                          </span>
+
+                        {!hasSharedAccess ? (
+                          <div className="medical-records-empty">
+                            <div className="medical-records-icon">🔒</div>
+                            <div className="medical-records-empty-text">
+                              No medical records shared yet
+                            </div>
+                            <p
+                              style={{
+                                color: "#66788d",
+                                fontSize: "0.87rem",
+                                margin: "8px 0 0 0",
+                                textAlign: "center",
+                              }}
+                            >
+                              Request access from the patient or wait for them
+                              to share records from their dashboard.
+                            </p>
+                            <button
+                              type="button"
+                              className="request-record-btn"
+                              onClick={requestPatientRecords}
+                              disabled={
+                                !selectedTicket ||
+                                isRequestingRecords ||
+                                recordRequestPending
+                              }
+                            >
+                              {recordRequestPending
+                                ? "Request Sent"
+                                : isRequestingRecords
+                                  ? "Sending Request..."
+                                  : "Request Medical Records"}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="medical-records-list">
+                            <div className="medical-records-item">
+                              <span className="medical-records-item-icon">
+                                📄
+                              </span>
+                              <span className="medical-records-item-label">
+                                Consultations (
+                                {sharedMedicalData?.certificates?.length || 0})
+                              </span>
+                            </div>
+                            <div className="medical-records-item">
+                              <span className="medical-records-item-icon">
+                                💊
+                              </span>
+                              <span className="medical-records-item-label">
+                                Prescriptions (
+                                {sharedMedicalData?.prescriptions?.length || 0})
+                              </span>
+                            </div>
+                            <div className="medical-records-item">
+                              <span className="medical-records-item-icon">
+                                🧪
+                              </span>
+                              <span className="medical-records-item-label">
+                                Lab Results (
+                                {sharedMedicalData?.labRequests?.length || 0})
+                              </span>
+                            </div>
+                            <div className="medical-records-item">
+                              <span className="medical-records-item-icon">
+                                🩺
+                              </span>
+                              <span className="medical-records-item-label">
+                                Treatment Plans (
+                                {sharedMedicalData?.treatmentPlans?.length || 0})
+                              </span>
+                            </div>
+                          </div>
                         )}
                       </div>
-
-                      {!hasSharedAccess ? (
-                        <div className='medical-records-empty'>
-                          <div className='medical-records-icon'>🔒</div>
-                          <div className='medical-records-empty-text'>
-                            No medical records shared yet
-                          </div>
-                          <p
-                            style={{
-                              color: '#66788d',
-                              fontSize: '0.87rem',
-                              margin: '8px 0 0 0',
-                              textAlign: 'center',
-                            }}
-                          >
-                            The patient must grant you access from their
-                            dashboard.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className='medical-records-list'>
-                          <div className='medical-records-item'>
-                            <span className='medical-records-item-icon'>
-                              📄
-                            </span>
-                            <span className='medical-records-item-label'>
-                              Consultations (
-                              {sharedMedicalData?.certificates?.length || 0})
-                            </span>
-                          </div>
-                          <div className='medical-records-item'>
-                            <span className='medical-records-item-icon'>
-                              💊
-                            </span>
-                            <span className='medical-records-item-label'>
-                              Prescriptions (
-                              {sharedMedicalData?.prescriptions?.length || 0})
-                            </span>
-                          </div>
-                          <div className='medical-records-item'>
-                            <span className='medical-records-item-icon'>
-                              🧪
-                            </span>
-                            <span className='medical-records-item-label'>
-                              Lab Results (
-                              {sharedMedicalData?.labRequests?.length || 0})
-                            </span>
-                          </div>
-                          <div className='medical-records-item'>
-                            <span className='medical-records-item-icon'>
-                              🩺
-                            </span>
-                            <span className='medical-records-item-label'>
-                              Treatment Plans (
-                              {sharedMedicalData?.treatmentPlans?.length || 0})
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
 
-                {selectedPatient?.rawTicket?.patient &&
-                  selectedPatient?.email && (
-                    <div className='patient-chat-panel'>
-                      <div className='patient-chat-header'>
-                        <div className='patient-chat-title-row'>
-                          <FaRegComment className='patient-chat-title-icon' />
-                          <div className='patient-chat-title'>
+                {selectedPatient && (
+                    <div className="patient-chat-panel">
+                      <div className="patient-chat-header">
+                        <div className="patient-chat-title-row">
+                          <FaRegComment className="patient-chat-title-icon" />
+                          <div className="patient-chat-title">
                             Patient Communication
                           </div>
                         </div>
@@ -3919,14 +3992,7 @@ const SpecialistDashboard = () => {
                     display: centerTab === 'medicine' ? 'block' : 'none',
                   }}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '12px',
-                    }}
-                  >
+                  <div className="emr-clinical-header">
                     <div>
                       <div
                         className='info-card-title'
@@ -3946,19 +4012,8 @@ const SpecialistDashboard = () => {
                     </div>
                     <button
                       onClick={() => setMedForm(createDefaultMedicineForm())}
-                      style={{
-                        background: '#0d6efd',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '8px 16px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        fontSize: '0.9rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                      }}
+                      type="button"
+                      className="emr-add-medication-btn"
                     >
                       + Add Medication
                     </button>
@@ -5689,9 +5744,13 @@ const SpecialistDashboard = () => {
         </div>
       </div>
 
-      <div className='main-content'>
-        {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'completed-consultations' &&
+      <div
+        className={`main-content ${
+          activeTab === "dashboard" ? "main-content--emr" : ""
+        }`}
+      >
+        {activeTab === "dashboard" && renderDashboard()}
+        {activeTab === "completed-consultations" &&
           renderCompletedConsultations()}
         {activeTab === 'messages' && <Messages currentUser={currentUser} />}
         {activeTab === 'profile' && renderProfile()}
@@ -6468,8 +6527,8 @@ const SpecialistDashboard = () => {
                     )}
                     {isTriage && (
                       <button
-                        className='btn-primary'
-                        style={{ backgroundColor: '#10b981' }}
+                        className="btn-primary"
+                        style={{ backgroundColor: "#10b981", color: "white" }}
                         onClick={() => {
                           setSelectedTicketId(selectedTicket.id);
                           setShowInvoiceModal(true);
@@ -6963,7 +7022,13 @@ const SpecialistDashboard = () => {
                 <div className='icd-selector-section'>
                   <ICDCodeSelector
                     value={soapModalIcdCode}
-                    onChange={setSoapModalIcdCode}
+                    onChange={(code) => {
+                      setSoapModalIcdCode(code);
+                      if (isICDSelectionComplete(code)) {
+                        setSoapIcdShowErrors(false);
+                      }
+                    }}
+                    showErrors={soapIcdShowErrors}
                   />
                 </div>
               )}
@@ -6973,6 +7038,10 @@ const SpecialistDashboard = () => {
                 type='button'
                 className='btn-primary soap-editor-modal__save-btn'
                 onClick={saveSoapModal}
+                disabled={
+                  soapModalType === "assessment" &&
+                  !isICDSelectionComplete(soapModalIcdCode)
+                }
               >
                 Save{' '}
                 {soapModalType === 'subjective'

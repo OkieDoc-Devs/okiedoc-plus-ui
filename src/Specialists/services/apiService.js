@@ -244,9 +244,12 @@ export async function updateSchedule(scheduleData) {
 }
 
 export async function deleteSchedule(scheduleId) {
-  return apiRequest(`/api/v1/specialist/schedule/${scheduleId}`, {
-    method: "DELETE",
-  });
+  return apiRequest(
+    `/api/v1/specialist/schedule/${encodeURIComponent(scheduleId)}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 // ==========================================

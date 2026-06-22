@@ -3,6 +3,10 @@ import { API_BASE_URL } from '../api/apiClient';
 
 const SOCKET_URL = API_BASE_URL.replace('/api/v1', '');
 
+const isCrossOrigin =
+  typeof window !== 'undefined' &&
+  new URL(SOCKET_URL).origin !== window.location.origin;
+
 const socket = io(SOCKET_URL, {
   withCredentials: true,
   transports: ['websocket', 'polling'],
@@ -30,10 +34,26 @@ socket.on('connect_error', (error) => {
   }
 });
 
-export const connectSocket = () => {
-  if (!socket.connected) {
-    socket.connect();
+const primeSessionCookie = () => {
+  if (!isCrossOrigin) {
+    return Promise.resolve();
   }
+  return fetch(`${SOCKET_URL}/__getcookie`, { credentials: 'include' }).catch(
+    (err) => {
+      console.warn('[Socket] Could not prime session cookie:', err.message);
+    },
+  );
+};
+
+export const connectSocket = () => {
+  if (socket.connected) {
+    return;
+  }
+  primeSessionCookie().finally(() => {
+    if (!socket.connected) {
+      socket.connect();
+    }
+  });
 };
 
 export const disconnectSocket = () => {

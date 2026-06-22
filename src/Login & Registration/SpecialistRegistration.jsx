@@ -1,4 +1,4 @@
-﻿import "./auth.css";
+import "./auth.css";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
@@ -10,7 +10,6 @@ import {
   FaTrash,
   FaShieldAlt,
   FaStethoscope,
-  FaRegClock,
   FaUpload,
   FaUser,
 } from "react-icons/fa";
@@ -77,6 +76,7 @@ export default function SpecialistRegistration() {
   const [prcIdFile, setPrcIdFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [practiceSchedule, setPracticeSchedule] = useState({
@@ -144,6 +144,40 @@ export default function SpecialistRegistration() {
       filteredValue = value.replace(/[^0-9]/g, "").slice(0, 4);
     } else if (["addressLine1", "addressLine2"].includes(id)) {
       filteredValue = value.replace(/[^a-zA-Z0-9\s,]/g, "");
+    } else if (id === "licenseNumber") {
+      // PRC License: Only allow numbers
+      filteredValue = value.replace(/[^0-9]/g, "");
+    } else if (id === "s2Number") {
+      // S2: Only allow numbers, auto-prefix with S2-
+      const numericValue = value.replace(/[^0-9]/g, "");
+      filteredValue = numericValue ? `S2-${numericValue}` : "";
+    } else if (id === "ptrNumber") {
+      // PTR: Only allow numbers, auto-prefix with PTR-
+      const numericValue = value.replace(/[^0-9]/g, "");
+      filteredValue = numericValue ? `PTR-${numericValue}` : "";
+    } else if (id === "primarySpecialty") {
+      // Convert to Pascal Case
+      filteredValue = value
+        .toLowerCase()
+        .split(/\s+/)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    } else if (id === "subSpecialties") {
+      // Convert to Pascal Case
+      filteredValue = value
+        .toLowerCase()
+        .split(/[,;]/) // Split by comma or semicolon
+        .map((specialty) =>
+          specialty
+            .trim()
+            .split(/\s+/)
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ")
+        )
+        .join(", ");
+    } else if (["initialConsultationFee", "followUpConsultationFee", "medicalCertificateFee", "seniorDiscount", "pwdDiscount", "accountNumber"].includes(id)) {
+      // Only allow numbers for fees, discounts, and account number
+      filteredValue = value.replace(/[^0-9]/g, "");
     }
 
     setFormData((prev) => ({
@@ -151,14 +185,49 @@ export default function SpecialistRegistration() {
       [id]: filteredValue,
     }));
 
-    if (errors[id]) {
+    // Clear related errors when fields are changed
+    const errorsToKeep = { ...errors };
+    if (id === "bMonth" || id === "bDay" || id === "bYear") {
+      errorsToKeep.birthday = "";
+    }
+    if (id === "prcExpiryMonth" || id === "prcExpiryDay" || id === "prcExpiryYear") {
+      errorsToKeep.prcExpiryDate = "";
+    }
+    if (Object.keys(errorsToKeep).some((key) => errorsToKeep[key] !== errors[key])) {
+      setErrors(errorsToKeep);
+    } else if (errors[id]) {
       setErrors((prev) => ({ ...prev, [id]: "" }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) {
+      console.warn("Submission already in progress, ignoring duplicate submit");
+      return;
+    }
+    
+    // CRITICAL: Validate terms before proceeding
+    console.log("handleSubmit called - acceptedTerms:", acceptedTerms, "acceptedPrivacy:", acceptedPrivacy);
+    
+    if (!acceptedTerms || !acceptedPrivacy) {
+      console.warn("Terms not accepted - blocking submission");
+      const newErrors = {};
+      if (!acceptedTerms) {
+        newErrors.acceptedTerms = "You must accept the Terms & Conditions";
+      }
+      if (!acceptedPrivacy) {
+        newErrors.acceptedPrivacy = "You must accept the Data Privacy Policy";
+      }
+      setErrors(newErrors);
+      window.scrollTo(0, 0);
+      return;
+    }
+    
     setErrors({});
+    setIsSubmitting(true);
 
     const newErrors = {};
 
@@ -177,6 +246,16 @@ export default function SpecialistRegistration() {
       const birthDate = new Date(`${formData.bYear}-${formData.bMonth}-${formData.bDay}`);
       if (birthDate > new Date()) {
         newErrors.birthday = "Birthday cannot be in the future";
+      } else {
+        // Check if at least 18 years old
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        const dayDiff = today.getDate() - birthDate.getDate();
+        const isOldEnough = age > 18 || (age === 18 && (monthDiff > 0 || (monthDiff === 0 && dayDiff >= 0)));
+        if (!isOldEnough) {
+          newErrors.birthday = "You must be at least 18 years old";
+        }
       }
     }
 
@@ -195,23 +274,24 @@ export default function SpecialistRegistration() {
     if (!formData.mobileNumber.trim()) {
       newErrors.mobileNumber = "Mobile number is required";
     } else {
-      const mobileRegex = /^(09\d{9}|\+639\d{9})$/;
+      const mobileRegex = /^\+63\d{10}$/;
       if (!mobileRegex.test(formData.mobileNumber.trim())) {
         newErrors.mobileNumber =
-          "Must be a valid PH number (e.g., 09123456789 or +639123456789)";
+          "Must be a valid PH number (+63 followed by exactly 10 digits, e.g., +639171234567)";
       }
     }
 
-    if (formData.prcExpiryMonth && formData.prcExpiryDay && formData.prcExpiryYear) {
+    if (!formData.prcExpiryMonth || !formData.prcExpiryDay || !formData.prcExpiryYear) {
+      newErrors.prcExpiryDate = "PRC expiration date is required";
+    } else {
       const expiry = new Date(
         `${formData.prcExpiryYear}-${formData.prcExpiryMonth}-${formData.prcExpiryDay}`,
       );
-      const minDate = new Date();
-      minDate.setDate(minDate.getDate() + 15);
-      minDate.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-      if (expiry < minDate) {
-        newErrors.prcExpiryDate = "Expiry date must be at least 15 days from today";
+      if (expiry <= today) {
+        newErrors.prcExpiryDate = "PRC expiration date must be in the future";
       }
     }
 
@@ -225,8 +305,18 @@ export default function SpecialistRegistration() {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
+    // Validate terms and conditions acceptance
+    if (!acceptedTerms) {
+      newErrors.acceptedTerms = "You must accept the Terms & Conditions";
+    }
+
+    if (!acceptedPrivacy) {
+      newErrors.acceptedPrivacy = "You must accept the Data Privacy Policy";
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      setIsSubmitting(false);
       window.scrollTo(0, 0);
       return;
     }
@@ -237,6 +327,13 @@ export default function SpecialistRegistration() {
         if (value !== undefined && value !== null && String(value).trim() !== "") {
           payload.append(key, value);
         }
+      };
+
+      const toMysqlDate = (y, m, d) => {
+        const year = String(y).trim();
+        const month = String(m).trim().padStart(2, "0");
+        const day = String(d).trim().padStart(2, "0");
+        return `${year}-${month}-${day}`;
       };
 
       payload.append("firstName", formData.firstName);
@@ -272,7 +369,17 @@ export default function SpecialistRegistration() {
       appendIfValue("subSpecialties", formData.subSpecialties);
       if (formData.s2Number) payload.append("s2Number", formData.s2Number);
 
-      payload.append("birthday", `${formData.bYear}-${formData.bMonth}-${formData.bDay}`);
+      payload.append(
+        "birthday",
+        toMysqlDate(formData.bYear, formData.bMonth, formData.bDay),
+      );
+
+      if (formData.prcExpiryYear && formData.prcExpiryMonth && formData.prcExpiryDay) {
+        payload.append(
+          "prcExpiryDate",
+          toMysqlDate(formData.prcExpiryYear, formData.prcExpiryMonth, formData.prcExpiryDay),
+        );
+      }
 
       appendIfValue("ptrNumber", formData.ptrNumber);
       appendIfValue("barangay", formData.barangay);
@@ -292,47 +399,82 @@ export default function SpecialistRegistration() {
         body: payload,
       });
 
-      if (result.success || result.message) {
-        const approvedUser = result.user
-          ? {
-              ...result.user,
-              role: result.user.role || "specialist",
-              userType: result.user.userType || result.user.role || "specialist",
-            }
-          : null;
+      console.log("Registration API Response:", result);
+      console.log("Response type:", typeof result);
+      console.log("Result.success:", result?.success);
 
-        if (approvedUser) {
-          localStorage.setItem("okiedoc_specialist_user", JSON.stringify(approvedUser));
-          localStorage.setItem("okiedoc_user_type", "specialist");
-        }
+      const submitted =
+        result &&
+        typeof result === "object" &&
+        (result.success === true ||
+          String(result.message || "")
+            .toLowerCase()
+            .includes("submitted"));
 
-        // Full reload so the auth provider sees the new session immediately.
-        window.location.assign("/specialist-dashboard");
+      if (submitted) {
+        console.log("Registration successful, redirecting to approval page...");
+        setIsSubmitting(false);
+        setTimeout(() => {
+          window.location.assign("/specialist-application-submitted");
+        }, 100);
       } else {
-        setErrors({ email: result.message || "Registration failed." });
-        if (result.emailAlreadyInUse) {
-          setErrors({
-            email: result.emailAlreadyInUse.message || "Email already in use/Application submitted.",
-          });
-        }
+        console.error("Registration response missing success flag or invalid response:", result);
+        setErrors({
+          email: result?.message || "Registration could not be completed. Please try again.",
+        });
+        setIsSubmitting(false);
         window.scrollTo(0, 0);
       }
     } catch (error) {
       console.error("Registration failed:", error);
-      const errorMessage =
-        error?.emailAlreadyInUse?.message ||
-        error?.message ||
-        error?.error ||
-        (typeof error === "string" ? error : "");
+      console.error("Error stack:", error.stack);
+      const status = error?.statusCode;
+      const body = error?.body || {};
 
-      if (/already been submitted|already in use|conflict/i.test(errorMessage)) {
-        window.location.assign("/specialist-dashboard");
+      console.log("Error status:", status);
+      console.log("Error body:", body);
+      console.log("Error message:", error?.message);
+
+      if (status === 409) {
+        // Conflict - uniqueness violation
+        console.log("Got 409 conflict error");
+        
+        if (body.mobileNumberInUse?.message) {
+          console.log("Setting mobile number error");
+          setErrors({ mobileNumber: body.mobileNumberInUse.message });
+        } else if (body.emailAlreadyInUse?.message) {
+          console.log("Setting email error");
+          setErrors({
+            email: body.emailAlreadyInUse.message,
+          });
+        } else {
+          console.log("Got 409 but couldn't identify field, defaulting to email error");
+          setErrors({
+            email:
+              body.message ||
+              error?.message ||
+              "This email address is already in use. Please sign in or use a different email address.",
+          });
+        }
+        setIsSubmitting(false);
+        window.scrollTo(0, 0);
         return;
       }
 
-      setErrors({
-        email: errorMessage || "Network error. Please try again later.",
-      });
+      // Other errors
+      const errorMessage = 
+        body.mobileNumberInUse?.message ||
+        body.emailAlreadyInUse?.message ||
+        error?.message ||
+        "Network error. Please try again later.";
+
+      console.log("Setting generic error:", errorMessage);
+      if (body.mobileNumberInUse?.message) {
+        setErrors({ mobileNumber: body.mobileNumberInUse.message });
+      } else {
+        setErrors({ email: errorMessage });
+      }
+      setIsSubmitting(false);
       window.scrollTo(0, 0);
     }
   };
@@ -392,10 +534,10 @@ export default function SpecialistRegistration() {
       if (!formData.mobileNumber.trim()) {
         stepErrors.mobileNumber = "Mobile number is required";
       } else {
-        const mobileRegex = /^(09\d{9}|\+639\d{9})$/;
+        const mobileRegex = /^\+63\d{10}$/;
         if (!mobileRegex.test(formData.mobileNumber.trim())) {
           stepErrors.mobileNumber =
-            "Must be a valid PH number (e.g., 09123456789 or +639123456789)";
+            "Must be a valid PH number (+63 followed by exactly 10 digits, e.g., +639171234567)";
         }
       }
 
@@ -407,6 +549,21 @@ export default function SpecialistRegistration() {
 
       if (!formData.bMonth || !formData.bDay || !formData.bYear) {
         stepErrors.birthday = "Complete birthday is required";
+      } else {
+        const birthDate = new Date(`${formData.bYear}-${formData.bMonth}-${formData.bDay}`);
+        if (birthDate > new Date()) {
+          stepErrors.birthday = "Birthday cannot be in the future";
+        } else {
+          // Check if at least 18 years old
+          const today = new Date();
+          const age = today.getFullYear() - birthDate.getFullYear();
+          const monthDiff = today.getMonth() - birthDate.getMonth();
+          const dayDiff = today.getDate() - birthDate.getDate();
+          const isOldEnough = age > 18 || (age === 18 && (monthDiff > 0 || (monthDiff === 0 && dayDiff >= 0)));
+          if (!isOldEnough) {
+            stepErrors.birthday = "You must be at least 18 years old";
+          }
+        }
       }
 
       if (!formData.gender) {
@@ -449,6 +606,16 @@ export default function SpecialistRegistration() {
       }
       if (!formData.prcExpiryMonth || !formData.prcExpiryDay || !formData.prcExpiryYear) {
         stepErrors.prcExpiryDate = "PRC expiration date is required";
+      } else {
+        const expiry = new Date(
+          `${formData.prcExpiryYear}-${formData.prcExpiryMonth}-${formData.prcExpiryDay}`,
+        );
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (expiry <= today) {
+          stepErrors.prcExpiryDate = "PRC expiration date must be in the future";
+        }
       }
       if (formData.specialistType === "specialist" && !formData.primarySpecialty.trim()) {
         stepErrors.primarySpecialty = "Medical specialty is required";
@@ -458,6 +625,59 @@ export default function SpecialistRegistration() {
       }
       if (!prcIdFile) {
         stepErrors.prcId = "PRC ID upload is required";
+      }
+      // Validate practice schedule
+      const scheduleErrors = validatePracticeSchedule();
+      Object.assign(stepErrors, scheduleErrors);
+    }
+
+    if (stepIndex === 2) {
+      // Validate HMO Partnerships - if one field is filled, all must be filled
+      for (let i = 0; i < hmoPartnerships.length; i++) {
+        const hmo = hmoPartnerships[i];
+        const hasAnyField = hmo.hmoName.trim() || hmo.details.trim() || hmo.billingContact.trim();
+        
+        if (hasAnyField) {
+          if (!hmo.hmoName.trim()) {
+            stepErrors[`hmo_${i}_name`] = "HMO Name is required when other fields are filled";
+          }
+          if (!hmo.details.trim()) {
+            stepErrors[`hmo_${i}_details`] = "Details is required when other fields are filled";
+          }
+          if (!hmo.billingContact.trim()) {
+            stepErrors[`hmo_${i}_contact`] = "Billing Contact is required when other fields are filled";
+          }
+        }
+      }
+
+      // Validate Hospital Affiliations - if one field is filled, all must be filled
+      for (let i = 0; i < hospitalAffiliations.length; i++) {
+        const hospital = hospitalAffiliations[i];
+        const hasAnyField = hospital.hospitalName.trim() || hospital.address.trim();
+        
+        if (hasAnyField) {
+          if (!hospital.hospitalName.trim()) {
+            stepErrors[`hospital_${i}_name`] = "Hospital Name is required when address is filled";
+          }
+          if (!hospital.address.trim()) {
+            stepErrors[`hospital_${i}_address`] = "Address is required when hospital name is filled";
+          }
+        }
+      }
+
+      // Validate Clinic Affiliations - if one field is filled, all must be filled
+      for (let i = 0; i < clinicAffiliations.length; i++) {
+        const clinic = clinicAffiliations[i];
+        const hasAnyField = clinic.clinicName.trim() || clinic.address.trim();
+        
+        if (hasAnyField) {
+          if (!clinic.clinicName.trim()) {
+            stepErrors[`clinic_${i}_name`] = "Clinic Name is required when address is filled";
+          }
+          if (!clinic.address.trim()) {
+            stepErrors[`clinic_${i}_address`] = "Address is required when clinic name is filled";
+          }
+        }
       }
     }
 
@@ -526,6 +746,46 @@ export default function SpecialistRegistration() {
     setter((prev) => prev.map((item, itemIndex) => (
       itemIndex === index ? { ...item, [key]: value } : item
     )));
+  };
+
+  const validatePracticeSchedule = () => {
+    const errors = {};
+    
+    // Check if any schedule entry is partially filled (either start or end without the other)
+    for (const day of scheduleDays) {
+      const dayKey = day.key;
+      const hasStart = practiceSchedule[dayKey].start;
+      const hasEnd = practiceSchedule[dayKey].end;
+      
+      if (hasStart && !hasEnd) {
+        errors[`schedule_${dayKey}_end`] = `End time required for ${day.label}`;
+      } else if (!hasStart && hasEnd) {
+        errors[`schedule_${dayKey}_start`] = `Start time required for ${day.label}`;
+      }
+      
+      // If both are filled, validate logic and intervals
+      if (hasStart && hasEnd) {
+        const [startHour, startMin] = hasStart.split(":").map(Number);
+        const [endHour, endMin] = hasEnd.split(":").map(Number);
+        
+        // Validate 15-minute intervals
+        if (startMin % 15 !== 0) {
+          errors[`schedule_${dayKey}_start`] = `Start time must be on 15-minute intervals (:00, :15, :30, :45)`;
+        }
+        if (endMin % 15 !== 0) {
+          errors[`schedule_${dayKey}_end`] = `End time must be on 15-minute intervals (:00, :15, :30, :45)`;
+        }
+        
+        // Validate that end time is after start time
+        const startTotalMin = startHour * 60 + startMin;
+        const endTotalMin = endHour * 60 + endMin;
+        if (endTotalMin <= startTotalMin) {
+          errors[`schedule_${dayKey}_end`] = `End time must be after start time`;
+        }
+      }
+    }
+    
+    return errors;
   };
 
   return (
@@ -1197,6 +1457,7 @@ export default function SpecialistRegistration() {
                 </div>
               </div>
 
+              {showSpecialistFields && (
               <div className="specialist-subsection">
                 <h3 className="specialist-subsection-title">Specialization</h3>
                 <div className="specialist-grid">
@@ -1212,7 +1473,6 @@ export default function SpecialistRegistration() {
                       value={formData.primarySpecialty}
                       onChange={handleInputChange}
                       maxLength={100}
-                      disabled={!showSpecialistFields}
                     />
                     {errors.primarySpecialty && (
                       <span className="error-message">{errors.primarySpecialty}</span>
@@ -1231,11 +1491,11 @@ export default function SpecialistRegistration() {
                       value={formData.subSpecialties}
                       onChange={handleInputChange}
                       maxLength={255}
-                      disabled={!showSpecialistFields}
                     />
                   </div>
                 </div>
               </div>
+              )}
 
               <div className="specialist-subsection">
                 <h3 className="specialist-subsection-title">Medical Practice</h3>
@@ -1267,33 +1527,53 @@ export default function SpecialistRegistration() {
                     <div key={day.key} className="specialist-schedule-row">
                       <span className="specialist-schedule-day">{day.label}</span>
                       <div className="specialist-schedule-time-group">
-                        <div className="specialist-time-input-wrap">
-                          <input
-                            className="login-input specialist-time-input"
-                            type="time"
-                            value={practiceSchedule[day.key].start}
-                            onChange={(e) =>
-                              setPracticeSchedule((prev) => ({
-                                ...prev,
-                                [day.key]: { ...prev[day.key], start: e.target.value },
-                              }))
-                            }
-                          />
-                          <FaRegClock className="specialist-time-icon" />
+                        <div className="specialist-schedule-time-field">
+                          <div className={`specialist-time-input-wrap ${errors[`schedule_${day.key}_start`] ? "error" : ""}`}>
+                            <input
+                              className={`login-input specialist-time-input ${errors[`schedule_${day.key}_start`] ? "error" : ""}`}
+                              type="time"
+                              step="900"
+                              value={practiceSchedule[day.key].start}
+                              onChange={(e) => {
+                                setPracticeSchedule((prev) => ({
+                                  ...prev,
+                                  [day.key]: { ...prev[day.key], start: e.target.value },
+                                }));
+                                setErrors((prev) => ({
+                                  ...prev,
+                                  [`schedule_${day.key}_start`]: "",
+                                  [`schedule_${day.key}_end`]: "",
+                                }));
+                              }}
+                            />
+                          </div>
+                          {errors[`schedule_${day.key}_start`] && (
+                            <span className="error-message">{errors[`schedule_${day.key}_start`]}</span>
+                          )}
                         </div>
-                        <div className="specialist-time-input-wrap">
-                          <input
-                            className="login-input specialist-time-input"
-                            type="time"
-                            value={practiceSchedule[day.key].end}
-                            onChange={(e) =>
-                              setPracticeSchedule((prev) => ({
-                                ...prev,
-                                [day.key]: { ...prev[day.key], end: e.target.value },
-                              }))
-                            }
-                          />
-                          <FaRegClock className="specialist-time-icon" />
+                        <div className="specialist-schedule-time-field">
+                          <div className={`specialist-time-input-wrap ${errors[`schedule_${day.key}_end`] ? "error" : ""}`}>
+                            <input
+                              className={`login-input specialist-time-input ${errors[`schedule_${day.key}_end`] ? "error" : ""}`}
+                              type="time"
+                              step="900"
+                              value={practiceSchedule[day.key].end}
+                              onChange={(e) => {
+                                setPracticeSchedule((prev) => ({
+                                  ...prev,
+                                  [day.key]: { ...prev[day.key], end: e.target.value },
+                                }));
+                                setErrors((prev) => ({
+                                  ...prev,
+                                  [`schedule_${day.key}_start`]: "",
+                                  [`schedule_${day.key}_end`]: "",
+                                }));
+                              }}
+                            />
+                          </div>
+                          {errors[`schedule_${day.key}_end`] && (
+                            <span className="error-message">{errors[`schedule_${day.key}_end`]}</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1393,7 +1673,7 @@ export default function SpecialistRegistration() {
                             HMO Name
                           </label>
                           <input
-                            className="login-input"
+                            className={`login-input ${errors[`hmo_${index}_name`] ? "error" : ""}`}
                             id={`hmoName-${index}`}
                             type="text"
                             placeholder="e.g., PhilHealth, MaxiCare, Medicard"
@@ -1402,6 +1682,9 @@ export default function SpecialistRegistration() {
                               updateListItem(setHmoPartnerships, index, "hmoName", e.target.value)
                             }
                           />
+                          {errors[`hmo_${index}_name`] && (
+                            <span className="error-message">{errors[`hmo_${index}_name`]}</span>
+                          )}
                         </div>
 
                         <div className="specialist-field specialist-field--full">
@@ -1409,7 +1692,7 @@ export default function SpecialistRegistration() {
                             Details
                           </label>
                           <input
-                            className="login-input"
+                            className={`login-input ${errors[`hmo_${index}_details`] ? "error" : ""}`}
                             id={`hmoDetails-${index}`}
                             type="text"
                             placeholder="Plan details or notes"
@@ -1418,6 +1701,9 @@ export default function SpecialistRegistration() {
                               updateListItem(setHmoPartnerships, index, "details", e.target.value)
                             }
                           />
+                          {errors[`hmo_${index}_details`] && (
+                            <span className="error-message">{errors[`hmo_${index}_details`]}</span>
+                          )}
                         </div>
 
                         <div className="specialist-field specialist-field--full">
@@ -1425,7 +1711,7 @@ export default function SpecialistRegistration() {
                             Billing Contact
                           </label>
                           <input
-                            className="login-input"
+                            className={`login-input ${errors[`hmo_${index}_contact`] ? "error" : ""}`}
                             id={`hmoBilling-${index}`}
                             type="text"
                             placeholder="Email or phone number"
@@ -1439,6 +1725,9 @@ export default function SpecialistRegistration() {
                               )
                             }
                           />
+                          {errors[`hmo_${index}_contact`] && (
+                            <span className="error-message">{errors[`hmo_${index}_contact`]}</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1489,7 +1778,7 @@ export default function SpecialistRegistration() {
                             Hospital Name
                           </label>
                           <input
-                            className="login-input"
+                            className={`login-input ${errors[`hospital_${index}_name`] ? "error" : ""}`}
                             id={`hospitalName-${index}`}
                             type="text"
                             placeholder="Hospital name"
@@ -1503,6 +1792,9 @@ export default function SpecialistRegistration() {
                               )
                             }
                           />
+                          {errors[`hospital_${index}_name`] && (
+                            <span className="error-message">{errors[`hospital_${index}_name`]}</span>
+                          )}
                         </div>
 
                         <div className="specialist-field">
@@ -1510,7 +1802,7 @@ export default function SpecialistRegistration() {
                             Address
                           </label>
                           <input
-                            className="login-input"
+                            className={`login-input ${errors[`hospital_${index}_address`] ? "error" : ""}`}
                             id={`hospitalAddress-${index}`}
                             type="text"
                             placeholder="Full address"
@@ -1524,6 +1816,9 @@ export default function SpecialistRegistration() {
                               )
                             }
                           />
+                          {errors[`hospital_${index}_address`] && (
+                            <span className="error-message">{errors[`hospital_${index}_address`]}</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1571,7 +1866,7 @@ export default function SpecialistRegistration() {
                             Clinic Name
                           </label>
                           <input
-                            className="login-input"
+                            className={`login-input ${errors[`clinic_${index}_name`] ? "error" : ""}`}
                             id={`clinicName-${index}`}
                             type="text"
                             placeholder="Clinic name"
@@ -1585,6 +1880,9 @@ export default function SpecialistRegistration() {
                               )
                             }
                           />
+                          {errors[`clinic_${index}_name`] && (
+                            <span className="error-message">{errors[`clinic_${index}_name`]}</span>
+                          )}
                         </div>
 
                         <div className="specialist-field">
@@ -1592,7 +1890,7 @@ export default function SpecialistRegistration() {
                             Address
                           </label>
                           <input
-                            className="login-input"
+                            className={`login-input ${errors[`clinic_${index}_address`] ? "error" : ""}`}
                             id={`clinicAddress-${index}`}
                             type="text"
                             placeholder="Full address"
@@ -1606,6 +1904,9 @@ export default function SpecialistRegistration() {
                               )
                             }
                           />
+                          {errors[`clinic_${index}_address`] && (
+                            <span className="error-message">{errors[`clinic_${index}_address`]}</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2057,8 +2358,13 @@ export default function SpecialistRegistration() {
                     Next Step
                   </button>
                 ) : (
-                  <button className="login-btn specialist-submit-btn" type="submit">
-                    Submit Application
+                  <button 
+                    className="login-btn specialist-submit-btn" 
+                    type="submit"
+                    disabled={isSubmitting || !acceptedTerms || !acceptedPrivacy}
+                    title={!acceptedTerms || !acceptedPrivacy ? "You must accept Terms & Conditions and Data Privacy Policy to submit" : ""}
+                  >
+                    {isSubmitting ? "Submitting..." : "Submit Application"}
                   </button>
                 )}
               </div>

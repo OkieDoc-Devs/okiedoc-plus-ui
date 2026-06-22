@@ -7,9 +7,10 @@ import {
   getCodeDetails,
   parseICDCode,
   buildICDCode,
+  isICDSelectionComplete,
 } from '../utils/icdData';
 
-const ICDCodeSelector = ({ value = '', onChange }) => {
+const ICDCodeSelector = ({ value = '', onChange, showErrors = false }) => {
   const [selections, setSelections] = useState({
     chapter: '',
     block: '',
@@ -152,6 +153,18 @@ const ICDCodeSelector = ({ value = '', onChange }) => {
     }
   };
 
+  const needsSubcategory = availableOptions.subcategories.length > 0;
+  const isFieldInvalid = (field) => {
+    if (!showErrors) return false;
+    if (field === 'chapter') return !selections.chapter;
+    if (field === 'block') return selections.chapter && !selections.block;
+    if (field === 'category') return selections.block && !selections.category;
+    if (field === 'subcategory') {
+      return needsSubcategory && selections.category && !selections.subcategory;
+    }
+    return false;
+  };
+
   return (
     <div className='icd-code-selector'>
       <div className='icd-dropdowns-container'>
@@ -161,7 +174,7 @@ const ICDCodeSelector = ({ value = '', onChange }) => {
           <select
             value={selections.chapter}
             onChange={handleChapterChange}
-            className='icd-dropdown'
+            className={`icd-dropdown${isFieldInvalid('chapter') ? ' icd-dropdown--error' : ''}`}
           >
             <option value=''>Select Chapter...</option>
             {availableOptions.chapters.map((option) => (
@@ -179,7 +192,7 @@ const ICDCodeSelector = ({ value = '', onChange }) => {
             <select
               value={selections.block}
               onChange={handleBlockChange}
-              className='icd-dropdown'
+              className={`icd-dropdown${isFieldInvalid('block') ? ' icd-dropdown--error' : ''}`}
             >
               <option value=''>Select Block...</option>
               {availableOptions.blocks.map((option) => (
@@ -198,7 +211,7 @@ const ICDCodeSelector = ({ value = '', onChange }) => {
             <select
               value={selections.category}
               onChange={handleCategoryChange}
-              className='icd-dropdown'
+              className={`icd-dropdown${isFieldInvalid('category') ? ' icd-dropdown--error' : ''}`}
             >
               <option value=''>Select Category...</option>
               {availableOptions.categories.map((option) => (
@@ -217,7 +230,7 @@ const ICDCodeSelector = ({ value = '', onChange }) => {
             <select
               value={selections.subcategory}
               onChange={handleSubcategoryChange}
-              className='icd-dropdown'
+              className={`icd-dropdown${isFieldInvalid('subcategory') ? ' icd-dropdown--error' : ''}`}
             >
               <option value=''>Select Subcategory...</option>
               {availableOptions.subcategories.map((option) => (
@@ -229,6 +242,12 @@ const ICDCodeSelector = ({ value = '', onChange }) => {
           </div>
         )}
       </div>
+
+      {showErrors && !isICDSelectionComplete(value) && (
+        <p className='icd-validation-message'>
+          Please complete all ICD fields before saving.
+        </p>
+      )}
 
       {/* Display Code Details */}
       {codeDetails && (

@@ -3288,7 +3288,6 @@ const SpecialistDashboard = () => {
                         />
                         {selectedChannel.label}
                       </p>
-                      </p>
                     </div>
                   </div>
                   <div className='patient-details-header-emr__right'>

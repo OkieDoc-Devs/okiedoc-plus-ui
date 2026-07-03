@@ -22,6 +22,7 @@ import {
   FaPhone,
   FaBuilding,
   FaComments,
+  FaChevronRight,
 } from 'react-icons/fa';
 import jsPDF from 'jspdf';
 import './SpecialistDashboard.css';
@@ -732,6 +733,7 @@ const SpecialistDashboard = () => {
   const [completedDetailTab, setCompletedDetailTab] = useState('patient');
   const [hasSharedAccess, setHasSharedAccess] = useState(false);
   const [sharedMedicalData, setSharedMedicalData] = useState(null);
+  const [expandedCategory, setExpandedCategory] = useState(null);
 
   const [dashboardStats, setDashboardStats] = useState({
     totalPatients: 0,
@@ -3741,42 +3743,149 @@ const SpecialistDashboard = () => {
                           </div>
                         ) : (
                           <div className="medical-records-list">
-                            <div className="medical-records-item">
-                              <span className="medical-records-item-icon">
-                                📄
-                              </span>
-                              <span className="medical-records-item-label">
-                                Consultations (
-                                {sharedMedicalData?.certificates?.length || 0})
-                              </span>
-                            </div>
-                            <div className="medical-records-item">
-                              <span className="medical-records-item-icon">
-                                💊
-                              </span>
-                              <span className="medical-records-item-label">
-                                Prescriptions (
-                                {sharedMedicalData?.prescriptions?.length || 0})
-                              </span>
-                            </div>
-                            <div className="medical-records-item">
-                              <span className="medical-records-item-icon">
-                                🧪
-                              </span>
-                              <span className="medical-records-item-label">
-                                Lab Results (
-                                {sharedMedicalData?.labRequests?.length || 0})
-                              </span>
-                            </div>
-                            <div className="medical-records-item">
-                              <span className="medical-records-item-icon">
-                                🩺
-                              </span>
-                              <span className="medical-records-item-label">
-                                Treatment Plans (
-                                {sharedMedicalData?.treatmentPlans?.length || 0})
-                              </span>
-                            </div>
+                            {[
+                              {
+                                key: 'certificates',
+                                icon: '📄',
+                                label: 'Medical Certificate',
+                                items: sharedMedicalData?.certificates || [],
+                                format: (item) => ({
+                                  title:
+                                    item.diagnosisReason ||
+                                    item.chiefComplaint ||
+                                    'Medical Certificate',
+                                  subtitle: item.createdAt
+                                    ? new Date(
+                                        item.createdAt,
+                                      ).toLocaleDateString()
+                                    : '',
+                                  detail: item.doctorName || '',
+                                }),
+                              },
+                              {
+                                key: 'prescriptions',
+                                icon: '💊',
+                                label: 'Prescription',
+                                items: sharedMedicalData?.prescriptions || [],
+                                format: (item) => ({
+                                  title: item.medicine || 'Prescription',
+                                  subtitle: item.createdAt
+                                    ? new Date(
+                                        item.createdAt,
+                                      ).toLocaleDateString()
+                                    : '',
+                                  detail: item.dosage || '',
+                                }),
+                              },
+                              {
+                                key: 'labRequests',
+                                icon: '🧪',
+                                label: 'Laboratory Results',
+                                items: sharedMedicalData?.labRequests || [],
+                                format: (item) => ({
+                                  title: item.test || 'Lab Request',
+                                  subtitle: item.createdAt
+                                    ? new Date(
+                                        item.createdAt,
+                                      ).toLocaleDateString()
+                                    : '',
+                                  detail: item.remarks || '',
+                                }),
+                              },
+                              {
+                                key: 'treatmentPlans',
+                                icon: '🩺',
+                                label: 'Clinical Notes',
+                                items: sharedMedicalData?.treatmentPlans || [],
+                                format: (item) => {
+                                  const docName =
+                                    typeof item.specialist === 'object'
+                                      ? `Dr. ${item.specialist.firstName || ''} ${item.specialist.lastName || ''}`.trim()
+                                      : '';
+                                  // Use chief complaint (ticket) or plan (treatment plan)
+                                  const titleText =
+                                    item.chiefComplaint ||
+                                    item.plan ||
+                                    item.subjective ||
+                                    '';
+                                  return {
+                                    title: titleText
+                                      ? titleText.length > 80
+                                        ? titleText.slice(0, 80) + '...'
+                                        : titleText
+                                      : 'Clinical Note',
+                                    subtitle: item.createdAt
+                                      ? new Date(
+                                          item.createdAt,
+                                        ).toLocaleDateString()
+                                      : '',
+                                    detail: docName,
+                                  };
+                                },
+                              },
+                            ].filter(({ items }) => items.length > 0)
+                              .map(({ key, icon, label, items, format }) => {
+                              const count = items.length;
+                              const isOpen = expandedCategory === key;
+                              return (
+                                <div
+                                  key={key}
+                                  className={`medical-records-dropdown ${isOpen ? 'medical-records-dropdown--open' : ''}`}
+                                >
+                                  <button
+                                    type="button"
+                                    className="medical-records-item"
+                                    onClick={() =>
+                                      setExpandedCategory(
+                                        isOpen ? null : key,
+                                      )
+                                    }
+                                  >
+                                    <span className="medical-records-item-icon">
+                                      {icon}
+                                    </span>
+                                    <span className="medical-records-item-label">
+                                      {label}
+                                    </span>
+                                    <span className="medical-records-item-count">
+                                      {count}
+                                    </span>
+                                    <FaChevronRight
+                                      className={`medical-records-item-arrow ${isOpen ? 'medical-records-item-arrow--open' : ''}`}
+                                    />
+                                  </button>
+                                  {isOpen && count > 0 && (
+                                    <div className="medical-records-dropdown-content">
+                                      {items.map((item, idx) => {
+                                        const {
+                                          title,
+                                          subtitle,
+                                          detail,
+                                        } = format(item);
+                                        return (
+                                          <div
+                                            key={idx}
+                                            className="medical-records-dropdown-item"
+                                          >
+                                            <span className="medical-records-dropdown-item-title">
+                                              {title}
+                                            </span>
+                                            <span className="medical-records-dropdown-item-subtitle">
+                                              {subtitle}
+                                            </span>
+                                            {detail && (
+                                              <span className="medical-records-dropdown-item-detail">
+                                                {detail}
+                                              </span>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>

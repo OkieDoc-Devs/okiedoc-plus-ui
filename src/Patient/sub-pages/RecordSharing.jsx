@@ -102,14 +102,14 @@ export default function RecordSharing({ onGoBack }) {
 
   const handleShare = async (isAll = false) => {
     try {
-      // 1. Send the request to the backend!
-      await apiService.shareRecords(selectedDoctor.id);
-
-      // 2. Keep your awesome frontend UI logic intact so it looks good for the user
       const recordsToShare = isAll
         ? RECORD_TYPES.map((r) => r.id)
         : selectedRecords;
 
+      // 1. Send the request to the backend with the selected record types!
+      await apiService.shareRecords(selectedDoctor.id, recordsToShare);
+
+      // 2. Keep your awesome frontend UI logic intact so it looks good for the user
       const newActivity = {
         id: Date.now(),
         doctor: selectedDoctor,

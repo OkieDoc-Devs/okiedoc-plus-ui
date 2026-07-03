@@ -219,11 +219,15 @@ export const fetchDoctors = async () => {
   }
 };
 
-export const shareRecords = async (specialistId) => {
+export const shareRecords = async (specialistId, recordTypes) => {
   try {
+    const body = { specialistId };
+    if (Array.isArray(recordTypes) && recordTypes.length > 0) {
+      body.recordTypes = recordTypes;
+    }
     const response = await apiRequest("/api/v1/patients/share-records", {
       method: "POST",
-      body: JSON.stringify({ specialistId }),
+      body: JSON.stringify(body),
     });
     return response;
   } catch (error) {

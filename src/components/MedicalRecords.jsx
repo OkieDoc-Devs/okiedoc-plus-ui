@@ -161,7 +161,13 @@ export default function PatientMedicalRecordsModal({
               : "N/A",
             type: "Consultation",
             doctor: docName,
-            chiefComplaint: note.subjective || "Medical Record Review",
+            chiefComplaint: note.subjective
+              ? note.subjective
+              : note.plan
+                ? note.plan.length > 80
+                  ? note.plan.slice(0, 80) + '...'
+                  : note.plan
+                : "Medical Record Review",
             diagnosis:
               relatedCerts.length > 0
                 ? relatedCerts[0].diagnosisReason
